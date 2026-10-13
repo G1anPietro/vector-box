@@ -1,3 +1,45 @@
+<?php
+session_start();
+
+// Security Guard: Redirect unauthenticated visitors back to home/login
+if (!isset($_SESSION['user'])) {
+    header("Location: index.php");
+    exit();
+}
+
+$user = $_SESSION['user'];
+$isAdmin = ($user['role'] === 'admin');
+
+// Backend Action Handler for Fetch requests (Minecraft & Wake-On-LAN)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
+    $action = $_POST['action'];
+
+    // Hardware Power Action (Admin only)
+    if ($action === 'wakemainpc' && $isAdmin) {
+        exec('/home/user/bin/wakemainpc.sh 2>&1', $output, $returnCode);
+        echo json_encode(['success' => ($returnCode === 0)]);
+        exit();
+    }
+
+    // Minecraft Launch Action (Runs detached in a screen session)
+    if ($action === 'start_mc') {
+        exec('cd /home/user/minecraft/minecraft_server && screen -dmS mc_server bash start.sh');
+        echo json_encode(['success' => true, 'status' => 'initializing']);
+        exit();
+    }
+
+    // Minecraft Stop Action
+    if ($action === 'stop_mc') {
+        exec('screen -S mc_server -X stuff "stop^M" || pkill -f server.jar');
+        echo json_encode(['success' => true, 'status' => 'terminating']);
+        exit();
+    }
+
+    echo json_encode(['success' => false, 'error' => 'Unauthorized or unknown action']);
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,19 +52,22 @@
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
-        <div class="glitch" id="dash-welcome">// PROFILED_LAYER: DASHBOARD</div>
+        <div class="glitch" id="dash-welcome">// PROFILED_LAYER: <?php echo htmlspecialchars(strtoupper($user['name'])); ?></div>
         <div style="display: flex; gap: 15px; align-items: center;">
             <a href="/resume.html" class="nav-btn" style="text-decoration: none;">// DOSSIER</a>
-            <button id="logout-btn" class="nav-btn" style="border-color: #ff3333; color: #ff3333;">// DISCONNECT</button>
+            <a href="logout.php" class="nav-btn" style="border-color: #ff3333; color: #ff3333; text-decoration: none;">// DISCONNECT</a>
         </div>
     </header>
 
     <main class="dashboard-grid">
+        <!-- Hardware Panel: Rendered server-side only for Admin role -->
+        <?php if ($isAdmin): ?>
         <div class="cyber-panel" id="pc-panel">
             <h2>HARDWARE_POWER</h2>
             <p class="desc-text">Transmit Wake-on-LAN magic broadcast frames to boot the main workstation.</p>
             <button class="action-btn execution-btn" id="wake-pc-btn" style="--btn-color: #8ab4f8; margin-top: 10px;">>_ EXECUTE: wakemainpc</button>
         </div>
+        <?php endif; ?>
 
         <div class="cyber-panel" id="telemetry-panel">
             <h2>SYSTEM_TELEMETRY_STREAM</h2>
@@ -70,9 +115,7 @@
                 <div class="terminal-input-line">
                     <span class="prompt-symbol">mc_server@core:~$</span>
                     <div style="position: relative; flex-grow: 1; display: flex; align-items: center;">
-                        <!-- Ghost text sits in the background -->
                         <span id="ghost-text" style="position: absolute; color: #444; pointer-events: none; white-space: pre; font-family: inherit; font-size: 0.9rem;"></span>
-                        <!-- Actual input is transparent so ghost text shows through -->
                         <input type="text" id="mc-cmd-input" class="terminal-input" autocomplete="off" style="background: transparent; position: relative; z-index: 2;">
                     </div>
                 </div>
