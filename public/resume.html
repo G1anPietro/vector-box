@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operative Dossier // Resume</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .resume-grid { max-width: 800px; margin: 100px auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .skill-tag { background: rgba(0,255,102,0.1); border: 1px solid var(--accent-color); color: var(--accent-color); padding: 4px 10px; font-size: 0.8rem; border-radius: 2px; display: inline-block; margin: 5px 5px 0 0; }
+        .timeline-item { border-left: 2px solid var(--border-color); padding-left: 15px; margin-bottom: 20px; }
+        .timeline-date { color: var(--accent-color); font-weight: bold; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <header class="cyber-header">
+        <div class="glitch">// OPERATIVE_DOSSIER: CLASSIFIED</div>
+        <a href="/dashboard.html" class="nav-btn" style="text-decoration: none;">// RETURN</a>
+    </header>
+
+    <main class="resume-grid">
+        <div class="cyber-panel">
+            <h1 style="color: #fff; margin: 0; font-size: 2rem; letter-spacing: 2px;">DENYS KHAVRUNIAK</h1>
+            <p class="desc-text" style="color: var(--accent-color);">COMPUTER SCIENCE STUDENT</p>
+            <p class="desc-text" style="margin-top: 15px;">A somehow capable computer science student in deployment, Linux environments, and server infrastructure. Adept at bridging local networks with global digital spaces.</p>
+        </div>
+
+        <div class="cyber-panel">
+            <h2>>_ CORE_COMPETENCIES</h2>
+            <div class="skill-tag">Linux (Ubuntu/Arch)</div>
+            <div class="skill-tag">Network Architecture (NAT/DNS)</div>
+            <div class="skill-tag">C / Java / Python</div>
+            <div class="skill-tag">Hardware Assembly</div>
+        </div>
+
+        <div class="cyber-panel">
+            <h2>>_ RECENT_DEPLOYMENTS</h2>
+            
+            <div class="timeline-item">
+                <div class="timeline-date">2026 - PRESENT</div>
+                <h3 style="margin: 5px 0; font-size: 1.1rem;">Project: Vector-Box Infrastructure</h3>
+                <p class="desc-text">Engineered a screenless laptop into a headless home server running Ubuntu. Deployed Node.js reverse-proxy pipelines, configured Zyxel NAT routing, and established dynamic DNS architecture for global access.</p>
+            </div>
+
+            <div class="timeline-item">
+                <div class="timeline-date">HIGH SCHOOL // 4° YEAR INFORMATICS</div>
+                <h3 style="margin: 5px 0; font-size: 1.1rem;">Hardware & OS Specialization</h3>
+                <p class="desc-text">Diagnosed motherboard logic issues, configured custom multi-boot environments (Windows 11 / Linux), managed drive partitioning utilities (GParted), and sourced components for comprehensive hardware upgrades.</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
