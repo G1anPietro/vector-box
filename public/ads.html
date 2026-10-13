@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monetization // Ad Wall</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Force HTML elements to sit safely ABOVE the animating canvas */
+        .cyber-header, .monetize-container {
+            position: relative;
+            z-index: 10;
+        }
+
+        .monetize-container {
+            max-width: 800px;
+            margin: 120px auto 40px auto;
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+        
+        /* Renamed to stealth classes to bypass aggressive local ad-blockers */
+        .display-slot-wide {
+            width: 100%;
+            max-width: 728px;
+            height: 90px;
+            background: rgba(255, 170, 0, 0.07);
+            border: 1px dashed #ffaa00;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffaa00;
+            font-family: monospace;
+            font-size: 0.85rem;
+            box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
+        }
+        
+        .display-slot-square {
+            width: 300px;
+            height: 250px;
+            background: rgba(255, 170, 0, 0.07);
+            border: 1px dashed #ffaa00;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffaa00;
+            font-family: monospace;
+            font-size: 0.85rem;
+            box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
+        }
+        
+        .slot-row {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <!-- The background canvas -->
+    <canvas id="canvas"></canvas>
+
+    <header class="cyber-header">
+        <div class="glitch" style="color: #ffaa00; text-shadow: 0 0 5px rgba(255,170,0,0.5);">// SYSTEM_MONETIZATION: ACTIVE</div>
+        <a href="/" class="nav-btn" style="text-decoration: none; color: #ffaa00; border-color: #ffaa00;">// TERMINATE WALL</a>
+    </header>
+
+    <main class="monetize-container">
+        <div class="cyber-panel" style="width: 100%; text-align: center;">
+            <h2 style="color: #ffaa00; border-color: rgba(255,170,0,0.2);">>_ LOADING_PROFIT_ENGINES</h2>
+            <p class="desc-text">You have entered the ad-supported resource sector. Leaving this terminal open helps fund server infrastructure maintenance pipelines.</p>
+        </div>
+
+        <!-- Top Banner Slot -->
+        <div class="display-slot-wide">
+            <div>[ INTEGRATION_READY // EMPTY_SLOT_01 ]</div>
+        </div>
+
+        <!-- Side-by-Side Square Slots -->
+        <div class="slot-row">
+            <div class="display-slot-square">
+                <div>[ INTEGRATION_READY // EMPTY_SLOT_02 ]</div>
+            </div>
+            <div class="display-slot-square">
+                <div>[ INTEGRATION_READY // EMPTY_SLOT_03 ]</div>
+            </div>
+        </div>
+
+        <!-- Bottom Banner Slot -->
+        <div class="display-slot-wide">
+            <div>[ INTEGRATION_READY // EMPTY_SLOT_04 ]</div>
+        </div>
+    </main>
+
+    <script src="script.js" defer></script>
+</body>
+</html>

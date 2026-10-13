@@ -1,0 +1,275 @@
+{
+  "locations": [
+    {
+      "name": "Stazione Spaziale",
+      "roles": [
+        "Comandante",
+        "Astronauta",
+        "Ingegnere Meccanico",
+        "Medico di Bordo",
+        "Pilota",
+        "Turista",
+        "Scienziato",
+        "Addetto alle Comunicazioni"
+      ]
+    },
+    {
+      "name": "Sottomarino",
+      "roles": [
+        "Capitano",
+        "Addetto al Sonar",
+        "Cuoco",
+        "Meccanico",
+        "Navigatore",
+        "Medico",
+        "Tecnico dei Siluri"
+      ]
+    },
+    {
+      "name": "Nave Pirata",
+      "roles": [
+        "Capitano",
+        "Mozzo",
+        "Navigatore",
+        "Cuoco di Bordo",
+        "Cannoniere",
+        "Medico di Bordo",
+        "Nostromo",
+        "Prigioniero"
+      ]
+    },
+    {
+      "name": "Studio Televisivo",
+      "roles": [
+        "Presentatore",
+        "Cameraman",
+        "Regista",
+        "Ospite VIP",
+        "Truccatore",
+        "Tecnico del Suono",
+        "Scenografo"
+      ]
+    },
+    {
+      "name": "Carcere di Massima Sicurezza",
+      "roles": [
+        "Guardia Carceraria",
+        "Direttore",
+        "Detenuto",
+        "Cuoco",
+        "Avvocato",
+        "Medico",
+        "Cappellano",
+        "Visitatore"
+      ]
+    },
+    {
+      "name": "Casinò",
+      "roles": [
+        "Croupier",
+        "Giocatore d'Azzardo",
+        "Barista",
+        "Buttafuori",
+        "Direttore di Sala",
+        "Baro",
+        "Turista",
+        "Cassiere"
+     ]
+    },
+    {
+      "name": "Aeroporto",
+      "roles": [
+        "Pilota",
+        "Assistente di volo",
+        "Passeggero",
+        "Valigia",
+        "Terrorista",
+        "Addetto alle pulizie",
+        "Segnalatore aeroportuale",
+        "Troia nel parcheggio"
+ ]
+    },
+    {
+      "name": "Ospedale",
+      "roles": [
+        "Chirurgo",
+        "Morto",
+        "Paziente",
+        "Anestetizzato",
+        "Vecchio in punto di morte",
+        "Receptionist",
+        "Addetto alle pulizie",
+        "Bebè"
+ ]
+    },
+    {
+      "name": "Nave da Crociera",
+      "roles": [
+        "Capitano",
+        "Barista",
+        "Turista",
+        "Delfino",
+        "Animatore",
+        "Cuoco",
+        "Suicida",
+        "Bagnino"
+ ]
+    },
+    {
+      "name": "Set Cinematografico",
+      "roles": [
+        "Regista",
+        "Attore protagonista",
+        "Controfigura",
+        "Cameraman",
+        "Truccatore",
+        "Scenografo",
+        "Robin Williams",
+        "Attore"
+ ]
+    },
+    {
+      "name": "Castello",
+      "roles": [
+        "Re",
+        "Cavaliere",
+        "Giullare",
+        "Mago",
+        "Fornaio",
+        "Guardia",
+        "Principessa",
+        "Drago"
+]
+    },
+    {
+      "name": "Scuola Superiore",
+      "roles": [
+        "Professore",
+        "Studente",
+        "Preside",
+        "Bidello",
+        "Drogato ",
+        "Spacciatore",
+        "Prof di educazione fisica",
+        "Secchione"
+ ]
+    },
+    {
+      "name": "Circo",
+      "roles": [
+        "Leone",
+        "Trapezista",
+        "Pagliaccio",
+        "Presentatore",
+        "Illusionista",
+        "Acrobata",
+        "Mangiafuoco",
+        "Negro"
+ ]
+    },
+    {
+      "name": "Hotel",
+      "roles": [
+        "Portiere ",
+        "Receptionist",
+        "Cameriera",
+        "Addetto alle pulizie",
+        "Cliente VIP",
+        "Facchino",
+        "Chef",
+        "Capo mafioso"
+ ]
+    },
+    {
+      "name": "Stadio di Calcio",
+      "roles": [
+        "Calciatore",
+        "Allenatore",
+        "Arbitro",
+        "Telecronista",
+        "Tifoso ultras",
+        "Raccattapalle",
+        "Paramedico",
+        "Panchinaro"
+ ]
+    },
+    {
+      "name": "Centro Commerciale",
+      "roles": [
+        "Commesso",
+        "Guardiano notturno",
+        "Senzatetto",
+        "Cliente",
+        "Vedova",
+        "Addetto alle pulizie",
+        "Ragazzo in cerca di alcol",
+        "Vecchio in cerca di bambini"
+ ]
+    },
+    {
+      "name": "Banca",
+      "roles": [
+        "Cassiere",
+        "Direttore mafioso",
+        "Agente di scorta",
+        "Cliente",
+        "Consulente finanziario",
+        "Guardiana di sicurezza",
+        "Ladro",
+        "Poveraccio"
+ ]
+    },
+    {
+      "name": "Ristorante Stellato",
+      "roles": [
+        "Chef",
+        "Sommelier",
+        "Cannavacciulo",
+        "Cameriere",
+        "Lavapiatti",
+        "Critico",
+        "Cliente",
+        "Un coglione che scapperà"
+ ]
+    },
+    {
+      "name": "Spiaggia",
+      "roles": [
+        "Bagnino",
+        "Barista",
+        "Turista",
+        "Venditore negro",
+        "Dj",
+        "Istruttore di surf",
+        "Bambino nudo",
+        "Nudista"
+ ]
+    },
+    {
+      "name": "Stazione",
+      "roles": [
+        "Macchinista",
+        "Controllore",
+        "Ritardatario",
+        "Magreb",
+        "Musicista di strada",
+        "Agente di polizia",
+        "Spacciatore",
+        "Drogato"
+ ]
+    },
+    {
+      "name": "Museo d'Arte",
+      "roles": [
+        "Custode",
+        "Ladro",
+        "Guida turistica",
+        "Ragazzi annoiati",
+        "Restauratore",
+        "Turista",
+        "Ragazzo che prova a rimorchiare una ragazza alla quale interessa",
+        "Studente d'arte"
+      ]
+    }
+  ]
+}

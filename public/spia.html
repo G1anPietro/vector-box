@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Who's the Spy</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #7b2cbf;
+            --primary-hover: #9d4edd;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --danger: #ff4757;
+            --accent: #00f5d4;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--surface-color);
+            border-radius: 24px;
+            padding: 30px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 { font-size: 24px; margin-bottom: 20px; color: var(--accent); }
+        h2 { font-size: 20px; margin-bottom: 15px; }
+        
+        /* Sezioni */
+        .screen { display: none; flex: 1; flex-direction: column; justify-content: center; }
+        .screen.active { display: flex; }
+
+        /* Setup Screen */
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] {
+            flex: 1; padding: 12px; border-radius: 12px; border: none;
+            background: #2c2c2c; color: white; font-size: 16px; outline: none;
+        }
+        input[type="text"]:focus { border: 2px solid var(--primary-color); }
+        
+        button {
+            padding: 12px 20px; border-radius: 12px; border: none;
+            background: var(--primary-color); color: white; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+        .btn-add { background: var(--primary-color); }
+        .btn-start { background: var(--accent); color: #000; width: 100%; margin-top: 20px; font-size: 18px; padding: 15px;}
+        .btn-remove { background: transparent; color: var(--danger); font-size: 20px; padding: 0 10px; }
+
+        .player-list { list-style: none; margin-bottom: 20px; text-align: left; max-height: 200px; overflow-y: auto; }
+        .player-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #2a2a2a; padding: 10px 15px; border-radius: 10px; margin-bottom: 8px;
+        }
+
+        .settings { background: #2a2a2a; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+        .settings-row { display: flex; justify-content: space-between; align-items: center; }
+        .controls { display: flex; align-items: center; gap: 15px; font-size: 20px; }
+        .controls button { padding: 5px 15px; font-size: 20px; background: #3a3a3a; }
+
+        /* Game Screens */
+        .big-text { font-size: 32px; font-weight: bold; margin-bottom: 20px; color: var(--accent); }
+        .role-text { font-size: 28px; margin: 20px 0; font-weight: bold; }
+        .sub-text { font-size: 18px; color: var(--text-muted); margin-bottom: 30px; }
+        
+        .spy-alert { color: var(--danger); font-size: 36px; font-weight: bold; text-transform: uppercase; margin: 20px 0; }
+
+        .location-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;
+            text-align: center; max-height: 300px; overflow-y: auto;
+        }
+        .location-item { background: #2a2a2a; padding: 10px; border-radius: 8px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        
+        <!-- Schermata 1: Setup -->
+        <div id="screen-setup" class="screen active">
+            <h1>Impostazioni Partita</h1>
+            
+            <div class="input-group">
+                <input type="text" id="player-input" placeholder="Nome giocatore..." onkeypress="handleEnter(event)">
+                <button class="btn-add" onclick="addPlayer()">+</button>
+            </div>
+
+            <ul id="player-list" class="player-list"></ul>
+
+            <div class="settings">
+                <div class="settings-row">
+                    <span>Numero di Spie:</span>
+                    <div class="controls">
+                        <button onclick="changeSpies(-1)">-</button>
+                        <span id="spy-count">1</span>
+                        <button onclick="changeSpies(1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-start" onclick="startGame()">Inizia Gioco</button>
+        </div>
+
+        <!-- Schermata 2: Passa il telefono -->
+        <div id="screen-pass" class="screen">
+            <h2>Passa il telefono a:</h2>
+            <div id="pass-player-name" class="big-text">Nome</div>
+            <p class="sub-text">Assicurati che nessuno stia guardando!</p>
+            <button class="btn-start" onclick="showRole()">Tocca per vedere il ruolo</button>
+        </div>
+
+        <!-- Schermata 3: Mostra Ruolo -->
+        <div id="screen-role" class="screen">
+            <h2 id="role-player-name">Nome</h2>
+            <div id="role-content">
+                <!-- Verrà riempito da JS -->
+            </div>
+            <button class="btn-start" onclick="nextPlayer()">Ho capito, nascondi</button>
+        </div>
+
+        <!-- Schermata 4: Gioco Iniziato -->
+        <div id="screen-active" class="screen">
+            <h1>Il gioco è iniziato!</h1>
+            <p class="sub-text">Fatevi una domanda a testa per capire chi mente.</p>
+            
+            <!-- Questo mostrerà chi inizia -->
+            <div id="starting-player" class="spy-alert" style="color: var(--accent); font-size: 26px;"></div>
+
+            <button class="btn-start" style="margin-top:auto;" onclick="resetGame()">Nuova Partita</button>
+        </div>
+
+    </div>
+
+    <script>
+        let players = [];
+        let numSpies = 1;
+        let gameData = { locations: [] };
+        
+        let currentPlayerIndex = 0;
+        let assignedRoles = []; // [{name: "Fra", isSpy: false, location: "Ospedale", role: "Medico"}]
+
+        // Carica i dati all'avvio
+        window.onload = async () => {
+            try {
+                const response = await fetch('data.json');
+                gameData = await response.json();
+            } catch (error) {
+                alert("Errore nel caricamento di data.json. Assicurati di avviarlo da un server locale (es. Live Server).");
+                console.error(error);
+            }
+        };
+
+        function addPlayer() {
+            const input = document.getElementById('player-input');
+            const name = input.value.trim();
+            if (name && !players.includes(name)) {
+                players.push(name);
+                input.value = '';
+                updatePlayerList();
+            }
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') addPlayer();
+        }
+
+        function removePlayer(name) {
+            players = players.filter(p => p !== name);
+            updatePlayerList();
+        }
+
+        function updatePlayerList() {
+            const list = document.getElementById('player-list');
+            list.innerHTML = '';
+            players.forEach(name => {
+                const li = document.createElement('li');
+                li.className = 'player-item';
+                li.innerHTML = `<span>${name}</span> <button class="btn-remove" onclick="removePlayer('${name}')">×</button>`;
+                list.appendChild(li);
+            });
+        }
+
+        function changeSpies(delta) {
+            numSpies += delta;
+            if (numSpies < 1) numSpies = 1;
+            if (players.length > 0 && numSpies >= players.length) numSpies = players.length - 1;
+            document.getElementById('spy-count').innerText = numSpies;
+        }
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startGame() {
+            if (players.length < 3) {
+                alert("Servono almeno 3 giocatori!");
+                return;
+            }
+            if (gameData.locations.length === 0) {
+                alert("Dati dei luoghi non caricati!");
+                return;
+            }
+
+            // 1. Scegli un luogo a caso
+            const locationIndex = Math.floor(Math.random() * gameData.locations.length);
+            const selectedLocation = gameData.locations[locationIndex];
+
+            // 2. Prepara i ruoli
+            let availableRoles = [...selectedLocation.roles];
+            shuffleArray(availableRoles);
+
+            // 3. Assegna le spie
+            let playerPool = [...players];
+            shuffleArray(playerPool);
+            
+            assignedRoles = [];
+            for (let i = 0; i < playerPool.length; i++) {
+                if (i < numSpies) {
+                    assignedRoles.push({ name: playerPool[i], isSpy: true });
+                } else {
+                    // Se finiscono i ruoli unici, ne assegna uno generico (o ricicla)
+                    let role = availableRoles.pop() || "Civile"; 
+                    assignedRoles.push({ name: playerPool[i], isSpy: false, location: selectedLocation.name, role: role });
+                }
+            }
+
+            // Mischia l'ordine in cui verranno chiamati al telefono
+            shuffleArray(assignedRoles);
+
+            currentPlayerIndex = 0;
+            showPassScreen();
+        }
+
+        function showPassScreen() {
+            if (currentPlayerIndex >= assignedRoles.length) {
+                startDiscussion();
+                return;
+            }
+            const player = assignedRoles[currentPlayerIndex];
+            document.getElementById('pass-player-name').innerText = player.name;
+            switchScreen('screen-pass');
+        }
+
+        function showRole() {
+            const player = assignedRoles[currentPlayerIndex];
+            document.getElementById('role-player-name').innerText = "Turno di: " + player.name;
+            
+            const content = document.getElementById('role-content');
+            if (player.isSpy) {
+                content.innerHTML = `<div class="spy-alert">SEI LA SPIA!</div><p class="sub-text">Cerca di capire dove vi trovate ascoltando gli altri.</p>`;
+            } else {
+                content.innerHTML = `
+                    <div class="sub-text">Luogo Segreto:</div>
+                    <div class="big-text">${player.location}</div>
+                    <div class="sub-text">Il tuo ruolo:</div>
+                    <div class="role-text">${player.role}</div>
+                `;
+            }
+            switchScreen('screen-role');
+        }
+
+        function nextPlayer() {
+            currentPlayerIndex++;
+            showPassScreen();
+        }
+
+        function startDiscussion() {
+            // Estrae a caso un giocatore dall'array dei partecipanti
+            const randomIndex = Math.floor(Math.random() * players.length);
+            const primoGiocatore = players[randomIndex];
+            
+            // Inserisce il testo nell'HTML
+            document.getElementById('starting-player').innerText = "Inizia il turno: \n" + primoGiocatore;
+
+            switchScreen('screen-active');
+        }
+
+        function resetGame() {
+            switchScreen('screen-setup');
+        }
+    </script>
+</body>
+</html>
