@@ -1,4 +1,3 @@
-// --- Complete Integrated Matrix Backdrop Array ---
 window.onload = () => {
     const canvas = document.getElementById("canvas");
     if (canvas) {
@@ -25,8 +24,6 @@ window.onload = () => {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
-
-    // --- Modal Portal Triggers ---
     const loginBtn = document.getElementById('menu-login-btn');
     const loginModal = document.getElementById('login-modal');
     const userInput = document.getElementById('auth-user');
@@ -34,7 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const errorLog = document.getElementById('login-err');
     const submitBtn = document.getElementById('submit-login-btn');
 
-    if (loginBtn) {
+    if (loginBtn && loginModal) {
         loginBtn.addEventListener('click', () => {
             loginModal.classList.remove('hidden');
             if (userInput) userInput.focus();
@@ -46,6 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const processLogin = async () => {
+        if (!userInput || !passwordInput || !errorLog) return;
         const username = userInput.value.trim();
         const password = passwordInput.value;
         if (!username || !password) return;
@@ -74,7 +72,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') processLogin(); });
     if (userInput) userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordInput.focus(); });
 
-    // --- Hardware Power Hook ---
     const wakePcBtn = document.getElementById('wake-pc-btn');
     if (wakePcBtn) {
         wakePcBtn.addEventListener('click', async () => {
@@ -97,11 +94,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // --- State-Aware Minecraft Console Engine ---
-    let isServerOnline = false; // Internal tracking engine
-    // --- Player Tracking Memory ---
+    let isServerOnline = false;
     let currentOnlinePlayers = []; 
-    let knownOfflinePlayers = ["denys", "zuffi", "steve", "alex"]; // Base dictionary of known operatives
+    let knownOfflinePlayers = ["denys", "zuffi", "steve", "alex"]; 
     const mcStartBtn = document.getElementById('mc-start-btn');
     const mcStopBtn = document.getElementById('mc-stop-btn');
     const mcLog = document.getElementById('mc-log');
@@ -154,15 +149,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // --- Live Console Input Engine (Upgraded) ---
     const mcCmdInput = document.getElementById('mc-cmd-input');
+    const ghostText = document.getElementById('ghost-text');
     
-    // Command History Memory
     let cmdHistory = [];
     let historyIndex = -1;
 
-    // Custom Autocomplete Dictionary
-    const ghostText = document.getElementById('ghost-text');
     const playerTargetCommands = [
         "kick", "ban", "pardon", "op", "deop", 
         "whitelist add", "whitelist remove", "kill", "tp"
@@ -174,7 +166,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const lowerVal = val.toLowerCase();
             
             if (!val) {
-                ghostText.innerText = '';
+                if (ghostText) ghostText.innerText = '';
                 return;
             }
 
@@ -190,7 +182,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     playerMatch = knownOfflinePlayers.find(p => p.toLowerCase().startsWith(lastWord));
                 }
 
-                if (playerMatch) {
+                if (playerMatch && ghostText) {
                     ghostText.innerText = baseCommand + val.substring(val.lastIndexOf(' ') + 1) + playerMatch.substring(lastWord.length);
                     return;
                 }
@@ -199,20 +191,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!lowerVal.includes(' ') || playerTargetCommands.some(cmd => cmd.startsWith(lowerVal))) {
                 if (typeof mcCommands !== 'undefined') {
                     const cmdMatch = mcCommands.find(cmd => cmd.toLowerCase().startsWith(lowerVal));
-                    if (cmdMatch) {
+                    if (cmdMatch && ghostText) {
                         ghostText.innerText = val + cmdMatch.substring(val.length);
                         return;
                     }
                 }
             }
 
-            ghostText.innerText = '';
+            if (ghostText) ghostText.innerText = '';
         });
 
         mcCmdInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Tab') {
                 e.preventDefault(); 
-                if (ghostText.innerText) {
+                if (ghostText && ghostText.innerText) {
                     mcCmdInput.value = ghostText.innerText;
                     ghostText.innerText = ''; 
                 }
@@ -236,7 +228,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             if (e.key === 'Enter') {
-                ghostText.innerText = '';
+                if (ghostText) ghostText.innerText = '';
                 const command = mcCmdInput.value.trim();
                 if (!command) return;
 
@@ -254,6 +246,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ command: command })
                     });
+                    
+                    if (!res.ok) {
+                        writeLog(">> ERROR: Unauthorized or command failed.", "#ff3333");
+                        return;
+                    }
+
                     const data = await res.json();
                     if (!data.success) {
                         writeLog(">> ERROR: Command failed. Is the server offline?", "#ff3333");
@@ -265,43 +263,41 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // --- PHP Telemetry Polling (Replaced EventSource) ---
-    const fetchTelemetry = async () => {
-        try {
-            const res = await fetch('telemetry.php');
-            if (!res.ok) return;
-            const data = await res.json();
-            
-            const cpuVal = document.getElementById('cpu-val');
-            const cpuBar = document.getElementById('cpu-bar');
-            if(cpuVal && cpuBar) {
-                cpuVal.innerText = `${data.cpu}%`;
-                cpuBar.style.width = `${data.cpu}%`;
-            }
-            
-            const ramVal = document.getElementById('ram-val');
-            const ramBar = document.getElementById('ram-bar');
-            if(ramVal && ramBar) {
-                ramVal.innerText = `${data.ram}%`;
-                ramBar.style.width = `${data.ram}%`;
-            }
-        } catch (error) {
-            console.error("Failed to compile incoming telemetry:", error);
-        }
-    };
-    
-    // Poll telemetry immediately and then every 3 seconds
-    fetchTelemetry();
-    setInterval(fetchTelemetry, 3000);
+    const cpuVal = document.getElementById('cpu-val');
+    const ramVal = document.getElementById('ram-val');
 
-    // ==========================================
-    // PUBLIC TRANSMISSION TERMINAL UPLINK
-    // ==========================================
+    if (cpuVal && ramVal) {
+        const fetchTelemetry = async () => {
+            try {
+                const res = await fetch('telemetry.php');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                const cpuBar = document.getElementById('cpu-bar');
+                if(cpuVal && cpuBar) {
+                    cpuVal.innerText = `${data.cpu}%`;
+                    cpuBar.style.width = `${data.cpu}%`;
+                }
+                
+                const ramBar = document.getElementById('ram-bar');
+                if(ramVal && ramBar) {
+                    ramVal.innerText = `${data.ram}%`;
+                    ramBar.style.width = `${data.ram}%`;
+                }
+            } catch (error) {
+                console.error("Failed to compile incoming telemetry:", error);
+            }
+        };
+        
+        fetchTelemetry();
+        setInterval(fetchTelemetry, 3000);
+    }
+
     const publicSendBtn = document.getElementById('public-send-btn');
     const publicMsgInput = document.getElementById('public-msg-input');
     const publicMsgStatus = document.getElementById('public-msg-status');
 
-    if (publicSendBtn && publicMsgInput) {
+    if (publicSendBtn && publicMsgInput && publicMsgStatus) {
         publicSendBtn.addEventListener('click', async () => {
             const text = publicMsgInput.value.trim();
             if (!text) return;
@@ -337,7 +333,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Dropdown Menu Toggling Logic
     const menuToggleBtn = document.getElementById('menu-toggle-btn');
     const dropdownMenu = document.getElementById('dropdown-menu');
 
@@ -356,7 +351,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Light / Night Mode Theme Switching Logic
     const themeToggle = document.getElementById('theme-toggle');
     const themeLabel = document.getElementById('theme-label');
 

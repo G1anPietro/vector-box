@@ -1,7 +1,6 @@
 <?php
 session_start();
 
-// Security Guard: Redirect unauthenticated visitors back to home/login
 if (!isset($_SESSION['user'])) {
     header("Location: index.php");
     exit();
@@ -10,28 +9,24 @@ if (!isset($_SESSION['user'])) {
 $user = $_SESSION['user'];
 $isAdmin = ($user['role'] === 'admin');
 
-// Backend Action Handler for Fetch requests (Minecraft & Wake-On-LAN)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
 
-    // Hardware Power Action (Admin only)
     if ($action === 'wakemainpc' && $isAdmin) {
         exec('/home/user/bin/wakemainpc.sh 2>&1', $output, $returnCode);
         echo json_encode(['success' => ($returnCode === 0)]);
         exit();
     }
 
-    // Minecraft Launch Action (Runs detached in a screen session)
     if ($action === 'start_mc') {
         exec('cd /home/user/minecraft/minecraft_server && screen -dmS mc_server bash start.sh');
         echo json_encode(['success' => true, 'status' => 'initializing']);
         exit();
     }
 
-    // Minecraft Stop Action
     if ($action === 'stop_mc') {
-        exec('screen -S mc_server -X stuff "stop^M" || pkill -f server.jar');
+        exec('screen -S mc_server -X stuff "stop^M"');
         echo json_encode(['success' => true, 'status' => 'terminating']);
         exit();
     }
@@ -54,13 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <header class="cyber-header">
         <div class="glitch" id="dash-welcome">// PROFILED_LAYER: <?php echo htmlspecialchars(strtoupper($user['name'])); ?></div>
         <div style="display: flex; gap: 15px; align-items: center;">
-            <a href="/resume.html" class="nav-btn" style="text-decoration: none;">// DOSSIER</a>
+            <a href="resume.html" class="nav-btn" style="text-decoration: none;">// DOSSIER</a>
             <a href="logout.php" class="nav-btn" style="border-color: #ff3333; color: #ff3333; text-decoration: none;">// DISCONNECT</a>
         </div>
     </header>
 
     <main class="dashboard-grid">
-        <!-- Hardware Panel: Rendered server-side only for Admin role -->
         <?php if ($isAdmin): ?>
         <div class="cyber-panel" id="pc-panel">
             <h2>HARDWARE_POWER</h2>
