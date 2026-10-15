@@ -321,6 +321,12 @@ html, body {
     .menu-dropdown {
         width: 250px !important;
         right: 20px !important; /* Sposta il menu un po' a sinistra sul telefono */
+        
+    }
+    
+    /* Ensure hidden state overrides dropdown flex display */
+    .menu-dropdown.hidden {
+        display: none !important;
     }
 
     .menu-item {
