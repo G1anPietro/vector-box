@@ -12,8 +12,9 @@ $input = json_decode(file_get_contents('php://input'), true);
 $command = trim($input['command'] ?? '');
 
 if ($command !== '') {
-    $escaped = escapeshellcmd($command);
-    exec("screen -S mc_server -X stuff \"{$escaped}^M\"");
+    // Sanitized: stripped double quote breaks and controlled metacharacters
+    $sanitized = preg_replace('/[^a-zA-Z0-9_\-\s]/', '', $command);
+    exec("screen -S mc_server -X stuff " . escapeshellarg($sanitized . "\r"));
     echo json_encode(['success' => true]);
     exit();
 }

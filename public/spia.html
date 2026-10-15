@@ -44,11 +44,9 @@
         h1 { font-size: 24px; margin-bottom: 20px; color: var(--accent); }
         h2 { font-size: 20px; margin-bottom: 15px; }
         
-        /* Sezioni */
         .screen { display: none; flex: 1; flex-direction: column; justify-content: center; }
         .screen.active { display: flex; }
 
-        /* Setup Screen */
         .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
         input[type="text"] {
             flex: 1; padding: 12px; border-radius: 12px; border: none;
@@ -77,30 +75,21 @@
         .controls { display: flex; align-items: center; gap: 15px; font-size: 20px; }
         .controls button { padding: 5px 15px; font-size: 20px; background: #3a3a3a; }
 
-        /* Game Screens */
         .big-text { font-size: 32px; font-weight: bold; margin-bottom: 20px; color: var(--accent); }
         .role-text { font-size: 28px; margin: 20px 0; font-weight: bold; }
         .sub-text { font-size: 18px; color: var(--text-muted); margin-bottom: 30px; }
         
         .spy-alert { color: var(--danger); font-size: 36px; font-weight: bold; text-transform: uppercase; margin: 20px 0; }
-
-        .location-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;
-            text-align: center; max-height: 300px; overflow-y: auto;
-        }
-        .location-item { background: #2a2a2a; padding: 10px; border-radius: 8px; font-size: 14px; }
     </style>
 </head>
 <body>
 
     <div id="app-container">
-        
-        <!-- Schermata 1: Setup -->
         <div id="screen-setup" class="screen active">
             <h1>Impostazioni Partita</h1>
             
             <div class="input-group">
-                <input type="text" id="player-input" placeholder="Nome giocatore..." onkeypress="handleEnter(event)">
+                <input type="text" id="player-input" placeholder="Nome giocatore...">
                 <button class="btn-add" onclick="addPlayer()">+</button>
             </div>
 
@@ -120,7 +109,6 @@
             <button class="btn-start" onclick="startGame()">Inizia Gioco</button>
         </div>
 
-        <!-- Schermata 2: Passa il telefono -->
         <div id="screen-pass" class="screen">
             <h2>Passa il telefono a:</h2>
             <div id="pass-player-name" class="big-text">Nome</div>
@@ -128,26 +116,18 @@
             <button class="btn-start" onclick="showRole()">Tocca per vedere il ruolo</button>
         </div>
 
-        <!-- Schermata 3: Mostra Ruolo -->
         <div id="screen-role" class="screen">
             <h2 id="role-player-name">Nome</h2>
-            <div id="role-content">
-                <!-- Verrà riempito da JS -->
-            </div>
+            <div id="role-content"></div>
             <button class="btn-start" onclick="nextPlayer()">Ho capito, nascondi</button>
         </div>
 
-        <!-- Schermata 4: Gioco Iniziato -->
         <div id="screen-active" class="screen">
             <h1>Il gioco è iniziato!</h1>
             <p class="sub-text">Fatevi una domanda a testa per capire chi mente.</p>
-            
-            <!-- Questo mostrerà chi inizia -->
             <div id="starting-player" class="spy-alert" style="color: var(--accent); font-size: 26px;"></div>
-
             <button class="btn-start" style="margin-top:auto;" onclick="resetGame()">Nuova Partita</button>
         </div>
-
     </div>
 
     <script>
@@ -156,16 +136,22 @@
         let gameData = { locations: [] };
         
         let currentPlayerIndex = 0;
-        let assignedRoles = []; // [{name: "Fra", isSpy: false, location: "Ospedale", role: "Medico"}]
+        let assignedRoles = [];
 
-        // Carica i dati all'avvio
         window.onload = async () => {
             try {
                 const response = await fetch('data.json');
                 gameData = await response.json();
             } catch (error) {
-                alert("Errore nel caricamento di data.json. Assicurati di avviarlo da un server locale (es. Live Server).");
+                alert("Errore nel caricamento di data.json.");
                 console.error(error);
+            }
+
+            const playerInput = document.getElementById('player-input');
+            if (playerInput) {
+                playerInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') addPlayer();
+                });
             }
         };
 
@@ -177,10 +163,6 @@
                 input.value = '';
                 updatePlayerList();
             }
-        }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter') addPlayer();
         }
 
         function removePlayer(name) {
@@ -202,7 +184,8 @@
         function changeSpies(delta) {
             numSpies += delta;
             if (numSpies < 1) numSpies = 1;
-            if (players.length > 0 && numSpies >= players.length) numSpies = players.length - 1;
+            const maxSpies = players.length > 1 ? players.length - 1 : 1;
+            if (numSpies > maxSpies) numSpies = maxSpies;
             document.getElementById('spy-count').innerText = numSpies;
         }
 
@@ -228,15 +211,13 @@
                 return;
             }
 
-            // 1. Scegli un luogo a caso
             const locationIndex = Math.floor(Math.random() * gameData.locations.length);
             const selectedLocation = gameData.locations[locationIndex];
 
-            // 2. Prepara i ruoli
+            // Clone roles list to avoid mutating in-memory data.json cache
             let availableRoles = [...selectedLocation.roles];
             shuffleArray(availableRoles);
 
-            // 3. Assegna le spie
             let playerPool = [...players];
             shuffleArray(playerPool);
             
@@ -245,15 +226,12 @@
                 if (i < numSpies) {
                     assignedRoles.push({ name: playerPool[i], isSpy: true });
                 } else {
-                    // Se finiscono i ruoli unici, ne assegna uno generico (o ricicla)
                     let role = availableRoles.pop() || "Civile"; 
                     assignedRoles.push({ name: playerPool[i], isSpy: false, location: selectedLocation.name, role: role });
                 }
             }
 
-            // Mischia l'ordine in cui verranno chiamati al telefono
             shuffleArray(assignedRoles);
-
             currentPlayerIndex = 0;
             showPassScreen();
         }
@@ -292,13 +270,9 @@
         }
 
         function startDiscussion() {
-            // Estrae a caso un giocatore dall'array dei partecipanti
             const randomIndex = Math.floor(Math.random() * players.length);
             const primoGiocatore = players[randomIndex];
-            
-            // Inserisce il testo nell'HTML
             document.getElementById('starting-player').innerText = "Inizia il turno: \n" + primoGiocatore;
-
             switchScreen('screen-active');
         }
 

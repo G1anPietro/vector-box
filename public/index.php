@@ -12,22 +12,17 @@
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // AUTH_REQUIRED</div>
         <div class="menu-container">
-            <!-- The Main Trigger Button -->
             <button id="menu-toggle-btn" class="nav-btn">// MENU</button>
             
-            <!-- Dropdown Panel -->
             <div id="dropdown-menu" class="cyber-panel menu-dropdown hidden">
-                <a href="/resume.html" class="menu-item btn-dossier">// VIEW DOSSIER</a>
-                <a href="/ads.html" class="menu-item btn-adwall">// AD WALL</a>
-                
-                <!-- Nuova pagina aggiunta qui -->
-                <a href="/spia.html" class="menu-item">// WHO'S THE SPY</a> 
+                <a href="resume.html" class="menu-item btn-dossier">// VIEW DOSSIER</a>
+                <a href="ads.html" class="menu-item btn-adwall">// AD WALL</a>
+                <a href="spia.html" class="menu-item">// WHO'S THE SPY</a> 
                 
                 <button id="menu-login-btn" class="menu-item">// SYSTEM_LOGIN</button>
                 
                 <div class="menu-divider"></div>
                 
-                <!-- Settings Section inside Menu -->
                 <div class="settings-section">
                     <span class="settings-title">>_ OPTIONS</span>
                     <div class="toggle-row">
@@ -43,7 +38,6 @@
     </header>
 
     <main class="center-container">
-        <!-- Handshake Terminal Box -->
         <div class="cyber-panel public-panel auth-panel">
             <div class="terminal-box auth-terminal">
                 <p class="term-accent">>_ public_node initialized...</p>
@@ -56,7 +50,6 @@
             </div>
         </div>
 
-        <!-- Public Uplink Terminal Box -->
         <div class="cyber-panel public-panel uplink-panel">
             <h2 class="uplink-title">>_ PUBLIC_UPLINK_TERMINAL</h2>
             <p class="uplink-desc">Leave an encrypted transmission for the system administrator. Spamming triggers automated network isolation.</p>
@@ -68,7 +61,6 @@
         </div>
     </main>
 
-    <!-- Login Modal -->
     <div id="login-modal" class="modal hidden">
         <div class="cyber-panel modal-content">
             <h2>SYSTEM_LOGIN</h2>
@@ -89,7 +81,7 @@
     </div>
 
     <footer class="cyber-footer">
-        <a href="/credits.html" class="credits-link">ciao zuffi</a>
+        <a href="credits.html" class="credits-link">ciao zuffi</a>
     </footer>
 
     <script src="script.js"></script>

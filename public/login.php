@@ -7,8 +7,8 @@ $username = trim($input['username'] ?? '');
 $password = $input['password'] ?? '';
 
 // Retrieve credentials from environment variables or defined defaults
-$adminPassword = getenv('ADMIN_PASSWORD') ?: 'admin_secret_key';
-$guestPassword = getenv('GUEST_PASSWORD') ?: 'guest_secret_key';
+$adminPassword = getenv('ADMIN_PASSWORD') ?: 'PatateCotte55*';
+$guestPassword = getenv('GUEST_PASSWORD') ?: 'PalleSudate!';
 
 if ($username === 'admin' && $password === $adminPassword) {
     $_SESSION['user'] = ['name' => 'Admin', 'role' => 'admin'];
