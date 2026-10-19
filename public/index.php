@@ -38,21 +38,25 @@
     </header>
 
     <main class="center-container">
+        <!-- TOP BOX: INTERACTIVE SHELL TERMINAL -->
         <div class="cyber-panel public-panel auth-panel">
-            <div class="terminal-box auth-terminal">
-                <p class="term-accent">>_ public_node initialized...</p>
-                <p class="term-muted">>_ establishing secure handshake...</p>
-                <p class="term-white">>_ connection stable.</p>
+            <div class="terminal-box auth-terminal" id="guest-term-box">
+                <div id="guest-term-log">
+                    <p class="term-accent">>_ public_node initialized...</p>
+                    <p class="term-muted">>_ establishing secure handshake...</p>
+                    <p class="term-white">>_ connection stable. Type 'help' for commands.</p>
+                </div>
                 <div class="terminal-input-line clean-input-line">
                     <span class="prompt-symbol">guest@vector-box:~$</span>
-                    <span class="pulse auth-pulse"></span>
+                    <input type="text" id="guest-cmd-input" class="terminal-input" autocomplete="off" autofocus>
                 </div>
             </div>
         </div>
 
+        <!-- BOTTOM BOX: PUBLIC UPLINK MESSAGE TRANSMISSION -->
         <div class="cyber-panel public-panel uplink-panel">
             <h2 class="uplink-title">>_ PUBLIC_UPLINK_TERMINAL</h2>
-            <p class="uplink-desc">Leave an encrypted transmission for the system administrator. Spamming triggers automated network isolation.</p>
+            <p class="uplink-desc">Leave an encrypted transmission for the system administrator. Spamming triggers network isolation.</p>
             
             <textarea id="public-msg-input" class="uplink-textarea" placeholder="Enter transmission data..."></textarea>
             

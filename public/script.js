@@ -293,6 +293,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         setInterval(fetchTelemetry, 3000);
     }
 
+    // Public Transmission Message Handler (Bottom Box)
     const publicSendBtn = document.getElementById('public-send-btn');
     const publicMsgInput = document.getElementById('public-msg-input');
     const publicMsgStatus = document.getElementById('public-msg-status');
@@ -306,7 +307,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             publicMsgStatus.innerHTML = '';
 
             try {
-                // Cambiato da '/api/message' a 'command.php'
                 const res = await fetch('command.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -362,6 +362,55 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.body.classList.remove('light-mode');
                 themeLabel.textContent = 'MODE: NIGHT';
                 window.matrixColor = '#00ff66';
+            }
+        });
+    }
+
+    // Top Interactive Terminal Shell Handler
+    const guestCmdInput = document.getElementById('guest-cmd-input');
+    const guestTermLog = document.getElementById('guest-term-log');
+
+    const printGuestLog = (text, color = "#00ff66") => {
+        if (!guestTermLog) return;
+        guestTermLog.innerHTML += `<p class="term-white" style="margin: 2px 0; color: ${color};">${text}</p>`;
+        const termBox = document.getElementById('guest-term-box');
+        if (termBox) termBox.scrollTop = termBox.scrollHeight;
+    };
+
+    if (guestCmdInput) {
+        guestCmdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const rawVal = guestCmdInput.value.trim();
+                const cmd = rawVal.toLowerCase();
+                if (!rawVal) return;
+
+                printGuestLog(`guest@vector-box:~$ ${rawVal}`, "#8ab4f8");
+                guestCmdInput.value = '';
+
+                if (cmd === 'help') {
+                    printGuestLog(">> COMMANDS: help | matrix red | matrix cyan | matrix green | nuke | clear", "#00ff66");
+                } else if (cmd === 'matrix red') {
+                    window.matrixColor = '#ff0055';
+                    printGuestLog(">> MATRIX COLOR: RED", "#ff0055");
+                } else if (cmd === 'matrix cyan') {
+                    window.matrixColor = '#00ffff';
+                    printGuestLog(">> MATRIX COLOR: CYAN", "#00ffff");
+                } else if (cmd === 'matrix green') {
+                    window.matrixColor = '#00ff66';
+                    printGuestLog(">> MATRIX COLOR: GREEN", "#00ff66");
+                } else if (cmd === 'nuke') {
+                    document.body.style.transition = 'filter 0.2s ease';
+                    document.body.style.filter = 'invert(1)';
+                    printGuestLog(">> SYSTEM ANOMALY DETECTED!", "#ff3333");
+                    setTimeout(() => {
+                        document.body.style.filter = 'none';
+                        printGuestLog(">> SYSTEM RECOVERED", "#00ff66");
+                    }, 1500);
+                } else if (cmd === 'clear') {
+                    if (guestTermLog) guestTermLog.innerHTML = '';
+                } else {
+                    printGuestLog(`>> command not found: ${rawVal}. Type 'help'.`, "#ff3333");
+                }
             }
         });
     }
