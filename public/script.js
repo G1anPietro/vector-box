@@ -417,6 +417,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                     }, 1500);
                 } else if (cmd === 'clear') {
                     if (guestTermLog) guestTermLog.innerHTML = '';
+                } else if (cmd === 'hack') {
+                    window.location.href = 'hack.html';
                 } else {
                     printGuestLog(`>> command not found: ${rawVal}. Type 'help'.`, "#ff3333");
                 }
