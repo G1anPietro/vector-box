@@ -378,7 +378,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     if (guestCmdInput) {
-        guestCmdInput.addEventListener('keydown', (e) => {
+        guestCmdInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter') {
                 const rawVal = guestCmdInput.value.trim();
                 const cmd = rawVal.toLowerCase();
@@ -388,7 +388,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                 guestCmdInput.value = '';
 
                 if (cmd === 'help') {
-                    printGuestLog(">> COMMANDS: help | matrix red | matrix cyan | matrix green | nuke | clear", "#00ff66");
+                    printGuestLog(">> COMMANDS: help | ip | matrix red | matrix cyan | matrix green | nuke | clear", "#00ff66");
+                } else if (cmd === 'ip') {
+                    printGuestLog(">> Querying remote interface...", "#8ab4f8");
+                    try {
+                        const res = await fetch('get_ip.php');
+                        const data = await res.json();
+                        printGuestLog(`>> CLIENT_IPV4: ${data.ip}`, "#00ff66");
+                    } catch (err) {
+                        printGuestLog(">> ERROR: Failed to resolve client address.", "#ff3333");
+                    }
                 } else if (cmd === 'matrix red') {
                     window.matrixColor = '#ff0055';
                     printGuestLog(">> MATRIX COLOR: RED", "#ff0055");

@@ -10,7 +10,7 @@ Add ambient retro sound effects using pure HTML5 Web Audio API (no external MP3 
 
 
 ---
-
+FATTO
 ### 2. Easter Egg & Secret Command System
 
 Expand `script.js` so visitors typing specific console commands in your public terminal trigger custom visual payloads:
