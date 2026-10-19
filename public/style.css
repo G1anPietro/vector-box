@@ -290,6 +290,15 @@ body, html {
 }
 .credits-link:hover { color: #00ff66; text-shadow: 0 0 12px #00ff66; }
 
+@keyframes glitch-anim {
+    0% { transform: translate(0); }
+    20% { transform: translate(-3px, 3px); filter: hue-rotate(90deg); }
+    40% { transform: translate(-3px, -3px); }
+    60% { transform: translate(3px, 3px); filter: hue-rotate(180deg); }
+    80% { transform: translate(3px, -3px); }
+    100% { transform: translate(0); }
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 600px) {
     .cyber-header {
