@@ -1,3 +1,12 @@
+<?php
+if (file_exists('version.php')) {
+    require_once 'version.php';
+} else {
+    define('APP_VERSION', 'dev-local');
+    define('BUILD_DATE', date('Y-m-d'));
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,9 +14,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Node // Vector-Box</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Automatically appends file modification timestamp to break cache on save -->
-    <link rel="stylesheet" href="style.css?v=<?php echo filemtime('style.css'); ?>">
-    <script src="script.js?v=<?php echo filemtime('script.js'); ?>"></script>
+    <!-- Use APP_VERSION for automatic CSS & JS cache-busting -->
+    <link rel="stylesheet" href="style.css?v=<?php echo APP_VERSION; ?>">
+    <script src="script.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -97,6 +106,7 @@
     </div>
 
     <footer class="cyber-footer">
+        <span class="term-muted">BUILD // <?php echo APP_VERSION; ?> (<?php echo BUILD_DATE; ?>)</span>
         <a href="credits.html" class="credits-link">ciao zuffi</a>
     </footer>
 
