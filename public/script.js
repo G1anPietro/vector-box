@@ -306,13 +306,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             publicMsgStatus.innerHTML = '';
 
             try {
-                const formData = new FormData();
-                formData.append('action', 'public_msg');
-                formData.append('message', text);
-
-                const res = await fetch('dashboard.php', {
+                // Cambiato da '/api/message' a 'command.php'
+                const res = await fetch('command.php', {
                     method: 'POST',
-                    body: formData
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
                 });
                 
                 const data = await res.json();
