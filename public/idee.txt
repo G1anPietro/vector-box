@@ -1,0 +1,47 @@
+### 1. Interactive Audio Engine (Cyber Sound Effects)
+
+Add ambient retro sound effects using pure HTML5 Web Audio API (no external MP3 assets needed):
+
+* **Key Click SFX**: Play subtle 8-bit click frequencies when clicking terminal buttons or typing in the uplink text area.
+
+
+* **Matrix Hum**: Toggleable background synthesized hum/drone to match the Matrix rain canvas.
+
+
+
+---
+
+### 2. Easter Egg & Secret Command System
+
+Expand `script.js` so visitors typing specific console commands in your public terminal trigger custom visual payloads:
+
+* Typing `help` prints out a list of hidden commands.
+
+
+* Typing `matrix red` or `matrix cyan` changes `window.matrixColor` dynamically.
+
+
+* Typing `sudo` or `nuke` triggers a screen shake or glowing warning sequence.
+
+
+
+---
+
+### 3. Public Interactive Guestbook / Graffiti Wall
+
+Extend `command.php` to append public transmissions to a JSON file (or database) and display a live scrolling ticker of past messages right below the Public Uplink Terminal.
+
+---
+
+### 4. Interactive ASCII Art Generator or Decrypter
+
+An interactive tool panel where users can paste plain text to automatically encrypt it with a ROT13/Cyber cipher or convert text into retro ASCII block banners.
+
+---
+
+### 5. Live Node Telemetry Widget for Public Visitors
+
+Expose a lightweight, public-facing system status card (showing ping latency, active server uptime, and simulated packet traffic) so visitors get a "live connection" feel before logging into `dashboard.php`.
+
+---
+
