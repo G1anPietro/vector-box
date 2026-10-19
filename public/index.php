@@ -18,6 +18,7 @@
                 <a href="resume.html" class="menu-item btn-dossier">// VIEW DOSSIER</a>
                 <a href="ads.html" class="menu-item btn-adwall">// AD WALL</a>
                 <a href="spia.html" class="menu-item">// WHO'S THE SPY</a> 
+                <a href="hack.html" class="menu-item">// NODE BREACH</a>
                 
                 <button id="menu-login-btn" class="menu-item">// SYSTEM_LOGIN</button>
                 
