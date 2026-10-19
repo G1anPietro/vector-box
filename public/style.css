@@ -18,15 +18,16 @@ body, html {
     z-index: 0; pointer-events: none;
 }
 
+/* Global Hidden Utility */
 .hidden { display: none !important; }
 
 /* Header Layout */
 .cyber-header {
     position: absolute; top: 0; left: 0; width: 100%;
     display: flex; justify-content: space-between; align-items: center;
-    padding: 20px 40px; box-sizing: border-box; z-index: 10;
+    padding: 20px 40px; box-sizing: border-box; z-index: 100;
     border-bottom: 1px solid var(--border-color);
-    background: linear-gradient(180deg, rgba(6,8,12,0.9) 0%, rgba(6,8,12,0) 100%);
+    background: linear-gradient(180deg, rgba(6,8,12,0.95) 0%, rgba(6,8,12,0) 100%);
 }
 
 .header-nav-group { display: flex; gap: 15px; align-items: center; }
@@ -44,8 +45,96 @@ body, html {
 }
 .nav-btn:hover { background: rgba(0, 255, 102, 0.15); box-shadow: 0 0 10px var(--border-color); }
 
-.btn-dossier { text-decoration: none; color: #00ff66; border-color: #00ff66; }
-.btn-adwall { text-decoration: none; color: #ffaa00; border-color: #ffaa00; text-shadow: 0 0 5px rgba(255,170,0,0.3); }
+/* Menu Container & Dropdown Layout */
+.menu-container {
+    position: relative;
+}
+
+.cyber-panel.menu-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 260px; 
+    display: flex;
+    flex-direction: column;
+    gap: 10px; 
+    padding: 18px;
+    background: #060a10;
+    border: 1px solid var(--accent-color);
+    box-shadow: 0 0 20px rgba(0, 255, 102, 0.25);
+    z-index: 9999;
+    box-sizing: border-box;
+}
+
+.menu-divider {
+    display: none;
+}
+
+/* Button Styling for Menu Items */
+.menu-dropdown .menu-item {
+    display: block;
+    width: 100%;
+    box-sizing: border-box; 
+    padding: 10px 14px;
+    background: rgba(0, 255, 102, 0.05);
+    border: 1px solid var(--accent-color); 
+    color: var(--accent-color);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s ease-in-out;
+}
+
+.menu-dropdown .menu-item:hover {
+    background: rgba(0, 255, 102, 0.25);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 255, 102, 0.4);
+}
+
+.menu-dropdown .menu-item.btn-dossier { 
+    color: #00ff66; 
+    border-color: #00ff66; 
+}
+
+.menu-dropdown .menu-item.btn-adwall {
+    border-color: #ffaa00;
+    color: #ffaa00;
+    background: rgba(255, 170, 0, 0.05);
+}
+.menu-dropdown .menu-item.btn-adwall:hover {
+    background: rgba(255, 170, 0, 0.25);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.4);
+}
+
+/* Settings & Options Inside Dropdown */
+.settings-section {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(0, 255, 102, 0.3);
+}
+
+.settings-title {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+}
+
+.toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toggle-label {
+    font-size: 0.8rem;
+    color: #fff;
+}
 
 /* Containers & Positioning */
 .center-container {
@@ -57,15 +146,10 @@ body, html {
     align-items: center; 
     gap: 20px; 
     width: 100%; 
-    
-    /* CHANGED: Allow it to stretch past the screen limit */
     min-height: 100vh; 
     height: auto; 
-    
     box-sizing: border-box;
     padding-top: 120px; 
-    
-    /* NEW: Adds 100px of extra scrollable empty space at the bottom */
     padding-bottom: 150px; 
 }
 
@@ -203,135 +287,32 @@ body, html {
 }
 .credits-link:hover { color: #00ff66; text-shadow: 0 0 12px #00ff66; }
 
-/* =========================================
-   MOBILE RESPONSIVENESS PATCH (REVISION 2)
-   ========================================= */
-
-#canvas {
-    position: fixed !important; top: 0; left: 0;
-    width: 100vw !important; height: 100vh !important;
-    z-index: 0 !important; pointer-events: none !important;
-}
-
-.resume-grid, .center-container, .dashboard-grid { position: relative !important; z-index: 2 !important; }
-
-html, body {
-    overflow-y: auto !important; overflow-x: hidden !important;
-    height: 100% !important; min-height: 100%;
-}
-
-@media (max-width: 600px) {
-.cyber-header {
-    flex-direction: column !important; gap: 15px !important;
-    padding: 15px 10px !important; text-align: center;
-    height: auto !important; position: relative !important; box-sizing: border-box;
-}
-
-.cyber-header .glitch { font-size: 1rem !important; margin-bottom: 5px; }
-.header-nav-group { width: 100%; justify-content: center; flex-wrap: wrap; }
-
-.nav-btn { font-size: 0.75rem !important; padding: 8px 12px !important; flex: 1; text-align: center; }
-
-.resume-grid { margin: 40px auto !important; padding: 10px 15px 80px 15px !important; }
-
-.center-container {
-    padding: 20px 15px 120px 15px !important; margin-top: 10px !important;
-    display: flex !important; flex-direction: column !important; gap: 20px !important;
-    height: auto !important; min-height: auto !important; box-sizing: border-box;
-}
-
-.cyber-panel { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; padding: 15px !important; }
-
-.cyber-footer { position: relative !important; margin-top: 50px !important; bottom: 20px !important; width: 100% !important; z-index: 10; }
-
-/* ========================================================
-   MENU DROPDOWN E BOTTONI - GLOBALE (DESKTOP)
-   (Assicurati che non ci siano @media aperti prima di questo!)
-   ======================================================== */
-
-.menu-dropdown {
-    position: absolute !important;
-    top: 100% !important;
-    right: 0 !important; /* Su desktop sta attaccato a destra del tasto // MENU */
-    width: 280px !important; 
-    display: flex !important;
-    flex-direction: column !important; /* Forza sempre la colonna */
-    gap: 12px !important; 
-    padding: 20px !important;
-    background: #060a10 !important;
-    border: 2px solid var(--accent-color) !important;
-    box-shadow: 0 0 20px rgba(0, 255, 102, 0.25) !important;
-    z-index: 9999 !important;
-    box-sizing: border-box !important;
-}
-
-.menu-divider {
-    display: none !important;
-}
-
-/* Stile universale del bottone (Appare anche su Desktop ora) */
-.menu-item {
-    display: block !important;
-    width: 100% !important;
-    box-sizing: border-box !important; 
-    padding: 12px 15px !important;
-    background: rgba(0, 255, 102, 0.05) !important;
-    border: 1px solid var(--accent-color) !important; 
-    color: var(--accent-color) !important;
-    font-family: inherit !important;
-    font-size: 0.9rem !important;
-    font-weight: bold !important;
-    text-align: center !important; /* Centrato fa più effetto "bottone" */
-    text-decoration: none !important;
-    cursor: pointer !important;
-    white-space: normal !important; /* Se il testo è lungo va a capo dentro il bordo */
-    transition: all 0.2s ease-in-out !important;
-}
-
-.menu-item:hover {
-    background: rgba(0, 255, 102, 0.25) !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 10px rgba(0, 255, 102, 0.4) !important;
-    transform: scale(1.02); /* Piccolo effetto zoom al passaggio del mouse su PC */
-}
-
-/* Bottone Ad Wall */
-.menu-item.btn-adwall {
-    border-color: #ffaa00 !important;
-    color: #ffaa00 !important;
-    background: rgba(255, 170, 0, 0.05) !important;
-}
-
-/* ========================================================
-   MODIFICHE SPECIFICHE SOLO PER TELEFONO
-   ======================================================== */
-
+/* Mobile Responsiveness */
 @media (max-width: 600px) {
     .cyber-header {
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 15px 20px !important;
+        padding: 15px 20px;
     }
 
-    .header-nav-group {
-        width: auto !important;
+    .cyber-panel.menu-dropdown {
+        width: 220px;
+        right: 0;
     }
 
-    .menu-dropdown {
-        width: 250px !important;
-        right: 20px !important; /* Sposta il menu un po' a sinistra sul telefono */
-        
-    }
-    
-    /* Ensure hidden state overrides dropdown flex display */
-    .menu-dropdown.hidden {
-        display: none !important;
+    .center-container {
+        padding: 20px 15px 120px 15px; 
+        margin-top: 10px;
+        display: flex; 
+        flex-direction: column; 
+        gap: 20px;
+        height: auto; 
+        min-height: auto; 
+        box-sizing: border-box;
     }
 
-    .menu-item {
-        font-size: 0.85rem !important;
-        padding: 14px 12px !important; 
+    .cyber-panel { 
+        width: 100%; 
+        max-width: 100%; 
+        box-sizing: border-box; 
+        padding: 15px; 
     }
-}
 }
