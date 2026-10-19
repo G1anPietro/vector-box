@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Node // Vector-Box</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Automatically appends file modification timestamp to break cache on save -->
+    <link rel="stylesheet" href="style.css?v=<?php echo filemtime('style.css'); ?>">
+    <script src="script.js?v=<?php echo filemtime('script.js'); ?>"></script>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -49,7 +52,15 @@
                 </div>
                 <div class="terminal-input-line clean-input-line">
                     <span class="prompt-symbol">guest@vector-box:~$</span>
-                    <input type="text" id="guest-cmd-input" class="terminal-input" autocomplete="off" autofocus>
+                    <input type="text" 
+                        id="guest-cmd-input" 
+                        class="terminal-input" 
+                        autocomplete="off" 
+                        autocorrect="off" 
+                        autocapitalize="off" 
+                        spellcheck="false" 
+                        name="terminal_command_input" 
+                        id="terminal_command_input">
                 </div>
             </div>
         </div>

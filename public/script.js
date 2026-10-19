@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Top Interactive Terminal Shell Handler (Mobile Optimized)
+    // Top Interactive Terminal Shell Handler (Mobile + Desktop Optimized)
     const guestCmdInput = document.getElementById('guest-cmd-input');
     const guestTermLog = document.getElementById('guest-term-log');
 
@@ -401,7 +401,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 printGuestLog(">> INITIATING SUBNET RECONNAISSANCE...", "#8ab4f8");
                 setTimeout(() => printGuestLog(">> PORT 22 [SSH]: OPEN / ENCRYPTED", "#00ff66"), 400);
                 setTimeout(() => printGuestLog(">> PORT 80 [HTTP]: OPEN / NGINX_APACHE", "#00ff66"), 800);
-                setTimeout(() => printGuestLog(">> SCAN COMPLETE. 0 VULNERABILITIES FOUND.", "#8ab4f8"), 1200);
+                setTimeout(() => printGuestLog(">> PORT 25565 [MINECRAFT]: ECOSYSTEM_ONLINE", "#00ff66"), 1200);
+                setTimeout(() => printGuestLog(">> SCAN COMPLETE. 0 VULNERABILITIES FOUND.", "#8ab4f8"), 1600);
             } else if (cmd === 'status') {
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 const nodeType = isMobile ? "MOBILE_NODE" : "DESKTOP_NODE";
@@ -410,9 +411,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 printGuestLog(`>> USER_AGENT: ${navigator.userAgent.substring(0, 35)}...`, "#00ffff");
             } else if (cmd === 'hack') {
                 printGuestLog(">> REDIRECTING TO NODE BREACH...", "#00ff66");
-                setTimeout(() => {
-                    window.location.href = 'hack.html';
-                }, 800);
+                setTimeout(() => { window.location.href = 'hack.html'; }, 800);
             } else if (cmd === 'matrix red') {
                 window.matrixColor = '#ff0055';
                 printGuestLog(">> MATRIX COLOR: RED", "#ff0055");
@@ -442,13 +441,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             } else {
                 printGuestLog(`>> command not found: ${rawVal}. Type 'help'.`, "#ff3333");
             }
+
+            // Keep cursor active on desktop without disrupting mobile layout
+            if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+                guestCmdInput.focus();
+            }
         };
 
         guestCmdInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Prevents jumping to the message box
+                e.preventDefault();
                 executeGuestCommand();
-                guestCmdInput.blur(); // Closes soft keyboard cleanly on mobile
             }
         });
     }
