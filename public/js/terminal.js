@@ -184,21 +184,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     root.style.setProperty('--accent-color', '#ffb000');
                     root.style.setProperty('--border-color', 'rgba(255, 176, 0, 0.3)');
                     window.matrixColor = '#ffb000';
+                    if (window.setSystemCookie) window.setSystemCookie("selected_theme", "amber");
                     printGuestLog(">> THEME APPLIED: AMBER IBM CRT", "#ffb000");
                 } else if (themeArg === 'cyberpunk') {
                     root.style.setProperty('--accent-color', '#ff007f');
                     root.style.setProperty('--border-color', 'rgba(0, 243, 255, 0.4)');
                     window.matrixColor = '#00f3ff';
+                    if (window.setSystemCookie) window.setSystemCookie("selected_theme", "cyberpunk");
                     printGuestLog(">> THEME APPLIED: CYBERPUNK NEON", "#ff007f");
                 } else if (themeArg === 'dracula') {
                     root.style.setProperty('--accent-color', '#bd93f9');
                     root.style.setProperty('--border-color', 'rgba(189, 147, 249, 0.3)');
                     window.matrixColor = '#bd93f9';
+                    if (window.setSystemCookie) window.setSystemCookie("selected_theme", "dracula");
                     printGuestLog(">> THEME APPLIED: DRACULA PURPLE", "#bd93f9");
                 } else if (themeArg === 'matrix') {
                     root.style.setProperty('--accent-color', '#00ff66');
                     root.style.setProperty('--border-color', 'rgba(0, 255, 102, 0.25)');
                     window.matrixColor = '#00ff66';
+                    if (window.setSystemCookie) window.setSystemCookie("selected_theme", "matrix");
                     printGuestLog(">> THEME APPLIED: CLASSIC MATRIX GREEN", "#00ff66");
                 } else {
                     printGuestLog(">> INVALID THEME. Options: matrix | amber | cyberpunk | dracula", "#ff3333");
@@ -295,9 +299,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (colors[colorArg]) {
                     window.matrixColor = colors[colorArg];
+                    if (window.setSystemCookie) window.setSystemCookie("matrix_color", colors[colorArg]);
                     printGuestLog(`>> MATRIX COLOR UPDATED: ${colorArg.toUpperCase()}`, colors[colorArg]);
                 } else if (hexRegex.test(colorArg)) {
                     window.matrixColor = colorArg;
+                    if (window.setSystemCookie) window.setSystemCookie("matrix_color", colorArg);
                     printGuestLog(`>> MATRIX COLOR UPDATED: ${colorArg.toUpperCase()}`, colorArg);
                 } else {
                     printGuestLog(`>> INVALID COLOR. Use: red | cyan | green | blue | purple | gold | amber or a hex code like #ff00ff`, "#ff3333");

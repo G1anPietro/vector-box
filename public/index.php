@@ -17,6 +17,7 @@ if (file_exists('version.php')) {
     <link rel="stylesheet" href="css/style.css?v=<?php echo APP_VERSION; ?>">
     <script src="js/matrix.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/menu.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="js/theme.js?v=<?php echo APP_VERSION; ?>"></script> <!-- ADDED HERE -->
     <script src="js/terminal.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/uplink.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>
@@ -115,6 +116,20 @@ if (file_exists('version.php')) {
             
             <p id="login-err" class="err-text"></p>
             <button id="submit-login-btn" class="action-btn execution-btn">AUTHENTICATE</button>
+        </div>
+    </div>
+
+    <!-- BANNER CONSENSO COOKIE GDPR -->
+    <div id="cookie-banner" class="cyber-panel cookie-popup hidden">
+        <div class="cookie-content">
+            <span class="term-accent">>_ COOKIE_POLICY_NOTICE</span>
+            <p class="desc-text" style="font-size: 0.75rem; margin: 8px 0;">
+                This node uses local cookies to preserve system preferences (Matrix colors, theme presets). No telemetry tracking or third-party cookies are set.
+            </p>
+            <div class="btn-group" style="margin-top: 10px;">
+                <button id="cookie-accept-btn" class="nav-btn" style="padding: 4px 12px; font-size: 0.75rem;">ACCEPT</button>
+                <button id="cookie-decline-btn" class="nav-btn" style="border-color: #ff3333; color: #ff3333; padding: 4px 12px; font-size: 0.75rem;">DECLINE</button>
+            </div>
         </div>
     </div>
 
