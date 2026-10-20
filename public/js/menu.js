@@ -87,4 +87,27 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // CRT Scanlines Toggle (Defaults to OFF)
+    const scanlineToggle = document.getElementById('scanline-toggle');
+    if (scanlineToggle) {
+        scanlineToggle.addEventListener('change', () => {
+            if (scanlineToggle.checked) {
+                document.body.classList.add('scanlines-active');
+            } else {
+                document.body.classList.remove('scanlines-active');
+            }
+        });
+    }
+
+    // Matrix Speed Slider Control
+    const matrixSpeedSlider = document.getElementById('matrix-speed-slider');
+    if (matrixSpeedSlider) {
+        matrixSpeedSlider.addEventListener('input', (e) => {
+            const delayMs = 80 - parseInt(e.target.value, 10);
+            if (typeof window.updateMatrixSpeed === 'function') {
+                window.updateMatrixSpeed(delayMs);
+            }
+        });
+    }
 });

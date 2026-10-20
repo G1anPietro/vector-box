@@ -38,12 +38,26 @@ if (file_exists('version.php')) {
                 
                 <div class="settings-section">
                     <span class="settings-title">>_ OPTIONS</span>
+                    
                     <div class="toggle-row">
                         <span id="theme-label" class="toggle-label">MODE: NIGHT</span>
                         <label class="cyber-switch">
                             <input type="checkbox" id="theme-toggle">
                             <span class="switch-slider"></span>
                         </label>
+                    </div>
+
+                    <div class="toggle-row" style="margin-top: 8px;">
+                        <span class="toggle-label">SCANLINES</span>
+                        <label class="cyber-switch">
+                            <input type="checkbox" id="scanline-toggle">
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="cyber-slider-row">
+                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">MATRIX_SPEED</span>
+                        <input type="range" id="matrix-speed-slider" class="cyber-range" min="10" max="70" value="45">
                     </div>
                 </div>
             </div>

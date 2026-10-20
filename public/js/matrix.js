@@ -1,3 +1,6 @@
+window.matrixIntervalSpeed = 35; // Default speed in ms
+let matrixIntervalId = null;
+
 window.onload = () => {
     const canvas = document.getElementById("canvas");
     if (!canvas) return;
@@ -25,10 +28,15 @@ window.onload = () => {
         }
     }
 
+    window.updateMatrixSpeed = (newSpeedMs) => {
+        clearInterval(matrixIntervalId);
+        matrixIntervalId = setInterval(drawMatrix, newSpeedMs);
+    };
+
     window.addEventListener('resize', () => { 
         canvas.width = window.innerWidth; 
         canvas.height = window.innerHeight; 
     });
 
-    setInterval(drawMatrix, 35);
+    matrixIntervalId = setInterval(drawMatrix, window.matrixIntervalSpeed);
 };
