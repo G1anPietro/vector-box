@@ -11,17 +11,43 @@ document.addEventListener("DOMContentLoaded", () => {
         "help", "ip", "scan", "traceroute", "status", "hack", "ascii",
         "matrix red", "matrix cyan", "matrix green", "matrix blue", "matrix purple", "matrix gold", "matrix amber",
         "theme matrix", "theme amber", "theme cyberpunk", "theme dracula",
-        "whoami", "id", "uptime", "ls", "dir", "history", "sudo", "decrypt",
+        "whoami", "id", "uptime", "ls", "dir", "cd", "pwd", "mkdir", "touch", "echo", "rm", "history", "sudo", "decrypt",
         "cat motd.txt", "cat system.log", "cat credits.txt", "ping vector-box.net", "cmatrix",
         "nuke", "glitch", "clear"
     ];
 
-    // Simulated Virtual File System for `cat` & `ls`
-    const virtualFiles = {
-        'motd.txt': "====================================================\n  WELCOME TO VECTOR-BOX NODE v2.4.0 (AARCH64)\n  ALL CONNECTIONS ARE MONITORED AND LOGGED.\n====================================================",
-        'system.log': "[2026-10-20 09:14:02] AUTH_FAIL: root from 192.168.1.45\n[2026-10-20 09:15:11] SERVICE_RESTART: nginx.service\n[2026-10-20 09:22:00] FIREWALL_RULE: DROPPED PACKET FROM 10.0.0.12\n[2026-10-20 10:00:00] TELEMETRY_SYNC: OK",
-        'credits.txt': "DEVELOPED BY: VECTOR-BOX CORE TEAM\nSYSTEM ARCHITECTURE: PURE JS / PHP TELEMETRY\nVISUAL ENGINE: CRT OVERLAY + MATRIX CANVAS"
+    // Stateful Virtual File System Tree
+    const fileSystem = {
+        '~': {
+            type: 'dir',
+            children: {
+                'motd.txt': { type: 'file', content: "====================================================\n  WELCOME TO VECTOR-BOX NODE v2.4.0 (AARCH64)\n  ALL CONNECTIONS ARE MONITORED AND LOGGED.\n====================================================" },
+                'system.log': { type: 'file', content: "[2026-10-20 09:14:02] AUTH_FAIL: root from 192.168.1.45\n[2026-10-20 09:15:11] SERVICE_RESTART: nginx.service\n[2026-10-20 09:22:00] FIREWALL_RULE: DROPPED PACKET FROM 10.0.0.12\n[2026-10-20 10:00:00] TELEMETRY_SYNC: OK" },
+                'credits.txt': { type: 'file', content: "DEVELOPED BY: VECTOR-BOX CORE TEAM\nSYSTEM ARCHITECTURE: PURE JS / PHP TELEMETRY\nVISUAL ENGINE: CRT OVERLAY + MATRIX CANVAS" },
+                'logs': {
+                    type: 'dir',
+                    children: {
+                        'access.log': { type: 'file', content: "127.0.0.1 - - [20/Oct/2026:11:10:00 +0000] \"GET / HTTP/1.1\" 200" }
+                    }
+                }
+            }
+        }
     };
+
+    // Active Working Path Tracker
+    let currentPath = ['~'];
+
+    function getCurrentDir() {
+        let current = fileSystem;
+        for (const folder of currentPath) {
+            if (current[folder] && current[folder].type === 'dir') {
+                current = current[folder].children;
+            }
+        }
+        return current;
+    }
+
+    const getPromptText = () => `guest@vector-box:${currentPath.join('/')}$`;
 
     // Native FIGlet Font Parser
     let figletFontData = null;
@@ -126,14 +152,20 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             historyIndex = -1;
 
-            printGuestLog(`guest@vector-box:~$ ${rawVal}`, "#8ab4f8");
+            printGuestLog(`${getPromptText()} ${rawVal}`, "#8ab4f8");
             guestCmdInput.value = '';
             if (ghostText) ghostText.innerText = '';
 
             if (cmd === 'help') {
                 printGuestLog("=================== SYSTEM COMMANDS ===================", "#8ab4f8");
                 printGuestLog("  ls | dir          : List directory contents", "#00ff66");
+                printGuestLog("  cd <dir>          : Change current working directory", "#00ff66");
+                printGuestLog("  pwd               : Print working directory path", "#00ff66");
                 printGuestLog("  cat <file>        : Print virtual file contents", "#00ff66");
+                printGuestLog("  mkdir <dir>       : Create a new sub-directory", "#00ff66");
+                printGuestLog("  touch <file>      : Create an empty file", "#00ff66");
+                printGuestLog("  echo <txt> > file : Write content to file", "#00ff66");
+                printGuestLog("  rm <target>       : Remove file or directory", "#00ff66");
                 printGuestLog("  whoami / id       : Show active user session details", "#00ff66");
                 printGuestLog("  uptime            : Print system running time and load", "#00ff66");
                 printGuestLog("  history           : View session command log", "#00ff66");
@@ -152,17 +184,101 @@ document.addEventListener("DOMContentLoaded", () => {
                 printGuestLog("  nuke / glitch     : Induce screen anomaly effects", "#00ff66");
                 printGuestLog("  clear             : Clear terminal output", "#00ff66");
                 printGuestLog("=======================================================", "#8ab4f8");
+            } else if (cmd === 'pwd') {
+                printGuestLog(currentPath.join('/'), "#00ffff");
+            } else if (cmd === 'ls' || cmd === 'dir') {
+                const dir = getCurrentDir();
+                const items = Object.keys(dir).map(name => {
+                    return dir[name].type === 'dir' 
+                        ? `<span style="color: #8ab4f8; font-weight: bold;">${name}/</span>` 
+                        : `<span style="color: #00ff66;">${name}</span>`;
+                });
+                printGuestLog(items.length ? items.join('  ') : '>> (empty directory)', "#ffffff");
+            } else if (cmd.startsWith('cd')) {
+                const target = rawVal.substring(2).trim();
+                const dir = getCurrentDir();
+
+                if (!target || target === '~') {
+                    currentPath = ['~'];
+                } else if (target === '..') {
+                    if (currentPath.length > 1) currentPath.pop();
+                } else if (dir[target] && dir[target].type === 'dir') {
+                    currentPath.push(target);
+                } else if (dir[target] && dir[target].type === 'file') {
+                    printGuestLog(`>> cd: not a directory: ${target}`, "#ff3333");
+                } else {
+                    printGuestLog(`>> cd: no such file or directory: ${target}`, "#ff3333");
+                }
+            } else if (cmd.startsWith('cat')) {
+                const fileName = rawVal.substring(3).trim();
+                const dir = getCurrentDir();
+
+                if (!fileName) {
+                    printGuestLog(">> ERROR: Usage: cat <filename>", "#ff3333");
+                } else if (dir[fileName] && dir[fileName].type === 'file') {
+                    printGuestLog(dir[fileName].content, "#00ff66");
+                } else if (dir[fileName] && dir[fileName].type === 'dir') {
+                    printGuestLog(`>> cat: ${fileName}: Is a directory`, "#ff3333");
+                } else if (fileName === '.shadow') {
+                    printGuestLog(">> cat: .shadow: Permission denied", "#ff3333");
+                } else {
+                    printGuestLog(`>> cat: ${fileName}: No such file or directory`, "#ff3333");
+                }
+            } else if (cmd.startsWith('mkdir ')) {
+                const folderName = rawVal.substring(6).trim();
+                const dir = getCurrentDir();
+
+                if (!folderName) {
+                    printGuestLog(">> mkdir: missing operand", "#ff3333");
+                } else if (dir[folderName]) {
+                    printGuestLog(`>> mkdir: cannot create directory '${folderName}': File exists`, "#ff3333");
+                } else {
+                    dir[folderName] = { type: 'dir', children: {} };
+                    printGuestLog(`>> Directory created: ${folderName}`, "#00ff66");
+                }
+            } else if (cmd.startsWith('touch ')) {
+                const fileName = rawVal.substring(6).trim();
+                const dir = getCurrentDir();
+
+                if (!fileName) {
+                    printGuestLog(">> touch: missing file operand", "#ff3333");
+                } else if (!dir[fileName]) {
+                    dir[fileName] = { type: 'file', content: "" };
+                    printGuestLog(`>> File created: ${fileName}`, "#00ff66");
+                }
+            } else if (cmd.startsWith('echo ')) {
+                const echoRaw = rawVal.substring(5).trim();
+                const redirectIdx = echoRaw.indexOf('>');
+
+                if (redirectIdx !== -1) {
+                    const textContent = echoRaw.substring(0, redirectIdx).trim().replace(/^["']|["']$/g, '');
+                    const fileName = echoRaw.substring(redirectIdx + 1).trim();
+                    const dir = getCurrentDir();
+
+                    if (fileName) {
+                        dir[fileName] = { type: 'file', content: textContent };
+                        printGuestLog(`>> Written to ${fileName}`, "#00ff66");
+                    } else {
+                        printGuestLog(">> echo: syntax error near unexpected token 'newline'", "#ff3333");
+                    }
+                } else {
+                    printGuestLog(echoRaw.replace(/^["']|["']$/g, ''), "#ffffff");
+                }
+            } else if (cmd.startsWith('rm ')) {
+                const targetName = rawVal.substring(3).trim();
+                const dir = getCurrentDir();
+
+                if (dir[targetName]) {
+                    delete dir[targetName];
+                    printGuestLog(`>> Removed: ${targetName}`, "#ffaa00");
+                } else {
+                    printGuestLog(`>> rm: cannot remove '${targetName}': No such file or directory`, "#ff3333");
+                }
             } else if (cmd === 'whoami' || cmd === 'id') {
                 printGuestLog("uid=1000(guest) gid=1000(guest) groups=1000(guest),27(sudo)", "#00ffff");
                 printGuestLog(`>> USER_AGENT: ${navigator.userAgent}`, "#8ab4f8");
             } else if (cmd === 'uptime') {
                 printGuestLog(" 11:10:00 up 42 days, 13:37, 1 user, load average: 0.12, 0.08, 0.05", "#00ff66");
-            } else if (cmd === 'ls' || cmd === 'dir') {
-                printGuestLog("drwxr-xr-x 2 guest guest 4096 Oct 20 11:10 .", "#8ab4f8");
-                printGuestLog("-rw-r--r-- 1 guest guest  204 Oct 20 09:14 motd.txt", "#00ff66");
-                printGuestLog("-rw-r--r-- 1 guest guest  312 Oct 20 10:00 system.log", "#00ff66");
-                printGuestLog("-rw-r--r-- 1 guest guest  128 Oct 20 08:30 credits.txt", "#00ff66");
-                printGuestLog("-rw------- 1 root  root   512 Oct 20 11:00 .shadow", "#ff3333");
             } else if (cmd === 'history') {
                 if (cmdHistory.length === 0) {
                     printGuestLog(">> No commands in session history.", "#8ab4f8");
@@ -228,17 +344,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }, (idx + 1) * 350);
                 });
-            } else if (cmd.startsWith('cat')) {
-                const fileName = rawVal.substring(3).trim().toLowerCase();
-                if (!fileName) {
-                    printGuestLog(">> ERROR: Usage: cat <filename> (e.g., cat motd.txt)", "#ff3333");
-                } else if (virtualFiles[fileName]) {
-                    printGuestLog(virtualFiles[fileName], "#00ff66");
-                } else if (fileName === '.shadow') {
-                    printGuestLog(">> cat: .shadow: Permission denied", "#ff3333");
-                } else {
-                    printGuestLog(`>> cat: ${fileName}: No such file or directory`, "#ff3333");
-                }
             } else if (cmd.startsWith('ping')) {
                 const targetHost = rawVal.substring(4).trim() || "node.vector-box.net";
                 printGuestLog(`>> PING ${targetHost} (104.26.12.89) 56(84) bytes of data.`, "#8ab4f8");
