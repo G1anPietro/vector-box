@@ -42,6 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hypervisor // Vector-Box</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Automatically appends file modification timestamp to break cache on save -->
+    <link rel="stylesheet" href="style.css?v=<?php echo filemtime('style.css'); ?>">
+    <script src="script.js?v=<?php echo filemtime('script.js'); ?>"></script>
 </head>
 <body>
     <canvas id="canvas"></canvas>

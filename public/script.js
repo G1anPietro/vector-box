@@ -23,7 +23,28 @@ window.onload = () => {
     }
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
+    // Clean Menu Toggle Handler (Prevents Mobile Double-Firing)
+    const menuToggleBtn = document.getElementById('menu-toggle-btn');
+    const dropdownMenu = document.getElementById('dropdown-menu');
+
+    if (menuToggleBtn && dropdownMenu) {
+        menuToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // Close menu when clicking anywhere outside
+        document.addEventListener('click', (e) => {
+            if (!dropdownMenu.classList.contains('hidden') && 
+                !dropdownMenu.contains(e.target) && 
+                e.target !== menuToggleBtn) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Modal Login Handlers
     const loginBtn = document.getElementById('menu-login-btn');
     const loginModal = document.getElementById('login-modal');
     const userInput = document.getElementById('auth-user');
@@ -33,6 +54,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (loginBtn && loginModal) {
         loginBtn.addEventListener('click', () => {
+            if (dropdownMenu) dropdownMenu.classList.add('hidden');
             loginModal.classList.remove('hidden');
             if (userInput) userInput.focus();
         });
@@ -72,6 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') processLogin(); });
     if (userInput) userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordInput.focus(); });
 
+    // Hardware Boot WOL Trigger
     const wakePcBtn = document.getElementById('wake-pc-btn');
     if (wakePcBtn) {
         wakePcBtn.addEventListener('click', async () => {
@@ -94,6 +117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Minecraft Ecosystem Control
     let isServerOnline = false;
     let currentOnlinePlayers = []; 
     let knownOfflinePlayers = ["denys", "zuffi", "steve", "alex"]; 
@@ -263,6 +287,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // System Telemetry Polling
     const cpuVal = document.getElementById('cpu-val');
     const ramVal = document.getElementById('ram-val');
 
@@ -293,7 +318,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         setInterval(fetchTelemetry, 3000);
     }
 
-    // Public Transmission Message Handler (Bottom Box)
+    // Public Transmission Message Handler
     const publicSendBtn = document.getElementById('public-send-btn');
     const publicMsgInput = document.getElementById('public-msg-input');
     const publicMsgStatus = document.getElementById('public-msg-status');
@@ -331,28 +356,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    const menuToggleBtn = document.getElementById('menu-toggle-btn');
-    const dropdownMenu = document.getElementById('dropdown-menu');
-
-    if(menuToggleBtn && dropdownMenu) {
-        menuToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            dropdownMenu.classList.toggle('hidden');
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!dropdownMenu.classList.contains('hidden') && 
-                !dropdownMenu.contains(e.target) && 
-                e.target !== menuToggleBtn) {
-                dropdownMenu.classList.add('hidden');
-            }
-        });
-    }
-
+    // Theme Switcher Handler
     const themeToggle = document.getElementById('theme-toggle');
     const themeLabel = document.getElementById('theme-label');
 
-    if(themeToggle && themeLabel) {
+    if (themeToggle && themeLabel) {
         themeToggle.addEventListener('change', () => {
             if (themeToggle.checked) {
                 document.body.classList.add('light-mode');
@@ -366,7 +374,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Top Interactive Terminal Shell Handler (Mobile + Desktop Optimized)
+    // Interactive Terminal Shell Handler (Mobile + Desktop Optimized)
     const guestCmdInput = document.getElementById('guest-cmd-input');
     const guestTermLog = document.getElementById('guest-term-log');
 
@@ -442,7 +450,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 printGuestLog(`>> command not found: ${rawVal}. Type 'help'.`, "#ff3333");
             }
 
-            // Keep cursor active on desktop without disrupting mobile layout
             if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
                 guestCmdInput.focus();
             }
