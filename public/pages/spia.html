@@ -140,10 +140,11 @@
 
         window.onload = async () => {
             try {
-                const response = await fetch('data.json');
+                // Fetch from new assets subfolder
+                const response = await fetch('assets/data.json');
                 gameData = await response.json();
             } catch (error) {
-                alert("Errore nel caricamento di data.json.");
+                alert("Errore nel caricamento di assets/data.json.");
                 console.error(error);
             }
 
@@ -214,7 +215,6 @@
             const locationIndex = Math.floor(Math.random() * gameData.locations.length);
             const selectedLocation = gameData.locations[locationIndex];
 
-            // Clone roles list to avoid mutating in-memory data.json cache
             let availableRoles = [...selectedLocation.roles];
             shuffleArray(availableRoles);
 

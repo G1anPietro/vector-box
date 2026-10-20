@@ -2,7 +2,7 @@
 if (file_exists('version.php')) {
     require_once 'version.php';
 } else {
-    define('APP_VERSION', 'dev-local');
+    define('APP_VERSION', 'v1.00');
     define('BUILD_DATE', date('Y-m-d'));
 }
 ?>
@@ -13,8 +13,12 @@ if (file_exists('version.php')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Node // Vector-Box</title>
-    <link rel="stylesheet" href="style.css?v=<?php echo APP_VERSION; ?>">
-    <script src="script.js?v=<?php echo APP_VERSION; ?>"></script>
+    <!-- Automatic CSS & Modular JS Cache-Busting -->
+    <link rel="stylesheet" href="css/style.css?v=<?php echo APP_VERSION; ?>">
+    <script src="js/matrix.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="js/menu.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="js/terminal.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="js/uplink.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -25,10 +29,10 @@ if (file_exists('version.php')) {
             <button id="menu-toggle-btn" class="nav-btn">// MENU</button>
             
             <div id="dropdown-menu" class="cyber-panel menu-dropdown hidden">
-                <a href="resume.html" class="menu-item btn-dossier">// VIEW DOSSIER</a>
-                <a href="ads.html" class="menu-item btn-adwall">// AD WALL</a>
-                <a href="spia.html" class="menu-item">// WHO'S THE SPY</a> 
-                <a href="hack.html" class="menu-item">// NODE BREACH</a>
+                <a href="pages/resume.html" class="menu-item btn-dossier">// VIEW DOSSIER</a>
+                <a href="pages/ads.html" class="menu-item btn-adwall">// AD WALL</a>
+                <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
+                <a href="pages/hack.html" class="menu-item">// NODE BREACH</a>
                 
                 <button id="menu-login-btn" class="menu-item">// SYSTEM_LOGIN</button>
                 
@@ -102,7 +106,7 @@ if (file_exists('version.php')) {
 
     <footer class="cyber-footer">
         <span class="term-muted">BUILD // <?php echo APP_VERSION; ?> (<?php echo BUILD_DATE; ?>)</span>
-        <a href="credits.html" class="credits-link">ciao zuffi</a>
+        <a href="pages/credits.html" class="credits-link">ciao zuffi</a>
     </footer>
 </body>
 </html>

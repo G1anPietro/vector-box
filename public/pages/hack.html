@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TERMINAL // HEX_BREACH</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/matrix.js" defer></script>
     <style>
         .hack-container {
             max-width: 650px;
@@ -89,7 +90,7 @@
 
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // HEX_BREACH_PROTOCOL</div>
-        <a href="index.php" class="nav-btn"><_ BACK_TO_TERMINAL</a>
+        <a href="../index.php" class="nav-btn"><_ BACK_TO_TERMINAL</a>
     </header>
 
     <main class="center-container">
@@ -114,7 +115,6 @@
         </div>
     </main>
 
-    <script src="script.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const hexPool = ["1C", "E9", "55", "BD", "7A", "FF", "C3", "AA"];
@@ -137,35 +137,29 @@
                 timerVal.innerText = `${timeLeft}s`;
                 timerVal.style.color = "#00ff66";
 
-                // Pick 3 random hex values for sequence
                 targetSeq = [];
                 for (let i = 0; i < 3; i++) {
                     targetSeq.push(hexPool[Math.floor(Math.random() * hexPool.length)]);
                 }
 
-                // Render Target Nodes
                 targetContainer.innerHTML = targetSeq.map((hex, i) => 
                     `<div class="target-node" id="target-${i}">${hex}</div>`
                 ).join("");
 
-                // Build 15 Grid Buttons (guarantee target elements exist inside pool)
                 let gridItems = [...targetSeq];
                 while (gridItems.length < 15) {
                     gridItems.push(hexPool[Math.floor(Math.random() * hexPool.length)]);
                 }
                 gridItems.sort(() => Math.random() - 0.5);
 
-                // Render Grid Buttons
                 hexGrid.innerHTML = gridItems.map((hex, i) => 
                     `<button class="hex-btn" data-hex="${hex}">${hex}</button>`
                 ).join("");
 
-                // Attach Grid Event Handlers
                 document.querySelectorAll(".hex-btn").forEach(btn => {
                     btn.addEventListener("click", () => handleHexClick(btn));
                 });
 
-                // Start Countdown
                 timerInterval = setInterval(() => {
                     timeLeft--;
                     timerVal.innerText = `${timeLeft}s`;

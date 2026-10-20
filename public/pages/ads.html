@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Monetization // Ad Wall</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/matrix.js" defer></script>
     <style>
-        /* Force HTML elements to sit safely ABOVE the animating canvas */
         .cyber-header, .monetize-container {
             position: relative;
             z-index: 10;
@@ -22,7 +22,6 @@
             gap: 25px;
         }
         
-        /* Renamed to stealth classes to bypass aggressive local ad-blockers */
         .display-slot-wide {
             width: 100%;
             max-width: 728px;
@@ -62,12 +61,11 @@
     </style>
 </head>
 <body>
-    <!-- The background canvas -->
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
         <div class="glitch" style="color: #ffaa00; text-shadow: 0 0 5px rgba(255,170,0,0.5);">// SYSTEM_MONETIZATION: ACTIVE</div>
-        <a href="/" class="nav-btn" style="text-decoration: none; color: #ffaa00; border-color: #ffaa00;">// TERMINATE WALL</a>
+        <a href="../index.php" class="nav-btn" style="text-decoration: none; color: #ffaa00; border-color: #ffaa00;">// TERMINATE WALL</a>
     </header>
 
     <main class="monetize-container">
@@ -76,12 +74,10 @@
             <p class="desc-text">You have entered the ad-supported resource sector. Leaving this terminal open helps fund server infrastructure maintenance pipelines.</p>
         </div>
 
-        <!-- Top Banner Slot -->
         <div class="display-slot-wide">
             <div>[ INTEGRATION_READY // EMPTY_SLOT_01 ]</div>
         </div>
 
-        <!-- Side-by-Side Square Slots -->
         <div class="slot-row">
             <div class="display-slot-square">
                 <div>[ INTEGRATION_READY // EMPTY_SLOT_02 ]</div>
@@ -91,12 +87,9 @@
             </div>
         </div>
 
-        <!-- Bottom Banner Slot -->
         <div class="display-slot-wide">
             <div>[ INTEGRATION_READY // EMPTY_SLOT_04 ]</div>
         </div>
     </main>
-
-    <script src="script.js" defer></script>
 </body>
 </html>

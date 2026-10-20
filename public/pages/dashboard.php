@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['user'])) {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit();
 }
 
@@ -34,6 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     echo json_encode(['success' => false, 'error' => 'Unauthorized or unknown action']);
     exit();
 }
+
+if (file_exists('../version.php')) {
+    require_once '../version.php';
+} else {
+    define('APP_VERSION', 'v1.00');
+    define('BUILD_DATE', date('Y-m-d'));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,10 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hypervisor // Vector-Box</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Automatically appends file modification timestamp to break cache on save -->
-    <link rel="stylesheet" href="style.css?v=<?php echo filemtime('style.css'); ?>">
-    <script src="script.js?v=<?php echo filemtime('script.js'); ?>"></script>
+    <link rel="stylesheet" href="../css/style.css?v=<?php echo APP_VERSION; ?>">
+    <script src="../js/matrix.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -53,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="glitch" id="dash-welcome">// PROFILED_LAYER: <?php echo htmlspecialchars(strtoupper($user['name'])); ?></div>
         <div style="display: flex; gap: 15px; align-items: center;">
             <a href="resume.html" class="nav-btn" style="text-decoration: none;">// DOSSIER</a>
-            <a href="logout.php" class="nav-btn" style="border-color: #ff3333; color: #ff3333; text-decoration: none;">// DISCONNECT</a>
+            <a href="../api/logout.php" class="nav-btn" style="border-color: #ff3333; color: #ff3333; text-decoration: none;">// DISCONNECT</a>
         </div>
     </header>
 
@@ -120,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         </div>
     </main>
 
-    <script src="commands.js"></script>
-    <script src="script.js" defer></script>
+    <script src="../js/commands.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="../js/script.js?v=<?php echo APP_VERSION; ?>" defer></script>
 </body>
 </html>
