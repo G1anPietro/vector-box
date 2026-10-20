@@ -399,6 +399,20 @@ body.scanlines-active::before {
 }
 .credits-link:hover { color: #00ff66; text-shadow: 0 0 12px #00ff66; }
 
+/* Popup Consenso Cookie */
+.cookie-popup {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    max-width: 360px;
+    width: calc(100% - 40px);
+    z-index: 3000;
+    background: #060a10;
+    border: 1px solid var(--accent-color);
+    box-shadow: 0 0 25px rgba(0, 255, 102, 0.3);
+    padding: 15px;
+}
+
 /* Glitch Animation Command Trigger */
 @keyframes glitch-anim {
     0% { transform: translate(0); }
@@ -440,5 +454,13 @@ body.scanlines-active::before {
     /* Nasconde il footer 'ciao zuffi' su mobile per evitare sovrapposizioni */
     .cyber-footer {
         display: none !important;
+    }
+
+    .cookie-popup {
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        width: auto;
     }
 }
