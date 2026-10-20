@@ -2,24 +2,140 @@ document.addEventListener("DOMContentLoaded", () => {
     const guestCmdInput = document.getElementById('guest-cmd-input');
     const guestTermLog = document.getElementById('guest-term-log');
 
+    // Command History Storage
+    const cmdHistory = [];
+    let historyIndex = -1;
+
+    // Available Commands for Ghost Text Auto-completion
+    const availableCommands = [
+        "help", "ip", "scan", "status", "hack", "ascii",
+        "matrix red", "matrix cyan", "matrix green", "nuke", "glitch", "clear"
+    ];
+
+    // Native FIGlet Font Parser
+    let figletFontData = null;
+
+    // Carica il font locale personalizzato dalla cartella assets
+    fetch('assets/Slant.flf')
+        .then(res => res.text())
+        .then(text => {
+            figletFontData = parseFLF(text);
+        })
+        .catch(() => console.warn("Errore nel caricamento del font FIGlet locale."));
+
+    function parseFLF(flfText) {
+        const lines = flfText.split(/\r?\n/);
+        const header = lines[0].split(" ");
+        const hardblank = header[0].substr(header[0].length - 1);
+        const height = parseInt(header[1], 10);
+        
+        const chars = {};
+        let lineIdx = 1;
+
+        // Salta le linee di commento specificate nell'header
+        const commentLines = parseInt(header[5], 10) || 0;
+        lineIdx += commentLines;
+
+        // Caratteri ASCII standard da 32 a 126
+        for (let code = 32; code <= 126; code++) {
+            const charLines = [];
+            for (let h = 0; h < height; h++) {
+                let line = lines[lineIdx++] || "";
+                line = line.replace(/[@#]+$/, "");
+                line = line.split(hardblank).join(" ");
+                charLines.push(line);
+            }
+            chars[code] = charLines;
+        }
+
+        return { height, chars };
+    }
+
+    function renderNativeAscii(text) {
+        if (!figletFontData) return null;
+        
+        const { height, chars } = figletFontData;
+        const outputLines = Array(height).fill("");
+
+        for (let i = 0; i < text.length; i++) {
+            const code = text.charCodeAt(i);
+            const charGlyph = chars[code] || chars[32];
+            
+            for (let h = 0; h < height; h++) {
+                outputLines[h] += charGlyph[h] || "";
+            }
+        }
+
+        return outputLines.join("\n");
+    }
+
     const printGuestLog = (text, color = "#00ff66") => {
         if (!guestTermLog) return;
-        guestTermLog.innerHTML += `<p class="term-white" style="margin: 2px 0; color: ${color};">${text}</p>`;
+        guestTermLog.innerHTML += `<p class="term-white" style="margin: 2px 0; color: ${color}; white-space: pre-wrap;">${text}</p>`;
         const termBox = document.getElementById('guest-term-box');
         if (termBox) termBox.scrollTop = termBox.scrollHeight;
     };
 
     if (guestCmdInput) {
+        const inputParent = guestCmdInput.parentElement;
+        if (inputParent && !document.getElementById('guest-ghost-text')) {
+            inputParent.style.position = 'relative';
+            const ghostSpan = document.createElement('span');
+            ghostSpan.id = 'guest-ghost-text';
+            ghostSpan.style.cssText = 'position: absolute; left: 0; color: #444; pointer-events: none; white-space: pre; font-family: inherit; font-size: inherit; z-index: 1;';
+            inputParent.insertBefore(ghostSpan, guestCmdInput);
+            guestCmdInput.style.position = 'relative';
+            guestCmdInput.style.zIndex = '2';
+            guestCmdInput.style.background = 'transparent';
+        }
+
+        const ghostText = document.getElementById('guest-ghost-text');
+
+        guestCmdInput.addEventListener('input', () => {
+            const val = guestCmdInput.value.toLowerCase();
+            if (!val) {
+                if (ghostText) ghostText.innerText = '';
+                return;
+            }
+
+            const match = availableCommands.find(cmd => cmd.startsWith(val));
+            if (match && ghostText) {
+                ghostText.innerText = guestCmdInput.value + match.substring(val.length);
+            } else if (ghostText) {
+                ghostText.innerText = '';
+            }
+        });
+
         const executeGuestCommand = async () => {
             const rawVal = guestCmdInput.value.trim();
             const cmd = rawVal.toLowerCase();
             if (!rawVal) return;
 
+            if (cmdHistory[cmdHistory.length - 1] !== rawVal) {
+                cmdHistory.push(rawVal);
+            }
+            historyIndex = -1;
+
             printGuestLog(`guest@vector-box:~$ ${rawVal}`, "#8ab4f8");
             guestCmdInput.value = '';
+            if (ghostText) ghostText.innerText = '';
 
             if (cmd === 'help') {
-                printGuestLog(">> COMMANDS: help | ip | scan | status | hack | matrix red | matrix cyan | matrix green | nuke | glitch | clear", "#00ff66");
+                printGuestLog(">> COMMANDS: help | ip | scan | status | hack | ascii [text] | matrix red | matrix cyan | matrix green | nuke | glitch | clear", "#00ff66");
+            } else if (cmd.startsWith('ascii')) {
+                const inputArg = rawVal.substring(5).trim();
+                const targetText = inputArg.length > 0 ? inputArg : "VECTOR-BOX";
+                
+                if (targetText.length > 15) {
+                    printGuestLog(">> ERROR: Text length exceeds maximum buffer limit (15 chars).", "#ff3333");
+                } else {
+                    const asciiBanner = renderNativeAscii(targetText);
+                    if (asciiBanner) {
+                        printGuestLog(`<pre style="font-family: monospace; margin: 0; line-height: 1.1; white-space: pre;">${asciiBanner}</pre>`, "#00ff66");
+                    } else {
+                        printGuestLog(">> ERROR: Local font initializing...", "#ffaa00");
+                    }
+                }
             } else if (cmd === 'ip') {
                 printGuestLog(">> Querying remote interface...", "#8ab4f8");
                 try {
@@ -37,13 +153,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 setTimeout(() => printGuestLog(">> SCAN COMPLETE. 0 VULNERABILITIES FOUND.", "#8ab4f8"), 1600);
             } else if (cmd === 'status') {
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                const nodeType = isMobile ? "MOBILE_NODE" : "DESKTOP_NODE";
-                printGuestLog(`>> DEVICE_TYPE: ${nodeType}`, "#00ffff");
+                printGuestLog(`>> DEVICE_TYPE: ${isMobile ? "MOBILE_NODE" : "DESKTOP_NODE"}`, "#00ffff");
                 printGuestLog(`>> SCREEN_RES: ${window.innerWidth}x${window.innerHeight}`, "#00ffff");
-                printGuestLog(`>> USER_AGENT: ${navigator.userAgent.substring(0, 35)}...`, "#00ffff");
             } else if (cmd === 'hack') {
                 printGuestLog(">> REDIRECTING TO NODE BREACH...", "#00ff66");
-                setTimeout(() => { window.location.href = 'hack.html'; }, 800);
+                setTimeout(() => { window.location.href = 'pages/hack.html'; }, 800);
             } else if (cmd === 'matrix red') {
                 window.matrixColor = '#ff0055';
                 printGuestLog(">> MATRIX COLOR: RED", "#ff0055");
@@ -73,14 +187,33 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 printGuestLog(`>> command not found: ${rawVal}. Type 'help'.`, "#ff3333");
             }
-
-            if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
-                guestCmdInput.focus();
-            }
         };
 
         guestCmdInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                if (ghostText && ghostText.innerText) {
+                    guestCmdInput.value = ghostText.innerText;
+                    ghostText.innerText = '';
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (cmdHistory.length > 0 && historyIndex < cmdHistory.length - 1) {
+                    historyIndex++;
+                    guestCmdInput.value = cmdHistory[cmdHistory.length - 1 - historyIndex];
+                    if (ghostText) ghostText.innerText = '';
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    guestCmdInput.value = cmdHistory[cmdHistory.length - 1 - historyIndex];
+                } else if (historyIndex === 0) {
+                    historyIndex = -1;
+                    guestCmdInput.value = '';
+                }
+                if (ghostText) ghostText.innerText = '';
+            } else if (e.key === 'Enter') {
                 e.preventDefault();
                 executeGuestCommand();
             }

@@ -1,46 +1,37 @@
 <?php
-session_start();
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['user'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit();
+// Calculate real CPU load percentage from sys_getloadavg
+$cpuPercent = 0;
+if (function_exists('sys_getloadavg')) {
+    $load = sys_getloadavg();
+    // Normalize load avg over 1-min against core count
+    $cores = 1;
+    if (is_file('/proc/cpuinfo')) {
+        $cpuinfo = file_get_contents('/proc/cpuinfo');
+        preg_match_all('/^processor/m', $cpuinfo, $matches);
+        $cores = count($matches[0]) ?: 1;
+    }
+    $cpuPercent = min(100, round(($load[0] / $cores) * 100));
 }
 
-function getCpuUsage() {
-    $stat1 = file('/proc/stat');
-    usleep(50000);
-    $stat2 = file('/proc/stat');
-
-    $info1 = preg_split('/\s+/', trim($stat1[0]));
-    $info2 = preg_split('/\s+/', trim($stat2[0]));
-
-    $total1 = array_sum(array_slice($info1, 1, 4));
-    $total2 = array_sum(array_slice($info2, 1, 4));
-
-    $diffTotal = $total2 - $total1;
-    $diffIdle = $info2[4] - $info1[4];
-
-    return ($diffTotal > 0) ? round((($diffTotal - $diffIdle) / $diffTotal) * 100) : 0;
-}
-
-function getRamUsage() {
-    $meminfo = @file_get_contents('/proc/meminfo');
-    if (!$meminfo) return 0;
-
+// Calculate real RAM usage from /proc/meminfo
+$ramPercent = 0;
+if (is_file('/proc/meminfo')) {
+    $meminfo = file_get_contents('/proc/meminfo');
     preg_match('/MemTotal:\s+(\d+)/', $meminfo, $totalMatches);
     preg_match('/MemAvailable:\s+(\d+)/', $meminfo, $availMatches);
 
-    if (isset($totalMatches[1], $availMatches[1])) {
+    if (!empty($totalMatches[1]) && !empty($availMatches[1])) {
         $total = (int)$totalMatches[1];
-        $avail = (int)$availMatches[1];
-        return round((($total - $avail) / $total) * 100);
+        $available = (int)$availMatches[1];
+        $used = $total - $available;
+        $ramPercent = round(($used / $total) * 100);
     }
-    return 0;
 }
 
 echo json_encode([
-    'cpu' => getCpuUsage(),
-    'ram' => getRamUsage()
+    'cpu' => $cpuPercent,
+    'ram' => $ramPercent,
+    'timestamp' => time()
 ]);
