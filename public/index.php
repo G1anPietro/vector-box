@@ -13,8 +13,6 @@ if (file_exists('version.php')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Node // Vector-Box</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Use APP_VERSION for automatic CSS & JS cache-busting -->
     <link rel="stylesheet" href="style.css?v=<?php echo APP_VERSION; ?>">
     <script src="script.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>
@@ -33,8 +31,6 @@ if (file_exists('version.php')) {
                 <a href="hack.html" class="menu-item">// NODE BREACH</a>
                 
                 <button id="menu-login-btn" class="menu-item">// SYSTEM_LOGIN</button>
-                
-                <div class="menu-divider"></div>
                 
                 <div class="settings-section">
                     <span class="settings-title">>_ OPTIONS</span>
@@ -68,8 +64,7 @@ if (file_exists('version.php')) {
                         autocorrect="off" 
                         autocapitalize="off" 
                         spellcheck="false" 
-                        name="terminal_command_input" 
-                        id="terminal_command_input">
+                        name="terminal_command_input">
                 </div>
             </div>
         </div>
@@ -109,7 +104,5 @@ if (file_exists('version.php')) {
         <span class="term-muted">BUILD // <?php echo APP_VERSION; ?> (<?php echo BUILD_DATE; ?>)</span>
         <a href="credits.html" class="credits-link">ciao zuffi</a>
     </footer>
-
-    <script src="script.js"></script>
 </body>
 </html>
