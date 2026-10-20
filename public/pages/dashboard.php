@@ -57,7 +57,6 @@ if (file_exists('../version.php')) {
     <header class="cyber-header">
         <div class="glitch" id="dash-welcome">// PROFILED_LAYER: <?php echo htmlspecialchars(strtoupper($user['name'])); ?></div>
         <div style="display: flex; gap: 15px; align-items: center;">
-            <a href="resume.html" class="nav-btn" style="text-decoration: none;">// DOSSIER</a>
             <a href="../api/logout.php" class="nav-btn" style="border-color: #ff3333; color: #ff3333; text-decoration: none;">// DISCONNECT</a>
         </div>
     </header>
