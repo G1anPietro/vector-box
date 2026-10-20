@@ -5,6 +5,7 @@ PROJECT_DIR="/var/www/vector-box"
 cd "$PROJECT_DIR" || exit 1
 
 echo ">> Pulling latest updates from Git..."
+git reset --hard HEAD
 git pull origin main
 
 # Extract short git commit hash and current date
