@@ -141,10 +141,10 @@
         window.onload = async () => {
             try {
                 // Fetch from new assets subfolder
-                const response = await fetch('assets/data.json');
+                const response = await fetch('../assets/data.json');
                 gameData = await response.json();
             } catch (error) {
-                alert("Errore nel caricamento di assets/data.json.");
+                alert("Errore nel caricamento di ../assets/data.json.");
                 console.error(error);
             }
 
