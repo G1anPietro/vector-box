@@ -2,8 +2,9 @@
 if (file_exists('version.php')) {
     require_once 'version.php';
 } else {
-    define('APP_VERSION', 'v1.00');
+    define('APP_VERSION', 'v2.4.0');
     define('BUILD_DATE', date('Y-m-d'));
+    define('BUILD_HASH', 'dev');
 }
 ?>
 
@@ -134,7 +135,7 @@ if (file_exists('version.php')) {
     </div>
 
     <footer class="cyber-footer">
-        <span class="term-muted">BUILD // <?php echo APP_VERSION; ?> (<?php echo BUILD_DATE; ?>)</span>
+        <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
         <a href="pages/credits.html" class="credits-link">ciao zuffi</a>
     </footer>
 </body>
