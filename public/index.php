@@ -15,9 +15,9 @@ if (file_exists('version.php')) {
     <title>Node // Vector-Box</title>
     <!-- Automatic CSS & Modular JS Cache-Busting -->
     <link rel="stylesheet" href="css/style.css?v=<?php echo APP_VERSION; ?>">
-    <script src="js/matrix.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/menu.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/theme.js?v=<?php echo APP_VERSION; ?>"></script> <!-- ADDED HERE -->
+    <script src="js/theme.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="js/matrix.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/terminal.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/uplink.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>

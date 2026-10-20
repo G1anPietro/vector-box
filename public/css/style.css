@@ -423,35 +423,59 @@ body.scanlines-active::before {
     100% { transform: translate(0); }
 }
 
-/* Mobile Responsiveness Override */
+/* Mobile Viewport Engine Adjustments */
 @media (max-width: 600px) {
-    .cyber-header { padding: 15px 20px; }
-    .glitch { font-size: 0.95rem; letter-spacing: 1px; }
-
-    .cyber-panel.menu-dropdown {
-        min-width: 200px;
-        max-width: 80vw;
-        padding: 14px;
-        right: 0;
+    .cyber-header { 
+        padding: 10px 15px; 
     }
-
-    .menu-dropdown .menu-item { font-size: 0.8rem; padding: 10px 12px; }
+    
+    .glitch { 
+        font-size: 0.85rem; 
+        letter-spacing: 1px; 
+    }
 
     .center-container {
-        padding-top: 100px; 
-        padding-bottom: 60px;
-        padding-left: 15px;
-        padding-right: 15px;
-        gap: 20px;
+        padding-top: 75px; 
+        padding-bottom: 30px;
+        padding-left: 10px;
+        padding-right: 10px;
+        gap: 15px;
+        min-height: auto;
     }
 
-    .cyber-panel { width: 100%; max-width: 100%; box-sizing: border-box; padding: 15px; }
+    .cyber-panel { 
+        width: 100%; 
+        max-width: 100%; 
+        box-sizing: border-box; 
+        padding: 12px; 
+    }
     
+    /* Dynamic height to prevent soft keyboards from cutting off the input line */
     .terminal-box { 
-        height: 340px; 
+        height: 55vh !important;
+        max-height: 420px;
+        min-height: 260px;
+        padding: 10px;
     }
 
-    /* Nasconde il footer 'ciao zuffi' su mobile per evitare sovrapposizioni */
+    #guest-term-log {
+        font-size: 0.8rem;
+    }
+
+    .clean-input-line {
+        margin-top: 4px;
+    }
+
+    .prompt-symbol {
+        font-size: 0.75rem;
+        margin-right: 4px;
+    }
+
+    .terminal-input {
+        font-size: 0.85rem;
+    }
+
+    /* Keep footer completely hidden on mobile viewports */
     .cyber-footer {
         display: none !important;
     }

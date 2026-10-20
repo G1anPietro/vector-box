@@ -400,5 +400,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 executeGuestCommand();
             }
         });
+
+        // Mobile UX: Container click-focus and auto-scroll on keyboard open
+        const termBox = document.getElementById('guest-term-box');
+        if (termBox && guestCmdInput) {
+            termBox.addEventListener('click', (e) => {
+                if (e.target !== guestCmdInput) {
+                    guestCmdInput.focus();
+                }
+            });
+
+            guestCmdInput.addEventListener('focus', () => {
+                setTimeout(() => {
+                    termBox.scrollTop = termBox.scrollHeight;
+                }, 300);
+            });
+        }
     }
 });
