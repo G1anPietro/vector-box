@@ -20,7 +20,6 @@ document.addEventListener("DOMContentLoaded", () => {
         setStatus('', '');
 
         try {
-            // Invia esclusivamente a command.php per ntfy.sh
             const res = await fetch('api/command.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -32,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.success) {
                 setStatus('// TRANSMISSION DELIVERED TO NTFY', '#00ff66');
                 publicMsgInput.value = '';
+                publicMsgInput.blur(); // Unfocus text area on mobile
             } else {
                 setStatus(`// ERROR: ${data.error || 'Failed'}`, '#ff3333');
             }
@@ -45,7 +45,20 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    publicSendBtn.addEventListener('click', transmitNtfyMessage);
+    // Mobile touch event handler to prevent focus tab / credential manager popups
+    const handleTrigger = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        transmitNtfyMessage();
+    };
+
+    publicSendBtn.addEventListener('touchend', handleTrigger, { passive: false });
+    publicSendBtn.addEventListener('click', (e) => {
+        // Prevent duplicate trigger if touchend already executed
+        if (e.detail !== 0) {
+            transmitNtfyMessage();
+        }
+    });
 
     publicMsgInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
