@@ -124,7 +124,7 @@ if (file_exists('../version.php')) {
         </div>
     </main>
 
-    <script src="../js/commands.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="../js/mc_commands.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="../js/script.js?v=<?php echo APP_VERSION; ?>" defer></script>
 </body>
 </html>

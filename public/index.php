@@ -20,6 +20,7 @@ if (file_exists('version.php')) {
     <script src="js/theme.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/matrix.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/terminal.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="js/commands.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/uplink.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>
 <body>

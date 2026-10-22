@@ -1,42 +1,92 @@
-window.matrixIntervalSpeed = 35; // Default speed in ms
-let matrixIntervalId = null;
+// public/matrix.js
+(function () {
+    let canvas = null;
+    let ctx = null;
+    let animationFrameId = null;
+    
+    let lastDrawTime = 0;
+    window.matrixIntervalSpeed = 35; // Target delay in ms
 
-window.onload = () => {
-    const canvas = document.getElementById("canvas");
-    if (!canvas) return;
+    const fontSize = 14;
+    const alphabet = "0101010101ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$<>[]";
+    let columns = 0;
+    let rainDrops = [];
 
-    const ctx = canvas.getContext("2d");
-    canvas.height = window.innerHeight; 
-    canvas.width = window.innerWidth;
+    function setupCanvasDimensions() {
+        if (!canvas) return;
 
-    const alphabet = "0101010101ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$<>[]".split("");
-    const fontSize = 14; 
-    const columns = canvas.width / fontSize;
-    const rainDrops = Array(Math.floor(columns)).fill(1);
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        
+        ctx.scale(dpr, dpr);
 
-    function drawMatrix() {
-        ctx.fillStyle = "rgba(6, 8, 12, 0.06)"; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = typeof window.matrixColor !== 'undefined' ? window.matrixColor : "#00ff66"; 
-        ctx.font = fontSize + "px monospace";
+        columns = Math.floor(window.innerWidth / fontSize);
+        
+        // Preserve position data or reset on resize
+        const currentLength = rainDrops.length;
+        if (columns > currentLength) {
+            for (let i = currentLength; i < columns; i++) {
+                rainDrops[i] = Math.floor(Math.random() * -100); // Stagger initial drops off-screen
+            }
+        } else {
+            rainDrops.length = columns;
+        }
+    }
 
-        for (let i = 0; i < rainDrops.length; i++) {
-            const text = alphabet[Math.floor(Math.random() * alphabet.length)];
-            ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
-            if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.98) rainDrops[i] = 0;
+    function drawMatrix(timestamp) {
+        animationFrameId = requestAnimationFrame(drawMatrix);
+
+        // Throttle frame rate based on matrixIntervalSpeed delay
+        const elapsed = timestamp - lastDrawTime;
+        if (elapsed < window.matrixIntervalSpeed) return;
+        lastDrawTime = timestamp - (elapsed % window.matrixIntervalSpeed);
+
+        // Fade clear effect
+        ctx.fillStyle = "rgba(6, 8, 12, 0.06)";
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+        ctx.fillStyle = window.matrixColor || "#00ff66";
+        ctx.font = `${fontSize}px monospace`;
+
+        const charCount = alphabet.length;
+        const screenHeight = window.innerHeight;
+
+        for (let i = 0; i < columns; i++) {
+            const char = alphabet.charAt(Math.floor(Math.random() * charCount));
+            const x = i * fontSize;
+            const y = rainDrops[i] * fontSize;
+
+            ctx.fillText(char, x, y);
+
+            if (y > screenHeight && Math.random() > 0.98) {
+                rainDrops[i] = 0;
+            }
             rainDrops[i]++;
         }
     }
 
+    // Public API to dynamically modify speed
     window.updateMatrixSpeed = (newSpeedMs) => {
-        clearInterval(matrixIntervalId);
-        matrixIntervalId = setInterval(drawMatrix, newSpeedMs);
+        window.matrixIntervalSpeed = Math.max(10, newSpeedMs);
     };
 
-    window.addEventListener('resize', () => { 
-        canvas.width = window.innerWidth; 
-        canvas.height = window.innerHeight; 
-    });
+    // Initialize engine on DOM Ready
+    document.addEventListener("DOMContentLoaded", () => {
+        canvas = document.getElementById("canvas");
+        if (!canvas) return;
 
-    matrixIntervalId = setInterval(drawMatrix, window.matrixIntervalSpeed);
-};
+        ctx = canvas.getContext("2d", { alpha: false });
+        setupCanvasDimensions();
+
+        // Debounced Window Resize Handler
+        let resizeTimeout = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(setupCanvasDimensions, 100);
+        });
+
+        // Start High-Performance Animation Loop
+        animationFrameId = requestAnimationFrame(drawMatrix);
+    });
+})();

@@ -45,3 +45,66 @@ Expose a lightweight, public-facing system status card (showing ping latency, ac
 
 ---
 
+
+
+
+
+
+
+
+
+
+---
+
+## 1. Terminal Enhancements (Interactive & Visual)
+
+* **Interactive Audio Feedback Engine (Web Audio API):**
+Add subtle mechanical keyboard clicks when typing in `#guest-cmd-input` and retro computer beep FX when commands complete or throw errors. Provide a toggle (`SFX: ON/OFF`) in your `#dropdown-menu` settings section.
+
+
+* **File System Persistence (`localStorage` / PHP DB sync):**
+Right now, `mkdir`, `touch`, and `echo > file` in `commands.js` only persist in JavaScript memory until page refresh. Save user-created virtual files to `localStorage` or sync them back to a PHP database so guest user files persist across sessions.
+* **Terminal Command Auto-Tab Completion & Ghosting UI:**
+Since you already track `availableCommands` for ghost text, extend the `Tab` key listener in `terminal.js` to cycle through multiple matching sub-commands or auto-fill file names when using `cat`, `cd`, or `rm`.
+
+---
+
+## 2. Dynamic Cyberpunk Widgets & Mini-Apps
+
+* **Live Telemetry & Node Monitor Widget:**
+Build a dedicated panel utilizing your CSS `.progress-bar-fill` classes that periodically queries a PHP endpoint for server stats (CPU load, RAM usage, server uptime, current active WebSockets/connections).
+
+
+* **Interactive Mini-Games via Terminal:**
+* `netcrack`: A node-breach minigame requiring users to guess memory sequence hashes (similar to *Fallout* terminal hacking).
+* `cyberdeck`: A text-based rogue-like or cyberdeck simulation accessible straight through `handleCommand()`.
+
+
+* **Live System Audio / Ambient Synth Synthwave Radio:**
+Add a minimal audio stream player in the header or dropdown menu playing dark ambient synthwave / cyberpunk background audio with a custom audio visualizer canvas overlay.
+
+
+
+---
+
+## 3. WebSockets & Real-Time Functionality
+
+* **Real-Time Global Uplink Chat Feed:**
+Transform the `#public-msg-input` area from a static POST form into a real-time WebSocket or Server-Sent Events (SSE) feed. Users visiting `vector-box` can watch transmissions drop live into the terminal stream in real-time.
+
+
+* **Multiplayer Terminal Shell Sessions:**
+Allow users to join shared terminal channels (`join #room_name`) where commands typed by one user broadcast to everyone in the channel.
+
+---
+
+## 4. UI/UX & Customization Features
+
+* **Custom ASCII Art & CRT Shader Controls:**
+* Extend your `#scanline-toggle` to include additional retro display options: **CRT Screen Curvature (Pincushion distortion)**, **Flicker Rate**, or **RGB Bloom / Phosphor Glow Intensity**.
+
+
+
+
+* **Unlockable Badges / Secret Files:**
+Reward visitors who explore the virtual file system (`cat .shadow`, finding hidden directories) with unlockable themes or custom terminal badges stored in local storage or cookies.
