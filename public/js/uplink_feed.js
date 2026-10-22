@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
         timeSpan.textContent = `[${data.created_at || 'LOGGED'}]`;
 
         const textSpan = document.createElement('span');
-        textSpan.style.color = isError ? '#ff3333' : '#00ff66';
+        textSpan.style.color = isError ? '#ff3333' : 'var(--accent-color)';
         textSpan.textContent = data.message;
 
         p.appendChild(timeSpan);
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!text || isSubmitting) return;
 
                 isSubmitting = true;
-                chatInput.disabled = true;
+                // DO NOT set chatInput.disabled = true, as it forces mobile soft keyboards to dismiss
 
                 try {
                     const res = await fetch('api/uplink_send.php', {
@@ -79,7 +79,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (data.success) {
                         chatInput.value = '';
                     } else {
-                        // Display error directly in feed
                         appendMessage({
                             created_at: new Date().toISOString().substring(11, 19),
                             message: `>> SYSTEM_WARNING: ${data.error}`
@@ -91,12 +90,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         message: '>> SYSTEM_ERROR: Network request failed'
                     }, true);
                 } finally {
-                    // Local 1-second cooldown per submission
-                    setTimeout(() => {
-                        isSubmitting = false;
-                        chatInput.disabled = false;
-                        chatInput.focus();
-                    }, 1000);
+                    isSubmitting = false;
+                    chatInput.focus(); // Keeps soft keyboard pinned open on Android Firefox
                 }
             }
         });
