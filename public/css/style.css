@@ -413,6 +413,36 @@ body.scanlines-active::before {
     padding: 15px;
 }
 
+.dual-grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    box-sizing: border-box;
+}
+
+.uplink-feed-panel {
+    padding: 20px;
+}
+
+.feed-box {
+    height: 480px;
+    overflow-y: auto;
+    background: #020304;
+    border-color: rgba(0, 255, 102, 0.2);
+}
+
+#uplink-chat-log {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-bottom: 0;
+    padding-right: 5px;
+    color: #fff;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
 /* Glitch Animation Command Trigger */
 @keyframes glitch-anim {
     0% { transform: translate(0); }
@@ -486,5 +516,14 @@ body.scanlines-active::before {
         left: 10px;
         max-width: none;
         width: auto;
+    }
+
+    .dual-grid-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .feed-box {
+        height: 300px !important;
     }
 }

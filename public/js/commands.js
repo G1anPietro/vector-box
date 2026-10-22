@@ -30,7 +30,7 @@ const systemCommands = [
     "theme matrix", "theme amber", "theme cyberpunk", "theme dracula",
     "whoami", "id", "uptime", "ls", "dir", "cd", "pwd", "mkdir", "touch", "echo", "rm", "find", "grep", "fortune", "quote", "history", "sudo", "decrypt",
     "cat motd.txt", "cat system.log", "cat credits.txt", "ping vector-box.net", "cmatrix",
-    "nuke", "glitch", "clear"
+    "nuke", "glitch", "clear", "syslog"
 ];
 
 // Combined list for ghost text auto-completion
@@ -117,6 +117,7 @@ const commandHandlers = {
         printGuestLog("  whoami / id       : Show active user session details", COLORS.PRIMARY);
         printGuestLog("  uptime            : Print system running time and load", COLORS.PRIMARY);
         printGuestLog("  history           : View session command log", COLORS.PRIMARY);
+        printGuestLog("  syslog            : Inspect system debug & error logs", COLORS.PRIMARY);
         printGuestLog("  sudo <cmd>        : Attempt privileged execution", COLORS.PRIMARY);
         printGuestLog("\n=================== NETWORK & RECON ===================", COLORS.INFO);
         printGuestLog("  ip / scan         : Query network interfaces & open ports", COLORS.PRIMARY);
@@ -523,6 +524,17 @@ const commandHandlers = {
             document.body.style.animation = 'none';
             printGuestLog(">> SIGNAL STABILIZED", COLORS.PRIMARY);
         }, 2000);
+    },
+
+    async syslog(args, printGuestLog) {
+        printGuestLog(">> Fetching system debug log...", COLORS.INFO);
+        try {
+            const res = await fetch('api/get_log.php');
+            const data = await res.text();
+            printGuestLog(data || ">> Log file empty.", COLORS.CYAN);
+        } catch (err) {
+            printGuestLog(">> ERROR: Failed to read debug log.", COLORS.ERROR);
+        }
     }
 };
 
