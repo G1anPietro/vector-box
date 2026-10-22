@@ -14,7 +14,6 @@ if (file_exists('version.php')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Node // Vector-Box</title>
-    <!-- Automatic CSS & Modular JS Cache-Busting -->
     <link rel="stylesheet" href="css/style.css?v=<?php echo APP_VERSION; ?>">
     <script src="js/menu.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/theme.js?v=<?php echo APP_VERSION; ?>"></script>
@@ -30,7 +29,7 @@ if (file_exists('version.php')) {
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // AUTH_REQUIRED</div>
         <div class="menu-container">
-            <button id="menu-toggle-btn" class="nav-btn">// MENU</button>
+            <button id="menu-toggle-btn" class="nav-btn" type="button">// MENU</button>
             
             <div id="dropdown-menu" class="cyber-panel menu-dropdown hidden">
                 <a href="pages/resume.html" class="menu-item btn-dossier">// VIEW DOSSIER</a>
@@ -38,7 +37,7 @@ if (file_exists('version.php')) {
                 <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
                 <a href="pages/hack.html" class="menu-item">// NODE BREACH</a>
                 
-                <button id="menu-login-btn" class="menu-item">// SYSTEM_LOGIN</button>
+                <button id="menu-login-btn" class="menu-item" type="button">// SYSTEM_LOGIN</button>
                 
                 <div class="settings-section">
                     <span class="settings-title">>_ OPTIONS</span>
@@ -88,12 +87,14 @@ if (file_exists('version.php')) {
                             autocorrect="off" 
                             autocapitalize="off" 
                             spellcheck="false" 
+                            data-lpignore="true"
+                            data-form-type="other"
                             name="terminal_command_input">
                     </div>
                 </div>
             </div>
 
-            <!-- RIGHT BOX: REAL-TIME GLOBAL UPLINK CHAT FEED (SOLO FEED / SQLITE) -->
+            <!-- RIGHT BOX: REAL-TIME GLOBAL UPLINK CHAT FEED -->
             <div class="cyber-panel public-panel uplink-feed-panel">
                 <div class="terminal-box auth-terminal" id="feed-term-box">
                     <div id="uplink-chat-log">
@@ -107,20 +108,34 @@ if (file_exists('version.php')) {
                             class="terminal-input" 
                             placeholder="Type message to feed..." 
                             autocomplete="off" 
-                            spellcheck="false">
+                            autocorrect="off" 
+                            autocapitalize="off" 
+                            spellcheck="false"
+                            data-lpignore="true"
+                            data-form-type="other"
+                            name="chat_feed_input">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- BOTTOM BOX: PUBLIC UPLINK MESSAGE TRANSMISSION (SOLO NTFY.SH) -->
+        <!-- BOTTOM BOX: PUBLIC UPLINK TERMINAL (NTFY.SH) -->
         <div class="cyber-panel public-panel uplink-panel">
-            <h2 class="uplink-title">>_ MESSAGE_BOX</h2>
+            <h2 class="uplink-title">>_ PUBLIC_UPLINK_TERMINAL</h2>
             <p class="uplink-desc">Leave an encrypted transmission for the system administrator. Spamming triggers network isolation.</p>
             
-            <textarea id="public-msg-input" class="uplink-textarea" placeholder="Enter transmission data..."></textarea>
+            <textarea id="public-msg-input" 
+                class="uplink-textarea" 
+                placeholder="Enter transmission data..." 
+                autocomplete="off" 
+                autocorrect="off" 
+                autocapitalize="off" 
+                spellcheck="false"
+                data-lpignore="true"
+                data-form-type="other"
+                name="public_transmission_text"></textarea>
             
-            <button id="public-send-btn" class="uplink-btn">>_ TRANSMIT MESSAGE</button>
+            <button id="public-send-btn" type="button" class="uplink-btn">>_ TRANSMIT MESSAGE</button>
             <div id="public-msg-status" class="uplink-status"></div>
         </div>
     </main>
@@ -131,16 +146,16 @@ if (file_exists('version.php')) {
             
             <div class="terminal-input-line auth-input-group">
                 <span class="prompt-symbol">user:</span>
-                <input type="text" id="auth-user" class="terminal-input" placeholder="admin" autocomplete="off">
+                <input type="text" id="auth-user" class="terminal-input" placeholder="admin" autocomplete="username">
             </div>
 
             <div class="terminal-input-line">
                 <span class="prompt-symbol">pass:</span>
-                <input type="password" id="auth-password" class="terminal-input" autocomplete="off">
+                <input type="password" id="auth-password" class="terminal-input" autocomplete="current-password">
             </div>
             
             <p id="login-err" class="err-text"></p>
-            <button id="submit-login-btn" class="action-btn execution-btn">AUTHENTICATE</button>
+            <button id="submit-login-btn" type="button" class="action-btn execution-btn">AUTHENTICATE</button>
         </div>
     </div>
 
@@ -152,8 +167,8 @@ if (file_exists('version.php')) {
                 This node uses local cookies to preserve system preferences (Matrix colors, theme presets). No telemetry tracking or third-party cookies are set.
             </p>
             <div class="btn-group" style="margin-top: 10px;">
-                <button id="cookie-accept-btn" class="nav-btn" style="padding: 4px 12px; font-size: 0.75rem;">ACCEPT</button>
-                <button id="cookie-decline-btn" class="nav-btn" style="border-color: #ff3333; color: #ff3333; padding: 4px 12px; font-size: 0.75rem;">DECLINE</button>
+                <button id="cookie-accept-btn" type="button" class="nav-btn" style="padding: 4px 12px; font-size: 0.75rem;">ACCEPT</button>
+                <button id="cookie-decline-btn" type="button" class="nav-btn" style="border-color: #ff3333; color: #ff3333; padding: 4px 12px; font-size: 0.75rem;">DECLINE</button>
             </div>
         </div>
     </div>
