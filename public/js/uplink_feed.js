@@ -8,8 +8,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let lastSeenId = 0;
     let eventSource = null;
+    let isSubmitting = false;
 
-    const appendMessage = (data) => {
+    const scrollToBottom = () => {
+        requestAnimationFrame(() => {
+            if (chatLog) chatLog.scrollTop = chatLog.scrollHeight;
+            if (feedTermBox) feedTermBox.scrollTop = feedTermBox.scrollHeight;
+        });
+    };
+
+    const appendMessage = (data, isError = false) => {
         const p = document.createElement('p');
         p.className = 'term-white';
         p.style.cssText = 'margin: 2px 0; word-break: break-all; line-height: 1.3;';
@@ -19,23 +27,19 @@ document.addEventListener("DOMContentLoaded", () => {
         timeSpan.textContent = `[${data.created_at || 'LOGGED'}]`;
 
         const textSpan = document.createElement('span');
-        textSpan.style.color = '#00ff66';
+        textSpan.style.color = isError ? '#ff3333' : '#00ff66';
         textSpan.textContent = data.message;
 
         p.appendChild(timeSpan);
         p.appendChild(textSpan);
         chatLog.appendChild(p);
 
-        if (feedTermBox) {
-            feedTermBox.scrollTop = feedTermBox.scrollHeight;
-        }
+        scrollToBottom();
     };
 
     const initSSE = () => {
         if (eventSource) eventSource.close();
-
-        const streamUrl = `api/uplink_stream.php?last_id=${lastSeenId}`;
-        eventSource = new EventSource(streamUrl);
+        eventSource = new EventSource(`api/uplink_stream.php?last_id=${lastSeenId}`);
 
         eventSource.onmessage = (event) => {
             try {
@@ -44,26 +48,24 @@ document.addEventListener("DOMContentLoaded", () => {
                     lastSeenId = data.id;
                     appendMessage(data);
                 }
-            } catch (err) {
-                console.warn("Payload SSE non valido:", event.data);
-            }
+            } catch (err) {}
         };
 
-        eventSource.onerror = (err) => {
+        eventSource.onerror = () => {
             eventSource.close();
             setTimeout(initSSE, 3000);
         };
     };
 
-    // Invio da input del feed -> salva su SQLite per lo stream live
     if (chatInput) {
         chatInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const text = chatInput.value.trim();
-                if (!text) return;
+                if (!text || isSubmitting) return;
 
-                chatInput.value = '';
+                isSubmitting = true;
+                chatInput.disabled = true;
 
                 try {
                     const res = await fetch('api/uplink_send.php', {
@@ -71,12 +73,30 @@ document.addEventListener("DOMContentLoaded", () => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: text })
                     });
+                    
                     const data = await res.json();
-                    if (!data.success) {
-                        console.error("Errore nell'invio al feed:", data.error);
+                    
+                    if (data.success) {
+                        chatInput.value = '';
+                    } else {
+                        // Display error directly in feed
+                        appendMessage({
+                            created_at: new Date().toISOString().substring(11, 19),
+                            message: `>> SYSTEM_WARNING: ${data.error}`
+                        }, true);
                     }
                 } catch (err) {
-                    console.error("Impossibile inviare al feed:", err);
+                    appendMessage({
+                        created_at: new Date().toISOString().substring(11, 19),
+                        message: '>> SYSTEM_ERROR: Network request failed'
+                    }, true);
+                } finally {
+                    // Local 1-second cooldown per submission
+                    setTimeout(() => {
+                        isSubmitting = false;
+                        chatInput.disabled = false;
+                        chatInput.focus();
+                    }, 1000);
                 }
             }
         });
