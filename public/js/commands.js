@@ -1,28 +1,5 @@
 // public/js/commands.js
 
-// Existing Minecraft Commands
-const mcCommands = [
-    // Vanilla
-    "time set day", "time set night", "time set noon", "time set midnight",
-    "weather clear", "weather rain", "weather thunder",
-    "gamemode creative", "gamemode survival", "gamemode spectator",
-    "op", "deop", "stop", "list", "say", "kick", "ban", "pardon",
-    "whitelist add", "whitelist remove", "whitelist on", "whitelist off",
-    
-    // CoreProtect
-    "co i", "co l", "co rollback", "co restore", "co purge",
-    
-    // Spark
-    "spark profiler start", "spark profiler stop", "spark health", "spark tps", "spark ping", "spark gc",
-    
-    // Chunky
-    "chunky start", "chunky pause", "chunky continue", "chunky cancel", "chunky radius", "chunky center",
-    
-    // Geyser / Floodgate
-    "geyser reload", "geyser dump", "geyser connections", "geyser version",
-    "fwhitelist add", "fwhitelist remove"
-];
-
 // Core Terminal Commands
 const systemCommands = [
     "help", "ip", "scan", "nmap", "traceroute", "status", "hack", "ascii",
@@ -34,7 +11,7 @@ const systemCommands = [
 ];
 
 // Combined list for ghost text auto-completion
-const availableCommands = [...systemCommands, ...mcCommands];
+const availableCommands = [...systemCommands];
 
 // Color Palette Constants
 const COLORS = {
@@ -470,8 +447,8 @@ const commandHandlers = {
     scan(args, printGuestLog) {
         printGuestLog(">> INITIATING SUBNET RECONNAISSANCE...", COLORS.INFO);
         setTimeout(() => printGuestLog(">> PORT 22 [SSH]: OPEN / ENCRYPTED", COLORS.PRIMARY), 400);
-        setTimeout(() => printGuestLog(">> PORT 80 [HTTP]: OPEN / NGINX_APACHE", COLORS.PRIMARY), 800);
-        setTimeout(() => printGuestLog(">> PORT 25565 [MINECRAFT]: ECOSYSTEM_ONLINE", COLORS.PRIMARY), 1200);
+        setTimeout(() => printGuestLog(">> PORT 80 [HTTP]: OPEN / NGINX", COLORS.PRIMARY), 800);
+        setTimeout(() => printGuestLog(">> PORT 443 [HTTPS]: OPEN / SSL", COLORS.PRIMARY), 1200);
         setTimeout(() => printGuestLog(">> SCAN COMPLETE. 0 VULNERABILITIES FOUND.", COLORS.INFO), 1600);
     },
 

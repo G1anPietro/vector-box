@@ -37,7 +37,7 @@ if (file_exists('version.php')) {
                 <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
                 <a href="pages/hack.html" class="menu-item">// NODE BREACH</a>
                 
-                <button id="menu-login-btn" class="menu-item" type="button">// SYSTEM_LOGIN</button>
+                <button id="menu-login-btn" class="menu-item" type="button">// USER_ACCOUNT</button>
                 
                 <div class="settings-section">
                     <span class="settings-title">>_ OPTIONS</span>
@@ -87,8 +87,6 @@ if (file_exists('version.php')) {
                             autocorrect="off" 
                             autocapitalize="off" 
                             spellcheck="false" 
-                            data-lpignore="true"
-                            data-form-type="other"
                             name="terminal_command_input">
                     </div>
                 </div>
@@ -111,8 +109,6 @@ if (file_exists('version.php')) {
                             autocorrect="off" 
                             autocapitalize="off" 
                             spellcheck="false"
-                            data-lpignore="true"
-                            data-form-type="other"
                             name="chat_feed_input">
                     </div>
                 </div>
@@ -131,8 +127,6 @@ if (file_exists('version.php')) {
                 autocorrect="off" 
                 autocapitalize="off" 
                 spellcheck="false"
-                data-lpignore="true"
-                data-form-type="other"
                 name="public_transmission_text"></textarea>
             
             <button id="public-send-btn" type="button" class="uplink-btn">>_ TRANSMIT MESSAGE</button>
@@ -142,16 +136,16 @@ if (file_exists('version.php')) {
 
     <div id="login-modal" class="modal hidden">
         <div class="cyber-panel modal-content">
-            <h2>SYSTEM_LOGIN</h2>
+            <h2>ACCOUNT_LOGIN</h2>
             
             <div class="terminal-input-line auth-input-group">
                 <span class="prompt-symbol">user:</span>
-                <input type="text" id="auth-user" class="terminal-input" placeholder="admin" autocomplete="username">
+                <input type="text" id="auth-user" class="terminal-input" placeholder="username" autocomplete="username">
             </div>
 
             <div class="terminal-input-line">
                 <span class="prompt-symbol">pass:</span>
-                <input type="password" id="auth-password" class="terminal-input" autocomplete="current-password">
+                <input type="password" id="auth-password" class="terminal-input" placeholder="••••••••" autocomplete="current-password">
             </div>
             
             <p id="login-err" class="err-text"></p>
