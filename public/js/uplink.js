@@ -29,9 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
 
             if (data.success) {
-                setStatus('// TRANSMISSION DELIVERED TO NTFY', '#00ff66');
+                setStatus('// TRANSMISSION DELIVERED TO NTFY', 'var(--accent-color)');
                 publicMsgInput.value = '';
-                publicMsgInput.blur(); // Unfocus text area on mobile
+                // Keeping focus on the textarea prevents the keyboard from collapsing
+                publicMsgInput.focus();
             } else {
                 setStatus(`// ERROR: ${data.error || 'Failed'}`, '#ff3333');
             }
@@ -45,19 +46,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // Mobile touch event handler to prevent focus tab / credential manager popups
-    const handleTrigger = (e) => {
+    // Prevent default touch focus shift on button tap so the keyboard stays stable
+    publicSendBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
-        e.stopPropagation();
         transmitNtfyMessage();
-    };
-
-    publicSendBtn.addEventListener('touchend', handleTrigger, { passive: false });
-    publicSendBtn.addEventListener('click', (e) => {
-        // Prevent duplicate trigger if touchend already executed
-        if (e.detail !== 0) {
-            transmitNtfyMessage();
-        }
     });
 
     publicMsgInput.addEventListener('keydown', (e) => {
