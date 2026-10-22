@@ -1,4 +1,4 @@
-// public/commands.js
+// public/js/commands.js
 
 // Existing Minecraft Commands
 const mcCommands = [
@@ -27,7 +27,7 @@ const mcCommands = [
 const systemCommands = [
     "help", "ip", "scan", "nmap", "traceroute", "status", "hack", "ascii",
     "matrix red", "matrix cyan", "matrix green", "matrix blue", "matrix purple", "matrix gold", "matrix amber",
-    "theme matrix", "theme amber", "theme cyberpunk", "theme dracula",
+    "theme cyan", "theme matrix", "theme amber", "theme cyberpunk", "theme dracula", "theme synthwave", "theme nord", "theme monochrome", "theme blood",
     "whoami", "id", "uptime", "ls", "dir", "cd", "pwd", "mkdir", "touch", "echo", "rm", "find", "grep", "fortune", "quote", "history", "sudo", "decrypt",
     "cat motd.txt", "cat system.log", "cat credits.txt", "ping vector-box.net", "cmatrix",
     "nuke", "glitch", "clear", "syslog"
@@ -38,9 +38,9 @@ const availableCommands = [...systemCommands, ...mcCommands];
 
 // Color Palette Constants
 const COLORS = {
-    PRIMARY: "#00ff66",
-    INFO: "#8ab4f8",
-    CYAN: "#00ffff",
+    PRIMARY: "#00f3ff",
+    INFO: "#70f8ff",
+    CYAN: "#00f3ff",
     WARNING: "#ffaa00",
     ERROR: "#ff3333",
     WHITE: "#ffffff",
@@ -91,14 +91,6 @@ function getCurrentDir() {
 
 const getPromptText = () => `guest@vector-box:${currentPath.join('/')}$`;
 
-function updateTheme(accent, border, matrixColor, themeName) {
-    const root = document.documentElement;
-    root.style.setProperty('--accent-color', accent);
-    root.style.setProperty('--border-color', border);
-    window.matrixColor = matrixColor;
-    if (window.setSystemCookie) window.setSystemCookie("selected_theme", themeName);
-}
-
 // --- Command Handlers ---
 const commandHandlers = {
     help(args, printGuestLog) {
@@ -128,7 +120,7 @@ const commandHandlers = {
         printGuestLog("  decrypt [hash]    : Initiate brute-force sequence", COLORS.PRIMARY);
         printGuestLog("\n=================== VISUALS & THEMES ==================", COLORS.INFO);
         printGuestLog("  ascii [text]      : Render custom ASCII banner", COLORS.PRIMARY);
-        printGuestLog("  theme <preset>    : Switch UI theme (matrix | amber | cyberpunk | dracula)", COLORS.PRIMARY);
+        printGuestLog("  theme <preset>    : Switch UI theme (cyan|matrix|amber|cyberpunk|dracula|synthwave|nord|monochrome|blood)", COLORS.PRIMARY);
         printGuestLog("  matrix <color|#>  : Change rain color (red|cyan|green|blue|purple|gold|amber|#HEX)", COLORS.PRIMARY);
         printGuestLog("  cmatrix           : Trigger matrix rain override", COLORS.PRIMARY);
         printGuestLog("  nuke / glitch     : Induce screen anomaly effects", COLORS.PRIMARY);
@@ -338,25 +330,12 @@ const commandHandlers = {
     theme(args, printGuestLog) {
         const themeArg = args[0]?.toLowerCase();
         
-        switch (themeArg) {
-            case 'amber':
-                updateTheme(COLORS.AMBER, 'rgba(255, 176, 0, 0.3)', COLORS.AMBER, 'amber');
-                printGuestLog(">> THEME APPLIED: AMBER IBM CRT", COLORS.AMBER);
-                break;
-            case 'cyberpunk':
-                updateTheme(COLORS.CYBERPUNK, 'rgba(0, 243, 255, 0.4)', '#00f3ff', 'cyberpunk');
-                printGuestLog(">> THEME APPLIED: CYBERPUNK NEON", COLORS.CYBERPUNK);
-                break;
-            case 'dracula':
-                updateTheme(COLORS.DRACULA, 'rgba(189, 147, 249, 0.3)', COLORS.DRACULA, 'dracula');
-                printGuestLog(">> THEME APPLIED: DRACULA PURPLE", COLORS.DRACULA);
-                break;
-            case 'matrix':
-                updateTheme(COLORS.PRIMARY, 'rgba(0, 255, 102, 0.25)', COLORS.PRIMARY, 'matrix');
-                printGuestLog(">> THEME APPLIED: CLASSIC MATRIX GREEN", COLORS.PRIMARY);
-                break;
-            default:
-                printGuestLog(">> INVALID THEME. Options: matrix | amber | cyberpunk | dracula", COLORS.ERROR);
+        if (window.applySystemTheme && window.THEME_PRESETS && window.THEME_PRESETS[themeArg]) {
+            window.applySystemTheme(themeArg);
+            if (window.setSystemCookie) window.setSystemCookie("selected_theme", themeArg);
+            printGuestLog(`>> THEME APPLIED: ${themeArg.toUpperCase()}`, window.THEME_PRESETS[themeArg].accent);
+        } else {
+            printGuestLog(">> INVALID THEME. Options: cyan | matrix | amber | cyberpunk | dracula | synthwave | nord | monochrome | blood", COLORS.ERROR);
         }
     },
 
