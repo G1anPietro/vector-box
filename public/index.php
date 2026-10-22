@@ -22,6 +22,7 @@ if (file_exists('version.php')) {
     <script src="js/terminal.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/commands.js?v=<?php echo APP_VERSION; ?>"></script>
     <script src="js/uplink.js?v=<?php echo APP_VERSION; ?>"></script>
+    <script src="js/uplink_feed.js?v=<?php echo APP_VERSION; ?>"></script>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -68,31 +69,53 @@ if (file_exists('version.php')) {
     </header>
 
     <main class="center-container">
-        <!-- TOP BOX: INTERACTIVE SHELL TERMINAL -->
-        <div class="cyber-panel public-panel auth-panel">
-            <div class="terminal-box auth-terminal" id="guest-term-box">
-                <div id="guest-term-log">
-                    <p class="term-accent">>_ public_node initialized...</p>
-                    <p class="term-muted">>_ establishing secure handshake...</p>
-                    <p class="term-white">>_ connection stable. Type 'help' for commands.</p>
+        <!-- TOP DUAL GRID: INTERACTIVE SHELL TERMINAL + LIVE CHAT FEED -->
+        <div class="dual-grid-container">
+            <!-- LEFT BOX: INTERACTIVE SHELL TERMINAL -->
+            <div class="cyber-panel public-panel auth-panel">
+                <div class="terminal-box auth-terminal" id="guest-term-box">
+                    <div id="guest-term-log">
+                        <p class="term-accent">>_ public_node initialized...</p>
+                        <p class="term-muted">>_ establishing secure handshake...</p>
+                        <p class="term-white">>_ connection stable. Type 'help' for commands.</p>
+                    </div>
+                    <div class="terminal-input-line clean-input-line">
+                        <span class="prompt-symbol">guest@vector-box:~$</span>
+                        <input type="text" 
+                            id="guest-cmd-input" 
+                            class="terminal-input" 
+                            autocomplete="off" 
+                            autocorrect="off" 
+                            autocapitalize="off" 
+                            spellcheck="false" 
+                            name="terminal_command_input">
+                    </div>
                 </div>
-                <div class="terminal-input-line clean-input-line">
-                    <span class="prompt-symbol">guest@vector-box:~$</span>
-                    <input type="text" 
-                        id="guest-cmd-input" 
-                        class="terminal-input" 
-                        autocomplete="off" 
-                        autocorrect="off" 
-                        autocapitalize="off" 
-                        spellcheck="false" 
-                        name="terminal_command_input">
+            </div>
+
+            <!-- RIGHT BOX: REAL-TIME GLOBAL UPLINK CHAT FEED (SOLO FEED / SQLITE) -->
+            <div class="cyber-panel public-panel uplink-feed-panel">
+                <div class="terminal-box auth-terminal" id="feed-term-box">
+                    <div id="uplink-chat-log">
+                        <p class="term-accent">>_ live_feed stream connected...</p>
+                        <p class="term-muted">>_ listening for broadcast packets...</p>
+                    </div>
+                    <div class="terminal-input-line clean-input-line">
+                        <span class="prompt-symbol">chat@vector-box:~$</span>
+                        <input type="text" 
+                            id="chat-feed-input" 
+                            class="terminal-input" 
+                            placeholder="Type message to feed..." 
+                            autocomplete="off" 
+                            spellcheck="false">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- BOTTOM BOX: PUBLIC UPLINK MESSAGE TRANSMISSION -->
+        <!-- BOTTOM BOX: PUBLIC UPLINK MESSAGE TRANSMISSION (SOLO NTFY.SH) -->
         <div class="cyber-panel public-panel uplink-panel">
-            <h2 class="uplink-title">>_ PUBLIC_UPLINK_TERMINAL</h2>
+            <h2 class="uplink-title">>_ MESSAGE_BOX</h2>
             <p class="uplink-desc">Leave an encrypted transmission for the system administrator. Spamming triggers network isolation.</p>
             
             <textarea id="public-msg-input" class="uplink-textarea" placeholder="Enter transmission data..."></textarea>

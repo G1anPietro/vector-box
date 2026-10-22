@@ -1,4 +1,4 @@
-// public/uplink.js
+// public/js/uplink.js
 document.addEventListener("DOMContentLoaded", () => {
     const publicSendBtn = document.getElementById('public-send-btn');
     const publicMsgInput = document.getElementById('public-msg-input');
@@ -6,22 +6,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!publicSendBtn || !publicMsgInput || !publicMsgStatus) return;
 
-    // Helper: Render status message safely (Anti-XSS)
     const setStatus = (message, color) => {
         publicMsgStatus.textContent = message;
         publicMsgStatus.style.color = color;
     };
 
-    const transmitMessage = async () => {
+    const transmitNtfyMessage = async () => {
         const text = publicMsgInput.value.trim();
         if (!text || publicSendBtn.disabled) return;
 
-        // Lock button during transmission
         publicSendBtn.disabled = true;
         publicSendBtn.textContent = "TRANSMITTING...";
         setStatus('', '');
 
         try {
+            // Invia esclusivamente a command.php per ntfy.sh
             const res = await fetch('api/command.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -31,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
 
             if (data.success) {
-                setStatus('// TRANSMISSION DELIVERED', '#00ff66');
+                setStatus('// TRANSMISSION DELIVERED TO NTFY', '#00ff66');
                 publicMsgInput.value = '';
             } else {
                 setStatus(`// ERROR: ${data.error || 'Failed'}`, '#ff3333');
@@ -39,21 +38,19 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             setStatus('// UPLINK FAILURE: TARGET UNREACHABLE', '#ff3333');
         } finally {
-            // Re-enable transmit button after timeout delay
             setTimeout(() => {
                 publicSendBtn.textContent = ">_ TRANSMIT MESSAGE";
                 publicSendBtn.disabled = false;
-            }, 3000);
+            }, 1500);
         }
     };
 
-    // Event Listeners
-    publicSendBtn.addEventListener('click', transmitMessage);
+    publicSendBtn.addEventListener('click', transmitNtfyMessage);
 
     publicMsgInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            transmitMessage();
+            transmitNtfyMessage();
         }
     });
 });
