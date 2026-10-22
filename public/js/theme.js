@@ -26,8 +26,9 @@
         'blood':      { accent: '#ff3333', border: 'rgba(255, 51, 51, 0.4)',   muted: '#cc0000', prompt: '#ff6666', matrix: '#ff3333' }
     };
 
+    // Append inside applyTheme in public/js/theme.js
     function applyTheme(themeName, customMatrixColor) {
-        const preset = THEME_PRESETS[themeName] || THEME_PRESETS['matrix'];
+        const preset = THEME_PRESETS[themeName] || THEME_PRESETS['cyan'];
         const root = document.documentElement;
 
         root.style.setProperty('--accent-color', preset.accent);
@@ -36,6 +37,13 @@
         root.style.setProperty('--prompt-color', preset.prompt);
 
         window.matrixColor = customMatrixColor || preset.matrix;
+
+        // Save to Database if user is authenticated
+        fetch('api/save_theme.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme: themeName })
+        }).catch(() => {});
     }
 
     window.THEME_PRESETS = THEME_PRESETS;

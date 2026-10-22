@@ -88,7 +88,7 @@ Add a minimal audio stream player in the header or dropdown menu playing dark am
 ---
 
 ## 3. WebSockets & Real-Time Functionality
-
+FATTO
 * **Real-Time Global Uplink Chat Feed:**
 Transform the `#public-msg-input` area from a static POST form into a real-time WebSocket or Server-Sent Events (SSE) feed. Users visiting `vector-box` can watch transmissions drop live into the terminal stream in real-time.
 
@@ -108,3 +108,7 @@ Allow users to join shared terminal channels (`join #room_name`) where commands 
 
 * **Unlockable Badges / Secret Files:**
 Reward visitors who explore the virtual file system (`cat .shadow`, finding hidden directories) with unlockable themes or custom terminal badges stored in local storage or cookies.
+
+
+* **News Board:**
+news board with the latest updatest, maybe put the commits commets in it and the date 
