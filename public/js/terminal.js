@@ -12,6 +12,32 @@ document.addEventListener("DOMContentLoaded", () => {
     // FIGlet Font Parser Cache
     let figletFontData = null;
 
+    // Universal Scroll-to-Bottom Engine
+    const scrollToBottom = () => {
+        const containers = [guestTermLog, termBox].filter(Boolean);
+        
+        containers.forEach(el => {
+            requestAnimationFrame(() => {
+                el.scrollTop = el.scrollHeight;
+            });
+        });
+
+        // Timeout fallthrough to handle multi-line DOM reflows (e.g., ascii, help)
+        setTimeout(() => {
+            containers.forEach(el => {
+                el.scrollTop = el.scrollHeight;
+            });
+        }, 20);
+    };
+
+    // Auto-scroll on content height changes (covers async commands, ascii banners, etc.)
+    if (guestTermLog && typeof ResizeObserver !== 'undefined') {
+        const logObserver = new ResizeObserver(() => {
+            scrollToBottom();
+        });
+        logObserver.observe(guestTermLog);
+    }
+
     // Load Local FIGlet Font
     (async function loadFont() {
         try {
@@ -65,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return outputLines.join("\n");
     }
 
-    // High-performance DOM logger (Avoids full innerHTML repaints)
+    // High-performance DOM logger
     const printGuestLog = (text, color = "#00ff66") => {
         if (!guestTermLog) return;
 
@@ -73,18 +99,14 @@ document.addEventListener("DOMContentLoaded", () => {
         p.className = 'term-white';
         p.style.cssText = `margin: 2px 0; color: ${color}; white-space: pre-wrap;`;
         
-        // If string contains HTML structures (like <pre> or <span> tags), inject via innerHTML; otherwise use safe textContent
-        if (text.includes('<') && text.includes('>')) {
+        if (typeof text === 'string' && text.includes('<') && text.includes('>')) {
             p.innerHTML = text;
         } else {
             p.textContent = text;
         }
 
         guestTermLog.appendChild(p);
-
-        if (termBox) {
-            termBox.scrollTop = termBox.scrollHeight;
-        }
+        scrollToBottom();
     };
 
     if (!guestCmdInput) return;
@@ -113,10 +135,11 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const match = typeof availableCommands !== 'undefined' 
-            ? availableCommands.find(cmd => cmd.startsWith(val)) 
-            : null;
+        const commandsList = typeof getAvailableCommands === 'function' 
+            ? getAvailableCommands() 
+            : (typeof availableCommands !== 'undefined' ? availableCommands : []);
 
+        const match = commandsList.find(cmd => cmd.startsWith(val));
         ghostText.textContent = match ? guestCmdInput.value + match.substring(val.length) : '';
     });
 
@@ -134,6 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
         printGuestLog(`${typeof getPromptText === 'function' ? getPromptText() : 'guest@vector-box:$'} ${rawVal}`, "#8ab4f8");
         guestCmdInput.value = '';
         if (ghostText) ghostText.textContent = '';
+        scrollToBottom();
 
         if (cmd === 'clear') {
             if (guestTermLog) guestTermLog.innerHTML = '';
@@ -145,9 +169,29 @@ document.addEventListener("DOMContentLoaded", () => {
                     printGuestLog(` ${index + 1}  ${item}`, "#8ab4f8");
                 });
             }
+        } else if (rawVal.startsWith('/')) {
+            try {
+                const res = await fetch('api/uplink_send.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': window.SESSION_STATE?.csrfToken || ''
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ message: rawVal })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    printGuestLog(`>> ${data.error}`, "#ff3333");
+                }
+            } catch (err) {
+                printGuestLog(">> ERROR: Failed to execute terminal command", "#ff3333");
+            }
         } else if (typeof handleCommand === 'function') {
             await handleCommand(rawVal, printGuestLog, renderNativeAscii);
         }
+
+        scrollToBottom();
     };
 
     // Keyboard Event Handling
@@ -189,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Mobile & UX Improvements
+    // Focus & Click handlers
     if (termBox) {
         termBox.addEventListener('click', (e) => {
             if (e.target !== guestCmdInput) {
@@ -198,9 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         guestCmdInput.addEventListener('focus', () => {
-            setTimeout(() => {
-                termBox.scrollTop = termBox.scrollHeight;
-            }, 300);
+            scrollToBottom();
         });
     }
 });

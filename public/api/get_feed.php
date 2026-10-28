@@ -11,40 +11,37 @@ try {
     $db = getDbConnection();
 
     if ($beforeId > 0) {
-        // Fetch older messages prior to the highest/oldest loaded ID
-        $stmt = $db->prepare("SELECT id, username, message, created_at 
+        $stmt =$db->prepare("SELECT id, username, message, created_at 
                               FROM transmissions 
                               WHERE id < :before_id AND (is_deleted = 0 OR is_deleted IS NULL) 
                               ORDER BY id DESC LIMIT :lim");
-        $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
+        $stmt->bindValue(':before_id',$beforeId, PDO::PARAM_INT);
     } else {
-        // Initial load: Fetch the latest 25 messages
-        $stmt = $db->prepare("SELECT id, username, message, created_at 
+        $stmt =$db->prepare("SELECT id, username, message, created_at 
                               FROM transmissions 
                               WHERE (is_deleted = 0 OR is_deleted IS NULL) 
                               ORDER BY id DESC LIMIT :lim");
     }
 
-    $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
-    $stmt->execute();
-    $rows = $stmt->fetchAll();
+    $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);$stmt->execute();
+    $rows =$stmt->fetchAll();
 
-    // Reverse array so messages render chronologically (oldest -> newest)
     $messages = array_reverse($rows);
 
-    $formatted = array_map(function($row) {
+    $formatted = array_map(function($row) {$timestamp = isset($row['created_at']) ?$row['created_at'] : date('Y-m-d H:i:s');
         return [
             'id' => (int)$row['id'],
-            'username' => !empty($row['username']) ? $row['username'] : 'guest',
+            'username' => !empty($row['username']) ?$row['username'] : 'guest',
             'message' => $row['message'],
-            'created_at' => isset($row['created_at']) ? substr($row['created_at'], 11, 8) : date('H:i:s')
+            'date' => substr($timestamp, 0, 10), // YYYY-MM-DD
+            'created_at' => substr($timestamp, 11, 8) // HH:MM:SS
         ];
     }, $messages);
 
     echo json_encode([
         'success' => true,
         'messages' => $formatted,
-        'has_more' => count($rows) === $limit
+        'has_more' => count($rows) ===$limit
     ]);
 
 } catch (Exception $e) {
