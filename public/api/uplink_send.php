@@ -3,10 +3,8 @@
 require_once __DIR__ . '/database.php';
 
 initSession();
-
 header('Content-Type: application/json');
 
-// CSRF Verification for authenticated users
 if (!empty($_SESSION['user_id'])) {
     $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
     $sessionToken = $_SESSION['csrf_token'] ?? '';
@@ -21,6 +19,7 @@ if (!empty($_SESSION['user_id'])) {
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true) ?? [];
 $message = trim($input['message'] ?? '');
+$roomId = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower(trim($input['room_id'] ?? 'general')));
 
 if (empty($message)) {
     echo json_encode(['success' => false, 'error' => 'Message cannot be empty']);
@@ -35,7 +34,6 @@ $isAdmin = !empty($_SESSION['is_admin']);
 try {
     $db = getDbConnection();
 
-    // 1. Check if sending user is currently banned or timed out
     if ($userId) {
         $stmt = $db->prepare("SELECT is_banned, banned_until FROM accounts WHERE id = :id");
         $stmt->execute([':id' => $userId]);
@@ -60,7 +58,7 @@ try {
         }
     }
 
-    // 2. Intercept Terminal Slash Commands
+    // Intercept Terminal Slash Commands
     if (strpos($message, '/') === 0) {
         $parts = explode(' ', $message);
         $cmd = strtolower($parts[0]);
@@ -125,20 +123,31 @@ try {
             exit();
         }
 
-        echo json_encode(['success' => false, 'error' => "Unknown command '{$cmd}'. Type /help for assistance"]);
+        echo json_encode(['success' => false, 'error' => "Unknown command '{$cmd}'."]);
         exit();
     }
 
-    // 3. Normal Message Posting
-    $stmt = $db->prepare("INSERT INTO transmissions (user_id, username, message, sender_ip) VALUES (:uid, :uname, :msg, :ip)");
+    // Verify room access permissions
+    $stmt = $db->prepare("SELECT is_private FROM rooms WHERE id = :id");
+    $stmt->execute([':id' => $roomId]);
+    $room = $stmt->fetch();
+
+    if ($room && (int)$room['is_private'] === 1 && !$isAdmin) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => "ACCESS RESTRICTED: Room '#{$roomId}' requires admin authorization."]);
+        exit();
+    }
+
+    $stmt = $db->prepare("INSERT INTO transmissions (room_id, user_id, username, message, sender_ip) VALUES (:rid, :uid, :uname, :msg, :ip)");
     $stmt->execute([
+        ':rid' => $roomId,
         ':uid' => $userId,
         ':uname' => $username,
         ':msg' => $message,
         ':ip' => $clientIp
     ]);
 
-    echo json_encode(['success' => true, 'username' => $username]);
+    echo json_encode(['success' => true, 'username' => $username, 'room_id' => $roomId]);
 
 } catch (Exception $e) {
     http_response_code(500);

@@ -5,9 +5,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const guestTermLog = document.getElementById('guest-term-log');
     const termBox = document.getElementById('guest-term-box');
 
-    // Command History Storage
+    // Command History & Autocomplete Cycling State
     const cmdHistory = [];
     let historyIndex = -1;
+    let tabMatchList = [];
+    let tabMatchIndex = -1;
+    let lastTabPrefix = "";
 
     // FIGlet Font Parser Cache
     let figletFontData = null;
@@ -22,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
 
-        // Timeout fallthrough to handle multi-line DOM reflows (e.g., ascii, help)
         setTimeout(() => {
             containers.forEach(el => {
                 el.scrollTop = el.scrollHeight;
@@ -30,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 20);
     };
 
-    // Auto-scroll on content height changes (covers async commands, ascii banners, etc.)
+    // Auto-scroll on content height changes
     if (guestTermLog && typeof ResizeObserver !== 'undefined') {
         const logObserver = new ResizeObserver(() => {
             scrollToBottom();
@@ -127,20 +129,109 @@ document.addEventListener("DOMContentLoaded", () => {
         guestCmdInput.style.background = 'transparent';
     }
 
-    // Dynamic Autocomplete Matcher
-    guestCmdInput.addEventListener('input', () => {
-        const val = guestCmdInput.value.toLowerCase();
+    // Advanced Autocomplete Engine (Commands, Paths, Arguments, Sub-commands, Channels)
+    const getContextCompletions = (inputVal) => {
+        const parts = inputVal.split(/\s+/);
+
+        // 1. Root Command Level Completion
+        if (parts.length === 1) {
+            const val = parts[0].toLowerCase();
+            const commandsList = typeof getAvailableCommands === 'function' 
+                ? getAvailableCommands() 
+                : (typeof availableCommands !== 'undefined' ? availableCommands : []);
+            
+            return commandsList
+                .filter(cmd => cmd.toLowerCase().startsWith(val))
+                .map(cmd => cmd);
+        }
+
+        // 2. Multi-word Command / Argument Level Completion
+        const cmdName = parts[0].toLowerCase();
+        const argPrefix = parts[parts.length - 1].toLowerCase();
+        const pathCommands = ['cd', 'cat', 'nano', 'rm', 'grep', 'touch'];
+
+        // Path / File Name Autocomplete
+        if (pathCommands.includes(cmdName)) {
+            let entries = [];
+            if (typeof getCurrentDir === 'function') {
+                const currentDir = getCurrentDir();
+                entries = Object.keys(currentDir).map(name => {
+                    return currentDir[name].type === 'dir' ? `${name}/` : name;
+                });
+            }
+
+            if (cmdName === 'cd') {
+                entries = entries.filter(item => item.endsWith('/'));
+            }
+
+            return entries
+                .filter(entry => entry.toLowerCase().startsWith(argPrefix))
+                .map(match => {
+                    const prefixParts = [...parts];
+                    prefixParts[prefixParts.length - 1] = match;
+                    return prefixParts.join(' ');
+                });
+        }
+
+        // Join Room Channel Autocomplete
+        if (cmdName === 'join') {
+            const roomList = (window.chatRooms || [{ id: 'general' }, { id: 'dev' }, { id: 'lounge' }]).map(r => r.id);
+            return roomList
+                .filter(rId => rId.toLowerCase().startsWith(argPrefix))
+                .map(match => `${parts[0]} ${match}`);
+        }
+
+        // Sub-commands & Presets Autocomplete
+        if (cmdName === 'rice') {
+            const defaultRices = ["cyberpunk", "nord", "catppuccin", "gruvbox", "dracula", "synthwave", "solarized", "add"];
+            const customThemes = JSON.parse(localStorage.getItem("custom_rices") || "{}");
+            const allRices = [...defaultRices, ...Object.keys(customThemes)];
+
+            return allRices
+                .filter(preset => preset.toLowerCase().startsWith(argPrefix))
+                .map(match => `${parts[0]} ${match}`);
+        }
+
+        if (cmdName === 'theme') {
+            const presets = typeof window.THEME_PRESETS !== 'undefined' 
+                ? Object.keys(window.THEME_PRESETS) 
+                : ["cyberpunk", "nord", "catppuccin", "gruvbox", "dracula", "synthwave", "solarized"];
+
+            return presets
+                .filter(preset => preset.toLowerCase().startsWith(argPrefix))
+                .map(match => `${parts[0]} ${match}`);
+        }
+
+        return [];
+    };
+
+    // Update Ghost Text View
+    const updateGhostText = () => {
+        const val = guestCmdInput.value;
         if (!val || !ghostText) {
             if (ghostText) ghostText.textContent = '';
             return;
         }
 
-        const commandsList = typeof getAvailableCommands === 'function' 
-            ? getAvailableCommands() 
-            : (typeof availableCommands !== 'undefined' ? availableCommands : []);
+        const matches = getContextCompletions(val);
+        if (matches.length > 0) {
+            const bestMatch = matches[0];
+            if (bestMatch.toLowerCase().startsWith(val.toLowerCase())) {
+                ghostText.textContent = val + bestMatch.substring(val.length);
+            } else {
+                ghostText.textContent = '';
+            }
+        } else {
+            ghostText.textContent = '';
+        }
+    };
 
-        const match = commandsList.find(cmd => cmd.startsWith(val));
-        ghostText.textContent = match ? guestCmdInput.value + match.substring(val.length) : '';
+    // Dynamic Autocomplete Input Event
+    guestCmdInput.addEventListener('input', () => {
+        tabMatchList = [];
+        tabMatchIndex = -1;
+        lastTabPrefix = "";
+        updateGhostText();
     });
 
     // Command Execution Logic
@@ -153,6 +244,9 @@ document.addEventListener("DOMContentLoaded", () => {
             cmdHistory.push(rawVal);
         }
         historyIndex = -1;
+        tabMatchList = [];
+        tabMatchIndex = -1;
+        lastTabPrefix = "";
 
         printGuestLog(`${typeof getPromptText === 'function' ? getPromptText() : 'guest@vector-box:$'} ${rawVal}`, "#8ab4f8");
         guestCmdInput.value = '';
@@ -194,17 +288,35 @@ document.addEventListener("DOMContentLoaded", () => {
         scrollToBottom();
     };
 
-    // Keyboard Event Handling
+    // Keyboard Event Handling (Tab Cycling + Key Navigation)
     guestCmdInput.addEventListener('keydown', (e) => {
-        switch (e.key) {
-            case 'Tab':
-                e.preventDefault();
-                if (ghostText?.textContent) {
-                    guestCmdInput.value = ghostText.textContent;
-                    ghostText.textContent = '';
-                }
-                break;
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const currentVal = guestCmdInput.value;
+            if (!currentVal) return;
 
+            // Initialize or cycle tab match list
+            if (tabMatchList.length === 0 || lastTabPrefix !== currentVal) {
+                lastTabPrefix = currentVal;
+                tabMatchList = getContextCompletions(currentVal);
+                tabMatchIndex = 0;
+            } else {
+                tabMatchIndex = (tabMatchIndex + 1) % tabMatchList.length;
+            }
+
+            if (tabMatchList.length > 0) {
+                guestCmdInput.value = tabMatchList[tabMatchIndex];
+                if (ghostText) ghostText.textContent = '';
+            }
+            return;
+        }
+
+        // Reset tab cycle on any non-Tab keypress
+        tabMatchList = [];
+        tabMatchIndex = -1;
+        lastTabPrefix = "";
+
+        switch (e.key) {
             case 'ArrowUp':
                 e.preventDefault();
                 if (cmdHistory.length > 0 && historyIndex < cmdHistory.length - 1) {
@@ -246,3 +358,92 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
+// GNU Nano Text Editor Engine
+window.openNanoEditor = function(fileName, initialContent, onSaveCallback) {
+    if (document.getElementById('nano-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'nano-modal';
+    modal.style.cssText = `
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: #020304;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        border: 1px solid var(--accent-color, #00ff66);
+        font-family: monospace;
+    `;
+
+    const header = document.createElement('div');
+    header.style.cssText = `
+        background: var(--accent-color, #00ff66);
+        color: #000;
+        padding: 4px 8px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+    `;
+    header.innerHTML = `<span> GNU nano 2.9.8</span><span>File: ${fileName}</span><span>Modified</span>`;
+
+    const textarea = document.createElement('textarea');
+    textarea.value = initialContent;
+    textarea.style.cssText = `
+        flex: 1;
+        background: transparent;
+        color: #ffffff;
+        border: none;
+        outline: none;
+        padding: 10px;
+        font-family: inherit;
+        font-size: 0.9rem;
+        resize: none;
+        line-height: 1.4;
+    `;
+
+    const footer = document.createElement('div');
+    footer.style.cssText = `
+        background: rgba(0, 255, 102, 0.1);
+        border-top: 1px solid var(--border-color, rgba(0, 255, 102, 0.25));
+        padding: 6px 10px;
+        display: flex;
+        gap: 15px;
+        font-size: 0.75rem;
+        color: var(--text-muted, #8ab4f8);
+    `;
+    footer.innerHTML = `
+        <span><strong style="color:var(--accent-color);">^O</strong> Save (Ctrl+S)</span>
+        <span><strong style="color:var(--accent-color);">^X</strong> Exit (Esc)</span>
+    `;
+
+    modal.appendChild(header);
+    modal.appendChild(textarea);
+    modal.appendChild(footer);
+
+    const termBox = document.getElementById('guest-term-box');
+    (termBox || document.body).appendChild(modal);
+
+    textarea.focus();
+
+    const closeNano = () => {
+        modal.remove();
+        const input = document.getElementById('guest-cmd-input');
+        if (input) input.focus();
+    };
+
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeNano();
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            onSaveCallback(textarea.value);
+            closeNano();
+        }
+    });
+};

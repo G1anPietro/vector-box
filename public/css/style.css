@@ -429,6 +429,130 @@ body.scanlines-active::before {
     padding: 15px;
 }
 
+/* ==========================================================================
+   DESKTOP RICING & THEME PRESET ENGINE
+   ========================================================================== */
+
+/* Cyberpunk Default */
+body[data-rice="cyberpunk"] {
+    --bg-color: #06080c;
+    --accent-color: #00ff66;
+    --border-color: rgba(0, 255, 102, 0.3);
+    --text-muted: #8ab4f8;
+    --prompt-color: #00ff66;
+    --panel-bg: rgba(10, 14, 22, 0.95);
+}
+
+/* Nord (Cool Arctic Palette) */
+body[data-rice="nord"] {
+    --bg-color: #2e3440;
+    --accent-color: #88c0d0;
+    --border-color: rgba(136, 192, 208, 0.35);
+    --text-muted: #d8dee9;
+    --prompt-color: #81a1c1;
+    --panel-bg: rgba(43, 48, 59, 0.95);
+}
+
+/* Catppuccin Mocha */
+body[data-rice="catppuccin"] {
+    --bg-color: #1e1e2e;
+    --accent-color: #cba6f7;
+    --border-color: rgba(203, 166, 247, 0.35);
+    --text-muted: #89b4fa;
+    --prompt-color: #f5e0dc;
+    --panel-bg: rgba(30, 30, 46, 0.95);
+}
+
+/* Gruvbox Dark */
+body[data-rice="gruvbox"] {
+    --bg-color: #282828;
+    --accent-color: #fabd2f;
+    --border-color: rgba(250, 189, 47, 0.35);
+    --text-muted: #fe8019;
+    --prompt-color: #b8bb26;
+    --panel-bg: rgba(60, 56, 54, 0.95);
+}
+
+/* Dracula */
+body[data-rice="dracula"] {
+    --bg-color: #282a36;
+    --accent-color: #ff79c6;
+    --border-color: rgba(255, 121, 198, 0.35);
+    --text-muted: #bd93f9;
+    --prompt-color: #50fa7b;
+    --panel-bg: rgba(40, 42, 54, 0.95);
+}
+
+/* Synthwave '84 */
+body[data-rice="synthwave"] {
+    --bg-color: #1a102f;
+    --accent-color: #ff007f;
+    --border-color: rgba(255, 0, 127, 0.4);
+    --text-muted: #00f3ff;
+    --prompt-color: #ffe600;
+    --panel-bg: rgba(24, 14, 46, 0.95);
+}
+
+/* Solarized Dark */
+body[data-rice="solarized"] {
+    --bg-color: #002b36;
+    --accent-color: #2aa198;
+    --border-color: rgba(42, 161, 152, 0.4);
+    --text-muted: #839496;
+    --prompt-color: #b58900;
+    --panel-bg: rgba(7, 54, 66, 0.95);
+}
+
+/* Multi-Room GUI Tab Bar */
+.chat-tab-bar {
+    display: flex;
+    background: rgba(2, 3, 4, 0.95);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    user-select: none;
+}
+
+.chat-tab-bar::-webkit-scrollbar {
+    height: 3px;
+}
+
+.chat-tab {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.chat-tab:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.chat-tab.active {
+    color: var(--accent-color);
+    background: rgba(0, 255, 102, 0.1);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.unread-badge {
+    background: #ff3333;
+    color: #ffffff;
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
 /* Mobile Adjustments */
 @media (max-width: 768px) {
     .desktop-viewport {
