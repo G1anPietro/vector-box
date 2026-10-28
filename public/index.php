@@ -64,6 +64,19 @@ if (file_exists('version.php')) {
                         <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">MATRIX_SPEED</span>
                         <input type="range" id="matrix-speed-slider" class="cyber-range" min="10" max="70" value="45">
                     </div>
+
+                    <div class="cyber-slider-row" style="margin-top: 10px;">
+                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">DESKTOP_RICE</span>
+                        <select id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 4px 8px; font-size: 0.8rem; background: #020304;">
+                            <option value="cyberpunk">Cyberpunk (Default)</option>
+                            <option value="nord">Nord</option>
+                            <option value="catppuccin">Catppuccin</option>
+                            <option value="gruvbox">Gruvbox</option>
+                            <option value="dracula">Dracula</option>
+                            <option value="synthwave">Synthwave</option>
+                            <option value="solarized">Solarized</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -96,10 +109,13 @@ if (file_exists('version.php')) {
         <!-- 2. REAL-TIME CHAT FEED CONTAINER -->
         <div id="win-chatfeed" class="cyber-panel draggable-window" style="top: 100px; left: 710px; width: 440px; height: 440px;">
             <div class="window-header">>_ CHAT_FEED</div>
+            <div id="chat-room-tabs" class="chat-tab-bar">
+                <!-- Room Tabs Dynamically Rendered by uplink_feed.js -->
+            </div>
             <div class="terminal-box auth-terminal" id="feed-term-box">
                 <div id="uplink-chat-log"></div>
                 <div class="terminal-input-line clean-input-line">
-                    <span class="prompt-symbol">chat@vector-box:~$</span>
+                    <span class="prompt-symbol" id="chat-prompt-label">#general:$</span>
                     <input type="text" 
                         id="chat-feed-input" 
                         class="terminal-input" 
@@ -171,5 +187,21 @@ if (file_exists('version.php')) {
         <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
         <a href="pages/credits.html" class="credits-link">ciao zuffi</a>
     </footer>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const riceSelector = document.getElementById("rice-selector");
+        if (!riceSelector) return;
+
+        const savedRice = localStorage.getItem("selected_rice") || "cyberpunk";
+        riceSelector.value = savedRice;
+
+        riceSelector.addEventListener("change", (e) => {
+            const val = e.target.value;
+            document.body.setAttribute("data-rice", val);
+            localStorage.setItem("selected_rice", val);
+        });
+    });
+    </script>
 </body>
 </html>

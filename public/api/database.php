@@ -48,9 +48,33 @@ function getDbConnection() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // Rooms table
+    $db->exec("CREATE TABLE IF NOT EXISTS rooms (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(50) NOT NULL,
+        is_private INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Seed default rooms if table is empty
+    $roomCount =$db->query("SELECT COUNT(*) FROM rooms")->fetchColumn();
+    if ((int)$roomCount === 0) {
+        $stmt =$db->prepare("INSERT INTO rooms (id, name, is_private) VALUES (:id, :name, :is_priv)");
+        $defaultRooms = [
+            ['id' => 'general', 'name' => 'General', 'is_priv' => 0],
+            ['id' => 'dev', 'name' => 'Dev Ops', 'is_priv' => 0],
+            ['id' => 'lounge', 'name' => 'Cyber Lounge', 'is_priv' => 0],
+            ['id' => 'admin', 'name' => 'Root Sanctuary', 'is_priv' => 1]
+        ];
+        foreach ($defaultRooms as$r) {
+            $stmt->execute([':id' =>$r['id'], ':name' => $r['name'], ':is_priv' =>$r['is_priv']]);
+        }
+    }
+
     // Transmissions table
     $db->exec("CREATE TABLE IF NOT EXISTS transmissions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id VARCHAR(50) DEFAULT 'general',
         message TEXT NOT NULL,
         sender_ip VARCHAR(45) NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -58,6 +82,8 @@ function getDbConnection() {
 
     // Safely inject columns if legacy schema exists
     $cols =$db->query("PRAGMA table_info(transmissions)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('room_id', $cols)) {$db->exec("ALTER TABLE transmissions ADD COLUMN room_id VARCHAR(50) DEFAULT 'general'");
+    }
     if (!in_array('username', $cols)) {$db->exec("ALTER TABLE transmissions ADD COLUMN username VARCHAR(50) DEFAULT 'guest'");
     }
     if (!in_array('user_id', $cols)) {$db->exec("ALTER TABLE transmissions ADD COLUMN user_id INTEGER NULL");
