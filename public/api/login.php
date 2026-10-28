@@ -29,17 +29,28 @@ try {
         }
 
         $hash = password_hash($password, PASSWORD_BCRYPT);
-        $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme) VALUES (:u, :p, 'cyan')");
+        $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'cyan', 0)");
         $stmt->execute([':u' => $username, ':p' => $hash]);
 
         $userId = $db->lastInsertId();
 
+        // Generate CSRF Token
+        $csrfToken = bin2hex(random_bytes(32));
+
         $_SESSION['user_id'] = (int)$userId;
         $_SESSION['username'] = $username;
         $_SESSION['theme'] = 'cyan';
+        $_SESSION['is_admin'] = 0;
+        $_SESSION['csrf_token'] = $csrfToken;
         session_write_close();
 
-        echo json_encode(['success' => true, 'username' => $username, 'theme' => 'cyan']);
+        echo json_encode([
+            'success' => true, 
+            'username' => $username, 
+            'theme' => 'cyan',
+            'is_admin' => 0,
+            'csrf_token' => $csrfToken
+        ]);
         exit();
 
     } else {
@@ -48,15 +59,24 @@ try {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password_hash'])) {
+            $isAdmin = (int)($user['is_admin'] ?? 0);
+
+            // Generate CSRF Token
+            $csrfToken = bin2hex(random_bytes(32));
+
             $_SESSION['user_id'] = (int)$user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['theme'] = $user['theme'] ?? 'cyan';
+            $_SESSION['is_admin'] = $isAdmin;
+            $_SESSION['csrf_token'] = $csrfToken;
             session_write_close();
 
             echo json_encode([
                 'success' => true, 
                 'username' => $user['username'], 
-                'theme' => $_SESSION['theme']
+                'theme' => $_SESSION['theme'],
+                'is_admin' => $isAdmin,
+                'csrf_token' => $csrfToken
             ]);
             exit();
         } else {

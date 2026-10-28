@@ -1,19 +1,5 @@
 // public/js/theme.js
 (function () {
-    function getCookie(name) {
-        const match = document.cookie.match(new RegExp(`(?:^|; )${encodeURIComponent(name)}=([^;]*)`));
-        return match ? decodeURIComponent(match[1]) : null;
-    }
-
-    function setCookie(name, value, days = 30) {
-        if (getCookie("cookie_consent") !== "accepted") return;
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        const isSecure = window.location.protocol === 'https:' ? ';Secure' : '';
-        document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)};expires=${date.toUTCString()};path=/;SameSite=Lax${isSecure}`;
-    }
-
-    // Expanded Theme Presets Registry with Electric Cyan
     const THEME_PRESETS = {
         'cyan':       { accent: '#00f3ff', border: 'rgba(0, 243, 255, 0.35)',  muted: '#70f8ff', prompt: '#00f3ff', matrix: '#00f3ff' },
         'matrix':     { accent: '#00ff66', border: 'rgba(0, 255, 102, 0.3)',   muted: '#00cc52', prompt: '#00ff66', matrix: '#00ff66' },
@@ -26,7 +12,6 @@
         'blood':      { accent: '#ff3333', border: 'rgba(255, 51, 51, 0.4)',   muted: '#cc0000', prompt: '#ff6666', matrix: '#ff3333' }
     };
 
-    // Append inside applyTheme in public/js/theme.js
     function applyTheme(themeName, customMatrixColor) {
         const preset = THEME_PRESETS[themeName] || THEME_PRESETS['cyan'];
         const root = document.documentElement;
@@ -38,7 +23,6 @@
 
         window.matrixColor = customMatrixColor || preset.matrix;
 
-        // Save to Database if user is authenticated
         fetch('api/save_theme.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -49,38 +33,8 @@
     window.THEME_PRESETS = THEME_PRESETS;
     window.applySystemTheme = applyTheme;
 
-    const savedTheme = getCookie("selected_theme") || 'cyan';
-    const savedMatrixColor = getCookie("matrix_color");
+    // Apply saved theme using global cookie reader
+    const savedTheme = (window.getSystemCookie && window.getSystemCookie("selected_theme")) || 'cyan';
+    const savedMatrixColor = window.getSystemCookie && window.getSystemCookie("matrix_color");
     applyTheme(savedTheme, savedMatrixColor);
-
-    document.addEventListener("DOMContentLoaded", () => {
-        const cookieBanner = document.getElementById('cookie-banner');
-        const acceptBtn = document.getElementById('cookie-accept-btn');
-        const declineBtn = document.getElementById('cookie-decline-btn');
-        const consentStatus = getCookie("cookie_consent");
-
-        if (!consentStatus && cookieBanner) {
-            cookieBanner.classList.remove('hidden');
-        }
-
-        const setConsent = (status) => {
-            const date = new Date();
-            date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
-            const isSecure = window.location.protocol === 'https:' ? ';Secure' : '';
-            document.cookie = `cookie_consent=${status};expires=${date.toUTCString()};path=/;SameSite=Lax${isSecure}`;
-            cookieBanner?.classList.add('hidden');
-        };
-
-        acceptBtn?.addEventListener('click', () => {
-            setConsent('accepted');
-            if (window.matrixColor) setCookie("matrix_color", window.matrixColor);
-            if (savedTheme) setCookie("selected_theme", savedTheme);
-        });
-
-        declineBtn?.addEventListener('click', () => {
-            setConsent('declined');
-        });
-    });
-
-    window.setSystemCookie = setCookie;
 })();
