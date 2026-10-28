@@ -10,13 +10,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.activeRoomId = 'general';
     window.chatRooms = [];
-    const roomBuffers = {};
+    
+    const roomStates = {}; 
     const unreadCounts = {};
 
     let eventSource = null;
     let isSubmitting = false;
+    let isLoadingHistory = false;
 
     window.SESSION_STATE = window.SESSION_STATE || { isAdmin: false, csrfToken: '' };
+
+    const checkSessionState = async () => {
+        try {
+            const res = await fetch('api/check_session.php', { credentials: 'same-origin' });
+            const data = await res.json();
+            if (data) {
+                window.SESSION_STATE.isAdmin = data.is_admin === 1;
+                window.SESSION_STATE.csrfToken = data.csrf_token || '';
+
+                if (typeof loadAdminCommandsIfEligible === 'function') {
+                    loadAdminCommandsIfEligible();
+                }
+            }
+        } catch (err) {
+            console.error("Error checking session:", err);
+        }
+    };
+
+    const getRoomState = (roomId) => {
+        if (!roomStates[roomId]) {
+            roomStates[roomId] = {
+                messages: [],
+                oldestId: 0,
+                latestId: 0,
+                hasMore: true,
+                lastAppendedDate: null,
+                isInitialized: false
+            };
+        }
+        return roomStates[roomId];
+    };
 
     const scrollToBottom = () => {
         requestAnimationFrame(() => {
@@ -29,6 +62,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!rawDate) return '';
         const today = new Date().toISOString().substring(0, 10);
         return rawDate === today ? 'Today' : rawDate;
+    };
+
+    const createDateSeparator = (dateStr) => {
+        const div = document.createElement('div');
+        div.className = 'date-separator';
+        div.setAttribute('data-date', dateStr);
+        div.style.cssText = 'text-align: center; color: #8ab4f8; font-size: 0.75rem; margin: 12px 0 6px 0; opacity: 0.8; font-weight: bold; user-select: none;';
+        div.textContent = `─── ${formatDateLabel(dateStr)} ───`;
+        return div;
     };
 
     const createMessageElement = (data, isError = false) => {
@@ -46,7 +88,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
                     const res = await fetch('api/delete_message.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.SESSION_STATE.csrfToken || '' },
+                        headers: { 
+                            'Content-Type': 'application/json', 
+                            'X-CSRF-Token': window.SESSION_STATE.csrfToken || '' 
+                        },
                         credentials: 'same-origin',
                         body: JSON.stringify({ id: data.id })
                     });
@@ -99,34 +144,124 @@ document.addEventListener("DOMContentLoaded", () => {
         if (promptLabel) promptLabel.textContent = `#${window.activeRoomId}:$`;
     };
 
+    const appendMessageToUI = (data, state, isError = false) => {
+        if (data.date && data.date !== state.lastAppendedDate) {
+            chatLog.appendChild(createDateSeparator(data.date));
+            state.lastAppendedDate = data.date;
+        }
+        chatLog.appendChild(createMessageElement(data, isError));
+        scrollToBottom();
+    };
+
+    const renderFullBuffer = (state) => {
+        chatLog.innerHTML = '';
+        state.lastAppendedDate = null;
+        
+        state.messages.forEach(msg => {
+            if (msg.date && msg.date !== state.lastAppendedDate) {
+                chatLog.appendChild(createDateSeparator(msg.date));
+                state.lastAppendedDate = msg.date;
+            }
+            chatLog.appendChild(createMessageElement(msg));
+        });
+        scrollToBottom();
+    };
+
+    const prependMessages = (state, newMessages) => {
+        const oldScrollHeight = chatLog.scrollHeight;
+        const fragment = document.createDocumentFragment();
+
+        let currentGroupDate = null;
+
+        newMessages.forEach(msg => {
+            if (msg.date && msg.date !== currentGroupDate) {
+                currentGroupDate = msg.date;
+                fragment.appendChild(createDateSeparator(msg.date));
+            }
+            fragment.appendChild(createMessageElement(msg));
+        });
+
+        chatLog.insertBefore(fragment, chatLog.firstChild);
+        chatLog.scrollTop = chatLog.scrollHeight - oldScrollHeight;
+    };
+
+    const loadOlderHistory = async () => {
+        const state = getRoomState(window.activeRoomId);
+        if (isLoadingHistory || !state.hasMore || !state.oldestId) return false;
+
+        isLoadingHistory = true;
+        try {
+            const res = await fetch(`api/get_feed.php?room_id=${window.activeRoomId}&before_id=${state.oldestId}&limit=25`);
+            const data = await res.json();
+
+            if (data.success && data.messages.length > 0) {
+                state.messages = [...data.messages, ...state.messages];
+                state.oldestId = data.messages[0].id;
+                state.hasMore = data.has_more;
+                prependMessages(state, data.messages);
+                return true;
+            } else {
+                state.hasMore = false;
+                return false;
+            }
+        } catch (err) {
+            return false;
+        } finally {
+            isLoadingHistory = false;
+        }
+    };
+
+    const fillFeedToOverflow = async () => {
+        const state = getRoomState(window.activeRoomId);
+
+        if (!state.isInitialized) {
+            try {
+                const res = await fetch(`api/get_feed.php?room_id=${window.activeRoomId}&limit=25`);
+                const data = await res.json();
+
+                state.isInitialized = true;
+                if (data.success && data.messages.length > 0) {
+                    state.messages = data.messages;
+                    state.oldestId = data.messages[0].id;
+                    state.latestId = data.messages[data.messages.length - 1].id;
+                    state.hasMore = data.has_more;
+                } else {
+                    state.hasMore = false;
+                }
+            } catch (err) {}
+        }
+
+        renderFullBuffer(state);
+
+        let safetyCap = 0;
+        while (state.hasMore && chatLog.scrollHeight <= chatLog.clientHeight + 100 && safetyCap < 10) {
+            safetyCap++;
+            const loadedMore = await loadOlderHistory();
+            if (!loadedMore) break;
+        }
+    };
+
+    chatLog.addEventListener('scroll', () => {
+        if (chatLog.scrollTop < 30) {
+            loadOlderHistory();
+        }
+    });
+
+    if (typeof ResizeObserver !== 'undefined') {
+        const resizeObserver = new ResizeObserver(() => {
+            const state = getRoomState(window.activeRoomId);
+            if (state.hasMore && chatLog.scrollHeight <= chatLog.clientHeight + 50) {
+                fillFeedToOverflow();
+            }
+        });
+        resizeObserver.observe(chatLog);
+    }
+
     window.switchChatRoom = async (roomId) => {
         window.activeRoomId = roomId;
         unreadCounts[roomId] = 0;
         renderRoomTabs();
-        chatLog.innerHTML = '';
-
-        if (!roomBuffers[roomId]) {
-            roomBuffers[roomId] = [];
-            await fetchRoomHistory(roomId);
-        } else {
-            roomBuffers[roomId].forEach(msg => chatLog.appendChild(createMessageElement(msg)));
-            scrollToBottom();
-        }
-    };
-
-    const fetchRoomHistory = async (roomId) => {
-        try {
-            const res = await fetch(`api/get_feed.php?room_id=${roomId}&limit=30`);
-            const data = await res.json();
-            if (data.success) {
-                roomBuffers[roomId] = data.messages;
-                if (window.activeRoomId === roomId) {
-                    chatLog.innerHTML = '';
-                    data.messages.forEach(msg => chatLog.appendChild(createMessageElement(msg)));
-                    scrollToBottom();
-                }
-            }
-        } catch (err) {}
+        await fillFeedToOverflow();
     };
 
     window.fetchChatRooms = async () => {
@@ -148,15 +283,18 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 const data = JSON.parse(event.data);
                 const rId = data.room_id || 'general';
-                if (!roomBuffers[rId]) roomBuffers[rId] = [];
-                roomBuffers[rId].push(data);
+                const state = getRoomState(rId);
 
-                if (rId === window.activeRoomId) {
-                    chatLog.appendChild(createMessageElement(data));
-                    scrollToBottom();
-                } else {
-                    unreadCounts[rId] = (unreadCounts[rId] || 0) + 1;
-                    renderRoomTabs();
+                if (data.id && data.id > state.latestId) {
+                    state.latestId = data.id;
+                    state.messages.push(data);
+
+                    if (rId === window.activeRoomId) {
+                        appendMessageToUI(data, state);
+                    } else {
+                        unreadCounts[rId] = (unreadCounts[rId] || 0) + 1;
+                        renderRoomTabs();
+                    }
                 }
             } catch (err) {}
         };
@@ -171,9 +309,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 isSubmitting = true;
                 try {
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (window.SESSION_STATE.csrfToken) {
+                        headers['X-CSRF-Token'] = window.SESSION_STATE.csrfToken;
+                    }
+
                     const res = await fetch('api/uplink_send.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.SESSION_STATE.csrfToken || '' },
+                        headers: headers,
                         credentials: 'same-origin',
                         body: JSON.stringify({ message: text, room_id: window.activeRoomId })
                     });
@@ -181,13 +324,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (data.success) {
                         chatInput.value = '';
                     } else {
-                        chatLog.appendChild(createMessageElement({
+                        const state = getRoomState(window.activeRoomId);
+                        appendMessageToUI({
                             created_at: new Date().toISOString().substring(11, 19),
                             username: 'SYSTEM',
                             message: `>> WARNING: ${data.error}`
-                        }, true));
+                        }, state, true);
                     }
                 } catch (err) {
+                    console.error("Send Error:", err);
                 } finally {
                     isSubmitting = false;
                     chatInput.focus();
@@ -197,6 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const init = async () => {
+        await checkSessionState();
         await window.fetchChatRooms();
         await window.switchChatRoom('general');
         initSSE();
