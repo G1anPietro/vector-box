@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/includes/head.php';
+require_once __DIR__ . '/api/database.php';
+
+initSession();
+
+$isLoggedIn = !empty($_SESSION['username']) && !str_starts_with($_SESSION['username'], 'guest_');
+$activeUsername = $_SESSION['username'] ?? 'GUEST';
+
 if (file_exists('version.php')) {
     require_once 'version.php';
 } else {
@@ -16,7 +23,7 @@ if (file_exists('version.php')) {
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
-        <div class="glitch">// VECTOR-BOX // AUTH_REQUIRED</div>
+        <div class="glitch">// VECTOR-BOX // <?php echo $isLoggedIn ? 'USER: ' . htmlspecialchars($activeUsername) : 'AUTH_REQUIRED'; ?></div>
         <div class="menu-container">
             <button id="menu-toggle-btn" class="nav-btn" type="button">// MENU</button>
             
@@ -27,7 +34,12 @@ if (file_exists('version.php')) {
                 <a href="pages/hack.php" class="menu-item">// NODE BREACH</a>
                 <a href="pages/vault.php" class="menu-item">// ARG VAULT</a>
                 
-                <button id="menu-login-btn" class="menu-item" type="button">// USER_ACCOUNT</button>
+                <?php if ($isLoggedIn): ?>
+                    <a href="pages/account.php" class="menu-item">// ACCOUNT_SETTINGS</a>
+                    <a href="api/logout.php" class="menu-item" style="border-color: #ff3333; color: #ff3333;">// LOGOUT</a>
+                <?php else: ?>
+                    <a href="pages/login.php" class="menu-item">// LOGIN / REGISTER</a>
+                <?php endif; ?>
                 
                 <div class="settings-section">
                     <span class="settings-title">>_ OPTIONS</span>
@@ -98,7 +110,7 @@ if (file_exists('version.php')) {
                     <p class="term-white">>_ connection stable. Type 'help' for commands.</p>
                 </div>
                 <div class="terminal-input-line clean-input-line">
-                    <span class="prompt-symbol">guest@vector-box:~$</span>
+                    <span class="prompt-symbol"><?php echo htmlspecialchars($activeUsername); ?>@vector-box:~$</span>
                     <input type="text" id="guest-cmd-input" class="terminal-input" autocomplete="off" name="terminal_command_input">
                 </div>
             </div>
@@ -143,7 +155,7 @@ if (file_exists('version.php')) {
         </div>
 
         <!-- 4. CYBERPUNK POKER MINIGAME CONTAINER -->
-        <div id="win-poker" class="cyber-panel draggable-window hidden" style="top: 140px; left: 240px; width: 620px; height: 460px;">
+        <div id="win-poker" class="cyber-panel draggable-window hidden" style="top: 140px; left: 240px; width: 660px; height: 500px;">
             <div class="window-header">
                 <span>>_ CYBER_POKER // NEON_HOLDEM</span>
                 <div class="win-controls">
@@ -153,19 +165,37 @@ if (file_exists('version.php')) {
                 </div>
             </div>
             <div class="window-content-inner" style="padding: 10px; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 30px);">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 4px; flex: 1; min-width: 220px;">
+                        <input type="text" id="poker-join-input" placeholder="Room/Code (e.g. general)" style="flex: 1; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 8px; font-family: monospace; font-size: 0.75rem; outline: none;">
+                        <button id="poker-btn-join-room" type="button" class="nav-btn" style="padding: 4px 8px; font-size: 0.75rem;">SWITCH</button>
+                    </div>
+
+                    <div style="display: flex; gap: 4px; flex: 1; min-width: 280px;">
+                        <input type="text" id="poker-create-name" placeholder="New Table" style="width: 80px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
+                        <input type="text" id="poker-create-code" placeholder="Code" style="width: 60px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
+                        <select id="poker-create-bots" class="nav-btn" style="padding: 2px 4px; font-size: 0.75rem; background: #000;">
+                            <option value="1">1 Bot</option>
+                            <option value="2">2 Bots</option>
+                            <option value="3">3 Bots</option>
+                        </select>
+                        <button id="poker-btn-create-room" type="button" class="nav-btn" style="border-color: #00ff66; color: #00ff66; padding: 4px 8px; font-size: 0.75rem;">+ CREATE</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0;">
                     <div style="display: flex; flex-direction: column;">
                         <span class="term-accent" style="font-weight: bold; font-size: 0.9rem;">POT: <span id="poker-pot-val">0</span> CR</span>
-                        <span id="poker-stage-indicator" style="font-size: 0.75rem; color: var(--text-muted);">STAGE: WAITING</span>
+                        <span id="poker-stage-indicator" style="font-size: 0.75rem; color: var(--text-muted);">STAGE: LOBBY</span>
                     </div>
                     <div id="poker-community-cards" style="display: flex; gap: 6px;"></div>
                 </div>
 
-                <div id="poker-seats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;"></div>
+                <div id="poker-seats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0; flex: 1; align-content: start;"></div>
 
-                <div id="poker-winner-banner" class="hidden" style="background: rgba(0, 255, 102, 0.15); border: 1px solid var(--accent-color); padding: 8px; text-align: center; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;"></div>
+                <div id="poker-winner-banner" class="hidden" style="background: rgba(0, 255, 102, 0.15); border: 1px solid var(--accent-color); padding: 6px; text-align: center; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px;"></div>
 
-                <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 6px;">
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <span style="font-size: 0.75rem; color: var(--text-muted);">BET:</span>
                         <input type="number" id="poker-bet-input" value="40" min="10" step="10" style="width: 70px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px; font-family: monospace; font-size: 0.85rem; outline: none;">

@@ -20,7 +20,7 @@
 
         if (PUZZLE_KEYS[enteredKey]) {
             const formatted = PUZZLE_KEYS[enteredKey].replace(/\n/g, '<br>');
-            vaultOutput.innerHTML = `<span style="color: var(--accent-color); font-weight: bold;">${formatted}</span>`;
+            vaultOutput.innerHTML = `<div style="color: var(--accent-color); font-weight: bold; overflow-wrap: break-word; word-break: normal; white-space: normal; line-height: 1.4;">${formatted}</div>`;
         } else {
             vaultOutput.innerHTML = `<span style="color: #ff3333; font-weight: bold;">>> ACCESS DENIED: INVALID KEY '${enteredKey}'</span>`;
         }

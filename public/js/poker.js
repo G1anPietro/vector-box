@@ -106,34 +106,38 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 seatsGrid.innerHTML = '';
-                data.players.forEach(p => {
-                    const isCurrentTurn = (p.seat === data.table.current_turn_seat && data.table.game_stage !== 'WAITING' && data.table.game_stage !== 'SHOWDOWN');
-                    const box = document.createElement('div');
-                    box.className = `poker-seat-box ${isCurrentTurn ? 'active-turn' : ''}`;
-                    box.style.cssText = `
-                        background: ${p.is_folded ? 'rgba(20,0,0,0.4)' : 'rgba(0, 0, 0, 0.6)'};
-                        border: 1px solid ${isCurrentTurn ? 'var(--accent-color)' : 'var(--border-color)'};
-                        padding: 8px;
-                        border-radius: 3px;
-                        opacity: ${p.is_folded ? '0.5' : '1'};
-                    `;
+                if (data.players && data.players.length > 0) {
+                    data.players.forEach(p => {
+                        const isCurrentTurn = (p.seat === data.table.current_turn_seat && data.table.game_stage !== 'WAITING' && data.table.game_stage !== 'SHOWDOWN');
+                        const box = document.createElement('div');
+                        box.className = `poker-seat-box ${isCurrentTurn ? 'active-turn' : ''}`;
+                        box.style.cssText = `
+                            background: ${p.is_folded ? 'rgba(20,0,0,0.4)' : 'rgba(0, 0, 0, 0.6)'};
+                            border: 1px solid ${isCurrentTurn ? 'var(--accent-color)' : 'var(--border-color)'};
+                            padding: 8px;
+                            border-radius: 3px;
+                            opacity: ${p.is_folded ? '0.5' : '1'};
+                        `;
 
-                    box.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.8rem;">
-                            <span style="color:${isCurrentTurn ? 'var(--accent-color)' : '#fff'};">
-                                ${p.username} ${p.is_bot ? '[BOT]' : ''} ${p.is_folded ? '<small>(FOLDED)</small>' : ''}
-                            </span>
-                            <span style="color:#ffaa00;">${p.chips} CR</span>
-                        </div>
-                        <div class="card-row" style="display:flex; gap:4px; margin-top:6px;"></div>
-                    `;
+                        box.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.8rem;">
+                                <span style="color:${isCurrentTurn ? 'var(--accent-color)' : '#fff'};">
+                                    ${p.username} ${p.is_bot ? '[BOT]' : ''} ${p.is_folded ? '<small>(FOLDED)</small>' : ''}
+                                </span>
+                                <span style="color:#ffaa00;">${p.chips} CR</span>
+                            </div>
+                            <div class="card-row" style="display:flex; gap:4px; margin-top:6px;"></div>
+                        `;
 
-                    const cardRow = box.querySelector('.card-row');
-                    if (p.hole_cards && p.hole_cards.length > 0) {
-                        p.hole_cards.forEach(c => cardRow.appendChild(renderCard(c)));
-                    }
-                    seatsGrid.appendChild(box);
-                });
+                        const cardRow = box.querySelector('.card-row');
+                        if (p.hole_cards && p.hole_cards.length > 0) {
+                            p.hole_cards.forEach(c => cardRow.appendChild(renderCard(c)));
+                        }
+                        seatsGrid.appendChild(box);
+                    });
+                } else {
+                    seatsGrid.innerHTML = '<div style="grid-column: span 2; text-align: center; color: var(--text-muted); padding: 20px;">>> TABLE EMPTY. PRESS "SEAT" TO JOIN.</div>';
+                }
             }
         } catch (err) {
             console.error("Poker State Fetch Error:", err);

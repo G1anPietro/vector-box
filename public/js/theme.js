@@ -1,15 +1,15 @@
 // public/js/theme.js
 (function () {
     const THEME_PRESETS = {
-        'cyan':       { accent: '#00f3ff', border: 'rgba(0, 243, 255, 0.35)',  muted: '#70f8ff', prompt: '#00f3ff', matrix: '#00f3ff' },
-        'matrix':     { accent: '#00ff66', border: 'rgba(0, 255, 102, 0.35)',  muted: '#00cc52', prompt: '#00ff66', matrix: '#00ff66' },
-        'cyberpunk':  { accent: '#ff007f', border: 'rgba(255, 0, 127, 0.45)',  muted: '#ffcc00', prompt: '#00f3ff', matrix: '#ff007f' },
-        'amber':      { accent: '#ffb000', border: 'rgba(255, 176, 0, 0.3)',   muted: '#cc8d00', prompt: '#ffb000', matrix: '#ffb000' },
-        'dracula':    { accent: '#bd93f9', border: 'rgba(189, 147, 249, 0.3)', muted: '#8be9fd', prompt: '#ff79c6', matrix: '#bd93f9' },
-        'synthwave':  { accent: '#ff71ce', border: 'rgba(255, 113, 206, 0.4)', muted: '#01cdfe', prompt: '#05ffa1', matrix: '#ff71ce' },
-        'nord':       { accent: '#88c0d0', border: 'rgba(136, 192, 208, 0.3)', muted: '#81a1c1', prompt: '#a3be8c', matrix: '#88c0d0' },
-        'monochrome': { accent: '#ffffff', border: 'rgba(255, 255, 255, 0.3)', muted: '#aaaaaa', prompt: '#ffffff', matrix: '#ffffff' },
-        'blood':      { accent: '#ff3333', border: 'rgba(255, 51, 51, 0.4)',   muted: '#cc0000', prompt: '#ff6666', matrix: '#ff3333' }
+        'cyan':       { accent: '#00f3ff', border: 'rgba(0, 243, 255, 0.45)',  muted: '#8ab4f8', prompt: '#00f3ff', matrix: '#00f3ff' },
+        'matrix':     { accent: '#00ff66', border: 'rgba(0, 255, 102, 0.45)',  muted: '#55ff99', prompt: '#00ff66', matrix: '#00ff66' },
+        'cyberpunk':  { accent: '#ff007f', border: 'rgba(255, 0, 127, 0.55)',  muted: '#ffe600', prompt: '#00f3ff', matrix: '#ff007f' },
+        'amber':      { accent: '#ffb000', border: 'rgba(255, 176, 0, 0.45)',  muted: '#ffd166', prompt: '#ffb000', matrix: '#ffb000' },
+        'dracula':    { accent: '#bd93f9', border: 'rgba(189, 147, 249, 0.45)', muted: '#d6acff', prompt: '#ff79c6', matrix: '#bd93f9' },
+        'synthwave':  { accent: '#ff71ce', border: 'rgba(255, 113, 206, 0.5)',  muted: '#70f8ff', prompt: '#05ffa1', matrix: '#ff71ce' },
+        'nord':       { accent: '#88c0d0', border: 'rgba(136, 192, 208, 0.45)', muted: '#e5e9f0', prompt: '#a3be8c', matrix: '#88c0d0' },
+        'monochrome': { accent: '#ffffff', border: 'rgba(255, 255, 255, 0.45)', muted: '#e0e0e0', prompt: '#ffffff', matrix: '#ffffff' },
+        'blood':      { accent: '#ff4d6d', border: 'rgba(255, 77, 109, 0.55)', muted: '#ff99a8', prompt: '#ff4d6d', matrix: '#ff4d6d' }
     };
 
     function getDirectCookie(name) {
@@ -44,7 +44,7 @@
     window.THEME_PRESETS = THEME_PRESETS;
     window.applySystemTheme = applyTheme;
 
-    const savedTheme = localStorage.getItem('selected_theme') || getDirectCookie('selected_theme') || 'cyan';
+    const savedTheme = localStorage.getItem('selected_theme') || getDirectCookie('selected_theme') || 'cyberpunk';
     applyTheme(savedTheme);
 
     document.addEventListener("DOMContentLoaded", () => {

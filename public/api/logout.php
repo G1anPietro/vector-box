@@ -12,5 +12,11 @@ if (ini_get("session.use_cookies")) {
 }
 
 session_destroy();
-header('Content-Type: application/json');
-echo json_encode(['success' => true, 'message' => 'Logged out successfully']);
+
+if (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'message' => 'Logged out successfully']);
+} else {
+    header('Location: ../pages/login.php');
+}
+exit();

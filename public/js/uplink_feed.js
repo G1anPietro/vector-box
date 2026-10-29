@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const div = document.createElement('div');
         div.className = 'date-separator';
         div.setAttribute('data-date', dateStr);
-        div.style.cssText = 'text-align: center; color: #8ab4f8; font-size: 0.75rem; margin: 12px 0 6px 0; opacity: 0.8; font-weight: bold; user-select: none;';
+        div.style.cssText = 'text-align: center; color: var(--text-muted, #8ab4f8); font-size: 0.75rem; margin: 12px 0 6px 0; opacity: 0.9; font-weight: bold; user-select: none;';
         div.textContent = `─── ${formatDateLabel(dateStr)} ───`;
         return div;
     };
@@ -76,14 +76,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const createMessageElement = (data, isError = false) => {
         const p = document.createElement('p');
         if (data.id) p.id = `msg-${data.id}`;
-        p.className = 'term-white';
-        p.style.cssText = 'margin: 2px 0; word-break: break-all; line-height: 1.3; display: flex; align-items: center;';
+        p.className = 'chat-msg-row';
+
+        const prefixContainer = document.createElement('span');
+        prefixContainer.className = 'chat-msg-prefix';
 
         if (window.SESSION_STATE.isAdmin && data.id && !isError) {
             const delBtn = document.createElement('button');
             delBtn.textContent = '[X]';
             delBtn.title = 'Delete transmission';
-            delBtn.style.cssText = 'background: none; border: none; color: #ff3333; cursor: pointer; margin-right: 8px; font-size: 0.75rem; font-family: inherit; font-weight: bold; flex-shrink: 0;';
+            delBtn.className = 'chat-del-btn';
             delBtn.addEventListener('click', async () => {
                 try {
                     const res = await fetch('api/delete_message.php', {
@@ -99,23 +101,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (resData.success) p.remove();
                 } catch (err) {}
             });
-            p.appendChild(delBtn);
+            prefixContainer.appendChild(delBtn);
         }
 
         const timeSpan = document.createElement('span');
-        timeSpan.style.cssText = 'color: #8ab4f8; margin-right: 6px; font-size: 0.8rem;';
+        timeSpan.className = 'chat-time-tag';
         timeSpan.textContent = `[${data.created_at || 'LOGGED'}]`;
 
         const userSpan = document.createElement('span');
-        userSpan.style.cssText = 'color: var(--accent-color); font-weight: bold; margin-right: 8px;';
+        userSpan.className = 'chat-user-tag';
         userSpan.textContent = `${data.username || 'guest'}:`;
 
+        prefixContainer.appendChild(timeSpan);
+        prefixContainer.appendChild(userSpan);
+
         const textSpan = document.createElement('span');
-        textSpan.style.color = isError ? '#ff3333' : '#ffffff';
+        textSpan.className = 'chat-msg-body';
+        if (isError) textSpan.style.color = '#ff3333';
         textSpan.textContent = data.message;
 
-        p.appendChild(timeSpan);
-        p.appendChild(userSpan);
+        p.appendChild(prefixContainer);
         p.appendChild(textSpan);
 
         return p;
