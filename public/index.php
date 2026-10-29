@@ -1,29 +1,16 @@
 <?php
+require_once __DIR__ . '/includes/head.php';
 if (file_exists('version.php')) {
     require_once 'version.php';
 } else {
-    define('APP_VERSION', 'v2.4.0');
     define('BUILD_DATE', date('Y-m-d'));
     define('BUILD_HASH', 'dev');
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Node // Vector-Box</title>
-    <link rel="stylesheet" href="css/style.css?v=<?php echo APP_VERSION; ?>">
-    <script src="js/menu.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/cookie_consent.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/theme.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/matrix.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/terminal.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/commands.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/uplink.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/uplink_feed.js?v=<?php echo APP_VERSION; ?>"></script>
-    <script src="js/window_manager.js?v=<?php echo APP_VERSION; ?>"></script>
+    <?php renderHead("Node // Vector-Box", false); ?>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -34,10 +21,10 @@ if (file_exists('version.php')) {
             <button id="menu-toggle-btn" class="nav-btn" type="button">// MENU</button>
             
             <div id="dropdown-menu" class="cyber-panel menu-dropdown hidden">
-                <a href="pages/resume.html" class="menu-item btn-dossier">// VIEW DOSSIER</a>
-                <a href="pages/ads.html" class="menu-item btn-adwall">// AD WALL</a>
+                <a href="pages/resume.php" class="menu-item btn-dossier">// VIEW DOSSIER</a>
+                <a href="pages/ads.php" class="menu-item btn-adwall">// AD WALL</a>
                 <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
-                <a href="pages/hack.html" class="menu-item">// NODE BREACH</a>
+                <a href="pages/hack.php" class="menu-item">// NODE BREACH</a>
                 
                 <button id="menu-login-btn" class="menu-item" type="button">// USER_ACCOUNT</button>
                 
@@ -48,6 +35,14 @@ if (file_exists('version.php')) {
                         <span id="theme-label" class="toggle-label">MODE: NIGHT</span>
                         <label class="cyber-switch">
                             <input type="checkbox" id="theme-toggle">
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row" style="margin-top: 8px;">
+                        <span class="toggle-label">HIGH CONTRAST</span>
+                        <label class="cyber-switch">
+                            <input type="checkbox" id="contrast-toggle">
                             <span class="switch-slider"></span>
                         </label>
                     </div>
@@ -83,8 +78,8 @@ if (file_exists('version.php')) {
     </header>
 
     <main class="desktop-viewport">
-        <!-- 1. SHELL TERMINAL CONTAINER -->
-        <div id="win-terminal" class="cyber-panel draggable-window" style="top: 100px; left: 60px; width: 620px; height: 440px;">
+        <!-- 1. SHELL TERMINAL -->
+        <div id="win-terminal" class="cyber-panel draggable-window" style="top: 90px; left: 40px; width: 580px; height: 380px;">
             <div class="window-header">>_ TERMINAL</div>
             <div class="terminal-box auth-terminal" id="guest-term-box">
                 <div id="guest-term-log">
@@ -94,114 +89,79 @@ if (file_exists('version.php')) {
                 </div>
                 <div class="terminal-input-line clean-input-line">
                     <span class="prompt-symbol">guest@vector-box:~$</span>
-                    <input type="text" 
-                        id="guest-cmd-input" 
-                        class="terminal-input" 
-                        autocomplete="off" 
-                        autocorrect="off" 
-                        autocapitalize="off" 
-                        spellcheck="false" 
-                        name="terminal_command_input">
+                    <input type="text" id="guest-cmd-input" class="terminal-input" autocomplete="off" name="terminal_command_input">
                 </div>
             </div>
         </div>
 
-        <!-- 2. REAL-TIME CHAT FEED CONTAINER -->
-        <div id="win-chatfeed" class="cyber-panel draggable-window" style="top: 100px; left: 710px; width: 440px; height: 440px;">
+        <!-- 2. CHAT FEED -->
+        <div id="win-chatfeed" class="cyber-panel draggable-window" style="top: 90px; left: 640px; width: 480px; height: 380px;">
             <div class="window-header">>_ CHAT_FEED</div>
-            <div id="chat-room-tabs" class="chat-tab-bar">
-                <!-- Room Tabs Dynamically Rendered by uplink_feed.js -->
-            </div>
+            <div id="chat-room-tabs" class="chat-tab-bar"></div>
             <div class="terminal-box auth-terminal" id="feed-term-box">
                 <div id="uplink-chat-log"></div>
                 <div class="terminal-input-line clean-input-line">
                     <span class="prompt-symbol" id="chat-prompt-label">#general:$</span>
-                    <input type="text" 
-                        id="chat-feed-input" 
-                        class="terminal-input" 
-                        placeholder="Type message to feed..." 
-                        autocomplete="off" 
-                        autocorrect="off" 
-                        autocapitalize="off" 
-                        spellcheck="false"
-                        name="chat_feed_input">
+                    <input type="text" id="chat-feed-input" class="terminal-input" placeholder="Type message to feed..." autocomplete="off">
                 </div>
             </div>
         </div>
 
-        <!-- 3. PUBLIC UPLINK TRANSMISSION CONTAINER -->
-        <div id="win-msgbox" class="cyber-panel draggable-window public-panel uplink-panel" style="top: 560px; left: 240px; width: 720px; height: 260px;">
+        <!-- 3. PUBLIC UPLINK TRANSMISSION -->
+        <div id="win-msgbox" class="cyber-panel draggable-window public-panel uplink-panel" style="top: 490px; left: 40px; width: 580px; height: 260px;">
             <div class="window-header">>_ PUBLIC_UPLINK_TERMINAL</div>
             <div class="window-content-inner">
-                <p class="uplink-desc">Leave an encrypted transmission for the system administrator. Spamming triggers network isolation.</p>
-                
-                <textarea id="public-msg-input" 
-                    class="uplink-textarea" 
-                    placeholder="Enter transmission data..." 
-                    autocomplete="off" 
-                    autocorrect="off" 
-                    autocapitalize="off" 
-                    spellcheck="false"
-                    name="public_transmission_text"></textarea>
-                
+                <p class="uplink-desc">Leave an encrypted transmission for the system administrator.</p>
+                <textarea id="public-msg-input" class="uplink-textarea" placeholder="Enter transmission data..."></textarea>
                 <button id="public-send-btn" type="button" class="uplink-btn">>_ TRANSMIT MESSAGE</button>
                 <div id="public-msg-status" class="uplink-status"></div>
             </div>
         </div>
+
+        <!-- 4. CYBERPUNK POKER MINIGAME CONTAINER (STREAMLINED & UNCROWDED) -->
+        <div id="win-poker" class="cyber-panel draggable-window hidden" style="top: 140px; left: 240px; width: 620px; height: 460px;">
+            <div class="window-header">>_ CYBER_POKER // NEON_HOLDEM</div>
+            <div class="window-content-inner" style="padding: 10px; display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+                
+                <!-- Streamlined Top Info Bar -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                    <div style="display: flex; flex-direction: column;">
+                        <span class="term-accent" style="font-weight: bold; font-size: 0.9rem;">POT: <span id="poker-pot-val">0</span> CR</span>
+                        <span id="poker-stage-indicator" style="font-size: 0.75rem; color: var(--text-muted);">STAGE: WAITING</span>
+                    </div>
+                    <div id="poker-community-cards" style="display: flex; gap: 6px;"></div>
+                </div>
+
+                <!-- Clean Seat Grid -->
+                <div id="poker-seats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;"></div>
+
+                <!-- Winner Announcement Banner -->
+                <div id="poker-winner-banner" class="hidden" style="background: rgba(0, 255, 102, 0.15); border: 1px solid var(--accent-color); padding: 8px; text-align: center; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;"></div>
+
+                <!-- Uncrowded Action Controls -->
+                <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">BET:</span>
+                        <input type="number" id="poker-bet-input" value="40" min="10" step="10" style="width: 70px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px; font-family: monospace; font-size: 0.85rem; outline: none;">
+                        <button id="poker-btn-raise" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 4px 8px; font-size: 0.75rem;">RAISE / BET</button>
+                    </div>
+
+                    <div style="display: flex; gap: 6px;">
+                        <button id="poker-btn-join" type="button" class="nav-btn" style="flex: 1; padding: 6px; font-size: 0.75rem;">SEAT</button>
+                        <button id="poker-btn-leave" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;">LEAVE</button>
+                        <button id="poker-btn-deal" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 6px; font-size: 0.75rem;">DEAL</button>
+                        <button id="poker-btn-fold" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;">FOLD</button>
+                        <button id="poker-btn-call" type="button" class="nav-btn" style="flex: 1; border-color: #00f3ff; color: #00f3ff; padding: 6px; font-size: 0.75rem;">CALL/CHECK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
-
-    <div id="login-modal" class="modal hidden">
-        <div class="cyber-panel modal-content">
-            <h2>ACCOUNT_LOGIN</h2>
-            
-            <div class="terminal-input-line auth-input-group">
-                <span class="prompt-symbol">user:</span>
-                <input type="text" id="auth-user" class="terminal-input" placeholder="username" autocomplete="username">
-            </div>
-
-            <div class="terminal-input-line">
-                <span class="prompt-symbol">pass:</span>
-                <input type="password" id="auth-password" class="terminal-input" placeholder="••••••••" autocomplete="current-password">
-            </div>
-            
-            <p id="login-err" class="err-text"></p>
-            <button id="submit-login-btn" type="button" class="action-btn execution-btn">AUTHENTICATE</button>
-        </div>
-    </div>
-
-    <!-- BANNER CONSENSO COOKIE GDPR -->
-    <div id="cookie-banner" class="cyber-panel cookie-popup hidden">
-        <div class="cookie-content">
-            <span class="term-accent">>_ COOKIE_POLICY_NOTICE</span>
-            <p class="desc-text" style="font-size: 0.75rem; margin: 8px 0;">
-                This node uses local cookies to preserve system preferences (Matrix colors, theme presets). No telemetry tracking or third-party cookies are set.
-            </p>
-            <div class="btn-group" style="margin-top: 10px;">
-                <button id="cookie-accept-btn" type="button" class="nav-btn" style="padding: 4px 12px; font-size: 0.75rem;">ACCEPT</button>
-                <button id="cookie-decline-btn" type="button" class="nav-btn" style="border-color: #ff3333; color: #ff3333; padding: 4px 12px; font-size: 0.75rem;">DECLINE</button>
-            </div>
-        </div>
-    </div>
 
     <footer class="cyber-footer">
         <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
-        <a href="pages/credits.html" class="credits-link">ciao zuffi</a>
+        <a href="pages/credits.php" class="credits-link">ciao zuffi</a>
     </footer>
-
-    <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const riceSelector = document.getElementById("rice-selector");
-        if (!riceSelector) return;
-
-        const savedRice = localStorage.getItem("selected_rice") || "cyberpunk";
-        riceSelector.value = savedRice;
-
-        riceSelector.addEventListener("change", (e) => {
-            const val = e.target.value;
-            document.body.setAttribute("data-rice", val);
-            localStorage.setItem("selected_rice", val);
-        });
-    });
-    </script>
 </body>
 </html>

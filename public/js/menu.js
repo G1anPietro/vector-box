@@ -164,16 +164,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --- 4. Mode & Display Toggles ---
-    if (themeToggle && themeLabel) {
-        themeToggle.addEventListener('change', () => {
-            const isLight = themeToggle.checked;
-            document.body.classList.toggle('light-mode', isLight);
-            themeLabel.textContent = isLight ? 'MODE: LIGHT' : 'MODE: NIGHT';
-            
-            window.matrixColor = isLight ? '#008033' : '#00f3ff';
-            if (typeof window.setSystemCookie === 'function') {
-                window.setSystemCookie('theme_mode', isLight ? 'light' : 'night');
-            }
+    const contrastToggle = document.getElementById('contrast-toggle');
+
+    if (contrastToggle) {
+        const savedContrast = localStorage.getItem('high_contrast_mode') === 'true';
+        contrastToggle.checked = savedContrast;
+        document.body.classList.toggle('high-contrast', savedContrast);
+
+        contrastToggle.addEventListener('change', () => {
+            const isHighContrast = contrastToggle.checked;
+            document.body.classList.toggle('high-contrast', isHighContrast);
+            localStorage.setItem('high_contrast_mode', isHighContrast);
         });
     }
 
