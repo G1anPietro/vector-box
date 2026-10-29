@@ -25,7 +25,8 @@
         root.style.setProperty('--border-color', preset.border);
         root.style.setProperty('--text-muted', preset.muted);
         root.style.setProperty('--prompt-color', preset.prompt);
-
+        
+        root.setAttribute('data-rice', themeName);
         if (document.body) {
             document.body.setAttribute('data-rice', themeName);
         }
@@ -38,12 +39,6 @@
         } catch (e) {}
 
         document.cookie = `selected_theme=${encodeURIComponent(themeName)}; path=/; max-age=31536000; SameSite=Lax`;
-
-        fetch('api/save_theme.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ theme: themeName })
-        }).catch(() => {});
     }
 
     window.THEME_PRESETS = THEME_PRESETS;
@@ -57,11 +52,48 @@
             document.body.setAttribute('data-rice', savedTheme);
         }
 
+        // 1. Rice Selector
         const riceSelector = document.getElementById('rice-selector');
         if (riceSelector) {
             riceSelector.value = savedTheme;
             riceSelector.addEventListener('change', (e) => {
                 applyTheme(e.target.value);
+            });
+        }
+
+        // 2. High Contrast Toggle
+        const contrastToggle = document.getElementById('contrast-toggle');
+        if (contrastToggle) {
+            const isHighContrast = localStorage.getItem('high_contrast') === 'true';
+            contrastToggle.checked = isHighContrast;
+            if (isHighContrast) document.body.classList.add('high-contrast');
+
+            contrastToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    document.body.classList.add('high-contrast');
+                    localStorage.setItem('high_contrast', 'true');
+                } else {
+                    document.body.classList.remove('high-contrast');
+                    localStorage.setItem('high_contrast', 'false');
+                }
+            });
+        }
+
+        // 3. Scanline Effect Toggle
+        const scanlineToggle = document.getElementById('scanline-toggle');
+        if (scanlineToggle) {
+            const isScanlines = localStorage.getItem('scanlines_active') === 'true';
+            scanlineToggle.checked = isScanlines;
+            if (isScanlines) document.body.classList.add('scanlines-active');
+
+            scanlineToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    document.body.classList.add('scanlines-active');
+                    localStorage.setItem('scanlines_active', 'true');
+                } else {
+                    document.body.classList.remove('scanlines-active');
+                    localStorage.setItem('scanlines_active', 'false');
+                }
             });
         }
     });

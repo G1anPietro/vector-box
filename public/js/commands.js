@@ -5,7 +5,7 @@ const baseSystemCommands = [
     "find", "grep", "fortune", "quote", "whoami", "id", "uptime", "history", 
     "syslog", "sudo", "ip", "scan", "nmap", "ping", "traceroute", "status", 
     "decrypt", "ascii", "theme", "matrix", "cmatrix", "nuke", "glitch", "clear",
-    "rice", "fetch", "join", "rooms", "create", "poker"
+    "rice", "fetch", "join", "rooms", "create", "poker", "vault", "tools"
 ];
 
 const COLORS = {
@@ -59,6 +59,8 @@ const COMMAND_DESCRIPTIONS = {
     "rooms": "List all active public chat channel rooms.",
     "create": "Create a new public chat channel room. Usage: create <room_id> [room_name]",
     "poker": "Focus poker window or manage custom tables. Usage: poker [join [room|code]] | poker create <name> [bot_count] [code] | poker leave",
+    "vault": "Focus or launch the cipher decryption vault window.",
+    "tools": "Focus or launch the developer/security converter workbench.",
     "/ban": "Permanently ban user from system (Admin only). Usage: /ban <username>",
     "/timeout": "Temporarily restrict user for specified minutes (Admin only). Usage: /timeout <username> [minutes]",
     "/unban": "Restore access for banned or timed-out user (Admin only). Usage: /unban <username>"
@@ -70,7 +72,7 @@ const defaultFileSystem = {
         type: 'dir',
         children: {
             'motd.txt': { type: 'file', content: "====================================================\n  WELCOME TO VECTOR-BOX NODE v2.4.0 (AARCH64)\n  ALL CONNECTIONS ARE MONITORED AND LOGGED.\n====================================================" },
-            'system.log': { type: 'file', content: "[2026-10-20 09:14:02] AUTH_FAIL: root from 192.168.1.45\n[2026-10-20 09:15:11] SERVICE_RESTART: nginx.service\n[2026-10-20 09:22:00] FIREWALL_RULE: DROPPED PACKET FROM 10.0.0.12\n[2026-10-20 10:00:00] TELEMETRY_SYNC: OK" },
+            'system.log': { type: 'file', content: "[2026-10-20 09:14:02] AUTH_FAIL: root from 192.168.1.45\n[2026-10-20 09:15:11] SERVICE_RESTART: nginx.service\n[2026-10-20 09:22:00] FIREWALL_RULE: DROPPED PACKET FROM 10.0.0.12\n[2026-10-20 10:00:00] TELEMETRY_SYNC: OK\n[2026-10-29 10:45:00] ARG_KEY_LEAK: VECTOR-2026" },
             'credits.txt': { type: 'file', content: "DEVELOPED BY: VECTOR-BOX CORE TEAM\nSYSTEM ARCHITECTURE: PURE JS / PHP TELEMETRY\nVISUAL ENGINE: CRT OVERLAY + MATRIX CANVAS" },
             'chat': {
                 type: 'dir',
@@ -206,8 +208,12 @@ function loadAdminCommandsIfEligible() {
 const defaultRices = ["cyberpunk", "nord", "catppuccin", "gruvbox", "dracula", "synthwave", "solarized"];
 
 function applyRiceTheme(themeName) {
-    document.body.setAttribute("data-rice", themeName);
-    localStorage.setItem("selected_rice", themeName);
+    if (typeof window.applySystemTheme === 'function') {
+        window.applySystemTheme(themeName);
+    } else {
+        document.body.setAttribute("data-rice", themeName);
+        localStorage.setItem("selected_rice", themeName);
+    }
 }
 
 function parseAndApplyRiceConf(confText) {
@@ -282,20 +288,20 @@ function registerCustomTheme(name, bgHex, accentHex) {
             const { bg, accent } = customThemes[name];
             registerCustomTheme(name, bg, accent);
         });
-
-        // Use selected_theme if set, falling back to selected_rice
-        const activeRice = localStorage.getItem("selected_theme") || localStorage.getItem("selected_rice") || "cyan";
-        document.body.setAttribute("data-rice", activeRice);
-
-        if (typeof window.applySystemTheme === 'function') {
-            window.applySystemTheme(activeRice);
-        }
-
-        if (fileSystem['~']?.children?.['.config']?.children?.['rice.conf']) {
-            parseAndApplyRiceConf(fileSystem['~'].children['.config'].children['rice.conf'].content);
-        }
     } catch (e) {}
 })();
+
+function focusWindow(winId) {
+    const targetWin = document.getElementById(winId);
+    if (targetWin) {
+        targetWin.classList.remove('hidden');
+        if (typeof window.bringToFront === 'function') {
+            window.bringToFront(targetWin);
+        } else if (window.WindowManager && typeof window.WindowManager.bringToFront === 'function') {
+            window.WindowManager.bringToFront(targetWin);
+        }
+    }
+}
 
 const commandHandlers = {
     help(args, printGuestLog) {
@@ -317,6 +323,16 @@ const commandHandlers = {
         printGuestLog(list.join("   "), COLORS.PRIMARY);
         printGuestLog("==========================================================", COLORS.INFO);
         printGuestLog("Type 'help <command>' to view specific command usage.", COLORS.INFO);
+    },
+
+    vault(args, printGuestLog) {
+        focusWindow('win-vault');
+        printGuestLog(">> CIPHER VAULT: Window focused.", COLORS.PRIMARY);
+    },
+
+    tools(args, printGuestLog) {
+        focusWindow('win-tools');
+        printGuestLog(">> TOOLBOX WORKBENCH: Window focused.", COLORS.PRIMARY);
     },
 
     join(args, printGuestLog) {
@@ -380,58 +396,46 @@ const commandHandlers = {
     },
 
     poker(args, printGuestLog) {
-        const pokerWin = document.getElementById('win-poker');
-        if (pokerWin) {
-            pokerWin.classList.remove('hidden');
-            
-            if (typeof window.bringToFront === 'function') {
-                window.bringToFront(pokerWin);
-            } else if (window.WindowManager && typeof window.WindowManager.bringToFront === 'function') {
-                window.WindowManager.bringToFront(pokerWin);
+        focusWindow('win-poker');
+        printGuestLog(">> CYBER_POKER: Window focused.", COLORS.PRIMARY);
+
+        const action = args[0]?.toLowerCase();
+        const target = args[1];
+
+        if (action === 'leave') {
+            const btnLeave = document.getElementById('poker-btn-leave');
+            if (btnLeave) btnLeave.click();
+            printGuestLog(">> CYBER_POKER: Left poker table.", COLORS.WARNING);
+        } else if (action === 'join') {
+            if (target && typeof window.switchPokerRoom === 'function') {
+                window.switchPokerRoom(target);
+            }
+            const btnJoin = document.getElementById('poker-btn-join');
+            if (btnJoin) btnJoin.click();
+        } else if (action === 'create') {
+            const roomName = args[1];
+            const botCount = args[2] || "1";
+            const roomCode = args[3] || "";
+
+            if (!roomName) {
+                printGuestLog(">> USAGE: poker create <room_name> [bot_count] [room_code]", COLORS.ERROR);
+                return;
             }
 
-            printGuestLog(">> CYBER_POKER: Window focused.", COLORS.PRIMARY);
-
-            const action = args[0]?.toLowerCase();
-            const target = args[1];
-
-            if (action === 'leave') {
-                const btnLeave = document.getElementById('poker-btn-leave');
-                if (btnLeave) btnLeave.click();
-                printGuestLog(">> CYBER_POKER: Left poker table.", COLORS.WARNING);
-            } else if (action === 'join') {
-                if (target && typeof window.switchPokerRoom === 'function') {
-                    window.switchPokerRoom(target);
-                }
-                const btnJoin = document.getElementById('poker-btn-join');
-                if (btnJoin) btnJoin.click();
-            } else if (action === 'create') {
-                const roomName = args[1];
-                const botCount = args[2] || "1";
-                const roomCode = args[3] || "";
-
-                if (!roomName) {
-                    printGuestLog(">> USAGE: poker create <room_name> [bot_count] [room_code]", COLORS.ERROR);
-                    return;
-                }
-
-                fetch('api/poker.php?action=create_room', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `room_name=${encodeURIComponent(roomName)}&room_code=${encodeURIComponent(roomCode)}&bot_count=${botCount}`
-                }).then(r => r.json()).then(data => {
-                    if (data.success) {
-                        printGuestLog(`>> POKER ROOM CREATED: #${data.room_id} (Code: ${data.room_code || 'NONE'})`, COLORS.PRIMARY);
-                        if (typeof window.switchPokerRoom === 'function') {
-                            window.switchPokerRoom(data.room_id);
-                        }
-                    } else {
-                        printGuestLog(`>> ERROR: ${data.error}`, COLORS.ERROR);
+            fetch('api/poker.php?action=create_room', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `room_name=${encodeURIComponent(roomName)}&room_code=${encodeURIComponent(roomCode)}&bot_count=${botCount}`
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    printGuestLog(`>> POKER ROOM CREATED: #${data.room_id} (Code: ${data.room_code || 'NONE'})`, COLORS.PRIMARY);
+                    if (typeof window.switchPokerRoom === 'function') {
+                        window.switchPokerRoom(data.room_id);
                     }
-                });
-            }
-        } else {
-            printGuestLog(">> ERROR: Poker window component not loaded.", COLORS.ERROR);
+                } else {
+                    printGuestLog(`>> ERROR: ${data.error}`, COLORS.ERROR);
+                }
+            });
         }
     },
 
