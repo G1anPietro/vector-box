@@ -2,11 +2,16 @@
 document.addEventListener("DOMContentLoaded", () => {
     let topZIndex = 100;
 
+    window.bringToFront = (winEl) => {
+        if (!winEl) return;
+        topZIndex++;
+        winEl.style.zIndex = topZIndex;
+        winEl.classList.remove('hidden');
+    };
+
     const makeWindowInteractive = (winEl, id) => {
-        // Ensure absolute positioning
         winEl.style.position = 'absolute';
 
-        // Restore saved position/size if available
         const savedState = localStorage.getItem(`win_state_${id}`);
         if (savedState) {
             try {
@@ -28,13 +33,10 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem(`win_state_${id}`, JSON.stringify(state));
         };
 
-        // Bring window to top on click
         winEl.addEventListener('mousedown', () => {
-            topZIndex++;
-            winEl.style.zIndex = topZIndex;
+            window.bringToFront(winEl);
         });
 
-        // Add drag handle targeting top header bar
         const header = winEl.querySelector('.window-header') || winEl.firstElementChild;
         if (header) {
             header.style.cursor = 'move';
@@ -44,8 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let startX, startY, startLeft, startTop;
 
             header.addEventListener('mousedown', (e) => {
-                // Ignore if clicked on buttons or input elements
-                if (['INPUT', 'BUTTON', 'A', 'TEXTAREA'].includes(e.target.tagName)) return;
+                if (['INPUT', 'BUTTON', 'A', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
                 isDragging = true;
                 startX = e.clientX;
@@ -73,7 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Add 8-direction resize handles
         const handles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
         handles.forEach(dir => {
             const handle = document.createElement('div');
@@ -84,8 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 e.stopPropagation();
                 e.preventDefault();
 
-                topZIndex++;
-                winEl.style.zIndex = topZIndex;
+                window.bringToFront(winEl);
 
                 const startX = e.clientX;
                 const startY = e.clientY;
@@ -98,16 +97,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     const dx = moveEvent.clientX - startX;
                     const dy = moveEvent.clientY - startY;
 
-                    if (dir.includes('e')) winEl.style.width = `${Math.max(250, startW + dx)}px`;
-                    if (dir.includes('s')) winEl.style.height = `${Math.max(150, startH + dy)}px`;
+                    if (dir.includes('e')) winEl.style.width = `${Math.max(280, startW + dx)}px`;
+                    if (dir.includes('s')) winEl.style.height = `${Math.max(180, startH + dy)}px`;
                     
                     if (dir.includes('w')) {
-                        const newW = Math.max(250, startW - dx);
+                        const newW = Math.max(280, startW - dx);
                         winEl.style.width = `${newW}px`;
                         winEl.style.left = `${startLeft + (startW - newW)}px`;
                     }
                     if (dir.includes('n')) {
-                        const newH = Math.max(150, startH - dy);
+                        const newH = Math.max(180, startH - dy);
                         winEl.style.height = `${newH}px`;
                         winEl.style.top = `${startTop + (startH - newH)}px`;
                     }
@@ -125,7 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     };
 
-    // Initialize all elements marked with .draggable-window
     document.querySelectorAll('.draggable-window').forEach((el, index) => {
         const windowId = el.id || `win_${index}`;
         makeWindowInteractive(el, windowId);

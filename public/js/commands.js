@@ -5,7 +5,7 @@ const baseSystemCommands = [
     "find", "grep", "fortune", "quote", "whoami", "id", "uptime", "history", 
     "syslog", "sudo", "ip", "scan", "nmap", "ping", "traceroute", "status", 
     "decrypt", "ascii", "theme", "matrix", "cmatrix", "nuke", "glitch", "clear",
-    "rice", "fetch", "join", "rooms", "create"
+    "rice", "fetch", "join", "rooms", "create", "poker"
 ];
 
 const COLORS = {
@@ -18,49 +18,50 @@ const COLORS = {
 };
 
 const COMMAND_DESCRIPTIONS = {
-    "help": "Display list of commands or detailed info. Usage: help [command]",
-    "ls": "List directory contents. Aliases: dir",
-    "dir": "List directory contents. Aliases: ls",
-    "cd": "Change current working directory. Usage: cd <dir>",
-    "pwd": "Print absolute path of working directory.",
+    "help": "Display list of available commands or detailed syntax for a command. Usage: help [command]",
+    "ls": "List directory contents in current virtual filesystem path. Aliases: dir",
+    "dir": "List directory contents in current virtual filesystem path. Aliases: ls",
+    "cd": "Change working directory. Usage: cd <dir|..|~>",
+    "pwd": "Print current working directory path.",
     "cat": "Display virtual file contents. Usage: cat <filename>",
-    "nano": "Terminal text editor. Usage: nano <filename>",
-    "mkdir": "Create a new directory. Usage: mkdir <dirname>",
-    "touch": "Create an empty file. Usage: touch <filename>",
-    "echo": "Print text or write to file. Usage: echo <text> > <file>",
-    "rm": "Remove file or directory. Usage: rm <target>",
-    "find": "Walk and list full virtual filesystem tree.",
+    "nano": "Open embedded GNU nano text editor. Usage: nano <filename>",
+    "mkdir": "Create a new directory in current working path. Usage: mkdir <dirname>",
+    "touch": "Create a new empty virtual file. Usage: touch <filename>",
+    "echo": "Output text or write to a file. Usage: echo <text> [> <file>]",
+    "rm": "Remove a virtual file or directory. Usage: rm <target>",
+    "find": "Walk and display entire virtual filesystem tree.",
     "grep": "Search for pattern inside file. Usage: grep <pattern> <file>",
-    "fortune": "Display random cyberpunk quote. Aliases: quote",
-    "quote": "Display random cyberpunk quote. Aliases: fortune",
-    "whoami": "Show active user identity and user agent. Aliases: id",
-    "id": "Show active user identity details. Aliases: whoami",
-    "uptime": "Display node running time and load average.",
-    "history": "View command history log for current session.",
-    "syslog": "Fetch system error logs.",
-    "sudo": "Attempt privileged operation.",
-    "ip": "Retrieve client IP address.",
-    "scan": "Scan local subnet interfaces.",
-    "nmap": "Perform port scan on target host. Usage: nmap [host]",
-    "ping": "Test packet latency to host. Usage: ping [host]",
-    "traceroute": "Trace network route hops.",
-    "status": "Display node screen resolution and client environment.",
-    "decrypt": "Run dictionary attack sequence on hash. Usage: decrypt [hash]",
-    "ascii": "Render ASCII text banner. Usage: ascii [text]",
-    "theme": "Set interface theme. Usage: theme <preset>",
-    "matrix": "Set Matrix rain color. Usage: matrix <color|#hex>",
-    "cmatrix": "Trigger matrix rain animation.",
-    "nuke": "Trigger screen invert effect.",
-    "glitch": "Trigger screen distortion effect.",
-    "clear": "Clear terminal output screen.",
-    "rice": "Switch or add desktop rice themes. Usage: rice <preset> OR rice add <name> <bg_hex> <accent_hex>",
+    "fortune": "Display a random cyberpunk quote. Aliases: quote",
+    "quote": "Display a random cyberpunk quote. Aliases: fortune",
+    "whoami": "Show active user identity, UID, GID, and session metadata. Aliases: id",
+    "id": "Show active user identity and group details. Aliases: whoami",
+    "uptime": "Display system running time and current CPU load averages.",
+    "history": "View command execution history log for current session.",
+    "syslog": "Fetch and display system error logs from telemetry backend.",
+    "sudo": "Attempt privileged execution (requires root privileges).",
+    "ip": "Retrieve and display client public IPv4 address.",
+    "scan": "Scan local network interfaces for active targets.",
+    "nmap": "Perform port scanning sequence on target host. Usage: nmap [host]",
+    "ping": "Send ICMP echo requests to measure packet latency. Usage: ping [host]",
+    "traceroute": "Trace network route hops to destination target.",
+    "status": "Display client viewport screen resolution and system environment.",
+    "decrypt": "Run automated dictionary attack sequence on target hash. Usage: decrypt [hash]",
+    "ascii": "Render ASCII text banner using local FIGlet font parser. Usage: ascii <text>",
+    "theme": "Set desktop interface theme preset. Usage: theme <cyberpunk|nord|catppuccin|gruvbox|dracula|synthwave|solarized>",
+    "matrix": "Set Matrix canvas rain color. Usage: matrix <color|#hex>",
+    "cmatrix": "Trigger matrix rain canvas animation overlay.",
+    "nuke": "Trigger emergency CRT screen invert visual effect.",
+    "glitch": "Trigger temporary screen distortion glitch effect.",
+    "clear": "Clear active shell terminal output log.",
+    "rice": "Switch or add custom desktop rice styles. Usage: rice <preset> OR rice add <name> <bg_hex> <accent_hex>",
     "fetch": "Display system summary, specs, and desktop rice info banner.",
-    "join": "Switch active chat channel room. Usage: join <room_id>",
-    "rooms": "List all public chat channels.",
-    "create": "Create a new chat room channel. Usage: create <room_id> [room_name]",
-    "/ban": "Permanently ban user from system. Usage: /ban <username>",
-    "/timeout": "Temporarily restrict user for M minutes. Usage: /timeout <username> [minutes]",
-    "/unban": "Restore access for banned or timed-out user. Usage: /unban <username>"
+    "join": "Switch active public chat channel room feed. Usage: join <room_id>",
+    "rooms": "List all active public chat channel rooms.",
+    "create": "Create a new public chat channel room. Usage: create <room_id> [room_name]",
+    "poker": "Focus poker window or manage custom tables. Usage: poker [join [room|code]] | poker create <name> [bot_count] [code] | poker leave",
+    "/ban": "Permanently ban user from system (Admin only). Usage: /ban <username>",
+    "/timeout": "Temporarily restrict user for specified minutes (Admin only). Usage: /timeout <username> [minutes]",
+    "/unban": "Restore access for banned or timed-out user (Admin only). Usage: /unban <username>"
 };
 
 // Default File System Blueprint with .config/rice.conf and ~/chat/ channel logs included
@@ -370,6 +371,62 @@ const commandHandlers = {
             }
         } catch (err) {
             printGuestLog(">> ERROR: Failed to create channel", COLORS.ERROR);
+        }
+    },
+
+    poker(args, printGuestLog) {
+        const pokerWin = document.getElementById('win-poker');
+        if (pokerWin) {
+            pokerWin.classList.remove('hidden');
+            
+            if (typeof window.bringToFront === 'function') {
+                window.bringToFront(pokerWin);
+            } else if (window.WindowManager && typeof window.WindowManager.bringToFront === 'function') {
+                window.WindowManager.bringToFront(pokerWin);
+            }
+
+            printGuestLog(">> CYBER_POKER: Window focused.", COLORS.PRIMARY);
+
+            const action = args[0]?.toLowerCase();
+            const target = args[1];
+
+            if (action === 'leave') {
+                const btnLeave = document.getElementById('poker-btn-leave');
+                if (btnLeave) btnLeave.click();
+                printGuestLog(">> CYBER_POKER: Left poker table.", COLORS.WARNING);
+            } else if (action === 'join') {
+                if (target && typeof window.switchPokerRoom === 'function') {
+                    window.switchPokerRoom(target);
+                }
+                const btnJoin = document.getElementById('poker-btn-join');
+                if (btnJoin) btnJoin.click();
+            } else if (action === 'create') {
+                const roomName = args[1];
+                const botCount = args[2] || "1";
+                const roomCode = args[3] || "";
+
+                if (!roomName) {
+                    printGuestLog(">> USAGE: poker create <room_name> [bot_count] [room_code]", COLORS.ERROR);
+                    return;
+                }
+
+                fetch('api/poker.php?action=create_room', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `room_name=${encodeURIComponent(roomName)}&room_code=${encodeURIComponent(roomCode)}&bot_count=${botCount}`
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        printGuestLog(`>> POKER ROOM CREATED: #${data.room_id} (Code: ${data.room_code || 'NONE'})`, COLORS.PRIMARY);
+                        if (typeof window.switchPokerRoom === 'function') {
+                            window.switchPokerRoom(data.room_id);
+                        }
+                    } else {
+                        printGuestLog(`>> ERROR: ${data.error}`, COLORS.ERROR);
+                    }
+                });
+            }
+        } else {
+            printGuestLog(">> ERROR: Poker window component not loaded.", COLORS.ERROR);
         }
     },
 

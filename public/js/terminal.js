@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
         guestCmdInput.style.background = 'transparent';
     }
 
-    // Advanced Autocomplete Engine (Commands, Paths, Arguments, Sub-commands, Channels)
+    // Advanced Autocomplete Engine (Commands, Paths, Arguments, Sub-commands, Channels, Poker)
     const getContextCompletions = (inputVal) => {
         const parts = inputVal.split(/\s+/);
 
@@ -178,6 +178,14 @@ document.addEventListener("DOMContentLoaded", () => {
             const roomList = (window.chatRooms || [{ id: 'general' }, { id: 'dev' }, { id: 'lounge' }]).map(r => r.id);
             return roomList
                 .filter(rId => rId.toLowerCase().startsWith(argPrefix))
+                .map(match => `${parts[0]} ${match}`);
+        }
+
+        // Poker Command Sub-arguments
+        if (cmdName === 'poker') {
+            const pokerArgs = ["join", "deal", "fold", "call"];
+            return pokerArgs
+                .filter(arg => arg.toLowerCase().startsWith(argPrefix))
                 .map(match => `${parts[0]} ${match}`);
         }
 

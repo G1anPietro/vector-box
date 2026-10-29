@@ -1,0 +1,128 @@
+/* public/css/widgets.css */
+
+.terminal-box {
+    background: #06080c;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    font-family: monospace;
+    position: relative;
+    z-index: 10;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.auth-terminal { 
+    margin-top: 0; 
+    background: #020304; 
+}
+
+#guest-term-log, #uplink-chat-log {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-bottom: 0;
+    padding-right: 5px;
+    color: #fff;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+.terminal-input-line {
+    display: flex; align-items: center; background: rgba(0,0,0,0.6);
+    border: 1px solid var(--border-color); padding: 10px; border-radius: 2px;
+}
+.clean-input-line { 
+    background: transparent; 
+    border: none; 
+    padding: 0; 
+    margin-top: 5px; 
+}
+.auth-input-group { margin-bottom: 15px; margin-top: 20px; }
+
+.prompt-symbol { color: var(--prompt-color, var(--accent-color)); font-size: 0.85rem; margin-right: 8px; white-space: nowrap; }
+.terminal-input {
+    background: transparent; border: none; color: #fff; outline: none;
+    font-family: inherit; font-size: 0.9rem; flex-grow: 1; width: 100%;
+}
+
+/* Chat Tab Bar */
+.chat-tab-bar {
+    display: flex;
+    background: rgba(2, 3, 4, 0.95);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    user-select: none;
+}
+
+.chat-tab {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.chat-tab.active {
+    color: var(--accent-color);
+    background: rgba(0, 255, 102, 0.1);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+/* Uplink Panel */
+.uplink-panel { 
+    background: #06080c; 
+    border: 1px solid var(--border-color); 
+    box-shadow: 0 0 15px rgba(0,0,0,0.95); 
+    z-index: 10; 
+}
+.uplink-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px; font-family: monospace; line-height: 1.4; }
+.uplink-textarea {
+    width: 100%; flex: 1; background: rgba(0,0,0,0.8); color: var(--accent-color);
+    border: 1px solid var(--border-color); padding: 10px; resize: none;
+    font-family: monospace; font-size: 0.9rem; box-sizing: border-box; outline: none; transition: border-color 0.2s;
+}
+.uplink-textarea:focus { border-color: var(--accent-color); box-shadow: 0 0 8px var(--border-color); }
+.uplink-btn {
+    background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color);
+    padding: 8px 15px; margin-top: 10px; cursor: pointer; font-family: monospace;
+    font-size: 0.85rem; transition: all 0.2s; width: 100%;
+}
+.uplink-btn:hover { background: var(--border-color); }
+.uplink-status { margin-top: 5px; font-family: monospace; font-size: 0.75rem; height: 15px; min-height: 15px; }
+
+/* Cyberpunk Poker Styles */
+.poker-seat-box {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.poker-seat-box.active-turn {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+.poker-card {
+    background: #020304;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 3px 6px;
+    border-radius: 2px;
+}
