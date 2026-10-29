@@ -17,13 +17,13 @@
 }
 
 .nav-btn {
-    background: transparent; border: 1px solid var(--accent-color);
+    background: rgba(0, 0, 0, 0.8); border: 1px solid var(--accent-color);
     color: var(--accent-color); padding: 6px 14px;
     font-family: inherit; font-size: 0.8rem; cursor: pointer;
     border-radius: 2px; transition: all 0.2s ease;
     pointer-events: auto;
 }
-.nav-btn:hover { background: var(--border-color); box-shadow: 0 0 10px var(--border-color); }
+.nav-btn:hover { background: var(--accent-color); box-shadow: 0 0 10px var(--accent-color); color: #000000 !important; }
 
 .menu-container {
     position: relative;
@@ -130,7 +130,7 @@
     z-index: 900 !important;
 }
 
-/* Consolidated Taskbar & Info Footer Bar */
+/* HIGH-CONTRAST TASKBAR & FOOTER BAR */
 .cyber-taskbar {
     position: fixed;
     bottom: 0;
@@ -139,11 +139,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(2, 3, 4, 0.95);
-    border-top: 1px solid var(--border-color, #00f3ff);
+    background: #020305;
+    border-top: 1px solid var(--accent-color, #ff007f);
     padding: 6px 16px;
     box-sizing: border-box;
-    box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.9);
     z-index: 1000;
 }
 
@@ -152,23 +152,33 @@
     gap: 8px;
 }
 
+/* Inactive Buttons: High-Contrast White Text & Solid Border */
 .taskbar-btn {
-    background: rgba(0, 243, 255, 0.05);
-    border: 1px solid var(--border-color, #00f3ff);
-    color: var(--border-color, #00f3ff);
+    background: rgba(15, 15, 20, 0.9);
+    border: 1px solid var(--accent-color, #ff007f);
+    color: #ffffff !important;
     font-family: monospace;
     font-size: 0.75rem;
-    padding: 4px 10px;
+    font-weight: bold;
+    padding: 5px 12px;
     cursor: pointer;
     transition: all 0.2s ease;
     border-radius: 2px;
 }
 
-.taskbar-btn:hover, .taskbar-btn.active {
-    background: var(--accent-color, #00f3ff);
-    color: #000;
+/* Active / Hovered Buttons: Vibrant Accent Fill & Crisp Contrast */
+.taskbar-btn:hover {
+    background: var(--border-color);
+    color: #ffffff !important;
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+.taskbar-btn.active {
+    background: var(--accent-color, #ff007f) !important;
+    color: #000000 !important;
     font-weight: bold;
-    box-shadow: 0 0 8px var(--border-color, #00f3ff);
+    border-color: #ffffff !important;
+    box-shadow: 0 0 12px var(--accent-color, #ff007f);
 }
 
 .taskbar-info {
@@ -177,10 +187,16 @@
     align-items: center;
     font-family: monospace;
     font-size: 0.75rem;
+    color: #ffffff !important;
+}
+
+.taskbar-info .term-muted {
+    color: var(--text-muted, #ffe600) !important;
+    font-weight: bold;
 }
 
 .credits-link {
-    color: var(--accent-color);
+    color: var(--accent-color, #ff007f);
     text-decoration: none;
     font-family: monospace;
     font-size: 0.8rem;
@@ -190,6 +206,41 @@
 }
 .credits-link:hover { color: #ffffff; text-shadow: 0 0 8px var(--accent-color); }
 
+/* Legibility & High Contrast Overrides */
+.term-muted,
+.uplink-desc,
+.settings-title,
+.toggle-label,
+p.term-muted,
+span.term-muted {
+    color: var(--text-muted, #ffe600) !important;
+    opacity: 1 !important;
+}
+
+/* Form Controls & Input Styling */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+    background-color: #020305 !important;
+    color: #ffffff !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-box-shadow: 0 0 0px 1000px #020305 inset !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+::placeholder {
+    color: var(--text-muted, #ffe600) !important;
+    opacity: 0.75 !important;
+}
+
 .settings-section {
     margin-top: 10px;
     padding-top: 10px;
@@ -198,7 +249,6 @@
 
 .settings-title {
     display: block;
-    color: var(--text-muted);
     font-size: 0.75rem;
     margin-bottom: 8px;
 }
@@ -211,7 +261,6 @@
 
 .toggle-label {
     font-size: 0.8rem;
-    color: #fff;
 }
 
 .cyber-switch {

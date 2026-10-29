@@ -23,9 +23,76 @@
     overflow-y: auto;
     margin-bottom: 0;
     padding-right: 5px;
-    color: #fff;
+    color: #ffffff;
+    line-height: 1.45;
+    overflow-wrap: break-word;
+    word-break: normal;
+    white-space: normal;
+}
+
+/* Chat Row Flex Layout */
+.chat-msg-row {
+    margin: 4px 0;
     line-height: 1.4;
-    word-break: break-all;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.chat-msg-prefix {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.chat-time-tag {
+    color: var(--text-muted, #8ab4f8);
+    font-size: 0.8rem;
+}
+
+.chat-user-tag {
+    color: var(--accent-color, #00f3ff);
+    font-weight: bold;
+}
+
+.chat-msg-body {
+    color: #ffffff;
+    flex: 1;
+    min-width: 140px;
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.chat-del-btn {
+    background: none;
+    border: none;
+    color: #ff3333;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: inherit;
+    font-weight: bold;
+    padding: 0;
+}
+
+/* RESPONSIVE FLEX GRID FOR HELP COMMANDS */
+.terminal-cmd-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin: 8px 0;
+    width: 100%;
+}
+
+.cmd-item {
+    font-family: monospace;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    display: inline-block;
 }
 
 .terminal-input-line {
@@ -40,7 +107,14 @@
 }
 .auth-input-group { margin-bottom: 15px; margin-top: 20px; }
 
-.prompt-symbol { color: var(--prompt-color, var(--accent-color)); font-size: 0.85rem; margin-right: 8px; white-space: nowrap; }
+.prompt-symbol { 
+    color: var(--prompt-color, var(--accent-color)); 
+    font-size: 0.85rem; 
+    margin-right: 8px; 
+    white-space: nowrap; 
+    flex-shrink: 0;
+}
+
 .terminal-input {
     background: transparent; border: none; color: #fff; outline: none;
     font-family: inherit; font-size: 0.9rem; flex-grow: 1; width: 100%;
@@ -61,7 +135,7 @@
     padding: 6px 12px;
     font-size: 0.75rem;
     font-weight: bold;
-    color: var(--text-muted);
+    color: var(--text-muted, #8ab4f8);
     background: transparent;
     border: none;
     border-right: 1px solid rgba(255, 255, 255, 0.05);
@@ -85,7 +159,7 @@
     box-shadow: 0 0 15px rgba(0,0,0,0.95); 
     z-index: 10; 
 }
-.uplink-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px; font-family: monospace; line-height: 1.4; }
+.uplink-desc { font-size: 0.8rem; color: var(--text-muted, #8ab4f8); margin-bottom: 15px; font-family: monospace; line-height: 1.4; }
 .uplink-textarea {
     width: 100%; flex: 1; background: rgba(0,0,0,0.8); color: var(--accent-color);
     border: 1px solid var(--border-color); padding: 10px; resize: none;

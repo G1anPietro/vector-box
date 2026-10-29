@@ -66,7 +66,7 @@ const COMMAND_DESCRIPTIONS = {
     "/unban": "Restore access for banned or timed-out user (Admin only). Usage: /unban <username>"
 };
 
-// Default File System Blueprint with .config/rice.conf and ~/chat/ channel logs included
+// Default File System Blueprint
 const defaultFileSystem = {
     '~': {
         type: 'dir',
@@ -87,7 +87,7 @@ const defaultFileSystem = {
                 children: {
                     'rice.conf': { 
                         type: 'file', 
-                        content: `# Vector-OS Rice Configuration File (Hyprland / i3 style)\n# Modify values and save with Ctrl+S in nano\n\ntheme = cyberpunk\nbg_color = #06080c\naccent_color = #00ff66\nborder_color = rgba(0, 255, 102, 0.3)\ntext_muted = #8ab4f8\nprompt_color = #00ff66\npanel_bg = rgba(10, 14, 22, 0.95)\nmatrix_color = #00ff66\n` 
+                        content: `# Vector-OS Rice Configuration File\ntheme = cyberpunk\nbg_color = #06080c\naccent_color = #00ff66\nborder_color = rgba(0, 255, 102, 0.3)\ntext_muted = #8ab4f8\nprompt_color = #00ff66\npanel_bg = rgba(10, 14, 22, 0.95)\nmatrix_color = #00ff66\n` 
                     }
                 }
             }
@@ -303,6 +303,37 @@ function focusWindow(winId) {
     }
 }
 
+/**
+ * GLOBAL DYNAMIC ADAPTIVE TEXT FORMATTER
+ * Dynamically wraps commands into flex grid containers or auto-calculated columns
+ */
+function renderHelpOutput(printGuestLog) {
+    const termBox = document.getElementById('guest-term-log') || document.querySelector('.terminal-box');
+    const containerWidth = termBox ? termBox.clientWidth - 20 : 500;
+    
+    // Approximate character column width in monospace font (~8.5px per char)
+    const maxCharsPerLine = Math.max(20, Math.floor(containerWidth / 8.5));
+    const titleText = " AVAILABLE COMMANDS ";
+    const dashCount = Math.max(2, Math.floor((maxCharsPerLine - titleText.length) / 2));
+    const divider = "=".repeat(dashCount) + titleText + "=".repeat(dashCount);
+
+    printGuestLog(divider, COLORS.INFO);
+
+    const commands = getAvailableCommands();
+    
+    // Render commands as responsive grid blocks
+    let gridHTML = '<div class="terminal-cmd-grid">';
+    commands.forEach(cmd => {
+        gridHTML += `<span class="cmd-item" style="color: ${COLORS.PRIMARY};">${escapeHTML(cmd)}</span>`;
+    });
+    gridHTML += '</div>';
+
+    printGuestLog(gridHTML, COLORS.PRIMARY);
+
+    printGuestLog("=".repeat(divider.length), COLORS.INFO);
+    printGuestLog("Type 'help <command>' to view specific command usage.", COLORS.INFO);
+}
+
 const commandHandlers = {
     help(args, printGuestLog) {
         const targetCmd = args[0] ? args[0].toLowerCase().replace(/^\//, '') : null;
@@ -318,11 +349,7 @@ const commandHandlers = {
             return;
         }
 
-        printGuestLog("=================== AVAILABLE COMMANDS ===================", COLORS.INFO);
-        const list = getAvailableCommands();
-        printGuestLog(list.join("   "), COLORS.PRIMARY);
-        printGuestLog("==========================================================", COLORS.INFO);
-        printGuestLog("Type 'help <command>' to view specific command usage.", COLORS.INFO);
+        renderHelpOutput(printGuestLog);
     },
 
     vault(args, printGuestLog) {
@@ -763,7 +790,7 @@ const commandHandlers = {
         const targetText = args.join(' ') || "VECTOR-BOX";
         const asciiBanner = renderNativeAscii ? renderNativeAscii(targetText) : null;
         if (asciiBanner) {
-            printGuestLog(`<pre style="font-family: monospace; margin: 0; line-height: 1.1; white-space: pre;">${escapeHTML(asciiBanner)}</pre>`, COLORS.PRIMARY);
+            printGuestLog(`<pre style="font-family: monospace; margin: 0; line-height: 1.1; white-space: pre-wrap; word-break: break-all;">${escapeHTML(asciiBanner)}</pre>`, COLORS.PRIMARY);
         }
     },
     matrix(args, printGuestLog) {

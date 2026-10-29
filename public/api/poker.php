@@ -7,7 +7,7 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? $_POST['action'] ?? 'state';
 $inputTarget = trim($_REQUEST['table_id'] ?? 'general');
-$username = $_SESSION['username'] ?? 'guest';
+$username = $_SESSION['username'] ?? ('guest_' . substr(md5(session_id()), 0, 4));
 $userId = $_SESSION['user_id'] ?? null;
 
 $db = getDbConnection();
@@ -271,8 +271,19 @@ try {
     }
 
     if ($action === 'leave') {
+        // Remove current user seat
         $stmt = $db->prepare("DELETE FROM poker_players WHERE table_id = :tid AND username = :u");
         $stmt->execute([':tid' => $tableId, ':u' => $username]);
+
+        // If no non-bot human players remain, clear table state & bots
+        $stmtHumans = $db->prepare("SELECT COUNT(*) FROM poker_players WHERE table_id = :tid AND is_folded = 0 AND is_bot = 0");
+        $stmtHumans->execute([':tid' => $tableId]);
+        if ((int)$stmtHumans->fetchColumn() === 0) {
+            $db->prepare("DELETE FROM poker_players WHERE table_id = :tid")->execute([':tid' => $tableId]);
+            $db->prepare("UPDATE poker_tables SET pot = 0, current_bet = 0, community_cards = '[]', game_stage = 'waiting', last_winner_msg = '' WHERE id = :tid")
+            ->execute([':tid' => $tableId]);
+        }
+
         echo json_encode(['success' => true]);
         exit();
     }
@@ -331,7 +342,14 @@ try {
     }
 
     if ($action === 'deal') {
+        $deck = [
+            '2h','3h','4h','5h','6h','7h','8h','9h','10h','Jh','Qh','Kh','Ah',
+            '2d','3d','4d','5d','6d','7d','8d','9d','10d','Jd','Qd','Kd','Ad',
+            '2c','3c','4c','5c','6c','7c','8c','9c','10c','Jc','Qc','Kc','Ac',
+            '2s','3s','4s','5s','6s','7s','8s','9s','10s','Js','Qs','Ks','As'
+        ];
         shuffle($deck);
+
         $stmt = $db->prepare("SELECT id, seat FROM poker_players WHERE table_id = :tid ORDER BY seat ASC");
         $stmt->execute([':tid' => $tableId]);
         $players = $stmt->fetchAll();
@@ -381,7 +399,7 @@ try {
                 $updTable->execute([':b' => $actualBet, ':tid' => $tableId]);
             } else {
                 $callAmount = max(0, $table['current_bet'] - $player['current_bet']);
-                $newChips = max(0, $player['chips'] - $callAmount);
+                $newChips = max(0, $currentPlayer['chips'] ?? $player['chips'] - $callAmount);
                 
                 $upd = $db->prepare("UPDATE poker_players SET chips = :c, current_bet = :b WHERE id = :id");
                 $upd->execute([':c' => $newChips, ':b' => $table['current_bet'], ':id' => $player['id']]);
