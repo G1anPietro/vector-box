@@ -371,3 +371,49 @@ body.scanlines-active::before {
     width: 100%;
     font-weight: bold;
 }
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+    .cyber-header {
+        padding: 10px 12px;
+    }
+
+    .glitch {
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    .nav-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+
+    .cyber-taskbar {
+        flex-direction: column;
+        gap: 4px;
+        padding: 4px 8px;
+    }
+
+    .taskbar-apps {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+
+    .taskbar-btn {
+        padding: 4px 2px;
+        font-size: 0.65rem;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .taskbar-info {
+        font-size: 0.65rem;
+        gap: 8px;
+        justify-content: center;
+        width: 100%;
+    }
+}
