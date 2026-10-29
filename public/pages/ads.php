@@ -1,77 +1,23 @@
+<?php
+require_once __DIR__ . '/../includes/head.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Monetization // Ad Wall</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <script src="../js/matrix.js" defer></script>
-    <style>
-        .cyber-header, .monetize-container {
-            position: relative;
-            z-index: 10;
-        }
-
-        .monetize-container {
-            max-width: 800px;
-            margin: 120px auto 40px auto;
-            padding: 0 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 25px;
-        }
-        
-        .display-slot-wide {
-            width: 100%;
-            max-width: 728px;
-            height: 90px;
-            background: rgba(255, 170, 0, 0.07);
-            border: 1px dashed #ffaa00;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffaa00;
-            font-family: monospace;
-            font-size: 0.85rem;
-            box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
-        }
-        
-        .display-slot-square {
-            width: 300px;
-            height: 250px;
-            background: rgba(255, 170, 0, 0.07);
-            border: 1px dashed #ffaa00;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffaa00;
-            font-family: monospace;
-            font-size: 0.85rem;
-            box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
-        }
-        
-        .slot-row {
-            display: flex;
-            gap: 20px;
-            width: 100%;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-    </style>
+    <?php renderHead("System Monetization // Ad Wall", true); ?>
 </head>
 <body>
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
-        <div class="glitch" style="color: #ffaa00; text-shadow: 0 0 5px rgba(255,170,0,0.5);">// SYSTEM_MONETIZATION: ACTIVE</div>
-        <a href="../index.php" class="nav-btn" style="text-decoration: none; color: #ffaa00; border-color: #ffaa00;">// TERMINATE WALL</a>
+        <div class="glitch monetization-glitch">// SYSTEM_MONETIZATION: ACTIVE</div>
+        <a href="../index.php" class="nav-btn monetization-btn">// TERMINATE WALL</a>
     </header>
 
     <main class="monetize-container">
-        <div class="cyber-panel" style="width: 100%; text-align: center;">
-            <h2 style="color: #ffaa00; border-color: rgba(255,170,0,0.2);">>_ LOADING_PROFIT_ENGINES</h2>
-            <p class="desc-text">You have entered the ad-supported resource sector. Leaving this terminal open helps fund server infrastructure maintenance pipelines.</p>
+        <div class="cyber-panel panel-full-center">
+            <h2 class="amber-heading">>_ LOADING_PROFIT_ENGINES</h2>
+            <p class="term-muted">You have entered the ad-supported resource sector. Leaving this terminal open helps fund server infrastructure maintenance pipelines.</p>
         </div>
 
         <div class="display-slot-wide">

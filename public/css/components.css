@@ -255,3 +255,119 @@ body.scanlines-active::before {
     background-size: 100% 6px, 12px 100%; 
     pointer-events: none;
 }
+
+/* Hack / Hex Breach Page Styles */
+.hack-container {
+    max-width: 650px;
+    width: 90%;
+    text-align: center;
+    padding: 20px;
+}
+
+.hack-title {
+    color: var(--accent-color);
+    margin-top: 0;
+}
+
+.hack-status-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 8px;
+}
+
+.hack-timer-text {
+    color: var(--accent-color);
+}
+
+.hack-security-text {
+    color: #ffaa00;
+}
+
+.hack-instruction-text {
+    margin-bottom: 5px;
+}
+
+.target-sequence {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.target-node {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--text-muted);
+}
+
+.target-node.matched {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: 0 0 8px var(--border-color);
+}
+
+.hex-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.hex-btn {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+    padding: 14px 0;
+    font-family: monospace;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.hex-btn:hover {
+    background: var(--border-color);
+    box-shadow: 0 0 10px var(--border-color);
+    color: #ffffff;
+}
+
+.hex-btn:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.hack-result {
+    height: 24px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-top: 10px;
+}
+
+.hack-result-success {
+    color: var(--accent-color);
+}
+
+.hack-result-failure {
+    color: #ff3333;
+}
+
+.hack-btn-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.hack-reset-btn {
+    max-width: 200px;
+    width: 100%;
+    font-weight: bold;
+}

@@ -66,6 +66,114 @@
 .resize-se { bottom: -6px; right: -6px; width: 12px; height: 12px; cursor: nwse-resize; }
 .resize-sw { bottom: -6px; left: -6px; width: 12px; height: 12px; cursor: nesw-resize; }
 
+/* Page Specific Layout & Box Utility Classes */
+.page-container-centered {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 120px);
+    padding-top: 80px;
+}
+
+.monetize-container {
+    max-width: 800px;
+    margin: 110px auto 40px auto;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+    position: relative;
+    z-index: 10;
+}
+
+.display-slot-wide {
+    width: 100%;
+    max-width: 728px;
+    height: 90px;
+    background: rgba(255, 170, 0, 0.05);
+    border: 1px dashed #ffaa00;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffaa00;
+    font-family: monospace;
+    font-size: 0.85rem;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
+}
+
+.display-slot-square {
+    width: 300px;
+    height: 250px;
+    background: rgba(255, 170, 0, 0.05);
+    border: 1px dashed #ffaa00;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffaa00;
+    font-family: monospace;
+    font-size: 0.85rem;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
+}
+
+.slot-row {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Resume Grid Styling */
+.resume-grid { 
+    max-width: 800px; 
+    margin: 100px auto 40px auto; 
+    padding: 0 20px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px; 
+    position: relative;
+    z-index: 10;
+}
+
+.skill-tag { 
+    background: rgba(0, 255, 102, 0.1); 
+    border: 1px solid var(--accent-color); 
+    color: var(--accent-color); 
+    padding: 6px 12px; 
+    font-size: 0.8rem; 
+    border-radius: 2px; 
+    display: inline-block; 
+    margin: 5px 5px 0 0; 
+    font-family: monospace;
+    font-weight: bold;
+}
+
+.timeline-item { 
+    border-left: 2px solid var(--accent-color); 
+    padding-left: 15px; 
+    margin-bottom: 20px; 
+}
+
+.timeline-date { 
+    color: var(--accent-color); 
+    font-weight: bold; 
+    font-size: 0.85rem; 
+    font-family: monospace;
+}
+
+.credits-box {
+    text-align: center;
+    animation: fadeUp 2s ease-out;
+    padding: 40px;
+    max-width: 600px;
+}
+
+@keyframes fadeUp {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
     .desktop-viewport {
         display: flex;
