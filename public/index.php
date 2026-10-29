@@ -63,13 +63,15 @@ if (file_exists('version.php')) {
                     <div class="cyber-slider-row" style="margin-top: 10px;">
                         <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">DESKTOP_RICE</span>
                         <select id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 4px 8px; font-size: 0.8rem; background: #020304;">
-                            <option value="cyberpunk">Cyberpunk (Default)</option>
-                            <option value="nord">Nord</option>
-                            <option value="catppuccin">Catppuccin</option>
-                            <option value="gruvbox">Gruvbox</option>
+                            <option value="cyan">Cyan (Default)</option>
+                            <option value="matrix">Matrix</option>
+                            <option value="amber">Amber</option>
+                            <option value="cyberpunk">Cyberpunk</option>
                             <option value="dracula">Dracula</option>
                             <option value="synthwave">Synthwave</option>
-                            <option value="solarized">Solarized</option>
+                            <option value="nord">Nord</option>
+                            <option value="monochrome">Monochrome</option>
+                            <option value="blood">Blood</option>
                         </select>
                     </div>
                 </div>
@@ -80,7 +82,14 @@ if (file_exists('version.php')) {
     <main class="desktop-viewport">
         <!-- 1. SHELL TERMINAL -->
         <div id="win-terminal" class="cyber-panel draggable-window" style="top: 90px; left: 40px; width: 580px; height: 380px;">
-            <div class="window-header">>_ TERMINAL</div>
+            <div class="window-header">
+                <span>>_ TERMINAL</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
             <div class="terminal-box auth-terminal" id="guest-term-box">
                 <div id="guest-term-log">
                     <p class="term-accent">>_ public_node initialized...</p>
@@ -96,7 +105,14 @@ if (file_exists('version.php')) {
 
         <!-- 2. CHAT FEED -->
         <div id="win-chatfeed" class="cyber-panel draggable-window" style="top: 90px; left: 640px; width: 480px; height: 380px;">
-            <div class="window-header">>_ CHAT_FEED</div>
+            <div class="window-header">
+                <span>>_ CHAT_FEED</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
             <div id="chat-room-tabs" class="chat-tab-bar"></div>
             <div class="terminal-box auth-terminal" id="feed-term-box">
                 <div id="uplink-chat-log"></div>
@@ -109,7 +125,14 @@ if (file_exists('version.php')) {
 
         <!-- 3. PUBLIC UPLINK TRANSMISSION -->
         <div id="win-msgbox" class="cyber-panel draggable-window public-panel uplink-panel" style="top: 490px; left: 40px; width: 580px; height: 260px;">
-            <div class="window-header">>_ PUBLIC_UPLINK_TERMINAL</div>
+            <div class="window-header">
+                <span>>_ PUBLIC_UPLINK_TERMINAL</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
             <div class="window-content-inner">
                 <p class="uplink-desc">Leave an encrypted transmission for the system administrator.</p>
                 <textarea id="public-msg-input" class="uplink-textarea" placeholder="Enter transmission data..."></textarea>
@@ -118,12 +141,18 @@ if (file_exists('version.php')) {
             </div>
         </div>
 
-        <!-- 4. CYBERPUNK POKER MINIGAME CONTAINER (STREAMLINED & UNCROWDED) -->
+        <!-- 4. CYBERPUNK POKER MINIGAME CONTAINER -->
         <div id="win-poker" class="cyber-panel draggable-window hidden" style="top: 140px; left: 240px; width: 620px; height: 460px;">
-            <div class="window-header">>_ CYBER_POKER // NEON_HOLDEM</div>
-            <div class="window-content-inner" style="padding: 10px; display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+            <div class="window-header">
+                <span>>_ CYBER_POKER // NEON_HOLDEM</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
+            <div class="window-content-inner" style="padding: 10px; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 30px);">
                 
-                <!-- Streamlined Top Info Bar -->
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
                     <div style="display: flex; flex-direction: column;">
                         <span class="term-accent" style="font-weight: bold; font-size: 0.9rem;">POT: <span id="poker-pot-val">0</span> CR</span>
@@ -132,13 +161,10 @@ if (file_exists('version.php')) {
                     <div id="poker-community-cards" style="display: flex; gap: 6px;"></div>
                 </div>
 
-                <!-- Clean Seat Grid -->
                 <div id="poker-seats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;"></div>
 
-                <!-- Winner Announcement Banner -->
                 <div id="poker-winner-banner" class="hidden" style="background: rgba(0, 255, 102, 0.15); border: 1px solid var(--accent-color); padding: 8px; text-align: center; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;"></div>
 
-                <!-- Uncrowded Action Controls -->
                 <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 8px;">
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <span style="font-size: 0.75rem; color: var(--text-muted);">BET:</span>
@@ -156,12 +182,20 @@ if (file_exists('version.php')) {
                 </div>
             </div>
         </div>
-
     </main>
 
-    <footer class="cyber-footer">
-        <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
-        <a href="pages/credits.php" class="credits-link">ciao zuffi</a>
-    </footer>
+    <!-- CONSOLIDATED APPLICATION TASKBAR & FOOTER -->
+    <div class="cyber-taskbar" id="cyber-taskbar">
+        <div class="taskbar-apps">
+            <button class="taskbar-btn active" id="tb-win-terminal">>_ TERMINAL</button>
+            <button class="taskbar-btn active" id="tb-win-chatfeed">>_ CHAT_FEED</button>
+            <button class="taskbar-btn active" id="tb-win-msgbox">>_ UPLINK</button>
+            <button class="taskbar-btn" id="tb-win-poker">>_ CYBER_POKER</button>
+        </div>
+        <div class="taskbar-info">
+            <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
+            <a href="pages/credits.php" class="credits-link">ciao zuffi</a>
+        </div>
+    </div>
 </body>
 </html>

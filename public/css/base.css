@@ -56,13 +56,26 @@ div.cyber-panel.hidden {
 @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 /* Desktop Ricing & Theme Presets */
-body[data-rice="cyberpunk"] {
-    --bg-color: #06080c;
+/* public/css/base.css */
+
+/* Matrix Theme Palette: Pure Terminal Green */
+body[data-rice="matrix"] {
+    --bg-color: #020b05;
     --accent-color: #00ff66;
-    --border-color: rgba(0, 255, 102, 0.3);
-    --text-muted: #8ab4f8;
+    --border-color: rgba(0, 255, 102, 0.35);
+    --text-muted: #00cc52;
     --prompt-color: #00ff66;
-    --panel-bg: rgba(10, 14, 22, 0.95);
+    --panel-bg: rgba(2, 16, 8, 0.96);
+}
+
+/* Cyberpunk 2077 Theme Palette: Magenta, Yellow & Cyan */
+body[data-rice="cyberpunk"] {
+    --bg-color: #0d020d;
+    --accent-color: #ff007f;
+    --border-color: rgba(255, 0, 127, 0.45);
+    --text-muted: #ffcc00;
+    --prompt-color: #00f3ff;
+    --panel-bg: rgba(20, 3, 20, 0.95);
 }
 
 body[data-rice="nord"] {

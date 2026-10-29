@@ -166,6 +166,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- 4. Mode & Display Toggles ---
     const contrastToggle = document.getElementById('contrast-toggle');
 
+    // Mode & Display Toggles
+    const savedTheme = localStorage.getItem('selected_theme') || 'cyan';
+    const riceSelector = document.getElementById('rice-selector');
+    if (riceSelector) {
+        riceSelector.value = savedTheme;
+    }
+
     if (contrastToggle) {
         const savedContrast = localStorage.getItem('high_contrast_mode') === 'true';
         contrastToggle.checked = savedContrast;

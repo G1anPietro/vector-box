@@ -283,8 +283,13 @@ function registerCustomTheme(name, bgHex, accentHex) {
             registerCustomTheme(name, bg, accent);
         });
 
-        const activeRice = localStorage.getItem("selected_rice") || "cyberpunk";
+        // Use selected_theme if set, falling back to selected_rice
+        const activeRice = localStorage.getItem("selected_theme") || localStorage.getItem("selected_rice") || "cyan";
         document.body.setAttribute("data-rice", activeRice);
+
+        if (typeof window.applySystemTheme === 'function') {
+            window.applySystemTheme(activeRice);
+        }
 
         if (fileSystem['~']?.children?.['.config']?.children?.['rice.conf']) {
             parseAndApplyRiceConf(fileSystem['~'].children['.config'].children['rice.conf'].content);
