@@ -7,7 +7,87 @@ document.addEventListener("DOMContentLoaded", () => {
         topZIndex++;
         winEl.style.zIndex = topZIndex;
         winEl.classList.remove('hidden');
+        winEl.style.display = 'flex';
+
+        const tbBtn = document.getElementById('tb-' + winEl.id);
+        if (tbBtn) tbBtn.classList.add('active');
     };
+
+    window.openWindow = (winId) => {
+        const win = document.getElementById(winId);
+        if (win) window.bringToFront(win);
+    };
+
+    window.closeWindow = (winId) => {
+        const win = document.getElementById(winId);
+        const tbBtn = document.getElementById('tb-' + winId);
+        if (win) {
+            win.classList.add('hidden');
+            win.style.display = 'none';
+        }
+        if (tbBtn) tbBtn.classList.remove('active');
+    };
+
+    window.toggleMinimize = (winId) => {
+        const win = document.getElementById(winId);
+        const tbBtn = document.getElementById('tb-' + winId);
+        if (win) {
+            if (win.style.display === 'none' || win.classList.contains('hidden')) {
+                window.openWindow(winId);
+            } else {
+                win.style.display = 'none';
+                if (tbBtn) tbBtn.classList.remove('active');
+            }
+        }
+    };
+
+    window.toggleMaximize = (winId) => {
+        const win = document.getElementById(winId);
+        if (win) {
+            win.classList.toggle('maximized');
+            window.bringToFront(win);
+        }
+    };
+
+    window.toggleTaskbarWindow = (winId) => {
+        const win = document.getElementById(winId);
+        if (win) {
+            if (win.classList.contains('hidden') || win.style.display === 'none') {
+                window.openWindow(winId);
+            } else {
+                window.toggleMinimize(winId);
+            }
+        }
+    };
+
+    // Attach event handlers for header buttons
+    document.querySelectorAll('.win-btn-min').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const win = e.target.closest('.draggable-window');
+            if (win) window.toggleMinimize(win.id);
+        });
+    });
+
+    document.querySelectorAll('.win-btn-max').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const win = e.target.closest('.draggable-window');
+            if (win) window.toggleMaximize(win.id);
+        });
+    });
+
+    document.querySelectorAll('.win-btn-close').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const win = e.target.closest('.draggable-window');
+            if (win) window.closeWindow(win.id);
+        });
+    });
+
+    document.querySelectorAll('.taskbar-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const winId = btn.id.replace('tb-', '');
+            window.toggleTaskbarWindow(winId);
+        });
+    });
 
     const makeWindowInteractive = (winEl, id) => {
         winEl.style.position = 'absolute';
