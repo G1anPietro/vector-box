@@ -8,7 +8,7 @@ if (!defined('APP_VERSION')) {
     }
 }
 
-function renderHead($title = "Node // Vector-Box", $isSubpage = false) {
+function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customScripts = []) {
     $pathPrefix = $isSubpage ? '../' : '';
     $ver = APP_VERSION;
     ?>
@@ -37,6 +37,10 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false) {
         <script src="<?php echo $pathPrefix; ?>js/window_manager.js?v=<?php echo $ver; ?>"></script>
         <script src="<?php echo $pathPrefix; ?>js/poker.js?v=<?php echo $ver; ?>"></script>
     <?php endif; ?>
+
+    <?php foreach ($customScripts as $script): ?>
+        <script src="<?php echo $pathPrefix . htmlspecialchars($script); ?>?v=<?php echo $ver; ?>" defer></script>
+    <?php endforeach; ?>
     <?php
 }
 ?>
