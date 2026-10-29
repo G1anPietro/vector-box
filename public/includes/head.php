@@ -22,20 +22,22 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customSc
     <link rel="stylesheet" href="<?php echo $pathPrefix; ?>css/components.css?v=<?php echo $ver; ?>">
     <link rel="stylesheet" href="<?php echo $pathPrefix; ?>css/widgets.css?v=<?php echo $ver; ?>">
 
-    <!-- Core Engine Scripts -->
+    <!-- Core Engine Scripts (Synchronous execution prevents theme flash) -->
     <script src="<?php echo $pathPrefix; ?>js/cookie_consent.js?v=<?php echo $ver; ?>"></script>
     <script src="<?php echo $pathPrefix; ?>js/theme.js?v=<?php echo $ver; ?>"></script>
     <script src="<?php echo $pathPrefix; ?>js/matrix.js?v=<?php echo $ver; ?>" defer></script>
     
     <?php if (!$isSubpage): ?>
         <!-- Desktop OS Exclusive Scripts -->
-        <script src="<?php echo $pathPrefix; ?>js/menu.js?v=<?php echo $ver; ?>"></script>
-        <script src="<?php echo $pathPrefix; ?>js/terminal.js?v=<?php echo $ver; ?>"></script>
-        <script src="<?php echo $pathPrefix; ?>js/commands.js?v=<?php echo $ver; ?>"></script>
-        <script src="<?php echo $pathPrefix; ?>js/uplink.js?v=<?php echo $ver; ?>"></script>
-        <script src="<?php echo $pathPrefix; ?>js/uplink_feed.js?v=<?php echo $ver; ?>"></script>
-        <script src="<?php echo $pathPrefix; ?>js/window_manager.js?v=<?php echo $ver; ?>"></script>
-        <script src="<?php echo $pathPrefix; ?>js/poker.js?v=<?php echo $ver; ?>"></script>
+        <script src="<?php echo $pathPrefix; ?>js/menu.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/terminal.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/commands.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/uplink.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/uplink_feed.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/window_manager.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/poker.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/tools.js?v=<?php echo $ver; ?>" defer></script>
+        <script src="<?php echo $pathPrefix; ?>js/arg.js?v=<?php echo $ver; ?>" defer></script>
     <?php endif; ?>
 
     <?php foreach ($customScripts as $script): ?>

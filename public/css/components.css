@@ -372,6 +372,64 @@ body.scanlines-active::before {
     font-weight: bold;
 }
 
+/* Tools & ARG Vault Layout Styles */
+.tools-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: calc(100% - 30px);
+    box-sizing: border-box;
+}
+
+.tools-select {
+    background: #020304;
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+    padding: 6px 10px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    outline: none;
+    border-radius: 2px;
+}
+
+.tools-textarea {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--border-color);
+    color: #ffffff;
+    font-family: monospace;
+    font-size: 0.85rem;
+    padding: 10px;
+    resize: none;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.tools-textarea:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 8px var(--border-color);
+}
+
+.vault-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.vault-output-box {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    min-height: 120px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 /* Mobile Responsive Adjustments */
 @media (max-width: 768px) {
     .cyber-header {

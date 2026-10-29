@@ -25,6 +25,7 @@ if (file_exists('version.php')) {
                 <a href="pages/ads.php" class="menu-item btn-adwall">// AD WALL</a>
                 <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
                 <a href="pages/hack.php" class="menu-item">// NODE BREACH</a>
+                <a href="pages/vault.php" class="menu-item">// ARG VAULT</a>
                 
                 <button id="menu-login-btn" class="menu-item" type="button">// USER_ACCOUNT</button>
                 
@@ -152,7 +153,6 @@ if (file_exists('version.php')) {
                 </div>
             </div>
             <div class="window-content-inner" style="padding: 10px; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 30px);">
-                
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
                     <div style="display: flex; flex-direction: column;">
                         <span class="term-accent" style="font-weight: bold; font-size: 0.9rem;">POT: <span id="poker-pot-val">0</span> CR</span>
@@ -182,6 +182,55 @@ if (file_exists('version.php')) {
                 </div>
             </div>
         </div>
+
+        <!-- 5. DEVELOPER / SECURITY TOOLBOX WORKBENCH -->
+        <div id="win-tools" class="cyber-panel draggable-window hidden" style="top: 150px; left: 180px; width: 520px; height: 360px;">
+            <div class="window-header">
+                <span>>_ TOOLBOX // ENCODER_CONVERTER</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
+            <div class="window-content-inner">
+                <div class="tools-container">
+                    <select id="tool-mode" class="tools-select">
+                        <option value="b64-enc">Base64 Encode</option>
+                        <option value="b64-dec">Base64 Decode</option>
+                        <option value="url-enc">URL Encode</option>
+                        <option value="url-dec">URL Decode</option>
+                        <option value="hex-enc">Hex Encode</option>
+                        <option value="sha256">SHA-256 Hash</option>
+                    </select>
+                    <textarea id="tool-input" class="tools-textarea" placeholder="Input raw string..."></textarea>
+                    <textarea id="tool-output" class="tools-textarea" placeholder="Converted result..." readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. ARG CIPHER VAULT WINDOW -->
+        <div id="win-vault" class="cyber-panel draggable-window hidden" style="top: 200px; left: 320px; width: 520px; height: 320px;">
+            <div class="window-header">
+                <span>>_ SYSTEM // CIPHER_VAULT</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
+            <div class="window-content-inner">
+                <div class="vault-container" style="gap: 10px;">
+                    <p class="term-muted" style="margin: 0; font-size: 0.8rem;">ENTER DISCOVERED PASSPHRASE KEY:</p>
+                    <div class="terminal-input-line">
+                        <span class="prompt-symbol">KEY:</span>
+                        <input type="text" id="vault-key-input" class="terminal-input" placeholder="Enter key..." autocomplete="off">
+                    </div>
+                    <button id="vault-unlock-btn" class="nav-btn hack-reset-btn" style="max-width: 100%;">>_ SUBMIT KEY</button>
+                    <div id="vault-output" class="vault-output-box" style="min-height: 80px;"></div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- CONSOLIDATED APPLICATION TASKBAR & FOOTER -->
@@ -190,7 +239,9 @@ if (file_exists('version.php')) {
             <button class="taskbar-btn active" id="tb-win-terminal">>_ TERMINAL</button>
             <button class="taskbar-btn active" id="tb-win-chatfeed">>_ CHAT_FEED</button>
             <button class="taskbar-btn active" id="tb-win-msgbox">>_ UPLINK</button>
-            <button class="taskbar-btn" id="tb-win-poker">>_ CYBER_POKER</button>
+            <button class="taskbar-btn" id="tb-win-poker">>_ POKER</button>
+            <button class="taskbar-btn" id="tb-win-tools">>_ TOOLS</button>
+            <button class="taskbar-btn" id="tb-win-vault">>_ VAULT</button>
         </div>
         <div class="taskbar-info">
             <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
