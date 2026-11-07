@@ -400,3 +400,66 @@ input[type="file"]::file-selector-button:hover {
     display: block;
     visibility: visible;
 }
+
+/* Add these responsive rules to the end of public/css/reader.css */
+
+@media (max-width: 768px) {
+    .reader-header {
+        padding: 0 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .theme-selector {
+        gap: 0.3rem;
+    }
+
+    .theme-btn {
+        width: 20px;
+        height: 20px;
+    }
+
+    .viewer-header {
+        height: auto;
+        min-height: 50px;
+        padding: 0.4rem 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        justify-content: space-between;
+    }
+
+    .reader-controls {
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-control {
+        display: none; /* Hide blue-light slider on narrow screens to save space */
+    }
+
+    .slider-bar {
+        width: 50px;
+    }
+
+    #download-book-btn span {
+        display: none; /* Icon-only on mobile */
+    }
+
+    #download-book-btn {
+        padding: 0.2rem 0.4rem;
+    }
+
+    .page-input {
+        width: 45px;
+        padding: 0.15rem 0.25rem;
+        font-size: 0.8rem;
+    }
+
+    #viewer-title {
+        max-width: 120px;
+        font-size: 0.85rem;
+    }
+
+    .viewer-content {
+        height: calc(100vh - 60px);
+    }
+}
