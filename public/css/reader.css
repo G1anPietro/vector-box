@@ -71,21 +71,23 @@ body[data-theme="black"], [data-theme="black"] {
 
 /* Header */
 .reader-header {
-    height: var(--header-height);
+    min-height: var(--header-height);
     background-color: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1rem;
+    padding: 0.5rem 1rem;
     position: sticky;
     top: 0;
     z-index: 1000;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .reader-brand {
     font-weight: 700;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: var(--text-primary);
     text-decoration: none;
     display: flex;
@@ -96,15 +98,17 @@ body[data-theme="black"], [data-theme="black"] {
 .reader-nav {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.35rem;
-    padding: 0.4rem 0.8rem;
-    font-size: 0.88rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
     font-weight: 500;
     border-radius: 6px;
     border: 1px solid var(--border-color);
@@ -113,6 +117,7 @@ body[data-theme="black"], [data-theme="black"] {
     cursor: pointer;
     text-decoration: none;
     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
 }
 
 .btn:hover {
@@ -135,40 +140,50 @@ body[data-theme="black"], [data-theme="black"] {
     max-width: 1200px;
     width: 100%;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
 }
 
 .toolbar-section {
     background: var(--bg-secondary);
     border-radius: 8px;
-    padding: 1rem;
+    padding: 0.85rem;
     border: 1px solid var(--border-color);
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .search-box {
     display: flex;
     gap: 0.5rem;
-    flex: 1;
-    min-width: 260px;
+    width: 100%;
 }
 
 .input-text {
     flex: 1;
-    padding: 0.5rem 0.75rem;
+    min-width: 0;
+    padding: 0.45rem 0.65rem;
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     outline: none;
     background: var(--bg-secondary);
     color: var(--text-primary);
+}
+
+#book-upload-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+}
+
+#book-upload-form input[type="file"] {
+    flex: 1;
+    min-width: 0;
 }
 
 input[type="file"]::file-selector-button {
@@ -176,10 +191,10 @@ input[type="file"]::file-selector-button {
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.85rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
     cursor: pointer;
-    margin-right: 0.5rem;
+    margin-right: 0.4rem;
     transition: background-color 0.15s ease;
 }
 
@@ -187,11 +202,11 @@ input[type="file"]::file-selector-button:hover {
     background-color: var(--border-color);
 }
 
-/* Catalog Cards */
+/* Catalog & Cards */
 .book-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
 }
 
 .book-card {
@@ -205,13 +220,13 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .book-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
 .book-cover {
     width: 100%;
-    height: 230px;
+    height: 200px;
     object-fit: cover;
     background: var(--bg-tertiary);
     display: flex;
@@ -219,22 +234,22 @@ input[type="file"]::file-selector-button:hover {
     align-items: center;
     justify-content: center;
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 700;
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
 }
 
 .book-info {
-    padding: 0.75rem;
+    padding: 0.6rem;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.2rem;
     flex: 1;
 }
 
 .book-title {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
@@ -244,7 +259,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .book-author {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
 }
 
@@ -252,12 +267,12 @@ input[type="file"]::file-selector-button:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 0.4rem;
+    margin-top: 0.3rem;
 }
 
 .book-badge {
-    padding: 0.15rem 0.4rem;
-    font-size: 0.7rem;
+    padding: 0.12rem 0.35rem;
+    font-size: 0.68rem;
     font-weight: 700;
     border-radius: 4px;
     text-transform: uppercase;
@@ -266,25 +281,26 @@ input[type="file"]::file-selector-button:hover {
     border: 1px solid var(--border-color);
 }
 
-/* Theme Selector Controls */
+/* Theme Selector Buttons */
 .theme-selector {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.35rem;
 }
 
 .theme-btn {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     border: 2px solid #adb5bd;
     cursor: pointer;
     transition: transform 0.15s ease, border-color 0.15s ease;
     display: inline-block;
+    flex-shrink: 0;
 }
 
 .theme-btn:hover {
-    transform: scale(1.2);
+    transform: scale(1.15);
 }
 
 .theme-btn.active {
@@ -316,31 +332,33 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .viewer-header {
-    height: 54px;
+    min-height: 50px;
     background-color: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1rem;
-    gap: 1rem;
+    padding: 0.4rem 0.6rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .reader-controls {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .filter-control {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.3rem;
     color: var(--text-muted);
 }
 
 .slider-bar {
-    width: 70px;
+    width: 55px;
     accent-color: #ff9800;
     cursor: pointer;
 }
@@ -348,22 +366,22 @@ input[type="file"]::file-selector-button:hover {
 .nav-controls {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.35rem;
 }
 
 .page-jump-wrapper {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.2rem;
 }
 
 .page-input {
-    width: 55px;
-    padding: 0.2rem 0.4rem;
+    width: 48px;
+    padding: 0.15rem 0.3rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     text-align: center;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     outline: none;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
@@ -372,7 +390,7 @@ input[type="file"]::file-selector-button:hover {
 .viewer-content {
     flex: 1;
     width: 100%;
-    height: calc(100vh - 54px);
+    height: calc(100vh - 50px);
     position: relative;
     overflow: hidden;
     display: flex;
@@ -395,71 +413,49 @@ input[type="file"]::file-selector-button:hover {
 #epub-stage iframe {
     width: 100%;
     height: 100%;
-    min-height: calc(100vh - 54px);
     border: none;
     display: block;
     visibility: visible;
 }
 
-/* Add these responsive rules to the end of public/css/reader.css */
-
-@media (max-width: 768px) {
+/* Mobile Adjustments */
+@media (max-width: 600px) {
     .reader-header {
-        padding: 0 0.5rem;
-        gap: 0.5rem;
+        padding: 0.4rem 0.6rem;
     }
 
-    .theme-selector {
-        gap: 0.3rem;
+    .toolbar-section {
+        padding: 0.65rem;
     }
 
-    .theme-btn {
-        width: 20px;
-        height: 20px;
+    #book-upload-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #book-upload-form .btn {
+        width: 100%;
     }
 
     .viewer-header {
-        height: auto;
-        min-height: 50px;
-        padding: 0.4rem 0.5rem;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-        justify-content: space-between;
-    }
-
-    .reader-controls {
-        gap: 0.4rem;
-        flex-wrap: wrap;
+        padding: 0.35rem 0.5rem;
+        gap: 0.35rem;
     }
 
     .filter-control {
-        display: none; /* Hide blue-light slider on narrow screens to save space */
-    }
-
-    .slider-bar {
-        width: 50px;
-    }
-
-    #download-book-btn span {
-        display: none; /* Icon-only on mobile */
-    }
-
-    #download-book-btn {
-        padding: 0.2rem 0.4rem;
-    }
-
-    .page-input {
-        width: 45px;
-        padding: 0.15rem 0.25rem;
-        font-size: 0.8rem;
+        display: none;
     }
 
     #viewer-title {
-        max-width: 120px;
-        font-size: 0.85rem;
+        max-width: 110px;
+        font-size: 0.82rem;
     }
 
-    .viewer-content {
-        height: calc(100vh - 60px);
+    #download-book-btn span {
+        display: none;
+    }
+
+    #download-book-btn {
+        padding: 0.25rem 0.45rem;
     }
 }
