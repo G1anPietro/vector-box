@@ -1,7 +1,7 @@
 <?php
 // public/api/uplink_send.php
 
-// Disable output buffering so PHP flushes JSON immediately
+// Disabilita il buffering dell'output per inviare il JSON immediatamente
 @ini_set('zlib.output_compression', 0);
 @ini_set('implicit_flush', 1);
 for ($i = 0; $i < ob_get_level(); $i++) {
@@ -15,7 +15,7 @@ header('Content-Type: application/json; charset=utf-8');
 try {
     initSession();
 
-    // Release session write lock immediately to prevent blocking concurrent requests
+    // Rilascia immediatamente il lock della sessione per non bloccare lo stream SSE
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
@@ -41,7 +41,9 @@ try {
         exit();
     }
 
-    if (mb_strlen($message) > 500) {
+    // Fallback sicuro se mbstring non è installato sul server
+    $msgLength = function_exists('mb_strlen') ? mb_strlen($message) : strlen($message);
+    if ($msgLength > 500) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'MESSAGE_TOO_LONG: Maximum length is 500 characters']);
         exit();
@@ -78,7 +80,7 @@ try {
         }
     }
 
-    // Handle moderation commands
+    // Intercetta i comandi di moderazione riservati agli admin
     if (strpos($message, '/') === 0) {
         $parts = explode(' ', $message);
         $cmd = strtolower($parts[0]);
@@ -138,7 +140,7 @@ try {
         }
     }
 
-    // Verify channel permission
+    // Verifica permessi canale
     $stmt = $db->prepare("SELECT is_private FROM rooms WHERE id = :id");
     $stmt->execute([':id' => $roomId]);
     $room = $stmt->fetch();
