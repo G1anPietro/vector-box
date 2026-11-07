@@ -302,7 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
         eventSource = new EventSource(`api/uplink_stream.php`);
 
         eventSource.onmessage = (event) => {
-            // Ignore heartbeats & empty frames to prevent SyntaxError
+            // Filter heartbeats & empty frames to prevent SyntaxError
             if (!event.data || !event.data.trim() || event.data.trim() === ': heartbeat') {
                 return;
             }
@@ -349,7 +349,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         credentials: 'same-origin',
                         body: JSON.stringify({ message: text, room_id: window.activeRoomId })
                     });
-                    const data = await res.json();
+                    
+                    const responseText = await res.text();
+                    let data = {};
+                    try {
+                        data = JSON.parse(responseText);
+                    } catch (parseErr) {
+                        console.error("Server raw response:", responseText);
+                        data = { success: false, error: "Server returned non-JSON response." };
+                    }
+
                     if (data.success) {
                         chatInput.value = '';
                     } else {
@@ -357,7 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         appendMessageToUI({
                             created_at: new Date().toISOString().substring(11, 19),
                             username: 'SYSTEM',
-                            message: `>> WARNING: ${data.error}`
+                            message: `>> WARNING: ${data.error || 'Failed to send message.'}`
                         }, state, true);
                     }
                 } catch (err) {
