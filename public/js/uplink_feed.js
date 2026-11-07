@@ -303,6 +303,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         eventSource.onmessage = (event) => {
             try {
+                // Prevent JSON.parse error on empty SSE keep-alive heartbeats
+                if (!event.data || !event.data.trim()) return;
+
                 const data = JSON.parse(event.data);
                 const rId = data.room_id || 'general';
                 const state = getRoomState(rId);

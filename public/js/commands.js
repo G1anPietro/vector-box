@@ -65,7 +65,11 @@ const COMMAND_DESCRIPTIONS = {
     "whois": "Display user profile metrics and public biography. Usage: whois <username>",
     "/ban": "Permanently ban user from system (Admin only). Usage: /ban <username>",
     "/timeout": "Temporarily restrict user for specified minutes (Admin only). Usage: /timeout <username> [minutes]",
-    "/unban": "Restore access for banned or timed-out user (Admin only). Usage: /unban <username>"
+    "/unban": "Restore access for banned or timed-out user (Admin only). Usage: /unban <username>",
+    "/grantbook": "Grant book reader permissions to a user (Admin only). Usage: /grantbook <username>",
+    "grantbook": "Grant book reader permissions to a user (Admin only). Usage: grantbook <username>",
+    "/revokebook": "Revoke book reader permissions from a user (Admin only). Usage: /revokebook <username>",
+    "revokebook": "Revoke book reader permissions from a user (Admin only). Usage: revokebook <username>",
 };
 
 // Default File System Blueprint

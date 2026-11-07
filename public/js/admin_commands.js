@@ -24,6 +24,25 @@
         }
     }
 
+    // Helper for book permissions management
+    async function sendBookAccessCommand(action, targetUser) {
+        const csrfToken = window.SESSION_STATE?.csrfToken || '';
+        try {
+            const res = await fetch('api/moderate_book_access.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ action, username: targetUser })
+            });
+            return await res.json();
+        } catch (err) {
+            return { success: false, error: 'Network request failed' };
+        }
+    }
+
     // Register admin handlers into terminal router
     commandHandlers['/ban'] = async function(args, printGuestLog) {
         const target = args[0];
@@ -71,13 +90,46 @@
         }
     };
 
-    // Aliases without slash
+    // New Book Reader Access Commands
+    commandHandlers['/grantbook'] = async function(args, printGuestLog) {
+        const target = args[0];
+        if (!target) {
+            printGuestLog(">> USAGE: /grantbook <username>", COLORS.ERROR);
+            return;
+        }
+        printGuestLog(`>> Granting book reader access to '${target}'...`, COLORS.INFO);
+        const res = await sendBookAccessCommand('grant', target);
+        if (res.success) {
+            printGuestLog(`>> SUCCESS: ${res.message}`, COLORS.PRIMARY);
+        } else {
+            printGuestLog(`>> ERROR: ${res.error}`, COLORS.ERROR);
+        }
+    };
+
+    commandHandlers['/revokebook'] = async function(args, printGuestLog) {
+        const target = args[0];
+        if (!target) {
+            printGuestLog(">> USAGE: /revokebook <username>", COLORS.ERROR);
+            return;
+        }
+        printGuestLog(`>> Revoking book reader access from '${target}'...`, COLORS.WARNING);
+        const res = await sendBookAccessCommand('revoke', target);
+        if (res.success) {
+            printGuestLog(`>> SUCCESS: ${res.message}`, COLORS.PRIMARY);
+        } else {
+            printGuestLog(`>> ERROR: ${res.error}`, COLORS.ERROR);
+        }
+    };
+
+    // Aliases without leading slashes
     commandHandlers['ban'] = commandHandlers['/ban'];
     commandHandlers['timeout'] = commandHandlers['/timeout'];
     commandHandlers['unban'] = commandHandlers['/unban'];
+    commandHandlers['grantbook'] = commandHandlers['/grantbook'];
+    commandHandlers['revokebook'] = commandHandlers['/revokebook'];
 
-    // Register into systemCommands for help lookup & autocomplete
+    // Register commands for help lookup & tab completion
     if (typeof baseSystemCommands !== 'undefined') {
-        baseSystemCommands.push('/ban', '/timeout', '/unban');
+        baseSystemCommands.push('/ban', '/timeout', '/unban', '/grantbook', '/revokebook');
     }
 })();
