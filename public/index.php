@@ -1,4 +1,5 @@
 <?php
+// public/index.php
 require_once __DIR__ . '/includes/head.php';
 require_once __DIR__ . '/api/database.php';
 
@@ -6,6 +7,24 @@ initSession();
 
 $isLoggedIn = !empty($_SESSION['username']) && !str_starts_with($_SESSION['username'], 'guest_');
 $activeUsername = $_SESSION['username'] ?? 'GUEST';
+$userId = $_SESSION['user_id'] ?? null;
+$isAdmin = !empty($_SESSION['is_admin']);
+
+// Book Reader Permission Check (Admin automatically granted access)
+$canReadBooks = $isAdmin;
+if ($userId && !$isAdmin) {
+    try {
+        $db = getDbConnection();
+        $stmt = $db->prepare("SELECT can_read_books FROM accounts WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $acc = $stmt->fetch();
+        if ($acc) {
+            $canReadBooks = (int)$acc['can_read_books'] === 1;
+        }
+    } catch (Exception $e) {
+        $canReadBooks = false;
+    }
+}
 
 if (file_exists('version.php')) {
     require_once 'version.php';
@@ -33,6 +52,10 @@ if (file_exists('version.php')) {
                 <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
                 <a href="pages/hack.php" class="menu-item">// NODE BREACH</a>
                 <a href="pages/vault.php" class="menu-item">// ARG VAULT</a>
+                
+                <?php if ($canReadBooks): ?>
+                    <a href="pages/reader.php" class="menu-item" style="border-color: #00f3ff; color: #00f3ff;">// BOOK READER</a>
+                <?php endif; ?>
                 
                 <?php if ($isLoggedIn): ?>
                     <a href="pages/account.php" class="menu-item">// ACCOUNT_SETTINGS</a>
@@ -272,6 +295,9 @@ if (file_exists('version.php')) {
             <button class="taskbar-btn" id="tb-win-poker">>_ POKER</button>
             <button class="taskbar-btn" id="tb-win-tools">>_ TOOLS</button>
             <button class="taskbar-btn" id="tb-win-vault">>_ VAULT</button>
+            <?php if ($canReadBooks): ?>
+                <a href="pages/reader.php" class="taskbar-btn" style="text-decoration: none; border-color: #00f3ff; color: #00f3ff; display: inline-flex; align-items: center;">>_ READER</a>
+            <?php endif; ?>
         </div>
         <div class="taskbar-info">
             <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>

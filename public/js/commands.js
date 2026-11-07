@@ -5,7 +5,7 @@ const baseSystemCommands = [
     "find", "grep", "fortune", "quote", "whoami", "id", "uptime", "history", 
     "syslog", "sudo", "ip", "scan", "nmap", "ping", "traceroute", "status", 
     "decrypt", "ascii", "theme", "matrix", "cmatrix", "nuke", "glitch", "clear",
-    "rice", "fetch", "join", "rooms", "create", "poker", "vault", "tools"
+    "rice", "fetch", "join", "rooms", "create", "poker", "vault", "tools", "/whois", "whois"
 ];
 
 const COLORS = {
@@ -38,7 +38,7 @@ const COMMAND_DESCRIPTIONS = {
     "uptime": "Display system running time and current CPU load averages.",
     "history": "View command execution history log for current session.",
     "syslog": "Fetch and display system error logs from telemetry backend.",
-    "sudo": "Attempt privileged execution (requires root privileges).",
+    "sudo": "Attempt privileged execution. Usage: sudo <command>",
     "ip": "Retrieve and display client public IPv4 address.",
     "scan": "Scan local network interfaces for active targets.",
     "nmap": "Perform port scanning sequence on target host. Usage: nmap [host]",
@@ -61,6 +61,8 @@ const COMMAND_DESCRIPTIONS = {
     "poker": "Focus poker window or manage custom tables. Usage: poker [join [room|code]] | poker create <name> [bot_count] [code] | poker leave",
     "vault": "Focus or launch the cipher decryption vault window.",
     "tools": "Focus or launch the developer/security converter workbench.",
+    "/whois": "Display user profile metrics and public biography. Usage: /whois <username>",
+    "whois": "Display user profile metrics and public biography. Usage: whois <username>",
     "/ban": "Permanently ban user from system (Admin only). Usage: /ban <username>",
     "/timeout": "Temporarily restrict user for specified minutes (Admin only). Usage: /timeout <username> [minutes]",
     "/unban": "Restore access for banned or timed-out user (Admin only). Usage: /unban <username>"
@@ -188,8 +190,6 @@ function resolvePath(pathStr) {
     };
 }
 
-const getPromptText = () => `guest@vector-box:${currentPath.join('/')}$`;
-
 function getAvailableCommands() {
     return baseSystemCommands;
 }
@@ -303,15 +303,10 @@ function focusWindow(winId) {
     }
 }
 
-/**
- * GLOBAL DYNAMIC ADAPTIVE TEXT FORMATTER
- * Dynamically wraps commands into flex grid containers or auto-calculated columns
- */
 function renderHelpOutput(printGuestLog) {
     const termBox = document.getElementById('guest-term-log') || document.querySelector('.terminal-box');
     const containerWidth = termBox ? termBox.clientWidth - 20 : 500;
     
-    // Approximate character column width in monospace font (~8.5px per char)
     const maxCharsPerLine = Math.max(20, Math.floor(containerWidth / 8.5));
     const titleText = " AVAILABLE COMMANDS ";
     const dashCount = Math.max(2, Math.floor((maxCharsPerLine - titleText.length) / 2));
@@ -321,7 +316,6 @@ function renderHelpOutput(printGuestLog) {
 
     const commands = getAvailableCommands();
     
-    // Render commands as responsive grid blocks
     let gridHTML = '<div class="terminal-cmd-grid">';
     commands.forEach(cmd => {
         gridHTML += `<span class="cmd-item" style="color: ${COLORS.PRIMARY};">${escapeHTML(cmd)}</span>`;
@@ -350,6 +344,53 @@ const commandHandlers = {
         }
 
         renderHelpOutput(printGuestLog);
+    },
+
+    whoami(args, printGuestLog) {
+        const activeUser = window.SESSION_STATE?.username || "guest";
+        const role = window.SESSION_STATE?.isAdmin ? "root" : "guest";
+        const uid = window.SESSION_STATE?.isAdmin ? "0(root)" : "1000(guest)";
+        printGuestLog(`USER: ${activeUser} | UID: ${uid} | PRIVILEGES: ${role.toUpperCase()}`, COLORS.CYAN);
+    },
+
+    async sudo(args, printGuestLog, rawVal, renderNativeAscii) {
+        if (!window.SESSION_STATE?.isAdmin) {
+            printGuestLog("[sudo] guest is not in the sudoers file. Incident reported.", COLORS.ERROR);
+            return;
+        }
+
+        const targetCmd = args.join(' ').trim();
+        if (!targetCmd) {
+            printGuestLog(">> USAGE: sudo <command>", COLORS.WARNING);
+            return;
+        }
+
+        printGuestLog(`[sudo] executing with elevated root rights: ${targetCmd}`, COLORS.INFO);
+        await handleCommand(targetCmd, printGuestLog, renderNativeAscii);
+    },
+    
+    async "/whois"(args, printGuestLog) {
+            const targetUser = args[0]?.replace(/^@/, '');
+            if (!targetUser) {
+                printGuestLog(">> USAGE: /whois <username>", COLORS.ERROR);
+                return;
+            }
+
+            try {
+                const res = await fetch(`api/get_user_profile.php?username=${encodeURIComponent(targetUser)}`);
+                const data = await res.json();
+                if (data.success) {
+                    printGuestLog(`================ USER PROFILE: ${escapeHTML(data.username)} ================`, COLORS.INFO);
+                    printGuestLog(`ROLE: ${data.is_admin ? 'ADMINISTRATOR' : 'STANDARD USER'}`, COLORS.PRIMARY);
+                    printGuestLog(`JOINED: ${data.created_at || 'RECORDED'}`, COLORS.PRIMARY);
+                    printGuestLog(`BIO: ${escapeHTML(data.bio || 'No public bio set.')}`, COLORS.CYAN);
+                    printGuestLog("==========================================================", COLORS.INFO);
+                } else {
+                    printGuestLog(`>> /whois error: ${data.error}`, COLORS.ERROR);
+                }
+            } catch (err) {
+                printGuestLog(`>> /whois failed: User '${targetUser}' not found or unreachable.`, COLORS.ERROR);
+            }
     },
 
     vault(args, printGuestLog) {
@@ -385,7 +426,8 @@ const commandHandlers = {
         printGuestLog("=================== PUBLIC CHATTING ROOMS ===================", COLORS.INFO);
         rooms.forEach(r => {
             const isCurrent = r.id === window.activeRoomId ? " (ACTIVE)" : "";
-            printGuestLog(` # ${r.id.padEnd(12)} - ${r.name}${isCurrent}`, COLORS.PRIMARY);
+            const isPriv = parseInt(r.is_private, 10) === 1 ? " [READ-ONLY / ANNOUNCEMENT]" : "";
+            printGuestLog(` # ${r.id.padEnd(14)} - ${r.name}${isPriv}${isCurrent}`, COLORS.PRIMARY);
         });
         printGuestLog("==========================================================", COLORS.INFO);
     },
@@ -611,7 +653,7 @@ const commandHandlers = {
         const target = sanitizeTarget(rawTarget);
         const dir = getCurrentDir();
 
-        if (!dir[target]) {
+        if (dir[target]) {
             dir[target] = { type: 'file', content: "" };
             saveFileSystem();
             printGuestLog(`>> File created: ${target}`, COLORS.PRIMARY);
@@ -770,12 +812,8 @@ const commandHandlers = {
         printGuestLog(`\n  ${choice}\n`, COLORS.CYAN);
     },
 
-    whoami(args, printGuestLog) { printGuestLog("uid=1000(guest) gid=1000(guest) groups=1000(guest)", COLORS.CYAN); },
+    id(args, printGuestLog) { commandHandlers.whoami(args, printGuestLog); },
     uptime(args, printGuestLog) { printGuestLog(" 11:10:00 up 42 days, 13:37, 1 user, load average: 0.12, 0.08, 0.05", COLORS.PRIMARY); },
-    sudo(args, printGuestLog) {
-        printGuestLog("[sudo] password for guest:", COLORS.ERROR);
-        setTimeout(() => printGuestLog("guest is not in the sudoers file. This incident will be reported.", COLORS.ERROR), 800);
-    },
     theme(args, printGuestLog) {
         const themeArg = args[0]?.toLowerCase();
         if (themeArg) applyRiceTheme(themeArg);
@@ -826,8 +864,8 @@ const commandHandlers = {
     }
 };
 
+commandHandlers.whois = commandHandlers["/whois"];
 commandHandlers.dir = commandHandlers.ls;
-commandHandlers.id = commandHandlers.whoami;
 commandHandlers.quote = commandHandlers.fortune;
 
 async function handleCommand(rawVal, printGuestLog, renderNativeAscii) {

@@ -10,26 +10,44 @@ if (empty($_SESSION['username'])) {
 }
 
 $db = getDbConnection();
-$username =$_SESSION['username'];
-$msg = '';$error = '';
 
-// Fetch current user details
-$stmt =$db->prepare("SELECT * FROM accounts WHERE username = :u");
-$stmt->execute([':u' =>$username]);
-$account =$stmt->fetch();
+// Ensure bio column exists in accounts table
+try {
+    $db->exec("ALTER TABLE accounts ADD COLUMN bio TEXT DEFAULT ''");
+} catch (Exception $e) {}
+
+$username = $_SESSION['username'];
+$msg = ''; 
+$error = '';
+
+$stmt = $db->prepare("SELECT * FROM accounts WHERE username = :u");
+$stmt->execute([':u' => $username]);
+$account = $stmt->fetch();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action =$_POST['action'] ?? '';
+    $action = $_POST['action'] ?? '';
 
-    if ($action === 'change_password') {
-        $oldPass =$_POST['old_password'] ?? '';
-        $newPass =$_POST['new_password'] ?? '';
+    if ($action === 'update_profile') {
+        $bio = trim($_POST['bio'] ?? '');
+        
+        if (mb_strlen($bio) > 250) {
+            $error = "Bio cannot exceed 250 characters.";
+        } else {
+            $upd = $db->prepare("UPDATE accounts SET bio = :b WHERE id = :id");
+            $upd->execute([':b' => $bio, ':id' => $account['id']]);
+            $account['bio'] = $bio;
+            $msg = "Profile bio updated successfully.";
+        }
+    } elseif ($action === 'change_password') {
+        $oldPass = $_POST['old_password'] ?? '';
+        $newPass = $_POST['new_password'] ?? '';
 
         if (!empty($oldPass) && !empty($newPass)) {
-            if ($account && password_verify($oldPass,$account['password_hash'])) {
+            if ($account && password_verify($oldPass, $account['password_hash'])) {
                 $newHash = password_hash($newPass, PASSWORD_BCRYPT);
-                $upd =$db->prepare("UPDATE accounts SET password_hash = :p WHERE id = :id");
-                $upd->execute([':p' =>$newHash, ':id' => $account['id']]);$msg = "Password updated successfully!";
+                $upd = $db->prepare("UPDATE accounts SET password_hash = :p WHERE id = :id");
+                $upd->execute([':p' => $newHash, ':id' => $account['id']]);
+                $msg = "Password updated successfully.";
             } else {
                 $error = "Incorrect current password.";
             }
@@ -37,11 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Please fill in both password fields.";
         }
     } elseif ($action === 'save_theme') {
-        $selectedTheme =$_POST['theme'] ?? 'cyan';
-        $upd =$db->prepare("UPDATE accounts SET theme = :t WHERE id = :id");
-        $upd->execute([':t' => $selectedTheme, ':id' =>$account['id']]);
-        $_SESSION['theme'] =$selectedTheme;
-        $msg = "Default theme updated!";
+        $selectedTheme = $_POST['theme'] ?? 'cyan';
+        $upd = $db->prepare("UPDATE accounts SET theme = :t WHERE id = :id");
+        $upd->execute([':t' => $selectedTheme, ':id' => $account['id']]);
+        $_SESSION['theme'] = $selectedTheme;
+        $msg = "Default theme updated.";
     }
 }
 ?>
@@ -59,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </header>
 
     <main class="page-container-centered">
-        <div class="cyber-panel hack-container" style="max-width: 460px; text-align: left;">
+        <div class="cyber-panel hack-container" style="max-width: 480px; text-align: left;">
             <h2 class="hack-title" style="text-align: center;">>_ ACCOUNT_SETTINGS</h2>
 
             <?php if ($msg): ?>
@@ -74,8 +92,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="term-muted" style="margin: 4px 0;">ROLE: <span style="color: #ffaa00;"><?php echo !empty($account['is_admin']) ? 'ADMINISTRATOR' : 'STANDARD USER'; ?></span></p>
             </div>
 
+            <!-- Profile Bio Form -->
+            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                <span class="settings-title">>_ PUBLIC USER BIO (MAX 250 CHARS)</span>
+                <textarea name="bio" class="tools-textarea" maxlength="250" placeholder="Enter custom biography..." style="height: 70px; resize: none;"><?php echo htmlspecialchars($account['bio'] ?? ''); ?></textarea>
+                <button type="submit" name="action" value="update_profile" class="nav-btn">>_ SAVE BIO</button>
+            </form>
+
             <!-- Password Change Form -->
-            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
                 <span class="settings-title">>_ CHANGE PASSWORD</span>
                 <input type="password" name="old_password" placeholder="Current Password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
                 <input type="password" name="new_password" placeholder="New Password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
@@ -83,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
 
             <!-- Theme Preference Form -->
-            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 10px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
                 <span class="settings-title">>_ DEFAULT SYSTEM THEME</span>
                 <select name="theme" class="nav-btn" style="width: 100%; text-align: left; padding: 6px; background: #020304;">
                     <option value="cyan" <?php if(($account['theme']??'')==='cyan') echo 'selected'; ?>>Cyan (Default)</option>

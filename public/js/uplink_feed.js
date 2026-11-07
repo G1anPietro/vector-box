@@ -20,6 +20,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.SESSION_STATE = window.SESSION_STATE || { isAdmin: false, csrfToken: '' };
 
+    const escapeHTML = (str) => {
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
+    const formatLinksInText = (text) => {
+        const escaped = escapeHTML(text);
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return escaped.replace(urlRegex, (url) => {
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-color, #00f3ff); text-decoration: underline; word-break: break-all;">${url}</a>`;
+        });
+    };
+
     const checkSessionState = async () => {
         try {
             const res = await fetch('api/check_session.php', { credentials: 'same-origin' });
@@ -118,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const textSpan = document.createElement('span');
         textSpan.className = 'chat-msg-body';
         if (isError) textSpan.style.color = '#ff3333';
-        textSpan.textContent = data.message;
+        textSpan.innerHTML = formatLinksInText(data.message || '');
 
         p.appendChild(prefixContainer);
         p.appendChild(textSpan);

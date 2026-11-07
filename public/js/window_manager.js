@@ -2,6 +2,48 @@
 document.addEventListener("DOMContentLoaded", () => {
     let topZIndex = 100;
 
+    const readSavedWindowState = (winId) => {
+        if (typeof window.getSystemCookie === 'function') {
+            const cookieVal = window.getSystemCookie(`win_state_${winId}`);
+            if (cookieVal) {
+                try { return JSON.parse(cookieVal); } catch (e) {}
+            }
+        }
+        try {
+            const localVal = localStorage.getItem(`win_state_${winId}`);
+            if (localVal) return JSON.parse(localVal);
+        } catch (e) {}
+        return null;
+    };
+
+    const writeSavedWindowState = (winId, state) => {
+        const jsonStr = JSON.stringify(state);
+        if (typeof window.setSystemCookie === 'function') {
+            window.setSystemCookie(`win_state_${winId}`, jsonStr, 30);
+        }
+        try {
+            localStorage.setItem(`win_state_${winId}`, jsonStr);
+        } catch (e) {}
+    };
+
+    const saveWindowState = (winEl) => {
+        const id = winEl.id;
+        if (!id) return;
+        const isHidden = winEl.classList.contains('hidden') || winEl.style.display === 'none';
+        const isMaximized = winEl.classList.contains('maximized');
+        
+        const state = {
+            left: winEl.style.left,
+            top: winEl.style.top,
+            width: winEl.style.width,
+            height: winEl.style.height,
+            zIndex: winEl.style.zIndex || 100,
+            isOpen: !isHidden,
+            isMaximized: isMaximized
+        };
+        writeSavedWindowState(id, state);
+    };
+
     window.bringToFront = (winEl) => {
         if (!winEl) return;
         topZIndex++;
@@ -11,11 +53,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const tbBtn = document.getElementById('tb-' + winEl.id);
         if (tbBtn) tbBtn.classList.add('active');
+
+        saveWindowState(winEl);
     };
 
     window.openWindow = (winId) => {
         const win = document.getElementById(winId);
-        if (win) window.bringToFront(win);
+        if (win) {
+            window.bringToFront(win);
+        }
     };
 
     window.closeWindow = (winId) => {
@@ -24,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (win) {
             win.classList.add('hidden');
             win.style.display = 'none';
+            saveWindowState(win);
         }
         if (tbBtn) tbBtn.classList.remove('active');
     };
@@ -37,6 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 win.style.display = 'none';
                 if (tbBtn) tbBtn.classList.remove('active');
+                saveWindowState(win);
             }
         }
     };
@@ -46,6 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (win) {
             win.classList.toggle('maximized');
             window.bringToFront(win);
+            saveWindowState(win);
         }
     };
 
@@ -60,7 +109,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // Attach event handlers for header buttons
     document.querySelectorAll('.win-btn-min').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const win = e.target.closest('.draggable-window');
@@ -92,26 +140,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const makeWindowInteractive = (winEl, id) => {
         winEl.style.position = 'absolute';
 
-        const savedState = localStorage.getItem(`win_state_${id}`);
+        const savedState = readSavedWindowState(id);
         if (savedState) {
-            try {
-                const state = JSON.parse(savedState);
-                if (state.left) winEl.style.left = state.left;
-                if (state.top) winEl.style.top = state.top;
-                if (state.width) winEl.style.width = state.width;
-                if (state.height) winEl.style.height = state.height;
-            } catch (e) {}
-        }
+            if (savedState.left) winEl.style.left = savedState.left;
+            if (savedState.top) winEl.style.top = savedState.top;
+            if (savedState.width) winEl.style.width = savedState.width;
+            if (savedState.height) winEl.style.height = savedState.height;
+            if (savedState.zIndex) {
+                winEl.style.zIndex = savedState.zIndex;
+                topZIndex = Math.max(topZIndex, parseInt(savedState.zIndex, 10));
+            }
+            if (savedState.isMaximized) winEl.classList.add('maximized');
 
-        const saveState = () => {
-            const state = {
-                left: winEl.style.left,
-                top: winEl.style.top,
-                width: winEl.style.width,
-                height: winEl.style.height
-            };
-            localStorage.setItem(`win_state_${id}`, JSON.stringify(state));
-        };
+            if (savedState.isOpen === false) {
+                winEl.classList.add('hidden');
+                winEl.style.display = 'none';
+                const tbBtn = document.getElementById('tb-' + id);
+                if (tbBtn) tbBtn.classList.remove('active');
+            } else if (savedState.isOpen === true) {
+                winEl.classList.remove('hidden');
+                winEl.style.display = 'flex';
+                const tbBtn = document.getElementById('tb-' + id);
+                if (tbBtn) tbBtn.classList.add('active');
+            }
+        }
 
         winEl.addEventListener('mousedown', () => {
             window.bringToFront(winEl);
@@ -144,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const onMouseUp = () => {
                     isDragging = false;
-                    saveState();
+                    saveWindowState(winEl);
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
                 };
@@ -193,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
 
                 const stopResize = () => {
-                    saveState();
+                    saveWindowState(winEl);
                     document.removeEventListener('mousemove', onResize);
                     document.removeEventListener('mouseup', stopResize);
                 };

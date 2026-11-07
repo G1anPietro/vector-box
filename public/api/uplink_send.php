@@ -26,6 +26,12 @@ if (empty($message)) {
     exit();
 }
 
+if (mb_strlen($message) > 500) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'MESSAGE_TOO_LONG: Maximum length is 500 characters']);
+    exit();
+}
+
 $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 $userId = $_SESSION['user_id'] ?? null;
 $username = $_SESSION['username'] ?? 'guest';
@@ -58,83 +64,76 @@ try {
         }
     }
 
-    // Intercept Terminal Slash Commands
+    // Intercetta solo comandi di moderazione riservati all'admin
     if (strpos($message, '/') === 0) {
         $parts = explode(' ', $message);
         $cmd = strtolower($parts[0]);
 
-        if ($cmd === '/help') {
-            echo json_encode([
-                'success' => false,
-                'error' => 'ADMIN COMMANDS: /ban <username>, /timeout <username> <minutes>, /unban <username>'
-            ]);
-            exit();
-        }
-
-        if (!$isAdmin) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'UNAUTHORIZED: Terminal commands require admin rights']);
-            exit();
-        }
-
-        $targetUser = trim($parts[1] ?? '');
-        if (empty($targetUser)) {
-            echo json_encode(['success' => false, 'error' => "USAGE: {$cmd} <username>"]);
-            exit();
-        }
-
-        if ($cmd === '/ban') {
-            $stmt = $db->prepare("UPDATE accounts SET is_banned = 1, banned_until = NULL WHERE username = :u AND is_admin = 0");
-            $stmt->execute([':u' => $targetUser]);
-            
-            if ($stmt->rowCount() === 0) {
-                echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
-            } else {
-                echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' permanently banned"]);
+        if (in_array($cmd, ['/ban', '/timeout', '/unban'])) {
+            if (!$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'error' => 'UNAUTHORIZED: Moderation commands require admin rights']);
+                exit();
             }
-            exit();
-        }
 
-        if ($cmd === '/timeout') {
-            $minutes = isset($parts[2]) ? (int)$parts[2] : 10;
-            if ($minutes <= 0) $minutes = 10;
-            $until = date('Y-m-d H:i:s', strtotime("+{$minutes} minutes"));
-
-            $stmt = $db->prepare("UPDATE accounts SET banned_until = :until WHERE username = :u AND is_admin = 0");
-            $stmt->execute([':until' => $until, ':u' => $targetUser]);
-
-            if ($stmt->rowCount() === 0) {
-                echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
-            } else {
-                echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' timed out for {$minutes} minute(s)"]);
+            $targetUser = trim($parts[1] ?? '');
+            if (empty($targetUser)) {
+                echo json_encode(['success' => false, 'error' => "USAGE: {$cmd} <username>"]);
+                exit();
             }
-            exit();
-        }
 
-        if ($cmd === '/unban') {
-            $stmt = $db->prepare("UPDATE accounts SET is_banned = 0, banned_until = NULL WHERE username = :u");
-            $stmt->execute([':u' => $targetUser]);
-
-            if ($stmt->rowCount() === 0) {
-                echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
-            } else {
-                echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' unbanned"]);
+            if ($cmd === '/ban') {
+                $stmt = $db->prepare("UPDATE accounts SET is_banned = 1, banned_until = NULL WHERE username = :u AND is_admin = 0");
+                $stmt->execute([':u' => $targetUser]);
+                
+                if ($stmt->rowCount() === 0) {
+                    echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' permanently banned"]);
+                }
+                exit();
             }
-            exit();
-        }
 
-        echo json_encode(['success' => false, 'error' => "Unknown command '{$cmd}'."]);
-        exit();
+            if ($cmd === '/timeout') {
+                $minutes = isset($parts[2]) ? (int)$parts[2] : 10;
+                if ($minutes <= 0) $minutes = 10;
+                $until = date('Y-m-d H:i:s', strtotime("+{$minutes} minutes"));
+
+                $stmt = $db->prepare("UPDATE accounts SET banned_until = :until WHERE username = :u AND is_admin = 0");
+                $stmt->execute([':until' => $until, ':u' => $targetUser]);
+
+                if ($stmt->rowCount() === 0) {
+                    echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' timed out for {$minutes} minute(s)"]);
+                }
+                exit();
+            }
+
+            if ($cmd === '/unban') {
+                $stmt = $db->prepare("UPDATE accounts SET is_banned = 0, banned_until = NULL WHERE username = :u");
+                $stmt->execute([':u' => $targetUser]);
+
+                if ($stmt->rowCount() === 0) {
+                    echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' unbanned"]);
+                }
+                exit();
+            }
+        }
     }
 
-    // Verify room access permissions
+    // Verifica permessi per stanze private/annunci
     $stmt = $db->prepare("SELECT is_private FROM rooms WHERE id = :id");
     $stmt->execute([':id' => $roomId]);
     $room = $stmt->fetch();
 
-    if ($room && (int)$room['is_private'] === 1 && !$isAdmin) {
+    $isAnnouncementRoom = ($roomId === 'announcements' || $roomId === 'news' || ($room && (int)$room['is_private'] === 1));
+
+    if ($isAnnouncementRoom && !$isAdmin) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'error' => "ACCESS RESTRICTED: Room '#{$roomId}' requires admin authorization."]);
+        echo json_encode(['success' => false, 'error' => "READ_ONLY: Room '#{$roomId}' is an announcement channel. Only administrators can post."]);
         exit();
     }
 

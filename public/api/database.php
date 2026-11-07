@@ -3,7 +3,7 @@
 
 function initSession() {
     $projectRoot = dirname(__DIR__, 2);
-    $sessionDir =$projectRoot . '/data/sessions';
+    $sessionDir = $projectRoot . '/data/sessions';
 
     if (!file_exists($sessionDir)) {
         @mkdir($sessionDir, 0777, true);
@@ -21,8 +21,9 @@ function initSession() {
     }
 
     // Ensure guest sessions get a unique session-bound handle
-    if (!isset($_SESSION['username'])) {$suffix = substr(md5(session_id()), 0, 4);
-        $_SESSION['username'] = 'guest_' .$suffix;
+    if (!isset($_SESSION['username'])) {
+        $suffix = substr(md5(session_id()), 0, 4);
+        $_SESSION['username'] = 'guest_' . $suffix;
     }
 
     // Release session lock to prevent blocking during background polling
@@ -31,16 +32,17 @@ function initSession() {
 
 function getDbConnection() {
     $projectRoot = dirname(__DIR__, 2);
-    $dataDir =$projectRoot . '/data';
+    $dataDir = $projectRoot . '/data';
     
     if (!file_exists($dataDir)) {
         @mkdir($dataDir, 0777, true);
     }
 
-    $dbPath =$dataDir . '/vector_uplink.sqlite';
+    $dbPath = $dataDir . '/vector_uplink.sqlite';
 
-    $db = new PDO('sqlite:' .$dbPath);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $db = new PDO('sqlite:' . $dbPath);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
     // Optimized SQLite performance pragmas for concurrent access
     $db->exec("PRAGMA busy_timeout = 5000;");
@@ -54,6 +56,8 @@ function getDbConnection() {
         password_hash VARCHAR(255) NOT NULL,
         theme VARCHAR(30) DEFAULT 'cyan',
         is_admin INTEGER DEFAULT 0,
+        can_read_books INTEGER DEFAULT 0,
+        can_upload_books INTEGER DEFAULT 0,
         is_banned INTEGER DEFAULT 0,
         banned_until DATETIME NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -68,17 +72,17 @@ function getDbConnection() {
     )");
 
     // Seed default rooms if table is empty
-    $roomCount =$db->query("SELECT COUNT(*) FROM rooms")->fetchColumn();
+    $roomCount = $db->query("SELECT COUNT(*) FROM rooms")->fetchColumn();
     if ((int)$roomCount === 0) {
-        $stmt =$db->prepare("INSERT INTO rooms (id, name, is_private) VALUES (:id, :name, :is_priv)");
+        $stmt = $db->prepare("INSERT INTO rooms (id, name, is_private) VALUES (:id, :name, :is_priv)");
         $defaultRooms = [
             ['id' => 'general', 'name' => 'General', 'is_priv' => 0],
             ['id' => 'dev', 'name' => 'Dev Ops', 'is_priv' => 0],
             ['id' => 'lounge', 'name' => 'Cyber Lounge', 'is_priv' => 0],
             ['id' => 'admin', 'name' => 'Root Sanctuary', 'is_priv' => 1]
         ];
-        foreach ($defaultRooms as$r) {
-            $stmt->execute([':id' =>$r['id'], ':name' => $r['name'], ':is_priv' =>$r['is_priv']]);
+        foreach ($defaultRooms as $r) {
+            $stmt->execute([':id' => $r['id'], ':name' => $r['name'], ':is_priv' => $r['is_priv']]);
         }
     }
 
@@ -91,6 +95,7 @@ function getDbConnection() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // Poker Tables
     $db->exec("CREATE TABLE IF NOT EXISTS poker_tables (
         id VARCHAR(50) PRIMARY KEY,
         room_code VARCHAR(50) NULL,
@@ -121,34 +126,75 @@ function getDbConnection() {
         UNIQUE(table_id, seat)
     )");
 
-    // Safely inject metadata columns if table existed
-    $pokerCols =$db->query("PRAGMA table_info(poker_tables)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('room_code', $pokerCols)) {$db->exec("ALTER TABLE poker_tables ADD COLUMN room_code VARCHAR(50) NULL");
+    // Books Library table
+    $db->exec("CREATE TABLE IF NOT EXISTS books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title VARCHAR(255) NOT NULL,
+        author VARCHAR(255) DEFAULT 'Unknown',
+        description TEXT DEFAULT '',
+        format VARCHAR(10) NOT NULL,
+        file_path VARCHAR(500) NOT NULL,
+        cover_path VARCHAR(500) DEFAULT '',
+        file_size INTEGER DEFAULT 0,
+        uploaded_by VARCHAR(50) DEFAULT 'system',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Reading Progress table
+    $db->exec("CREATE TABLE IF NOT EXISTS reading_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        book_id INTEGER NOT NULL,
+        cfi_or_page TEXT NOT NULL,
+        percentage REAL DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, book_id)
+    )");
+
+    // Safely inject metadata columns if tables pre-existed
+    $pokerCols = $db->query("PRAGMA table_info(poker_tables)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('room_code', $pokerCols)) {
+        $db->exec("ALTER TABLE poker_tables ADD COLUMN room_code VARCHAR(50) NULL");
     }
-    if (!in_array('creator_username', $pokerCols)) {$db->exec("ALTER TABLE poker_tables ADD COLUMN creator_username VARCHAR(50) DEFAULT 'system'");
+    if (!in_array('creator_username', $pokerCols)) {
+        $db->exec("ALTER TABLE poker_tables ADD COLUMN creator_username VARCHAR(50) DEFAULT 'system'");
     }
-    if (!in_array('max_players', $pokerCols)) {$db->exec("ALTER TABLE poker_tables ADD COLUMN max_players INTEGER DEFAULT 4");
+    if (!in_array('max_players', $pokerCols)) {
+        $db->exec("ALTER TABLE poker_tables ADD COLUMN max_players INTEGER DEFAULT 4");
     }
-    if (!in_array('bot_count', $pokerCols)) {$db->exec("ALTER TABLE poker_tables ADD COLUMN bot_count INTEGER DEFAULT 1");
+    if (!in_array('bot_count', $pokerCols)) {
+        $db->exec("ALTER TABLE poker_tables ADD COLUMN bot_count INTEGER DEFAULT 1");
     }
 
-    // Safely inject columns if legacy schema exists
-    $cols =$db->query("PRAGMA table_info(transmissions)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('room_id', $cols)) {$db->exec("ALTER TABLE transmissions ADD COLUMN room_id VARCHAR(50) DEFAULT 'general'");
+    $cols = $db->query("PRAGMA table_info(transmissions)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('room_id', $cols)) {
+        $db->exec("ALTER TABLE transmissions ADD COLUMN room_id VARCHAR(50) DEFAULT 'general'");
     }
-    if (!in_array('username', $cols)) {$db->exec("ALTER TABLE transmissions ADD COLUMN username VARCHAR(50) DEFAULT 'guest'");
+    if (!in_array('username', $cols)) {
+        $db->exec("ALTER TABLE transmissions ADD COLUMN username VARCHAR(50) DEFAULT 'guest'");
     }
-    if (!in_array('user_id', $cols)) {$db->exec("ALTER TABLE transmissions ADD COLUMN user_id INTEGER NULL");
+    if (!in_array('user_id', $cols)) {
+        $db->exec("ALTER TABLE transmissions ADD COLUMN user_id INTEGER NULL");
     }
-    if (!in_array('is_deleted', $cols)) {$db->exec("ALTER TABLE transmissions ADD COLUMN is_deleted INTEGER DEFAULT 0");
+    if (!in_array('is_deleted', $cols)) {
+        $db->exec("ALTER TABLE transmissions ADD COLUMN is_deleted INTEGER DEFAULT 0");
     }
 
-    $accCols =$db->query("PRAGMA table_info(accounts)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('is_admin', $accCols)) {$db->exec("ALTER TABLE accounts ADD COLUMN is_admin INTEGER DEFAULT 0");
+    $accCols = $db->query("PRAGMA table_info(accounts)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('is_admin', $accCols)) {
+        $db->exec("ALTER TABLE accounts ADD COLUMN is_admin INTEGER DEFAULT 0");
     }
-    if (!in_array('is_banned', $accCols)) {$db->exec("ALTER TABLE accounts ADD COLUMN is_banned INTEGER DEFAULT 0");
+    if (!in_array('can_read_books', $accCols)) {
+        $db->exec("ALTER TABLE accounts ADD COLUMN can_read_books INTEGER DEFAULT 0");
     }
-    if (!in_array('banned_until', $accCols)) {$db->exec("ALTER TABLE accounts ADD COLUMN banned_until DATETIME NULL");
+    if (!in_array('can_upload_books', $accCols)) {
+        $db->exec("ALTER TABLE accounts ADD COLUMN can_upload_books INTEGER DEFAULT 0");
+    }
+    if (!in_array('is_banned', $accCols)) {
+        $db->exec("ALTER TABLE accounts ADD COLUMN is_banned INTEGER DEFAULT 0");
+    }
+    if (!in_array('banned_until', $accCols)) {
+        $db->exec("ALTER TABLE accounts ADD COLUMN banned_until DATETIME NULL");
     }
 
     return $db;
