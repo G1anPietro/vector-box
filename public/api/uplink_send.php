@@ -1,49 +1,63 @@
 <?php
 // public/api/uplink_send.php
+
+// Disable output buffering so PHP flushes JSON immediately
+@ini_set('zlib.output_compression', 0);
+@ini_set('implicit_flush', 1);
+for ($i = 0; $i < ob_get_level(); $i++) {
+    @ob_end_clean();
+}
+
 require_once __DIR__ . '/database.php';
 
-initSession();
-header('Content-Type: application/json');
-
-if (!empty($_SESSION['user_id'])) {
-    $csrfHeader =$_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    $sessionToken =$_SESSION['csrf_token'] ?? '';
-
-    if (empty($sessionToken) || !hash_equals($sessionToken,$csrfHeader)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'FORBIDDEN: Invalid CSRF token']);
-        exit();
-    }
-}
-
-$rawInput = file_get_contents('php://input');
-$input = json_decode($rawInput, true) ?? [];
-$message = trim($input['message'] ?? '');
-$roomId = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower(trim($input['room_id'] ?? 'general')));
-
-if (empty($message)) {
-    echo json_encode(['success' => false, 'error' => 'Message cannot be empty']);
-    exit();
-}
-
-if (mb_strlen($message) > 500) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'MESSAGE_TOO_LONG: Maximum length is 500 characters']);
-    exit();
-}
-
-$clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-$userId =$_SESSION['user_id'] ?? null;
-$username =$_SESSION['username'] ?? 'guest';
-$isAdmin = !empty($_SESSION['is_admin']);
+header('Content-Type: application/json; charset=utf-8');
 
 try {
+    initSession();
+
+    // Release session write lock immediately to prevent blocking concurrent requests
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    if (!empty($_SESSION['user_id'])) {
+        $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $sessionToken = $_SESSION['csrf_token'] ?? '';
+
+        if (empty($sessionToken) || !hash_equals($sessionToken, $csrfHeader)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'FORBIDDEN: Invalid CSRF token']);
+            exit();
+        }
+    }
+
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true) ?? [];
+    $message = trim($input['message'] ?? '');
+    $roomId = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower(trim($input['room_id'] ?? 'general')));
+
+    if (empty($message)) {
+        echo json_encode(['success' => false, 'error' => 'Message cannot be empty']);
+        exit();
+    }
+
+    if (mb_strlen($message) > 500) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'MESSAGE_TOO_LONG: Maximum length is 500 characters']);
+        exit();
+    }
+
+    $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $userId = $_SESSION['user_id'] ?? null;
+    $username = $_SESSION['username'] ?? 'guest';
+    $isAdmin = !empty($_SESSION['is_admin']);
+
     $db = getDbConnection();
 
     if ($userId) {
-        $stmt =$db->prepare("SELECT is_banned, banned_until FROM accounts WHERE id = :id");
-        $stmt->execute([':id' =>$userId]);
-        $account =$stmt->fetch();
+        $stmt = $db->prepare("SELECT is_banned, banned_until FROM accounts WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $account = $stmt->fetch();
 
         if ($account) {
             if ((int)$account['is_banned'] === 1) {
@@ -64,9 +78,9 @@ try {
         }
     }
 
-    // Intercept moderation commands reserved for admin
+    // Handle moderation commands
     if (strpos($message, '/') === 0) {
-        $parts = explode(' ',$message);
+        $parts = explode(' ', $message);
         $cmd = strtolower($parts[0]);
 
         if (in_array($cmd, ['/ban', '/timeout', '/unban'])) {
@@ -83,8 +97,8 @@ try {
             }
 
             if ($cmd === '/ban') {
-                $stmt =$db->prepare("UPDATE accounts SET is_banned = 1, banned_until = NULL WHERE username = :u AND is_admin = 0");
-                $stmt->execute([':u' =>$targetUser]);
+                $stmt = $db->prepare("UPDATE accounts SET is_banned = 1, banned_until = NULL WHERE username = :u AND is_admin = 0");
+                $stmt->execute([':u' => $targetUser]);
                 
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
@@ -94,12 +108,13 @@ try {
                 exit();
             }
 
-            if ($cmd === '/timeout') {$minutes = isset($parts[2]) ? (int)$parts[2] : 10;
-                if ($minutes <= 0)$minutes = 10;
+            if ($cmd === '/timeout') {
+                $minutes = isset($parts[2]) ? (int)$parts[2] : 10;
+                if ($minutes <= 0) $minutes = 10;
                 $until = date('Y-m-d H:i:s', strtotime("+{$minutes} minutes"));
 
-                $stmt =$db->prepare("UPDATE accounts SET banned_until = :until WHERE username = :u AND is_admin = 0");
-                $stmt->execute([':until' => $until, ':u' =>$targetUser]);
+                $stmt = $db->prepare("UPDATE accounts SET banned_until = :until WHERE username = :u AND is_admin = 0");
+                $stmt->execute([':until' => $until, ':u' => $targetUser]);
 
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
@@ -110,8 +125,8 @@ try {
             }
 
             if ($cmd === '/unban') {
-                $stmt =$db->prepare("UPDATE accounts SET is_banned = 0, banned_until = NULL WHERE username = :u");
-                $stmt->execute([':u' =>$targetUser]);
+                $stmt = $db->prepare("UPDATE accounts SET is_banned = 0, banned_until = NULL WHERE username = :u");
+                $stmt->execute([':u' => $targetUser]);
 
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
@@ -123,12 +138,12 @@ try {
         }
     }
 
-    // Verify channel permissions
-    $stmt =$db->prepare("SELECT is_private FROM rooms WHERE id = :id");
-    $stmt->execute([':id' =>$roomId]);
-    $room =$stmt->fetch();
+    // Verify channel permission
+    $stmt = $db->prepare("SELECT is_private FROM rooms WHERE id = :id");
+    $stmt->execute([':id' => $roomId]);
+    $room = $stmt->fetch();
 
-    $isAnnouncementRoom = ($roomId === 'announcements' \vert{}\vert{}$roomId === 'news' || ($room && (int)$room['is_private'] === 1));
+    $isAnnouncementRoom = ($roomId === 'announcements' || $roomId === 'news' || ($room && (int)$room['is_private'] === 1));
 
     if ($isAnnouncementRoom && !$isAdmin) {
         http_response_code(403);
@@ -136,7 +151,7 @@ try {
         exit();
     }
 
-    $stmt =$db->prepare("INSERT INTO transmissions (room_id, user_id, username, message, sender_ip) VALUES (:rid, :uid, :uname, :msg, :ip)");
+    $stmt = $db->prepare("INSERT INTO transmissions (room_id, user_id, username, message, sender_ip) VALUES (:rid, :uid, :uname, :msg, :ip)");
     $stmt->execute([
         ':rid' => $roomId,
         ':uid' => $userId,
@@ -145,9 +160,11 @@ try {
         ':ip' => $clientIp
     ]);
 
-    echo json_encode(['success' => true, 'username' => $username, 'room_id' =>$roomId]);
+    echo json_encode(['success' => true, 'username' => $username, 'room_id' => $roomId]);
+    exit();
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'error' => 'DB_ERROR: ' . $e->getMessage()]);
+    exit();
 }
