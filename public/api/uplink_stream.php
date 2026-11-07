@@ -2,18 +2,22 @@
 // public/api/uplink_stream.php
 require_once __DIR__ . '/database.php';
 
-// Release session locks immediately if session was active
+// Initialize session to check auth, then IMMEDIATELY release the lock
 initSession();
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 
-// Disable time limits for streaming execution window
-set_time_limit(30);
+// Disable execution timeouts for long polling
+@ini_set('max_execution_time', 0);
+set_time_limit(0);
 
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache, no-transform');
 header('Connection: keep-alive');
 header('X-Accel-Buffering: no'); // Prevents Nginx buffering
 
-// Disable output buffering completely
+// Disable PHP output buffering completely
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', 1);
 }
@@ -37,14 +41,10 @@ if ($lastId === 0) {
     }
 }
 
-// Set maximum execution window of 25 seconds.
-// Exiting cleanly releases the PHP worker back to the FPM pool.
-// Client EventSource will automatically reconnect in 1 second.
 $startTime = time();
-$maxDuration = 25; 
+$maxDuration = 20; // 20-second clean cycle to avoid PHP-FPM worker exhaustion
 
 while ((time() - $startTime) < $maxDuration) {
-    // Check if browser tab was reloaded or closed
     if (connection_aborted()) {
         break;
     }
@@ -74,8 +74,8 @@ while ((time() - $startTime) < $maxDuration) {
                 echo "data: " . json_encode($payload) . "\n\n";
             }
         } else {
-            // Heartbeat ping forces socket write so connection_aborted() registers immediately on client refresh
-            echo ": ping\n\n";
+            // Valid SSE comment block for keep-alive ping
+            echo ": heartbeat\n\n";
         }
 
         @ob_flush();

@@ -302,10 +302,12 @@ document.addEventListener("DOMContentLoaded", () => {
         eventSource = new EventSource(`api/uplink_stream.php`);
 
         eventSource.onmessage = (event) => {
-            try {
-                // Prevent JSON.parse error on empty SSE keep-alive heartbeats
-                if (!event.data || !event.data.trim()) return;
+            // Ignore heartbeats & empty frames to prevent SyntaxError
+            if (!event.data || !event.data.trim() || event.data.trim() === ': heartbeat') {
+                return;
+            }
 
+            try {
                 const data = JSON.parse(event.data);
                 const rId = data.room_id || 'general';
                 const state = getRoomState(rId);
@@ -321,7 +323,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         renderRoomTabs();
                     }
                 }
-            } catch (err) {}
+            } catch (err) {
+                // Ignore silent parsing anomalies on teardown
+            }
         };
     };
 
