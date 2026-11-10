@@ -17,6 +17,11 @@ document.addEventListener("DOMContentLoaded", () => {
     let eventSource = null;
     let streamResumeId = 0;   // newest message id known before the stream starts
     let reconnectTimer = null;
+    let chatHub = null;       // { url, token } from check_session.php, null = PHP stream only
+    let hubLastEventId = '';  // resume point on the hub ("<boot>-<seq>")
+    let hubFailures = 0;
+    const HUB_MAX_FAILURES = 3;
+    const HUB_RETRY_MS = 5 * 60 * 1000;
     let isSubmitting = false;
     let isLoadingHistory = false;
 
@@ -54,6 +59,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data) {
                 window.SESSION_STATE.isAdmin = data.is_admin === 1;
                 window.SESSION_STATE.csrfToken = data.csrf_token || '';
+                chatHub = data.chat_stream && data.chat_stream.url && data.chat_stream.token
+                    ? data.chat_stream : null;
 
                 if (typeof loadAdminCommandsIfEligible === 'function') {
                     loadAdminCommandsIfEligible();
@@ -312,6 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const handleIncomingMessage = (data) => {
         if (!data || !data.id) return;
+        if (data.id > streamResumeId) streamResumeId = data.id;
         const rId = data.room_id || 'general';
         const state = getRoomState(rId);
         if (data.id <= state.latestId) return; // already shown (history or replay)
@@ -327,10 +335,102 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // PHP fallback stream: event ids are message ids, so the browser's automatic
+    const handleDeletedMessage = (data) => {
+        if (!data || !data.id) return;
+        const state = roomStates[data.room_id];
+        if (state) state.messages = state.messages.filter((m) => m.id !== data.id);
+        const el = document.getElementById(`msg-${data.id}`);
+        if (el) el.remove();
+    };
+
+    // The hub could not replay what we missed (first connect, Node restart, long
+    // disconnect): pull the active room from PHP and mark the others stale.
+    const resyncFromServer = async () => {
+        Object.keys(roomStates).forEach((rId) => {
+            if (rId !== window.activeRoomId) {
+                roomStates[rId].isInitialized = false;
+                roomStates[rId].messages = [];
+                roomStates[rId].latestId = 0;
+            }
+        });
+        try {
+            const rId = window.activeRoomId;
+            const res = await fetch(`api/get_feed.php?room_id=${encodeURIComponent(rId)}&limit=25`);
+            const data = await res.json();
+            if (!data.success || rId !== window.activeRoomId) return;
+            const state = getRoomState(rId);
+            const fresh = data.messages.filter((m) => m.id > state.latestId);
+            if (fresh.length === data.messages.length && state.latestId > 0 && fresh.length > 0) {
+                // Missed more than one page: rebuild the room from scratch
+                state.messages = data.messages;
+                state.oldestId = data.messages[0].id;
+                state.latestId = data.messages[data.messages.length - 1].id;
+                state.hasMore = data.has_more;
+                renderFullBuffer(state);
+            } else {
+                fresh.forEach(handleIncomingMessage);
+            }
+        } catch (err) {}
+    };
+
+    const startStream = () => {
+        clearTimeout(reconnectTimer);
+        if (chatHub && hubFailures < HUB_MAX_FAILURES) {
+            initHubSSE();
+        } else {
+            initSSE();
+            // Node hub configured but failing: try it again later
+            if (chatHub) {
+                reconnectTimer = setTimeout(() => { hubFailures = 0; startStream(); }, HUB_RETRY_MS);
+            }
+        }
+    };
+
+    // Preferred: one SSE connection to the Node chat hub (pushes new + deleted messages)
+    const initHubSSE = () => {
+        if (eventSource) eventSource.close();
+
+        const url = new URL(chatHub.url, location.href);
+        url.searchParams.set('token', chatHub.token);
+        if (hubLastEventId) url.searchParams.set('last_id', hubLastEventId);
+
+        const es = new EventSource(url.href);
+        eventSource = es;
+        const track = (event) => { if (event.lastEventId) hubLastEventId = event.lastEventId; };
+
+        es.onopen = () => { hubFailures = 0; };
+        es.onmessage = (event) => {
+            track(event);
+            try { handleIncomingMessage(JSON.parse(event.data)); } catch (err) {}
+        };
+        es.addEventListener('delete', (event) => {
+            track(event);
+            try { handleDeletedMessage(JSON.parse(event.data)); } catch (err) {}
+        });
+        es.addEventListener('ready', (event) => {
+            track(event);
+            resyncFromServer();
+        });
+        es.onerror = async () => {
+            if (es !== eventSource) return;
+            hubFailures++; // reset by onopen
+            // CONNECTING: the browser retries by itself (with Last-Event-ID), up to a limit.
+            // CLOSED: HTTP error (expired token -> 401, hub down -> 502).
+            // Either way, after too many failures refresh the token and pick a stream again
+            // (startStream falls back to PHP once HUB_MAX_FAILURES is reached).
+            if (es.readyState === EventSource.CLOSED || hubFailures >= HUB_MAX_FAILURES) {
+                es.close();
+                await checkSessionState();
+                if (es !== eventSource) return;
+                clearTimeout(reconnectTimer);
+                reconnectTimer = setTimeout(startStream, 2000);
+            }
+        };
+    };
+
+    // Fallback: PHP stream. Event ids are message ids, so the browser's automatic
     // reconnect (Last-Event-ID) resumes without gaps.
     const initSSE = () => {
-        clearTimeout(reconnectTimer);
         if (eventSource) eventSource.close();
 
         eventSource = new EventSource(`api/uplink_stream.php?last_id=${encodeURIComponent(streamResumeId)}`);
@@ -349,11 +449,14 @@ document.addEventListener("DOMContentLoaded", () => {
             if (event.lastEventId) streamResumeId = Math.max(streamResumeId, Number(event.lastEventId) || 0);
         });
 
-        eventSource.onerror = () => {
+        const es = eventSource;
+        es.onerror = () => {
+            if (es !== eventSource) return;
             // CONNECTING = the browser retries by itself (with Last-Event-ID).
             // CLOSED = HTTP error: rebuild the stream ourselves from the last id we saw.
-            if (eventSource.readyState === EventSource.CLOSED) {
-                reconnectTimer = setTimeout(initSSE, 3000);
+            if (es.readyState === EventSource.CLOSED) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = setTimeout(startStream, 3000);
             }
         };
     };
@@ -410,7 +513,7 @@ document.addEventListener("DOMContentLoaded", () => {
         await checkSessionState();
         await window.fetchChatRooms();
         await window.switchChatRoom('general');
-        initSSE();
+        startStream();
     };
 
     init();

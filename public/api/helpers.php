@@ -168,6 +168,68 @@ function formatTransmission(array $row): array {
     ];
 }
 
+// ------------------------------------------------------------------
+// Node chat hub (optional). Enabled only when CHAT_HUB_SECRET is set in
+// .env (shared with server.js). PHP stays the source of truth: it stores
+// every message, then tells the hub so it can push it to open browsers.
+// ------------------------------------------------------------------
+
+function base64UrlEncode(string $raw): string {
+    return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+}
+
+function chatHubSecret(): string {
+    return (string)envValue('CHAT_HUB_SECRET', '');
+}
+
+/**
+ * Stream config for the browser, or null when the hub is not configured.
+ * The token is short-lived and only says whether the viewer may read hidden
+ * (admin) rooms; the hub verifies it with the shared secret.
+ */
+function chatStreamConfig(bool $isAdmin): ?array {
+    $secret = chatHubSecret();
+    $url = (string)envValue('CHAT_STREAM_URL', '');
+    if ($secret === '' || $url === '') return null;
+
+    $body = base64UrlEncode(json_encode([
+        'p'   => 'chat',
+        'adm' => $isAdmin ? 1 : 0,
+        'exp' => time() + 600,
+        'n'   => bin2hex(random_bytes(8)),
+    ]));
+    $sig = base64UrlEncode(hash_hmac('sha256', $body, $secret, true));
+
+    return ['url' => $url, 'token' => $body . '.' . $sig];
+}
+
+/**
+ * Fire-and-forget push to the hub. Never throws and never blocks for long:
+ * if Node is down the message is still stored and clients fall back to the
+ * PHP stream.
+ */
+function notifyChatHub(array $event): void {
+    $secret = chatHubSecret();
+    if ($secret === '') return;
+
+    $url = (string)envValue('CHAT_HUB_INTERNAL_URL', 'http://127.0.0.1:' . envValue('PORT', '3000') . '/internal/chat/publish');
+    $ctx = stream_context_create(['http' => [
+        'method'        => 'POST',
+        'header'        => "Content-Type: application/json\r\nX-Chat-Hub-Secret: {$secret}\r\n",
+        'content'       => json_encode($event),
+        'timeout'       => 0.5,
+        'ignore_errors' => true,
+    ]]);
+    @file_get_contents($url, false, $ctx);
+}
+
+/** Look up whether a room is hidden (admin-only to read). Unknown rooms are public. */
+function isRoomHidden(PDO $db, string $roomId): bool {
+    $stmt = $db->prepare("SELECT is_hidden FROM rooms WHERE id = :id");
+    $stmt->execute([':id' => $roomId]);
+    return (int)$stmt->fetchColumn() === 1;
+}
+
 /** mbstring is optional on some hosts: fall back to byte functions. */
 function textLength(string $s): int {
     return function_exists('mb_strlen') ? mb_strlen($s) : strlen($s);

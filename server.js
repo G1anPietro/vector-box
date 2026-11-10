@@ -182,6 +182,7 @@ setInterval(() => {
 // Keep-alive so proxies don't drop idle SSE connections
 setInterval(() => {
     for (const client of activeWebClients) client.write(': heartbeat\n\n');
+    for (const client of chatClients) client.res.write(': heartbeat\n\n');
 }, 25000);
 
 // ==========================================
@@ -421,6 +422,134 @@ app.get('/api/stream', (req, res) => {
     sseSend(res, 'players', JSON.stringify(activePlayers));
 
     req.on('close', () => activeWebClients.delete(res));
+});
+
+// ==========================================
+// CHAT HUB (optional; enabled by CHAT_HUB_SECRET)
+// PHP stores every message, then POSTs it to /internal/chat/publish.
+// Browsers hold ONE SSE connection here instead of polling PHP.
+// ==========================================
+const CHAT_HUB_SECRET = process.env.CHAT_HUB_SECRET || '';
+const CHAT_CORS_ORIGINS = (process.env.CHAT_STREAM_CORS_ORIGIN || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+const CHAT_MAX_CLIENTS = 500;
+const CHAT_BUFFER_MAX = 500;
+// Event ids are "<bootId>-<seq>": after a restart old ids never match and the
+// client is told to resync instead of silently missing events.
+const CHAT_BOOT_ID = crypto.randomBytes(4).toString('hex');
+let chatSeq = 0;
+const chatBuffer = [];        // [{ seq, hidden, frame }]
+const chatClients = new Set(); // { res, isAdmin }
+
+function isLoopback(addr) {
+    return addr === '127.0.0.1' || addr === '::1' || (typeof addr === 'string' && addr.startsWith('::ffff:127.'));
+}
+
+function verifyChatToken(token) {
+    if (!CHAT_HUB_SECRET || typeof token !== 'string') return null;
+    const [body, sig] = token.split('.');
+    if (!body || !sig) return null;
+    const expected = crypto.createHmac('sha256', CHAT_HUB_SECRET).update(body).digest('base64url');
+    if (!safeEqual(sig, expected)) return null;
+    let payload;
+    try {
+        payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    } catch (e) {
+        return null;
+    }
+    if (!payload || payload.p !== 'chat' || typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) {
+        return null;
+    }
+    return { isAdmin: payload.adm === 1 };
+}
+
+const chatEventId = (seq) => `${CHAT_BOOT_ID}-${seq}`;
+
+function chatPublish(hidden, eventName, data) {
+    const seq = ++chatSeq;
+    const frame = `id: ${chatEventId(seq)}\n${eventName ? `event: ${eventName}\n` : ''}data: ${JSON.stringify(data)}\n\n`;
+    chatBuffer.push({ seq, hidden, frame });
+    if (chatBuffer.length > CHAT_BUFFER_MAX) chatBuffer.shift();
+
+    for (const client of chatClients) {
+        if (hidden && !client.isAdmin) continue;
+        client.res.write(frame);
+    }
+}
+
+const isStr = (v, max) => typeof v === 'string' && v.length <= max;
+const isRoomId = (v) => typeof v === 'string' && /^[a-z0-9_-]{1,50}$/.test(v);
+const isPosInt = (v) => Number.isInteger(v) && v > 0;
+
+app.post('/internal/chat/publish', (req, res) => {
+    // Only PHP on this machine may publish: loopback, not via the proxy, with the shared secret
+    if (!CHAT_HUB_SECRET || !isLoopback(req.socket.remoteAddress) || req.get('x-forwarded-for')) {
+        return res.status(404).end();
+    }
+    if (!safeEqual(req.get('x-chat-hub-secret') || '', CHAT_HUB_SECRET)) {
+        return res.status(403).end();
+    }
+
+    const ev = req.body || {};
+    const hidden = ev.hidden === true;
+
+    if (ev.type === 'message') {
+        const m = ev.message || {};
+        if (!isPosInt(m.id) || !isRoomId(m.room_id) || !isStr(m.username, 100) || !isStr(m.message, 4000)
+            || !isStr(m.date, 10) || !isStr(m.created_at, 8)) {
+            return res.status(400).json({ success: false });
+        }
+        chatPublish(hidden, null, {
+            id: m.id, room_id: m.room_id, username: m.username,
+            message: m.message, date: m.date, created_at: m.created_at
+        });
+    } else if (ev.type === 'delete') {
+        if (!isPosInt(ev.id) || !isRoomId(ev.room_id)) return res.status(400).json({ success: false });
+        chatPublish(hidden, 'delete', { id: ev.id, room_id: ev.room_id });
+    } else {
+        return res.status(400).json({ success: false });
+    }
+    return res.json({ success: true });
+});
+
+app.get('/api/chat/stream', (req, res) => {
+    if (!CHAT_HUB_SECRET) return res.status(404).end();
+
+    const origin = req.get('origin');
+    if (origin && CHAT_CORS_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
+
+    const auth = verifyChatToken(req.query.token);
+    if (!auth) return res.status(401).end();
+    if (chatClients.size >= CHAT_MAX_CLIENTS) return res.status(503).end();
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    res.write('retry: 2000\n\n');
+
+    // Resume: replay what the client missed if we still have it, else ask it to resync
+    const lastId = String(req.get('last-event-id') || req.query.last_id || '');
+    const m = /^([0-9a-f]{8})-(\d+)$/.exec(lastId);
+    const lastSeq = m && m[1] === CHAT_BOOT_ID ? Number(m[2]) : -1;
+    const oldestSeq = chatBuffer.length ? chatBuffer[0].seq : chatSeq + 1;
+
+    if (lastSeq >= oldestSeq - 1 && lastSeq <= chatSeq) {
+        for (const e of chatBuffer) {
+            if (e.seq > lastSeq && (!e.hidden || auth.isAdmin)) res.write(e.frame);
+        }
+    } else {
+        // Fresh connection or gap we can't fill: client reloads from PHP
+        res.write(`id: ${chatEventId(chatSeq)}\nevent: ready\ndata: {}\n\n`);
+    }
+
+    const client = { res, isAdmin: auth.isAdmin };
+    chatClients.add(client);
+    req.on('close', () => chatClients.delete(client));
 });
 
 // Static HTML specific endpoint

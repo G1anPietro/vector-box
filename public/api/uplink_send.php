@@ -191,6 +191,18 @@ try {
         ':ip' => $clientIp
     ]);
 
+    // Push to the Node chat hub (no-op when it isn't configured)
+    $newId = (int)$db->lastInsertId();
+    $stmt = $db->prepare("SELECT id, room_id, username, message, created_at FROM transmissions WHERE id = :id");
+    $stmt->execute([':id' => $newId]);
+    if ($row = $stmt->fetch()) {
+        notifyChatHub([
+            'type'    => 'message',
+            'hidden'  => $room && (int)$room['is_hidden'] === 1,
+            'message' => formatTransmission($row),
+        ]);
+    }
+
     echo json_encode(['success' => true, 'username' => $username, 'room_id' => $roomId]);
     exit();
 
