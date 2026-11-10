@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 7;
+const DB_SCHEMA_VERSION = 8;
 
 /**
  * Session bootstrap.
@@ -301,6 +301,26 @@ function migrateV7(PDO $db): void {
     )");
 }
 
+function migrateV8(PDO $db): void {
+    // Private messages between registered users. No admin access path exists in the API.
+    $db->exec("CREATE TABLE IF NOT EXISTS dm_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        recipient_id INTEGER NOT NULL,
+        body TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        read_at DATETIME NULL
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_dm_pair ON dm_messages(sender_id, recipient_id, id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_dm_inbox ON dm_messages(recipient_id, read_at)");
+    $db->exec("CREATE TABLE IF NOT EXISTS dm_blocks (
+        blocker_id INTEGER NOT NULL,
+        blocked_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (blocker_id, blocked_id)
+    )");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -326,6 +346,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 7) {
             migrateV7($db);
+        }
+        if ($current < 8) {
+            migrateV8($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

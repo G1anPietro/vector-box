@@ -334,6 +334,39 @@ if (file_exists('version.php')) {
                 <div id="guestbook-status" style="font-size: 0.75rem; min-height: 1em;"></div>
             </div>
         </div>
+        <?php if ($isLoggedIn): ?>
+        <!-- 9. PRIVATE MESSAGES (registered users only) -->
+        <div id="win-dm" class="cyber-panel draggable-window hidden" style="top: 130px; left: 340px; width: 660px; height: 440px;">
+            <div class="window-header">
+                <span>>_ PRIVATE_MSG // DIRECT</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
+            <div class="window-content-inner dm-layout">
+                <aside class="dm-side">
+                    <input type="text" id="dm-search" class="dm-input" placeholder="Find a user..." autocomplete="off" maxlength="32">
+                    <div id="dm-search-results" class="dm-results"></div>
+                    <div id="dm-convs" class="dm-convs"></div>
+                </aside>
+                <section class="dm-main">
+                    <div class="dm-head">
+                        <button id="dm-back" class="nav-btn dm-back" title="Back">&lt;</button>
+                        <span id="dm-with" class="term-muted">Select a conversation</span>
+                        <button id="dm-block" class="nav-btn dm-block hidden">BLOCK</button>
+                    </div>
+                    <div id="dm-thread" class="dm-thread"></div>
+                    <div id="dm-note" class="dm-note"></div>
+                    <form id="dm-form" class="dm-form hidden">
+                        <textarea id="dm-text" class="dm-input" rows="2" maxlength="1000" placeholder="Write a message (Enter to send, Shift+Enter for a new line)"></textarea>
+                        <button type="submit" class="nav-btn">SEND</button>
+                    </form>
+                </section>
+            </div>
+        </div>
+        <?php endif; ?>
     </main>
 
     <!-- CONSOLIDATED APPLICATION TASKBAR & FOOTER -->
@@ -347,6 +380,9 @@ if (file_exists('version.php')) {
             <button class="taskbar-btn" id="tb-win-vault">>_ VAULT</button>
             <button class="taskbar-btn" id="tb-win-status">>_ STATUS</button>
             <button class="taskbar-btn" id="tb-win-guestbook">>_ WALL</button>
+            <?php if ($isLoggedIn): ?>
+                <button class="taskbar-btn" id="tb-win-dm">>_ DM</button>
+            <?php endif; ?>
             <?php if ($canReadBooks): ?>
                 <a href="pages/reader.php" class="taskbar-btn" style="text-decoration: none; border-color: #00f3ff; color: #00f3ff; display: inline-flex; align-items: center;">>_ READER</a>
             <?php endif; ?>
