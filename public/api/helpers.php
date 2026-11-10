@@ -190,10 +190,10 @@ function chatHubSecret(): string {
 
 /**
  * Stream config for the browser, or null when the hub is not configured.
- * The token is short-lived and only says whether the viewer may read hidden
- * (admin) rooms; the hub verifies it with the shared secret.
+ * The token is short-lived and says who the viewer is (for the online list) and
+ * whether they may read hidden (admin) rooms; the hub verifies it with the shared secret.
  */
-function chatStreamConfig(bool $isAdmin): ?array {
+function chatStreamConfig(bool $isAdmin, string $username = ''): ?array {
     $secret = chatHubSecret();
     $url = (string)envValue('CHAT_STREAM_URL', '');
     if ($secret === '' || $url === '') return null;
@@ -201,6 +201,7 @@ function chatStreamConfig(bool $isAdmin): ?array {
     $body = base64UrlEncode(json_encode([
         'p'   => 'chat',
         'adm' => $isAdmin ? 1 : 0,
+        'u'   => textCut($username, 50), // shown in the hub's online list
         'exp' => time() + 600,
         'n'   => bin2hex(random_bytes(8)),
     ]));

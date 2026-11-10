@@ -86,7 +86,7 @@ test.describe('chat hub', { skip: !hasDeps && 'node_modules missing (run npm ins
 
     test('reconnect replays missed events from the buffer', async () => {
         const first = await hubStream(user, null, { ms: 100 });
-        const lastId = first.events.at(-1).id;
+        const lastId = first.events.filter((e) => e.id).at(-1).id;
         await user.send('general', 'while-away');
         const again = await hubStream(user, null, { ms: 300, query: `&last_id=${encodeURIComponent(lastId)}` });
         assert.ok(again.events.some((e) => e.json && e.json.message === 'while-away'));
@@ -99,5 +99,30 @@ test.describe('chat hub', { skip: !hasDeps && 'node_modules missing (run npm ins
             body: JSON.stringify({ type: 'delete', id: 1, room_id: 'general' }),
         });
         assert.equal(r.status, 403);
+    });
+
+    test('presence lists connected usernames', async () => {
+        const [forUser] = await Promise.all([
+            hubStream(user, null, { ms: 900 }),
+            hubStream(admin, null, { ms: 900 }),
+        ]);
+        const last = forUser.events.filter((e) => e.event === 'presence').at(-1);
+        assert.ok(last, 'got a presence event');
+        assert.ok(last.json.users.includes('hub_user') && last.json.users.includes('hub_admin'));
+    });
+
+    test('typing reaches others (not the sender); hidden/read-only rooms refuse non-admins', async () => {
+        const typing = async () => {
+            const r = await user.post('/api/chat_typing.php', { room_id: 'general' });
+            assert.equal(r.json.success, true);
+        };
+        const [forUser, forAdmin] = await Promise.all([hubStream(user, typing), hubStream(admin, null, { ms: 1700 })]);
+        const isTyping = (s) => s.events.some((e) => e.event === 'typing' && e.json.username === 'hub_user');
+        assert.ok(isTyping(forAdmin), 'admin sees hub_user typing');
+        assert.ok(!isTyping(forUser), 'sender does not get its own typing event');
+
+        assert.equal((await user.post('/api/chat_typing.php', { room_id: 'admin' })).status, 403);
+        assert.equal((await user.post('/api/chat_typing.php', { room_id: 'announcements' })).status, 403);
+        assert.equal((await user.post('/api/chat_typing.php', { room_id: 'general' }, { csrf: false })).status, 403);
     });
 });

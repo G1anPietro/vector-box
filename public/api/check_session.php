@@ -16,7 +16,7 @@ $payload = [
     'is_admin'  => (int)($_SESSION['is_admin'] ?? 0),
     'csrf_token' => $_SESSION['csrf_token'],
     // Node chat hub stream (null = not configured, use the PHP stream)
-    'chat_stream' => chatStreamConfig(!empty($_SESSION['is_admin'])),
+    'chat_stream' => chatStreamConfig(!empty($_SESSION['is_admin']), (string)($_SESSION['username'] ?? '')),
 ];
 session_write_close();
 

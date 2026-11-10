@@ -24,6 +24,40 @@ document.addEventListener("DOMContentLoaded", () => {
     const HUB_RETRY_MS = 5 * 60 * 1000;
     let isSubmitting = false;
     let isLoadingHistory = false;
+    let usingHub = false;            // presence/typing only exist on the hub
+    let lastTypingSent = 0;
+    const typers = new Map();        // username -> expiry (ms) for the active room
+    let onlineUsers = [];
+
+    // Status line under the log: "● 3 online · alice is typing…" (hub only)
+    const statusBar = document.createElement('div');
+    statusBar.id = 'chat-status-bar';
+    statusBar.style.cssText = 'display:none; font-size:0.72rem; color:var(--text-muted, #8ab4f8); padding:2px 6px; min-height:1.1em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; user-select:none;';
+    const presenceSpan = document.createElement('span');
+    const typingSpan = document.createElement('span');
+    typingSpan.style.cssText = 'margin-left:10px; font-style:italic; color:var(--accent-color, #00f3ff);';
+    statusBar.appendChild(presenceSpan);
+    statusBar.appendChild(typingSpan);
+    chatLog.insertAdjacentElement('afterend', statusBar);
+
+    const renderStatusBar = () => {
+        statusBar.style.display = usingHub ? 'block' : 'none';
+        if (!usingHub) return;
+        presenceSpan.textContent = `\u25CF ${onlineUsers.length} online`;
+        presenceSpan.title = onlineUsers.join(', ');
+        const now = Date.now();
+        const names = [...typers].filter(([, exp]) => exp > now).map(([name]) => name);
+        typingSpan.textContent = names.length === 0 ? ''
+            : names.length === 1 ? `${names[0]} is typing\u2026`
+            : names.length <= 3 ? `${names.join(', ')} are typing\u2026`
+            : 'several people are typing\u2026';
+    };
+    setInterval(() => {
+        const now = Date.now();
+        let changed = false;
+        for (const [name, exp] of typers) if (exp <= now) { typers.delete(name); changed = true; }
+        if (changed) renderStatusBar();
+    }, 1000);
 
     window.SESSION_STATE = window.SESSION_STATE || { isAdmin: false, csrfToken: '' };
 
@@ -302,6 +336,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.switchChatRoom = async (roomId) => {
         window.activeRoomId = roomId;
+        typers.clear();
+        renderStatusBar();
         unreadCounts[roomId] = 0;
         renderRoomTabs();
         await fillFeedToOverflow();
@@ -327,6 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         state.latestId = data.id;
         state.messages.push(data);
+        if (typers.delete(data.username)) renderStatusBar();
 
         if (rId === window.activeRoomId) {
             appendMessageToUI(data, state);
@@ -399,7 +436,22 @@ document.addEventListener("DOMContentLoaded", () => {
         eventSource = es;
         const track = (event) => { if (event.lastEventId) hubLastEventId = event.lastEventId; };
 
-        es.onopen = () => { hubFailures = 0; };
+        es.onopen = () => { hubFailures = 0; usingHub = true; renderStatusBar(); };
+        es.addEventListener('presence', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                onlineUsers = Array.isArray(data.users) ? data.users.map(String) : [];
+                renderStatusBar();
+            } catch (err) {}
+        });
+        es.addEventListener('typing', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.room_id !== window.activeRoomId || !data.username) return;
+                typers.set(String(data.username), Date.now() + 4000);
+                renderStatusBar();
+            } catch (err) {}
+        });
         es.onmessage = (event) => {
             track(event);
             try { handleIncomingMessage(JSON.parse(event.data)); } catch (err) {}
@@ -433,6 +485,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // reconnect (Last-Event-ID) resumes without gaps.
     const initSSE = () => {
         if (eventSource) eventSource.close();
+        usingHub = false;
+        typers.clear();
+        renderStatusBar();
 
         eventSource = new EventSource(`api/uplink_stream.php?last_id=${encodeURIComponent(streamResumeId)}`);
 
@@ -463,6 +518,21 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     if (chatInput) {
+        // Tell others we're typing (hub only, at most every 2.5s, not for /commands)
+        chatInput.addEventListener('input', () => {
+            const v = chatInput.value;
+            if (!usingHub || !v.trim() || v.startsWith('/')) return;
+            const now = Date.now();
+            if (now - lastTypingSent < 2500) return;
+            lastTypingSent = now;
+            fetch('api/chat_typing.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ room_id: window.activeRoomId })
+            }).catch(() => {});
+        });
+
         chatInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();

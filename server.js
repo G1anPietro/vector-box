@@ -444,7 +444,7 @@ const CHAT_BUFFER_MAX = 500;
 const CHAT_BOOT_ID = crypto.randomBytes(4).toString('hex');
 let chatSeq = 0;
 const chatBuffer = [];        // [{ seq, hidden, frame }]
-const chatClients = new Set(); // { res, isAdmin }
+const chatClients = new Set(); // { res, isAdmin, username }
 
 function isLoopback(addr) {
     return addr === '127.0.0.1' || addr === '::1' || (typeof addr === 'string' && addr.startsWith('::ffff:127.'));
@@ -465,7 +465,8 @@ function verifyChatToken(token) {
     if (!payload || payload.p !== 'chat' || typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) {
         return null;
     }
-    return { isAdmin: payload.adm === 1 };
+    const username = typeof payload.u === 'string' ? payload.u.slice(0, 50) : '';
+    return { isAdmin: payload.adm === 1, username };
 }
 
 const chatEventId = (seq) => `${CHAT_BOOT_ID}-${seq}`;
@@ -480,6 +481,28 @@ function chatPublish(hidden, eventName, data) {
         if (hidden && !client.isAdmin) continue;
         client.res.write(frame);
     }
+}
+
+// Live-only events (presence, typing): no id, not buffered, never replayed
+function chatSendEphemeral(eventName, data, filter = () => true) {
+    const frame = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
+    for (const client of chatClients) {
+        if (filter(client)) client.res.write(frame);
+    }
+}
+
+// Online list, debounced so a burst of connects/disconnects sends one update
+let presenceTimer = null;
+function currentPresence() {
+    const users = [...new Set([...chatClients].map((c) => c.username).filter(Boolean))].sort();
+    return { users, count: users.length };
+}
+function schedulePresence() {
+    if (presenceTimer) return;
+    presenceTimer = setTimeout(() => {
+        presenceTimer = null;
+        chatSendEphemeral('presence', currentPresence());
+    }, 500);
 }
 
 const isStr = (v, max) => typeof v === 'string' && v.length <= max;
@@ -511,6 +534,10 @@ app.post('/internal/chat/publish', (req, res) => {
     } else if (ev.type === 'delete') {
         if (!isPosInt(ev.id) || !isRoomId(ev.room_id)) return res.status(400).json({ success: false });
         chatPublish(hidden, 'delete', { id: ev.id, room_id: ev.room_id });
+    } else if (ev.type === 'typing') {
+        if (!isRoomId(ev.room_id) || !isStr(ev.username, 50) || !ev.username) return res.status(400).json({ success: false });
+        chatSendEphemeral('typing', { room_id: ev.room_id, username: ev.username },
+            (c) => (!hidden || c.isAdmin) && c.username !== ev.username);
     } else {
         return res.status(400).json({ success: false });
     }
@@ -552,9 +579,14 @@ app.get('/api/chat/stream', (req, res) => {
         res.write(`id: ${chatEventId(chatSeq)}\nevent: ready\ndata: {}\n\n`);
     }
 
-    const client = { res, isAdmin: auth.isAdmin };
+    const client = { res, isAdmin: auth.isAdmin, username: auth.username };
     chatClients.add(client);
-    req.on('close', () => chatClients.delete(client));
+    res.write(`event: presence\ndata: ${JSON.stringify(currentPresence())}\n\n`);
+    schedulePresence();
+    req.on('close', () => {
+        chatClients.delete(client);
+        schedulePresence();
+    });
 });
 
 // Static HTML specific endpoint
