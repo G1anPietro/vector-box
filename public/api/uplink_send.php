@@ -79,12 +79,12 @@ try {
         }
     }
 
-    // Intercetta i comandi di moderazione riservati agli admin
+    // Intercetta i comandi di moderazione e permessi riservati agli admin
     if (strpos($message, '/') === 0) {
         $parts = explode(' ', $message);
         $cmd = strtolower($parts[0]);
 
-        if (in_array($cmd, ['/ban', '/timeout', '/unban'])) {
+        if (in_array($cmd, ['/ban', '/timeout', '/unban', '/grantbook', '/revokebook'])) {
             if (!$isAdmin) {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'error' => 'UNAUTHORIZED: Moderation commands require admin rights']);
@@ -94,6 +94,30 @@ try {
             $targetUser = trim($parts[1] ?? '');
             if (empty($targetUser)) {
                 echo json_encode(['success' => false, 'error' => "USAGE: {$cmd} <username>"]);
+                exit();
+            }
+
+            if ($cmd === '/grantbook') {
+                $stmt = $db->prepare("UPDATE accounts SET can_read_books = 1 WHERE username = :u");
+                $stmt->execute([':u' => $targetUser]);
+                
+                if ($stmt->rowCount() === 0) {
+                    echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: Granted book reader access to '{$targetUser}'"]);
+                }
+                exit();
+            }
+
+            if ($cmd === '/revokebook') {
+                $stmt = $db->prepare("UPDATE accounts SET can_read_books = 0 WHERE username = :u");
+                $stmt->execute([':u' => $targetUser]);
+
+                if ($stmt->rowCount() === 0) {
+                    echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: Revoked book reader access from '{$targetUser}'"]);
+                }
                 exit();
             }
 
