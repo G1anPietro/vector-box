@@ -59,6 +59,30 @@ try {
         exit();
     }
 
+    // Cover image (covers live in data/covers, outside the web root)
+    if (($_GET['action'] ?? '') === 'cover') {
+        if (!$canRead) {
+            http_response_code(403);
+            exit();
+        }
+        $stmt = $db->prepare("SELECT cover_path FROM books WHERE id = :id");
+        $stmt->execute([':id' => (int)($_GET['id'] ?? 0)]);
+        $coverPath = (string)$stmt->fetchColumn();
+        // Only the file name is trusted; images only (no SVG: it can carry scripts)
+        $file = dirname(__DIR__, 2) . '/data/covers/' . basename($coverPath);
+        $types = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        if ($coverPath === '' || !isset($types[$ext]) || !is_file($file)) {
+            http_response_code(404);
+            exit();
+        }
+        header('Content-Type: ' . $types[$ext]);
+        header('Content-Length: ' . filesize($file));
+        header('Cache-Control: private, max-age=86400');
+        readfile($file);
+        exit();
+    }
+
     // LIST BOOKS & Auto-repair missing metadata/covers for existing items
     if ($method === 'GET') {
         if (!$canRead) {
@@ -116,6 +140,13 @@ try {
             $b['meta_checked'] = 1;
         }
         unset($b);
+
+        // Never expose server paths: covers are served by ?action=cover
+        $books = array_map(function ($b) {
+            $b['cover_path'] = !empty($b['cover_path']) ? '../api/books.php?action=cover&id=' . (int)$b['id'] : '';
+            unset($b['file_path']);
+            return $b;
+        }, $books);
 
         echo json_encode([
             'success' => true,

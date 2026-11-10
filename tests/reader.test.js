@@ -52,3 +52,26 @@ test('progress: ?all=1 lists this user\'s progress for the continue shelf', asyn
     assert.deepEqual(all.map((p) => [p.book_id, p.percentage]), [[bookId, 33]]);
     assert.deepEqual((await other.get('/api/progress.php?all=1')).json.progress, []);
 });
+
+test('books: list hides server paths; covers served via action=cover (images only, readers only)', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    fs.mkdirSync(path.join(site.root, 'data', 'covers'), { recursive: true });
+    const png = Buffer.from('89504e470d0a1a0a', 'hex');
+    fs.writeFileSync(path.join(site.root, 'data', 'covers', 'c1.png'), png);
+    fs.writeFileSync(path.join(site.root, 'data', 'covers', 'evil.svg'), '<svg onload="alert(1)"/>');
+    site.db("INSERT INTO books (title, format, file_path, cover_path, meta_checked) VALUES ('Cov', 'pdf', '/x.pdf', '../data/covers/c1.png', 1)");
+    site.db("INSERT INTO books (title, format, file_path, cover_path, meta_checked) VALUES ('Svg', 'pdf', '/y.pdf', '../data/covers/evil.svg', 1)");
+
+    const list = (await reader.get('/api/books.php?action=list')).json.books;
+    assert.ok(list.every((b) => !('file_path' in b)));
+    const cov = list.find((b) => b.title === 'Cov');
+    assert.match(cov.cover_path, /^\.\.\/api\/books\.php\?action=cover&id=\d+$/);
+
+    const img = await reader.get(`/api/books.php?action=cover&id=${cov.id}`);
+    assert.equal(img.status, 200);
+    assert.equal(img.headers.get('content-type'), 'image/png');
+    assert.equal((await noAccess.get(`/api/books.php?action=cover&id=${cov.id}`)).status, 403);
+    const svg = list.find((b) => b.title === 'Svg');
+    assert.equal((await reader.get(`/api/books.php?action=cover&id=${svg.id}`)).status, 404);
+});
