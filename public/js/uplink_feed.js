@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data) {
                 window.SESSION_STATE.isAdmin = data.is_admin === 1;
                 window.SESSION_STATE.csrfToken = data.csrf_token || '';
+                window.SESSION_STATE.username = data.username || '';
                 chatHub = data.chat_stream && data.chat_stream.url && data.chat_stream.token
                     ? data.chat_stream : null;
 
@@ -141,10 +142,55 @@ document.addEventListener("DOMContentLoaded", () => {
         return div;
     };
 
+    // ---- @mentions -------------------------------------------------------
+    const escapeRegExp = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const mentionsMe = (data) => {
+        const me = window.SESSION_STATE.username;
+        if (!me || !data || !data.message || data.username === me) return false;
+        return new RegExp(`(^|[^\\w@])@${escapeRegExp(me)}(?![\\w-])`, 'i').test(data.message);
+    };
+
+    const baseTitle = document.title;
+    let unseenMentions = 0;
+    const updateTitle = () => {
+        document.title = unseenMentions > 0 ? `(${unseenMentions}) ${baseTitle}` : baseTitle;
+    };
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) { unseenMentions = 0; updateTitle(); }
+    });
+
+    // Called only for NEW live messages (not history)
+    const notifyMention = (data) => {
+        if (!document.hidden) return;
+        unseenMentions++;
+        updateTitle();
+        if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+                const n = new Notification(`${data.username} mentioned you in #${data.room_id || 'general'}`, {
+                    body: String(data.message).slice(0, 140),
+                    tag: `vb-mention-${data.id}`
+                });
+                n.onclick = () => { window.focus(); window.switchChatRoom(data.room_id || 'general'); n.close(); };
+            } catch (err) {}
+        }
+    };
+
+    // Names for @-completion: online users + recent authors
+    const knownNames = () => {
+        const names = new Set(onlineUsers);
+        Object.values(roomStates).forEach((st) => st.messages.slice(-100).forEach((m) => m.username && names.add(m.username)));
+        names.delete(window.SESSION_STATE.username);
+        return [...names].sort();
+    };
+
     const createMessageElement = (data, isError = false) => {
         const p = document.createElement('p');
         if (data.id) p.id = `msg-${data.id}`;
         p.className = 'chat-msg-row';
+        if (!isError && mentionsMe(data)) {
+            p.classList.add('chat-mention');
+            p.style.cssText = 'background: rgba(255, 200, 0, 0.10); border-left: 2px solid #ffc800; padding-left: 4px;';
+        }
 
         const prefixContainer = document.createElement('span');
         prefixContainer.className = 'chat-msg-prefix';
@@ -363,6 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         state.latestId = data.id;
         state.messages.push(data);
+        if (mentionsMe(data)) notifyMention(data);
         if (typers.delete(data.username)) renderStatusBar();
 
         if (rId === window.activeRoomId) {
@@ -534,10 +581,43 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         chatInput.addEventListener('keydown', async (e) => {
+            // Tab: complete @name from online users / recent authors
+            if (e.key === 'Tab') {
+                const pos = chatInput.selectionStart;
+                const before = chatInput.value.slice(0, pos);
+                const m = /@([\w-]*)$/.exec(before);
+                if (!m) return;
+                e.preventDefault();
+                const match = knownNames().find((n) => n.toLowerCase().startsWith(m[1].toLowerCase()));
+                if (!match) return;
+                const after = chatInput.value.slice(pos);
+                const insert = `@${match} `;
+                chatInput.value = before.slice(0, before.length - m[0].length) + insert + after;
+                const caret = pos - m[0].length + insert.length;
+                chatInput.setSelectionRange(caret, caret);
+                return;
+            }
+
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const text = chatInput.value.trim();
                 if (!text || isSubmitting) return;
+
+                // Local command: enable desktop notifications for @mentions
+                if (text.toLowerCase() === '/notify') {
+                    chatInput.value = '';
+                    const say = (message, kind) => appendMessageToUI({
+                        created_at: new Date().toISOString().substring(11, 19), username: 'SYSTEM', message
+                    }, getRoomState(window.activeRoomId), kind);
+                    if (!('Notification' in window)) {
+                        say('>> This browser does not support notifications.', true);
+                    } else {
+                        const perm = await Notification.requestPermission();
+                        if (perm === 'granted') say('>> Notifications enabled: you will be alerted when someone @mentions you.', 'notice');
+                        else say('>> Notifications blocked. Allow them in the browser site settings.', true);
+                    }
+                    return;
+                }
 
                 isSubmitting = true;
                 try {
