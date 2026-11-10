@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 6;
+const DB_SCHEMA_VERSION = 7;
 
 /**
  * Session bootstrap.
@@ -291,6 +291,16 @@ function migrateV6(PDO $db): void {
     )");
 }
 
+function migrateV7(PDO $db): void {
+    // Rooms can host different games; Lupus (werewolf) keeps its whole match state as JSON
+    addColumnIfMissing($db, 'spia_rooms', 'game', "VARCHAR(10) NOT NULL DEFAULT 'spia'");
+    $db->exec("CREATE TABLE IF NOT EXISTS lupus_games (
+        room_id INTEGER PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -313,6 +323,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 6) {
             migrateV6($db);
+        }
+        if ($current < 7) {
+            migrateV7($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

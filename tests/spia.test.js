@@ -44,7 +44,7 @@ test.after(() => site.stop());
 
 test('migration V6 created the spy tables', async () => {
     await (await Phone.fresh()).create(['Init']); // first DB request runs the migrations
-    assert.equal(site.db('PRAGMA user_version')[0].user_version, 6);
+    assert.ok(site.db('PRAGMA user_version')[0].user_version >= 6);
     assert.equal(site.db("SELECT COUNT(*) AS n FROM sqlite_master WHERE name LIKE 'spia_%' AND type = 'table'")[0].n, 6);
 });
 

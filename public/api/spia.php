@@ -3,12 +3,14 @@
 // "Who's the Spy" rooms. A phone is identified by the device token it got on create/join
 // (header X-Spia-Device); no account is needed to play.
 //
+// Rooms host either game: "spia" (Who's the Spy) or "lupus" (werewolf, see lupus_lib.php).
 // GET  ?action=state                  -> this phone's view of the room (polled every ~2s)
 // POST {action: create|join|leave|kick|host|take|player_add|player_remove|settings|
 //               start|seen|vote_call|vote|vote_close|guess|end|reset_scores, ...}
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/spia_lib.php';
+require_once __DIR__ . '/lupus_lib.php';
 
 initSession();
 header('Cache-Control: no-store');
@@ -106,7 +108,16 @@ try {
         $device = spiaDevice($db);
         $room = spiaRoom($db, (int)$device['room_id']);
         if (spiaTick($db, $room)) $room = spiaRoom($db, (int)$room['id']);
-        $view = spiaView($db, $room, $device, $isAdmin);
+        if ($room['game'] === 'lupus') {
+            $g = lupusLoad($db, (int)$room['id']);
+            if ($g && lupusTick($g)) {
+                lupusSave($db, (int)$room['id'], $g);
+                if ($g['status'] === 'ended') lupusAwardScores($db, $g);
+                spiaBump($db, (int)$room['id']);
+                $room = spiaRoom($db, (int)$room['id']);
+            }
+        }
+        $view = spiaRoomView($db, $room, $device, $isAdmin);
         $db->exec('COMMIT');
         jsonResponse($view);
     }
@@ -121,9 +132,11 @@ try {
         if (!checkRateLimit('spia_create', 10, 600)) spiaFail('slow_down', 429);
         $db->exec('BEGIN IMMEDIATE');
         spiaPruneRooms($db);
-        $settings = spiaSanitizeSettings(is_array($in['settings'] ?? null) ? $in['settings'] : [], []);
-        $db->prepare('INSERT INTO spia_rooms (code, settings, created_at, updated_at) VALUES (:c, :s, :t, :t)')
-           ->execute([':c' => spiaNewCode($db), ':s' => json_encode($settings), ':t' => time()]);
+        $game = ($in['game'] ?? 'spia') === 'lupus' ? 'lupus' : 'spia';
+        $rawSettings = is_array($in['settings'] ?? null) ? $in['settings'] : [];
+        $settings = $game === 'lupus' ? lupusSanitizeSettings($rawSettings, []) : spiaSanitizeSettings($rawSettings, []);
+        $db->prepare('INSERT INTO spia_rooms (code, game, settings, created_at, updated_at) VALUES (:c, :g, :s, :t, :t)')
+           ->execute([':c' => spiaNewCode($db), ':g' => $game, ':s' => json_encode($settings), ':t' => time()]);
         $roomId = (int)$db->lastInsertId();
         $dev = spiaNewDevice($db, $roomId);
         $db->prepare('UPDATE spia_rooms SET host_device_id = :d WHERE id = :id')->execute([':d' => $dev['id'], ':id' => $roomId]);
@@ -132,7 +145,7 @@ try {
             spiaAddPlayer($db, $room, ['id' => $dev['id']], (string)$name, $isAdmin);
         }
         $db->exec('COMMIT');
-        jsonResponse(['success' => true, 'code' => $room['code'], 'token' => $dev['token']]);
+        jsonResponse(['success' => true, 'code' => $room['code'], 'token' => $dev['token'], 'game' => $room['game']]);
     }
 
     if ($action === 'join') {
@@ -149,7 +162,7 @@ try {
         $dev = spiaNewDevice($db, (int)$room['id']);
         spiaBump($db, (int)$room['id']);
         $db->exec('COMMIT');
-        jsonResponse(['success' => true, 'code' => $room['code'], 'token' => $dev['token']]);
+        jsonResponse(['success' => true, 'code' => $room['code'], 'token' => $dev['token'], 'game' => $room['game']]);
     }
 
     // --- Everything else acts as a phone already in a room ---
@@ -165,7 +178,18 @@ try {
     };
     $needHost = function () use ($isHost, $fail) { if (!$isHost) $fail('host_only', 403); };
 
-    switch ($action) {
+    $handled = false;
+    if ($room['game'] === 'lupus') {
+        $r = lupusHandle($db, $room, $device, $isHost, $in, $action);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
+        $handled = $r === true;
+        // Not a Lupus action: only the room actions shared by every game are allowed
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
+
+    if (!$handled) switch ($action) {
         case 'leave':
             spiaRemoveDevice($db, $room, (int)$device['id']);
             break;
@@ -333,7 +357,7 @@ try {
     $db->exec('COMMIT');
 
     if ($action === 'leave' || !$roomStillThere) jsonResponse(['success' => true, 'left' => true]);
-    jsonResponse(spiaView($db, spiaRoom($db, (int)$room['id']), $device, $isAdmin));
+    jsonResponse(spiaRoomView($db, spiaRoom($db, (int)$room['id']), $device, $isAdmin));
 } catch (Throwable $e) {
     if (isset($db)) {
         try { $db->exec('ROLLBACK'); } catch (Throwable $ignored) { /* no open transaction */ }

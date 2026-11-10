@@ -480,6 +480,16 @@ function spiaRemoveDevice(PDO $db, array $room, int $deviceId): void {
 
 function spiaRemovePlayer(PDO $db, array $room, ?array $round, int $playerId): void {
     $db->prepare('UPDATE spia_players SET removed = 1 WHERE id = :id')->execute([':id' => $playerId]);
+    if (($room['game'] ?? 'spia') === 'lupus') {
+        $g = lupusLoad($db, (int)$room['id']);
+        if ($g) {
+            $was = $g['status'];
+            lupusPlayerLeft($g, $playerId);
+            lupusSave($db, (int)$room['id'], $g);
+            if ($was === 'play' && $g['status'] === 'ended') lupusAwardScores($db, $g);
+        }
+        return;
+    }
     if ($round && $round['status'] === 'play') {
         $db->prepare("UPDATE spia_assign SET out_reason = 'left' WHERE round_id = :r AND player_id = :p AND out_reason IS NULL")
            ->execute([':r' => $round['id'], ':p' => $playerId]);
@@ -493,6 +503,7 @@ function spiaDeleteRooms(PDO $db, array $roomIds): void {
     $db->exec("DELETE FROM spia_votes WHERE round_id IN (SELECT id FROM spia_rounds WHERE room_id IN ($in))");
     $db->exec("DELETE FROM spia_assign WHERE round_id IN (SELECT id FROM spia_rounds WHERE room_id IN ($in))");
     $db->exec("DELETE FROM spia_rounds WHERE room_id IN ($in)");
+    $db->exec("DELETE FROM lupus_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_players WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_devices WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_rooms WHERE id IN ($in)");
@@ -623,6 +634,8 @@ function spiaLiveView(PDO $db): array {
         }
         $out[] = [
             'code' => $room['code'],
+            'game' => $room['game'] ?? 'spia',
+            'lupus' => ($room['game'] ?? 'spia') === 'lupus' ? lupusLiveInfo($db, (int)$room['id']) : null,
             'updated_at' => (int)$room['updated_at'],
             'phones' => count($online),
             'phones_online' => count(array_filter($online)),
@@ -649,4 +662,12 @@ function spiaLiveView(PDO $db): array {
         ];
     }
     return $out;
+}
+
+/** The state a phone receives, for whichever game the room is playing. */
+function spiaRoomView(PDO $db, array $room, array $device, bool $adminSession): array {
+    if (($room['game'] ?? 'spia') === 'lupus') return lupusView($db, $room, $device, $adminSession);
+    $view = spiaView($db, $room, $device, $adminSession);
+    $view['game'] = 'spia';
+    return $view;
 }
