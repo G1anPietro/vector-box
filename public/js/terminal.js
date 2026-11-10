@@ -281,10 +281,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     body: JSON.stringify({ message: rawVal })
                 });
                 const data = await res.json();
+                // forceText: server messages echo user input (e.g. usernames), never parse as HTML
                 if (data.notice) {
-                    printGuestLog(`>> ${data.notice}`, "#33ff77");
+                    printGuestLog(`>> ${data.notice}`, "#33ff77", true);
                 } else if (data.error) {
-                    printGuestLog(`>> ${data.error}`, "#ff3333");
+                    printGuestLog(`>> ${data.error}`, "#ff3333", true);
                 }
             } catch (err) {
                 printGuestLog(">> ERROR: Failed to execute terminal command", "#ff3333");
