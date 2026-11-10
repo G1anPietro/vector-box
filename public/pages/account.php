@@ -2,19 +2,20 @@
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 
-initSession();
+initSession(true);
 
-if (empty($_SESSION['username'])) {
+if (empty($_SESSION['username']) || empty($_SESSION['user_id'])) {
+    session_write_close();
     header("Location: login.php");
     exit();
 }
 
 $db = getDbConnection();
 
-// Ensure bio column exists in accounts table
-try {
-    $db->exec("ALTER TABLE accounts ADD COLUMN bio TEXT DEFAULT ''");
-} catch (Exception $e) {}
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrfToken = $_SESSION['csrf_token'];
 
 $username = $_SESSION['username'];
 $msg = ''; 
@@ -27,10 +28,16 @@ $account = $stmt->fetch();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
+    if (!hash_equals($csrfToken, (string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        $error = "Invalid or expired form token. Reload the page and retry.";
+        $action = '';
+    }
+
     if ($action === 'update_profile') {
         $bio = trim($_POST['bio'] ?? '');
         
-        if (mb_strlen($bio) > 250) {
+        if (textLength($bio) > 250) {
             $error = "Bio cannot exceed 250 characters.";
         } else {
             $upd = $db->prepare("UPDATE accounts SET bio = :b WHERE id = :id");
@@ -43,8 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newPass = $_POST['new_password'] ?? '';
 
         if (!empty($oldPass) && !empty($newPass)) {
-            if ($account && password_verify($oldPass, $account['password_hash'])) {
-                $newHash = password_hash($newPass, PASSWORD_BCRYPT);
+            if ($pwErr = validateNewPassword($newPass)) {
+                $error = $pwErr;
+            } elseif ($account && password_verify($oldPass, $account['password_hash'])) {
+                $newHash = password_hash($newPass, PASSWORD_DEFAULT);
                 $upd = $db->prepare("UPDATE accounts SET password_hash = :p WHERE id = :id");
                 $upd->execute([':p' => $newHash, ':id' => $account['id']]);
                 $msg = "Password updated successfully.";
@@ -55,13 +64,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Please fill in both password fields.";
         }
     } elseif ($action === 'save_theme') {
-        $selectedTheme = $_POST['theme'] ?? 'cyan';
+        $selectedTheme = (string)($_POST['theme'] ?? 'cyan');
+        if (!in_array($selectedTheme, ['cyan', 'matrix', 'amber', 'cyberpunk', 'dracula', 'synthwave', 'nord', 'blood', 'emerald', 'slate', 'classic'], true)) {
+            $selectedTheme = 'cyan';
+        }
         $upd = $db->prepare("UPDATE accounts SET theme = :t WHERE id = :id");
         $upd->execute([':t' => $selectedTheme, ':id' => $account['id']]);
         $_SESSION['theme'] = $selectedTheme;
         $msg = "Default theme updated.";
     }
 }
+session_write_close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -94,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Profile Bio Form -->
             <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <span class="settings-title">>_ PUBLIC USER BIO (MAX 250 CHARS)</span>
                 <textarea name="bio" class="tools-textarea" maxlength="250" placeholder="Enter custom biography..." style="height: 70px; resize: none;"><?php echo htmlspecialchars($account['bio'] ?? ''); ?></textarea>
                 <button type="submit" name="action" value="update_profile" class="nav-btn">>_ SAVE BIO</button>
@@ -101,6 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Password Change Form -->
             <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <span class="settings-title">>_ CHANGE PASSWORD</span>
                 <input type="password" name="old_password" placeholder="Current Password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
                 <input type="password" name="new_password" placeholder="New Password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
@@ -109,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Theme Preference Form -->
             <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <span class="settings-title">>_ DEFAULT SYSTEM THEME</span>
                 <select name="theme" class="nav-btn" style="width: 100%; text-align: left; padding: 6px; background: #020304;">
                     <option value="cyan" <?php if(($account['theme']??'')==='cyan') echo 'selected'; ?>>Cyan (Default)</option>

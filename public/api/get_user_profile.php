@@ -16,11 +16,6 @@ if (empty($targetUser)) {
 try {
     $db = getDbConnection();
     
-    // Ensure bio column exists
-    try {
-        $db->exec("ALTER TABLE accounts ADD COLUMN bio TEXT DEFAULT ''");
-    } catch (Exception $e) {}
-
     $stmt = $db->prepare("SELECT username, is_admin, created_at, bio FROM accounts WHERE username = :u");
     $stmt->execute([':u' => $targetUser]);
     $user = $stmt->fetch();
@@ -38,6 +33,5 @@ try {
         echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
     }
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    failInternal('GET_USER_PROFILE', $e);
 }

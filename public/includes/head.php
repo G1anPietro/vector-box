@@ -16,6 +16,8 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customSc
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($title); ?></title>
     
+    <script src="<?php echo $pathPrefix; ?>js/csrf.js?v=<?php echo $ver; ?>"></script>
+
     <?php if ($isLightPage): ?>
         <!-- Standalone Light Theme Stack for Reader -->
         <link rel="stylesheet" href="<?php echo $pathPrefix; ?>css/reader.css?v=<?php echo $ver; ?>">

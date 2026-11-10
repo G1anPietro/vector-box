@@ -1,54 +1,36 @@
 <?php
 // public/api/database.php
 
-function initSession() {
-    $projectRoot = dirname(__DIR__, 2);
-    $sessionDir = $projectRoot . '/data/sessions';
+require_once __DIR__ . '/helpers.php';
 
-    if (!file_exists($sessionDir)) {
-        @mkdir($sessionDir, 0777, true);
-    }
+const DB_SCHEMA_VERSION = 2;
 
-    if (session_status() === PHP_SESSION_NONE) {
-        session_save_path($sessionDir);
-        session_set_cookie_params([
-            'lifetime' => 86400 * 7,
-            'path' => '/',
-            'httponly' => true,
-            'samesite' => 'Lax'
-        ]);
-        session_start();
-    }
+/**
+ * Session bootstrap.
+ * By default the session is released immediately (read-only) so background polling never blocks.
+ * Pass $writable = true when the request has to modify $_SESSION (the caller must then close it).
+ */
+function initSession(bool $writable = false) {
+    startWritableSession();
 
-    // Ensure guest sessions get a unique session-bound handle
+    // Ensure guest sessions get a unique session-bound handle (8 hex chars: collisions are negligible)
     if (!isset($_SESSION['username'])) {
-        $suffix = substr(md5(session_id()), 0, 4);
-        $_SESSION['username'] = 'guest_' . $suffix;
+        $_SESSION['username'] = 'guest_' . substr(hash('sha256', session_id()), 0, 8);
     }
 
-    // Release session lock to prevent blocking during background polling
-    session_write_close();
+    if (!$writable && session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
 }
 
-function getDbConnection() {
-    $projectRoot = dirname(__DIR__, 2);
-    $dataDir = $projectRoot . '/data';
-    
-    if (!file_exists($dataDir)) {
-        @mkdir($dataDir, 0777, true);
+function addColumnIfMissing(PDO $db, string $table, string $column, string $ddl): void {
+    $cols = $db->query("PRAGMA table_info($table)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array($column, $cols, true)) {
+        $db->exec("ALTER TABLE $table ADD COLUMN $column $ddl");
     }
+}
 
-    $dbPath = $dataDir . '/vector_uplink.sqlite';
-
-    $db = new PDO('sqlite:' . $dbPath);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-    // Optimized SQLite performance pragmas for concurrent access
-    $db->exec("PRAGMA busy_timeout = 5000;");
-    $db->exec("PRAGMA journal_mode = WAL;");
-    $db->exec("PRAGMA synchronous = NORMAL;");
-
+function migrateV1(PDO $db): void {
     // Accounts table
     $db->exec("CREATE TABLE IF NOT EXISTS accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -151,50 +133,86 @@ function getDbConnection() {
         UNIQUE(user_id, book_id)
     )");
 
-    // Safely inject metadata columns if tables pre-existed
-    $pokerCols = $db->query("PRAGMA table_info(poker_tables)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('room_code', $pokerCols)) {
-        $db->exec("ALTER TABLE poker_tables ADD COLUMN room_code VARCHAR(50) NULL");
+
+    // Rate limiting (replaces per-IP JSON files)
+    $db->exec("CREATE TABLE IF NOT EXISTS rate_limits (
+        bucket VARCHAR(200) NOT NULL,
+        ts INTEGER NOT NULL
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_rate_limits_bucket ON rate_limits(bucket, ts)");
+
+    // Columns for databases created by older versions
+    addColumnIfMissing($db, 'poker_tables', 'room_code', 'VARCHAR(50) NULL');
+    addColumnIfMissing($db, 'poker_tables', 'creator_username', "VARCHAR(50) DEFAULT 'system'");
+    addColumnIfMissing($db, 'poker_tables', 'max_players', 'INTEGER DEFAULT 4');
+    addColumnIfMissing($db, 'poker_tables', 'bot_count', 'INTEGER DEFAULT 1');
+
+    addColumnIfMissing($db, 'transmissions', 'room_id', "VARCHAR(50) DEFAULT 'general'");
+    addColumnIfMissing($db, 'transmissions', 'username', "VARCHAR(50) DEFAULT 'guest'");
+    addColumnIfMissing($db, 'transmissions', 'user_id', 'INTEGER NULL');
+    addColumnIfMissing($db, 'transmissions', 'is_deleted', 'INTEGER DEFAULT 0');
+
+    addColumnIfMissing($db, 'accounts', 'is_admin', 'INTEGER DEFAULT 0');
+    addColumnIfMissing($db, 'accounts', 'can_read_books', 'INTEGER DEFAULT 0');
+    addColumnIfMissing($db, 'accounts', 'can_upload_books', 'INTEGER DEFAULT 0');
+    addColumnIfMissing($db, 'accounts', 'is_banned', 'INTEGER DEFAULT 0');
+    addColumnIfMissing($db, 'accounts', 'banned_until', 'DATETIME NULL');
+    addColumnIfMissing($db, 'accounts', 'bio', "TEXT DEFAULT ''");
+
+    // is_private  = only admins can POST (announcement channel, readable by everyone)
+    // is_hidden   = only admins can READ  (e.g. the admin room)
+    addColumnIfMissing($db, 'rooms', 'is_hidden', 'INTEGER DEFAULT 0');
+
+    $db->exec("INSERT OR IGNORE INTO rooms (id, name, is_private) VALUES ('general', 'General', 0)");
+    $db->exec("INSERT OR IGNORE INTO rooms (id, name, is_private) VALUES ('announcements', 'Announcements Board', 1)");
+    $db->exec("UPDATE rooms SET is_hidden = 1 WHERE id = 'admin'");
+
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_transmissions_room_id ON transmissions(room_id, id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_poker_players_table ON poker_players(table_id)");
+}
+
+function migrateV2(PDO $db): void {
+    // Tracks whether the one-time EPUB metadata repair has already been attempted
+    addColumnIfMissing($db, 'books', 'meta_checked', 'INTEGER DEFAULT 0');
+}
+
+/** Runs pending migrations once, under an exclusive lock. */
+function runMigrations(PDO $db): void {
+    $db->exec('BEGIN IMMEDIATE');
+    try {
+        $current = (int)$db->query('PRAGMA user_version')->fetchColumn();
+        if ($current < 1) {
+            migrateV1($db);
+        }
+        if ($current < 2) {
+            migrateV2($db);
+        }
+        $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
+        $db->exec('COMMIT');
+    } catch (Throwable $e) {
+        try { $db->exec('ROLLBACK'); } catch (Throwable $ignored) { /* no active transaction */ }
+        throw $e;
     }
-    if (!in_array('creator_username', $pokerCols)) {
-        $db->exec("ALTER TABLE poker_tables ADD COLUMN creator_username VARCHAR(50) DEFAULT 'system'");
-    }
-    if (!in_array('max_players', $pokerCols)) {
-        $db->exec("ALTER TABLE poker_tables ADD COLUMN max_players INTEGER DEFAULT 4");
-    }
-    if (!in_array('bot_count', $pokerCols)) {
-        $db->exec("ALTER TABLE poker_tables ADD COLUMN bot_count INTEGER DEFAULT 1");
+}
+
+function getDbConnection() {
+    $dataDir = dirname(__DIR__, 2) . '/data';
+
+    if (!is_dir($dataDir)) {
+        @mkdir($dataDir, 0750, true);
     }
 
-    $cols = $db->query("PRAGMA table_info(transmissions)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('room_id', $cols)) {
-        $db->exec("ALTER TABLE transmissions ADD COLUMN room_id VARCHAR(50) DEFAULT 'general'");
-    }
-    if (!in_array('username', $cols)) {
-        $db->exec("ALTER TABLE transmissions ADD COLUMN username VARCHAR(50) DEFAULT 'guest'");
-    }
-    if (!in_array('user_id', $cols)) {
-        $db->exec("ALTER TABLE transmissions ADD COLUMN user_id INTEGER NULL");
-    }
-    if (!in_array('is_deleted', $cols)) {
-        $db->exec("ALTER TABLE transmissions ADD COLUMN is_deleted INTEGER DEFAULT 0");
-    }
+    $db = new PDO('sqlite:' . $dataDir . '/vector_uplink.sqlite');
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
-    $accCols = $db->query("PRAGMA table_info(accounts)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('is_admin', $accCols)) {
-        $db->exec("ALTER TABLE accounts ADD COLUMN is_admin INTEGER DEFAULT 0");
-    }
-    if (!in_array('can_read_books', $accCols)) {
-        $db->exec("ALTER TABLE accounts ADD COLUMN can_read_books INTEGER DEFAULT 0");
-    }
-    if (!in_array('can_upload_books', $accCols)) {
-        $db->exec("ALTER TABLE accounts ADD COLUMN can_upload_books INTEGER DEFAULT 0");
-    }
-    if (!in_array('is_banned', $accCols)) {
-        $db->exec("ALTER TABLE accounts ADD COLUMN is_banned INTEGER DEFAULT 0");
-    }
-    if (!in_array('banned_until', $accCols)) {
-        $db->exec("ALTER TABLE accounts ADD COLUMN banned_until DATETIME NULL");
+    $db->exec("PRAGMA busy_timeout = 5000;");
+    $db->exec("PRAGMA journal_mode = WAL;");
+    $db->exec("PRAGMA synchronous = NORMAL;");
+
+    // Schema work happens only when the DB is behind, not on every request
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < DB_SCHEMA_VERSION) {
+        runMigrations($db);
     }
 
     return $db;

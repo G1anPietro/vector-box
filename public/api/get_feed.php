@@ -2,6 +2,7 @@
 // public/api/get_feed.php
 require_once __DIR__ . '/database.php';
 
+initSession();
 header('Content-Type: application/json');
 
 $roomId = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower($_GET['room_id'] ?? 'general'));
@@ -10,6 +11,14 @@ $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 50) : 25;
 
 try {
     $db = getDbConnection();
+
+    // Hidden rooms (e.g. the admin room) are readable by admins only
+    $stmt = $db->prepare("SELECT is_hidden FROM rooms WHERE id = :id");
+    $stmt->execute([':id' => $roomId]);
+    $room = $stmt->fetch();
+    if ($room && (int)$room['is_hidden'] === 1 && empty($_SESSION['is_admin'])) {
+        jsonResponse(['success' => false, 'error' => 'FORBIDDEN: Restricted room'], 403);
+    }
 
     if ($beforeId > 0) {
         $stmt = $db->prepare("SELECT id, room_id, username, message, created_at 
@@ -50,6 +59,5 @@ try {
     ]);
 
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    failInternal('GET_FEED', $e);
 }

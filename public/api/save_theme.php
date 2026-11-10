@@ -2,15 +2,15 @@
 // public/api/save_theme.php
 require_once __DIR__ . '/database.php';
 
-initSession();
+initSession(true);
 header('Content-Type: application/json');
 
 $userId = $_SESSION['user_id'] ?? null;
 if (!$userId) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit();
+    session_write_close();
+    jsonResponse(['success' => false, 'error' => 'Not logged in'], 401);
 }
+requireCsrf();
 
 $input = json_decode(file_get_contents('php://input'), true);
 $theme = trim($input['theme'] ?? 'cyan');
@@ -36,9 +36,9 @@ try {
 
     // Keep session state synced for both legacy theme engines and reader persistence
     $_SESSION['theme'] = $theme;
+    session_write_close();
 
     echo json_encode(['success' => true, 'theme' => $theme]);
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    failInternal('SAVE_THEME', $e);
 }

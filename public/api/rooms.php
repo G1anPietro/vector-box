@@ -11,12 +11,9 @@ $isAdmin = !empty($_SESSION['is_admin']);
 try {
     $db = getDbConnection();
 
-    // Ensure default systemic rooms exist
-    $db->exec("INSERT OR IGNORE INTO rooms (id, name, is_private) VALUES ('general', 'General', 0)");
-    $db->exec("INSERT OR IGNORE INTO rooms (id, name, is_private) VALUES ('announcements', 'Announcements Board', 1)");
-
     if ($method === 'GET') {
-        $stmt = $db->query("SELECT id, name, is_private FROM rooms ORDER BY is_private DESC, name ASC");
+        $where = $isAdmin ? '' : 'WHERE is_hidden = 0';
+        $stmt = $db->query("SELECT id, name, is_private, is_hidden FROM rooms $where ORDER BY is_private DESC, name ASC");
         $allRooms = $stmt->fetchAll();
 
         echo json_encode(['success' => true, 'rooms' => array_values($allRooms)]);
@@ -24,17 +21,16 @@ try {
     }
 
     if ($method === 'POST') {
-        if (!$isAdmin) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'UNAUTHORIZED: Room creation requires admin privileges']);
-            exit();
-        }
+        requireAdmin();
+        requireCsrf();
 
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true) ?? [];
         $roomId = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower(trim($input['id'] ?? '')));
         $roomName = trim($input['name'] ?? $roomId);
         $isPrivate = !empty($input['is_private']) ? 1 : 0;
+        $isHidden = !empty($input['is_hidden']) ? 1 : 0;
+        $roomName = textCut($roomName, 50);
 
         if (empty($roomId)) {
             echo json_encode(['success' => false, 'error' => 'Invalid room identifier']);
@@ -48,13 +44,12 @@ try {
             exit();
         }
 
-        $stmt = $db->prepare("INSERT INTO rooms (id, name, is_private) VALUES (:id, :name, :priv)");
-        $stmt->execute([':id' => $roomId, ':name' => $roomName, ':priv' => $isPrivate]);
+        $stmt = $db->prepare("INSERT INTO rooms (id, name, is_private, is_hidden) VALUES (:id, :name, :priv, :hid)");
+        $stmt->execute([':id' => $roomId, ':name' => $roomName, ':priv' => $isPrivate, ':hid' => $isHidden]);
 
-        echo json_encode(['success' => true, 'room' => ['id' => $roomId, 'name' => $roomName, 'is_private' => $isPrivate]]);
+        echo json_encode(['success' => true, 'room' => ['id' => $roomId, 'name' => $roomName, 'is_private' => $isPrivate, 'is_hidden' => $isHidden]]);
         exit();
     }
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    failInternal('ROOMS', $e);
 }

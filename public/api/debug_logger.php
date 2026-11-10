@@ -2,11 +2,19 @@
 // public/api/debug_logger.php
 
 function logSystemError($source, $message, $details = null) {
+    require_once __DIR__ . '/helpers.php';
     $dataDir = __DIR__ . '/../../data';
-    
+
     if (!file_exists($dataDir)) {
-        @mkdir($dataDir, 0777, true);
+        @mkdir($dataDir, 0750, true);
     }
+
+    // Strip control characters so attackers can't forge log lines
+    $clean = static function ($v) {
+        return preg_replace('/[\x00-\x1F\x7F]+/', ' ', (string)$v);
+    };
+    $source = $clean($source);
+    $message = $clean($message);
 
     $logFile = $dataDir . '/system_errors.log';
     
@@ -31,15 +39,15 @@ function logSystemError($source, $message, $details = null) {
 
     // Write Log Entry
     $timestamp = date('Y-m-d H:i:s');
-    $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $clientIp = getClientIp();
 
     $entry = "====================================================\n";
     $entry .= "[{$timestamp}] [IP: {$clientIp}] [SRC: {$source}]\n";
     $entry .= "MESSAGE: {$message}\n";
     if ($details) {
-        $entry .= "DETAILS: " . (is_array($details) || is_object($details) ? json_encode($details) : $details) . "\n";
+        $entry .= "DETAILS: " . $clean(is_array($details) || is_object($details) ? json_encode($details) : $details) . "\n";
     }
     $entry .= "====================================================\n\n";
 
-    @file_put_contents($logFile, $entry, FILE_APPEND);
+    @file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
 }

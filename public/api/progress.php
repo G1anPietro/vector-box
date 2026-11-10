@@ -39,12 +39,16 @@ try {
     }
 
     if ($method === 'POST') {
+        requireCsrf();
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true) ?? [];
 
         $bookId = (int)($input['book_id'] ?? 0);
         $cfiOrPage = trim($input['cfi_or_page'] ?? '');
-        $percentage = (float)($input['percentage'] ?? 0);
+        $percentage = max(0.0, min(100.0, (float)($input['percentage'] ?? 0)));
+        if (strlen($cfiOrPage) > 2000) {
+            jsonResponse(['success' => false, 'error' => 'Invalid progress payload.'], 400);
+        }
 
         if ($bookId <= 0 || empty($cfiOrPage)) {
             http_response_code(400);
@@ -75,6 +79,5 @@ try {
     echo json_encode(['success' => false, 'error' => 'Method not allowed.']);
 
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    failInternal('PROGRESS', $e);
 }

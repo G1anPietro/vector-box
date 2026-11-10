@@ -6,11 +6,8 @@ header('Content-Type: application/json');
 initSession();
 
 // Restrict command execution to Administrators only
-if (empty($_SESSION['is_admin'])) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Access denied: Admin privileges required.']);
-    exit();
-}
+requireAdmin();
+requireCsrf();
 
 $input = json_decode(file_get_contents('php://input'), true);
 $action = $input['action'] ?? '';
@@ -46,5 +43,5 @@ try {
         echo json_encode(['success' => false, 'error' => 'Invalid moderation action specified.']);
     }
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => 'Database operation failed.']);
+    failInternal('MODERATE_BOOK_ACCESS', $e, 'Database operation failed.');
 }

@@ -25,7 +25,7 @@ if (empty($_SESSION['is_admin'])) {
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $targetUsername = trim($input['username'] ?? '');
 $action = $input['action'] ?? ''; // 'ban', 'timeout', or 'unban'
-$minutes = (int)($input['minutes'] ?? 10);
+$minutes = max(1, min((int)($input['minutes'] ?? 10), 525600));
 
 if (empty($targetUsername) || !in_array($action, ['ban', 'timeout', 'unban'])) {
     echo json_encode(['success' => false, 'error' => 'Invalid parameters']);

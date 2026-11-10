@@ -1,192 +1,331 @@
 require('dotenv').config();
 const os = require('os');
+const crypto = require('crypto');
+const path = require('path');
 const express = require('express');
 const session = require('express-session');
-const { exec, spawn } = require('child_process');
-const path = require('path');
+const { execFile, spawn } = require('child_process');
+
+// ==========================================
+// CONFIGURATION (fail fast on missing secrets)
+// ==========================================
+const REQUIRED_ENV = ['SESSION_SECRET', 'ADMIN_PASSWORD', 'GUEST_PASSWORD'];
+const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missingEnv.length) {
+    console.error(`>>> FATAL: missing required environment variables: ${missingEnv.join(', ')} (see .env.example)`);
+    process.exit(1);
+}
+
+const PORT = process.env.PORT || 3000;
+const IS_PROD = process.env.NODE_ENV === 'production';
+const MC_DIR = process.env.MC_DIR || '/home/user/minecraft/minecraft_server';
+const WAKE_SCRIPT = process.env.WAKE_SCRIPT || '/home/user/bin/wakemainpc.sh';
+const NTFY_TOPIC_URL = process.env.NTFY_TOPIC_URL || '';
+const MAX_MESSAGE_LENGTH = 500;
 
 const app = express();
-app.set('trust proxy', true);
-const PORT = process.env.PORT || 3000;
+// Trust only the configured proxy hops so X-Forwarded-For can't be spoofed by clients.
+// e.g. TRUST_PROXY=loopback (default), TRUST_PROXY=1, TRUST_PROXY=10.0.0.0/8
+app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
+app.disable('x-powered-by');
 
 // Global process and client tracking
 let mcProcess = null;
-let activeWebClients = [];
+const activeWebClients = new Set();
 let activePlayers = [];
 
-// Security monitoring and IP tracking database
 const ipTracker = new Map();
 
 function getClientIp(req) {
-    return req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    return req.ip || req.socket.remoteAddress || 'unknown';
 }
 
-app.use(express.json());
+// ==========================================
+// MIDDLEWARE
+// ==========================================
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+});
+
+app.use(express.json({ limit: '10kb' }));
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'fallback_secret_matrix_key',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { 
-        secure: false, 
-        maxAge: 24 * 60 * 60 * 1000 
+    name: 'vb.sid',
+    cookie: {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : IS_PROD,
+        maxAge: 24 * 60 * 60 * 1000
     }
 }));
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Never serve server-side sources / config straight from the static folder
+app.use((req, res, next) => {
+    if (/\.(php|ini|inc|sqlite|log)$/i.test(req.path)) return res.status(404).end();
+    next();
+});
+app.use(express.static(path.join(__dirname, 'public'), { index: false, dotfiles: 'ignore' }));
+
+const requireAuth = (req, res, next) => {
+    if (!req.session.user) return res.status(401).json({ success: false, error: 'Authentication required.' });
+    next();
+};
+const requireAdmin = (req, res, next) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'ACCESS DENIED: Admin authorization required.' });
+    }
+    next();
+};
+
+// CSRF: state-changing requests must be JSON (blocks cross-site form posts) and same-origin
+const requireSameOrigin = (req, res, next) => {
+    const origin = req.get('origin');
+    if (origin) {
+        let originHost;
+        try { originHost = new URL(origin).host; } catch (e) { originHost = null; }
+        if (originHost !== req.get('host')) {
+            return res.status(403).json({ success: false, error: 'Cross-origin request blocked.' });
+        }
+    }
+    if (!req.is('application/json')) {
+        return res.status(415).json({ success: false, error: 'Content-Type must be application/json.' });
+    }
+    next();
+};
+
+function safeEqual(a, b) {
+    const ha = crypto.createHash('sha256').update(String(a)).digest();
+    const hb = crypto.createHash('sha256').update(String(b)).digest();
+    return crypto.timingSafeEqual(ha, hb);
+}
+
+// Simple fixed-window limiter (per key)
+function makeLimiter(max, windowMs) {
+    const hits = new Map();
+    setInterval(() => {
+        const now = Date.now();
+        for (const [k, v] of hits) if (now - v.start > windowMs) hits.delete(k);
+    }, windowMs).unref();
+
+    return (key) => {
+        const now = Date.now();
+        const entry = hits.get(key);
+        if (!entry || now - entry.start > windowMs) {
+            hits.set(key, { start: now, count: 1 });
+            return true;
+        }
+        entry.count++;
+        return entry.count <= max;
+    };
+}
+const loginLimiter = makeLimiter(8, 5 * 60 * 1000);
 
 // ==========================================
-// NATIVE OS TELEMETRY CALCULATOR (No os-utils)
+// NATIVE OS TELEMETRY CALCULATOR
 // ==========================================
 let lastCpuMeasure = os.cpus();
 
 function getNativeCpuUsage() {
-    const currentCpuMeasure = os.cpus();
+    const current = os.cpus();
     let idleDiff = 0;
     let totalDiff = 0;
 
-    for (let i = 0; i < currentCpuMeasure.length; i++) {
+    const cores = Math.min(current.length, lastCpuMeasure.length);
+    for (let i = 0; i < cores; i++) {
         const prev = lastCpuMeasure[i].times;
-        const curr = currentCpuMeasure[i].times;
-
+        const curr = current[i].times;
         const prevTotal = prev.user + prev.nice + prev.sys + prev.idle + prev.irq;
         const currTotal = curr.user + curr.nice + curr.sys + curr.idle + curr.irq;
-
-        totalDiff += (currTotal - prevTotal);
-        idleDiff += (curr.idle - prev.idle);
+        totalDiff += currTotal - prevTotal;
+        idleDiff += curr.idle - prev.idle;
     }
 
-    lastCpuMeasure = currentCpuMeasure;
+    lastCpuMeasure = current;
     return totalDiff === 0 ? 0 : Math.round(((totalDiff - idleDiff) / totalDiff) * 100);
 }
 
-// Global Telemetry Loop
-setInterval(() => {
-    if (activeWebClients.length === 0) return; 
+// ==========================================
+// SSE HELPERS
+// ==========================================
+function sseSend(client, event, data) {
+    // SSE payloads can't contain raw newlines: one "data:" field per line
+    const lines = String(data).split(/\r?\n/);
+    client.write(`event: ${event}\n${lines.map((l) => `data: ${l}`).join('\n')}\n\n`);
+}
 
+function broadcast(event, data, adminOnly = false) {
+    for (const client of activeWebClients) {
+        if (adminOnly && !client.isAdminStream) continue;
+        sseSend(client, event, data);
+    }
+}
+
+function broadcastPlayers() {
+    broadcast('players', JSON.stringify(activePlayers));
+}
+
+setInterval(() => {
+    if (activeWebClients.size === 0) return;
     const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const usedMem = totalMem - freeMem;
-    
-    const telemetryPayload = {
+    const usedMem = totalMem - os.freemem();
+    broadcast('telemetry', JSON.stringify({
         cpu: getNativeCpuUsage(),
         ram: Math.round((usedMem / totalMem) * 100)
-    };
-
-    activeWebClients.forEach(client => {
-        client.write(`event: telemetry\ndata: ${JSON.stringify(telemetryPayload)}\n\n`);
-    });
+    }));
 }, 2000);
 
+// Keep-alive so proxies don't drop idle SSE connections
+setInterval(() => {
+    for (const client of activeWebClients) client.write(': heartbeat\n\n');
+}, 25000);
+
 // ==========================================
-// SECURITY & AUTHENTICATION ROUTES
+// AUTHENTICATION ROUTES
 // ==========================================
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    if (username === 'admin' && password === process.env.ADMIN_PASSWORD) {
-        req.session.user = { name: 'Admin', role: 'admin' };
-        return res.json({ success: true });
-    } 
-    if (username === 'guest' && password === process.env.GUEST_PASSWORD) {
-        req.session.user = { name: 'Guest', role: 'guest' };
-        return res.json({ success: true });
+app.post('/api/login', requireSameOrigin, (req, res) => {
+    if (!loginLimiter(getClientIp(req))) {
+        return res.status(429).json({ success: false, error: 'Too many attempts. Try again later.' });
     }
-    return res.status(401).json({ success: false, error: "Invalid credentials." });
+
+    const { username, password } = req.body || {};
+    if (typeof username !== 'string' || typeof password !== 'string') {
+        return res.status(400).json({ success: false, error: 'Invalid payload.' });
+    }
+
+    let user = null;
+    if (username === 'admin' && safeEqual(password, process.env.ADMIN_PASSWORD)) {
+        user = { name: 'Admin', role: 'admin' };
+    } else if (username === 'guest' && safeEqual(password, process.env.GUEST_PASSWORD)) {
+        user = { name: 'Guest', role: 'guest' };
+    }
+
+    if (!user) return res.status(401).json({ success: false, error: 'Invalid credentials.' });
+
+    // Prevent session fixation
+    req.session.regenerate((err) => {
+        if (err) return res.status(500).json({ success: false, error: 'Session error.' });
+        req.session.user = user;
+        res.json({ success: true });
+    });
 });
 
 app.get('/api/session', (req, res) => {
     res.json(req.session.user || null);
 });
 
-app.post('/api/logout', (req, res) => {
-    req.session.destroy();
-    res.json({ success: true });
+app.post('/api/logout', requireSameOrigin, (req, res) => {
+    req.session.destroy(() => {
+        res.clearCookie('vb.sid');
+        res.json({ success: true });
+    });
 });
 
 // ==========================================
 // HARDWARE POWER ACTIONS (WAKE-ON-LAN)
 // ==========================================
-app.post('/api/action/wakemainpc', (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'admin') {
-        return res.status(403).json({ success: false, error: "ACCESS DENIED: Admin authorization required." });
-    }
-
-    exec('/home/user/bin/wakemainpc.sh', (error, stdout, stderr) => {
-        if (error) return res.status(500).json({ success: false, error: stderr || error.message });
-        return res.json({ success: true });
+app.post('/api/action/wakemainpc', requireSameOrigin, requireAdmin, (req, res) => {
+    execFile(WAKE_SCRIPT, { timeout: 15000 }, (error, stdout, stderr) => {
+        if (error) {
+            console.error('wakemainpc failed:', stderr || error.message);
+            return res.status(500).json({ success: false, error: 'Wake-on-LAN failed.' });
+        }
+        res.json({ success: true });
     });
 });
 
 // ==========================================
-// MINECRAFT PROCESS MANAGEMENT ENGINE
+// MINECRAFT PROCESS MANAGEMENT (admin only)
 // ==========================================
-app.post('/api/action/minecraft', (req, res) => {   
-    if (!req.session.user) return res.status(401).json({ success: false, error: "Authentication required." });
-    const { action } = req.body;
+function attachLineReader(stream, onLine) {
+    let buffer = '';
+    stream.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop(); // keep incomplete trailing line for the next chunk
+        lines.forEach(onLine);
+    });
+}
+
+function handleMinecraftLine(line) {
+    if (!line) return;
+    broadcast('log', line, true); // console output: admins only
+
+    const joinMatch = line.match(/:\s([a-zA-Z0-9_]{2,16})\sjoined the game/);
+    const leaveMatch = line.match(/:\s([a-zA-Z0-9_]{2,16})\sleft the game/);
+
+    if (joinMatch && !activePlayers.includes(joinMatch[1])) {
+        activePlayers.push(joinMatch[1]);
+        broadcastPlayers();
+    }
+    if (leaveMatch) {
+        activePlayers = activePlayers.filter((p) => p !== leaveMatch[1]);
+        broadcastPlayers();
+    }
+}
+
+function startMinecraft() {
+    mcProcess = spawn('bash', ['start.sh'], { cwd: MC_DIR });
+    attachLineReader(mcProcess.stdout, handleMinecraftLine);
+    attachLineReader(mcProcess.stderr, handleMinecraftLine);
+    mcProcess.on('error', (err) => {
+        console.error('Minecraft spawn error:', err.message);
+        mcProcess = null;
+    });
+    mcProcess.on('close', () => {
+        mcProcess = null;
+        activePlayers = [];
+        broadcastPlayers();
+    });
+}
+
+app.post('/api/action/minecraft', requireSameOrigin, requireAdmin, (req, res) => {
+    const { action } = req.body || {};
 
     if (action === 'start') {
-        if (mcProcess) return res.json({ success: false, error: "Server instance already active." });
-
-        mcProcess = spawn('bash', ['start.sh'], { 
-            cwd: '/home/user/minecraft/minecraft_server' 
-        });
-        
-        mcProcess.stdout.on('data', (data) => {
-            const output = data.toString();
-            activeWebClients.forEach(client => client.write(`event: log\ndata: ${output}\n\n`));
-
-            const joinMatch = output.match(/:\s([a-zA-Z0-9_]{2,16})\sjoined the game/);
-            const leaveMatch = output.match(/:\s([a-zA-Z0-9_]{2,16})\sleft the game/);
-
-            if (joinMatch) {
-                if (!activePlayers.includes(joinMatch[1])) activePlayers.push(joinMatch[1]);
-                broadcastPlayers();
-            }
-            if (leaveMatch) {
-                activePlayers = activePlayers.filter(p => p !== leaveMatch[1]);
-                broadcastPlayers();
-            }
-        });
-
-        function broadcastPlayers() {
-            activeWebClients.forEach(client => {
-                client.write(`event: players\ndata: ${JSON.stringify(activePlayers)}\n\n`);
-            });
-        }
-
-        mcProcess.stderr.on('data', (data) => {
-            activeWebClients.forEach(client => client.write(`event: log\ndata: ${data.toString()}\n\n`));
-        });
-        
-        mcProcess.on('close', () => { mcProcess = null; });
-
-        return res.json({ success: true, status: "initializing" });
-
-    } else if (action === 'stop') {
-        if (mcProcess && mcProcess.stdin) {
-            mcProcess.stdin.write('stop\n');
-            return res.json({ success: true, status: "terminating" });
-        } else {
-            exec('pkill -f server.jar');
-            return res.json({ success: true, status: "force_terminated" });
-        }
+        if (mcProcess) return res.json({ success: false, error: 'Server instance already active.' });
+        startMinecraft();
+        return res.json({ success: true, status: 'initializing' });
     }
+
+    if (action === 'stop') {
+        if (!mcProcess) return res.json({ success: false, error: 'Server instance is not running.' });
+
+        if (mcProcess.stdin && mcProcess.stdin.writable) {
+            mcProcess.stdin.write('stop\n');
+            // Escalate if the server doesn't stop on its own (kills only OUR child, never other processes)
+            const proc = mcProcess;
+            setTimeout(() => { if (mcProcess === proc) proc.kill('SIGKILL'); }, 60000).unref();
+            return res.json({ success: true, status: 'terminating' });
+        }
+        mcProcess.kill('SIGKILL');
+        return res.json({ success: true, status: 'force_terminated' });
+    }
+
+    return res.status(400).json({ success: false, error: 'Unknown action.' });
 });
 
-app.post('/api/command', (req, res) => {
-    if (!req.session.user) return res.status(401).json({ success: false });
-    const { command } = req.body;
-
-    if (mcProcess && mcProcess.stdin) {
-        mcProcess.stdin.write(command + '\n');
-        return res.json({ success: true });
+app.post('/api/command', requireSameOrigin, requireAdmin, (req, res) => {
+    const { command } = req.body || {};
+    if (typeof command !== 'string' || !command.trim() || command.length > 256) {
+        return res.status(400).json({ success: false, error: 'Invalid command.' });
     }
-    return res.status(400).json({ success: false, error: "Process stream offline." });
+    if (!mcProcess || !mcProcess.stdin || !mcProcess.stdin.writable) {
+        return res.status(400).json({ success: false, error: 'Process stream offline.' });
+    }
+    // One command per request: strip line breaks so nothing extra can be injected
+    mcProcess.stdin.write(command.replace(/[\r\n]+/g, ' ').trim() + '\n');
+    res.json({ success: true });
 });
 
 // ==========================================
 // PUBLIC TRANSMISSION & RATE-LIMITING DAEMON
 // ==========================================
-app.post('/api/message', async (req, res) => {
+app.post('/api/message', requireSameOrigin, async (req, res) => {
     const clientIp = getClientIp(req);
     const now = Date.now();
     const timeWindow = 60 * 1000;
@@ -195,13 +334,11 @@ app.post('/api/message', async (req, res) => {
     if (!ipTracker.has(clientIp)) {
         ipTracker.set(clientIp, { count: 0, windowStart: now, strikes: 0, bannedUntil: 0, permabanned: false });
     }
-    
     const tracker = ipTracker.get(clientIp);
 
     if (tracker.permabanned) {
-        return res.status(403).json({ success: false, error: "TERMINAL LOCKOUT: IP permanently blacklisted." });
+        return res.status(403).json({ success: false, error: 'TERMINAL LOCKOUT: IP permanently blacklisted.' });
     }
-
     if (tracker.bannedUntil > now) {
         const remainingMins = Math.ceil((tracker.bannedUntil - now) / 60000);
         return res.status(403).json({ success: false, error: `CONNECTION REFUSED: Temporary lockout active for ${remainingMins} minutes.` });
@@ -218,73 +355,101 @@ app.post('/api/message', async (req, res) => {
         tracker.count = 0;
 
         if (tracker.strikes === 1) {
-            tracker.bannedUntil = now + (10 * 60 * 1000);
-            return res.status(429).json({ success: false, error: "STRIKE 1: Spam detected. Uplink severed for 10 minutes." });
+            tracker.bannedUntil = now + 10 * 60 * 1000;
+            return res.status(429).json({ success: false, error: 'STRIKE 1: Spam detected. Uplink severed for 10 minutes.' });
         } else if (tracker.strikes === 2) {
-            tracker.bannedUntil = now + (60 * 60 * 1000);
-            return res.status(429).json({ success: false, error: "STRIKE 2: Malicious spam detected. Uplink severed for 1 hour." });
-        } else {
-            tracker.permabanned = true;
-            return res.status(429).json({ success: false, error: "STRIKE 3: MAXIMUM INFRACTIONS. IP PERMANENTLY BANNED." });
+            tracker.bannedUntil = now + 60 * 60 * 1000;
+            return res.status(429).json({ success: false, error: 'STRIKE 2: Malicious spam detected. Uplink severed for 1 hour.' });
         }
+        tracker.permabanned = true;
+        return res.status(429).json({ success: false, error: 'STRIKE 3: MAXIMUM INFRACTIONS. IP PERMANENTLY BANNED.' });
     }
 
-    const { message } = req.body;
-    if (!message || message.trim() === "") {
-        return res.status(400).json({ success: false, error: "Empty payload detected." });
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+    if (!message) return res.status(400).json({ success: false, error: 'Empty payload detected.' });
+    if (message.length > MAX_MESSAGE_LENGTH) {
+        return res.status(400).json({ success: false, error: `MESSAGE_TOO_LONG: Maximum length is ${MAX_MESSAGE_LENGTH} characters` });
+    }
+    if (!NTFY_TOPIC_URL) {
+        console.error('NTFY_TOPIC_URL is not configured');
+        return res.status(503).json({ success: false, error: 'Transmission channel is not configured.' });
     }
 
     try {
-        await fetch('https://ntfy.sh/REMOVED-NTFY-TOPIC', {
+        const resp = await fetch(NTFY_TOPIC_URL, {
             method: 'POST',
             body: `IP Address: ${clientIp}\nMessage: ${message}`,
-            headers: { 
-                'Title': 'New Public Terminal Transmission', 
-                'Tags': 'incoming_envelope,warning' 
-            }
+            headers: { 'Title': 'New Public Terminal Transmission', 'Tags': 'incoming_envelope,warning' },
+            signal: AbortSignal.timeout(5000)
         });
+        if (!resp.ok) throw new Error(`ntfy responded ${resp.status}`);
     } catch (err) {
-        console.error("Failed to route transmission out to ntfy.sh:", err);
+        console.error('Failed to route transmission out to ntfy:', err.message);
+        return res.status(502).json({ success: false, error: 'Failed to route transmission.' });
     }
 
     return res.json({ success: true });
 });
 
+// Drop idle, non-banned tracker entries so the map doesn't grow forever
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, t] of ipTracker) {
+        if (!t.permabanned && t.bannedUntil < now && now - t.windowStart > 60 * 60 * 1000 && t.strikes === 0) {
+            ipTracker.delete(ip);
+        }
+    }
+}, 10 * 60 * 1000).unref();
+
 // ==========================================
 // REAL-TIME STREAMING ENDPOINT (SSE)
 // ==========================================
 app.get('/api/stream', (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).end();
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
-    if (!req.session || !req.session.user) {
-        res.write("event: unauthorized\n");
-        res.write("data: Session expired or invalid\n\n");
-        return res.end();
-    }
-    
-    activeWebClients.push(res);
+    // Only admins receive the Minecraft console; everyone logged in gets telemetry/players
+    res.isAdminStream = req.session.user.role === 'admin';
+    activeWebClients.add(res);
+    sseSend(res, 'players', JSON.stringify(activePlayers));
 
-    res.on('close', () => {
-        activeWebClients = activeWebClients.filter(client => client !== res);
+    req.on('close', () => activeWebClients.delete(res));
+});
+
+// Static HTML specific endpoint
+app.get('/ads.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pages', 'ads.html'), (err) => {
+        if (err) res.status(404).end();
     });
 });
 
-// Static HTML Specific Endpoints
-app.get('/ads.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'ads.html'));
+// Fallback: this server doesn't execute PHP, so never send .php sources to the browser
+app.use((req, res) => {
+    res.status(404).type('text/plain').send('Not found');
 });
 
-// Wildcard Route Fallback (Must remain last)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.php'));
-});
-
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`>>> System Hypervisor fully operational on interface port: ${PORT}`);
 });
+
+// ==========================================
+// GRACEFUL SHUTDOWN
+// ==========================================
+function shutdown(signal) {
+    console.log(`>>> ${signal} received, shutting down...`);
+    if (mcProcess && mcProcess.stdin && mcProcess.stdin.writable) mcProcess.stdin.write('stop\n');
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 10000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 // ==========================================
 // CLI MANAGEMENT COMMAND LISTENERS
@@ -302,20 +467,18 @@ process.stdin.on('data', (data) => {
             console.log(`\x1b[33m>> WARN: IP ${targetIp} was not found in the blacklist database.\x1b[0m`);
         }
     } else if (input === 'sys_list_bans') {
-        console.log("\n=== ACTIVE SYSTEM BLACKLIST ===");
+        console.log('\n=== ACTIVE SYSTEM BLACKLIST ===');
         let activeBansFound = 0;
-        
+
         ipTracker.forEach((tracker, ip) => {
             if (tracker.permabanned || tracker.bannedUntil > Date.now()) {
-                const status = tracker.permabanned ? "PERMANENT" : `TEMPORARY (Expires in: ${Math.ceil((tracker.bannedUntil - Date.now()) / 60000)}m)`;
+                const status = tracker.permabanned ? 'PERMANENT' : `TEMPORARY (Expires in: ${Math.ceil((tracker.bannedUntil - Date.now()) / 60000)}m)`;
                 console.log(` - IP: ${ip} | Strikes: ${tracker.strikes}/3 | Status: ${status}`);
                 activeBansFound++;
             }
         });
-        
-        if (activeBansFound === 0) {
-            console.log("Database clean. Zero active network lockouts.");
-        }
-        console.log("===============================\n");
+
+        if (activeBansFound === 0) console.log('Database clean. Zero active network lockouts.');
+        console.log('===============================\n');
     }
 });

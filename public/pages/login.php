@@ -13,63 +13,60 @@ if (!empty($_SESSION['username']) && !str_starts_with($_SESSION['username'], 'gu
 $errorMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    require_once __DIR__ . '/../api/rate_limiter.php';
+
+    // Passwords are trimmed to stay compatible with hashes created by earlier versions
+    $username = trim((string)($_POST['username'] ?? ''));
+    $password = trim((string)($_POST['password'] ?? ''));
     $action = $_POST['action'] ?? 'login';
 
-    if (!empty($username) && !empty($password)) {
+    if ($username === '' || $password === '') {
+        $errorMessage = "Please complete all fields.";
+    } elseif (strlen($username) > 64 || strlen($password) > 1024) {
+        $errorMessage = "Invalid username or password.";
+    } else {
         try {
             $db = getDbConnection();
 
             if ($action === 'register') {
-                $checkStmt = $db->prepare("SELECT COUNT(*) FROM accounts WHERE username = :u");
-                $checkStmt->execute([':u' => $username]);
-
-                if ($checkStmt->fetchColumn() > 0) {
-                    $errorMessage = "Username is already taken.";
+                if (!checkRateLimit('register', 5, 3600)) {
+                    $errorMessage = "Too many registrations from this address. Try again later.";
+                } elseif ($err = validateNewUsername($username) ?? validateNewPassword($password)) {
+                    $errorMessage = $err;
                 } else {
-                    $hash = password_hash($password, PASSWORD_BCRYPT);
-                    $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'cyan', 0)");
-                    $stmt->execute([':u' => $username, ':p' => $hash]);
+                    try {
+                        $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'cyan', 0)");
+                        $stmt->execute([':u' => $username, ':p' => password_hash($password, PASSWORD_DEFAULT)]);
 
-                    if (session_status() === PHP_SESSION_NONE) {
-                        session_start();
+                        establishSession(['id' => $db->lastInsertId(), 'username' => $username, 'theme' => 'cyan', 'is_admin' => 0]);
+                        header("Location: account.php");
+                        exit();
+                    } catch (PDOException $e) {
+                        if ((string)$e->getCode() !== '23000') throw $e;
+                        $errorMessage = "Username is already taken.";
                     }
-                    $_SESSION['user_id'] = (int)$db->lastInsertId();
-                    $_SESSION['username'] = $username;
-                    $_SESSION['theme'] = 'cyan';
-                    $_SESSION['is_admin'] = 0;
-                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-                    header("Location: account.php");
-                    exit();
                 }
             } else {
-                $stmt = $db->prepare("SELECT * FROM accounts WHERE username = :u");
-                $stmt->execute([':u' => $username]);
-                $account = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($account && password_verify($password, $account['password_hash'])) {
-                    if (session_status() === PHP_SESSION_NONE) {
-                        session_start();
-                    }
-                    $_SESSION['user_id'] = (int)$account['id'];
-                    $_SESSION['username'] = $account['username'];
-                    $_SESSION['theme'] = $account['theme'] ?? 'cyan';
-                    $_SESSION['is_admin'] = (int)($account['is_admin'] ?? 0);
-                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-                    header("Location: account.php");
-                    exit();
+                if (!checkRateLimit('login_ip', 10, 300) || !checkRateLimit('login_user', 5, 300, strtolower($username))) {
+                    $errorMessage = "Too many attempts. Try again in a few minutes.";
                 } else {
+                    $stmt = $db->prepare("SELECT * FROM accounts WHERE username = :u");
+                    $stmt->execute([':u' => $username]);
+                    $account = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+                    if (verifyPasswordSafe($account, $password)) {
+                        establishSession($account);
+                        header("Location: account.php");
+                        exit();
+                    }
                     $errorMessage = "Invalid username or password.";
                 }
             }
-        } catch (Exception $e) {
-            $errorMessage = "Authentication server error: " . htmlspecialchars($e->getMessage());
+        } catch (Throwable $e) {
+            require_once __DIR__ . '/../api/debug_logger.php';
+            logSystemError('LOGIN_PAGE', $e->getMessage());
+            $errorMessage = "Authentication server error.";
         }
-    } else {
-        $errorMessage = "Please complete all fields.";
     }
 }
 ?>

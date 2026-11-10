@@ -9,6 +9,7 @@ for ($i = 0; $i < ob_get_level(); $i++) {
 }
 
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/rate_limiter.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -21,14 +22,12 @@ try {
     }
 
     if (!empty($_SESSION['user_id'])) {
-        $csrfHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-        $sessionToken = $_SESSION['csrf_token'] ?? '';
+        requireCsrf();
+    }
 
-        if (empty($sessionToken) || !hash_equals($sessionToken, $csrfHeader)) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'FORBIDDEN: Invalid CSRF token']);
-            exit();
-        }
+    $senderKey = !empty($_SESSION['user_id']) ? 'u' . $_SESSION['user_id'] : getClientIp();
+    if (empty($_SESSION['is_admin']) && !checkRateLimit('chat_send', 8, 10, $senderKey)) {
+        jsonResponse(['success' => false, 'error' => 'RATE_LIMIT: Slow down'], 429);
     }
 
     $rawInput = file_get_contents('php://input');
@@ -49,7 +48,7 @@ try {
         exit();
     }
 
-    $clientIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $clientIp = getClientIp();
     $userId = $_SESSION['user_id'] ?? null;
     $username = $_SESSION['username'] ?? 'guest';
     $isAdmin = !empty($_SESSION['is_admin']);
@@ -113,6 +112,7 @@ try {
             if ($cmd === '/timeout') {
                 $minutes = isset($parts[2]) ? (int)$parts[2] : 10;
                 if ($minutes <= 0) $minutes = 10;
+                $minutes = min($minutes, 525600);
                 $until = date('Y-m-d H:i:s', strtotime("+{$minutes} minutes"));
 
                 $stmt = $db->prepare("UPDATE accounts SET banned_until = :until WHERE username = :u AND is_admin = 0");
@@ -141,9 +141,15 @@ try {
     }
 
     // Verifica permessi canale
-    $stmt = $db->prepare("SELECT is_private FROM rooms WHERE id = :id");
+    $stmt = $db->prepare("SELECT is_private, is_hidden FROM rooms WHERE id = :id");
     $stmt->execute([':id' => $roomId]);
     $room = $stmt->fetch();
+
+    if ($room && (int)$room['is_hidden'] === 1 && !$isAdmin) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'FORBIDDEN: Restricted room']);
+        exit();
+    }
 
     $isAnnouncementRoom = ($roomId === 'announcements' || $roomId === 'news' || ($room && (int)$room['is_private'] === 1));
 
@@ -166,7 +172,5 @@ try {
     exit();
 
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'DB_ERROR: ' . $e->getMessage()]);
-    exit();
+    failInternal('UPLINK_SEND', $e, 'DB_ERROR');
 }

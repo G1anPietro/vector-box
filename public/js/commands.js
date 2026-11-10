@@ -861,7 +861,12 @@ const commandHandlers = {
         try {
             const res = await fetch('api/get_log.php');
             const data = await res.text();
-            printGuestLog(data || ">> Log file empty.", COLORS.CYAN);
+            if (!res.ok) {
+                printGuestLog(">> ACCESS DENIED: Admin privileges required.", COLORS.ERROR);
+                return;
+            }
+            // Log lines contain attacker-influenced text: always render as plain text
+            printGuestLog(data || ">> Log file empty.", COLORS.CYAN, true);
         } catch (err) {
             printGuestLog(">> ERROR: Failed to read debug log.", COLORS.ERROR);
         }

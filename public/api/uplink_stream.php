@@ -29,6 +29,7 @@ for ($i = 0; $i < ob_get_level(); $i++) {
 }
 @ob_implicit_flush(1);
 
+$isAdmin = !empty($_SESSION['is_admin']);
 $db = getDbConnection();
 $lastId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
 
@@ -50,9 +51,10 @@ while ((time() - $startTime) < $maxDuration) {
     }
 
     try {
-        $stmt = $db->prepare("SELECT id, room_id, username, message, created_at 
-                              FROM transmissions 
-                              WHERE id > :last_id AND (is_deleted = 0 OR is_deleted IS NULL) 
+        $hiddenFilter = $isAdmin ? '' : ' AND room_id NOT IN (SELECT id FROM rooms WHERE is_hidden = 1)';
+        $stmt = $db->prepare("SELECT id, room_id, username, message, created_at
+                              FROM transmissions
+                              WHERE id > :last_id AND (is_deleted = 0 OR is_deleted IS NULL)" . $hiddenFilter . "
                               ORDER BY id ASC");
         $stmt->execute([':last_id' => $lastId]);
         $messages = $stmt->fetchAll();

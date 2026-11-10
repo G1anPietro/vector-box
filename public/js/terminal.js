@@ -94,14 +94,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // High-performance DOM logger
-    const printGuestLog = (text, color = "#00ff66") => {
+    const printGuestLog = (text, color = "#00ff66", forceText = false) => {
         if (!guestTermLog) return;
 
         const p = document.createElement('p');
         p.className = 'term-white';
         p.style.cssText = `margin: 2px 0; color: ${color}; white-space: pre-wrap;`;
         
-        if (typeof text === 'string' && text.includes('<') && text.includes('>')) {
+        if (!forceText && typeof text === 'string' && text.includes('<') && text.includes('>')) {
             p.innerHTML = text;
         } else {
             p.textContent = text;

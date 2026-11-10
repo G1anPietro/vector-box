@@ -1,6 +1,7 @@
 <?php
 // public/api/books.php
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/epub_meta.php';
 
 initSession();
 header('Content-Type: application/json');
@@ -52,7 +53,8 @@ try {
 
         header("Content-Type: {$contentType}");
         header("Content-Length: " . filesize($book['file_path']));
-        header("Content-Disposition: {$disposition}; filename=\"" . basename($book['file_path']) . "\"");
+        header("Content-Disposition: {$disposition}; filename=\"" . rawurlencode(basename($book['file_path'])) . "\"");
+        header('X-Content-Type-Options: nosniff');
         readfile($book['file_path']);
         exit();
     }
@@ -81,59 +83,39 @@ try {
         $stmt->execute($params);
         $books = $stmt->fetchAll();
 
-        // Repair existing books missing covers or clean titles
+        // One-time metadata repair for old EPUBs (author/cover missing). Bounded work per request:
+        // each book is attempted once (meta_checked) and at most 3 per catalog load.
         $coverDir = dirname(__DIR__, 2) . '/data/covers/';
-        if (!file_exists($coverDir)) mkdir($coverDir, 0777, true);
+        $repairBudget = 3;
 
         foreach ($books as &$b) {
-            if (($b['author'] === 'Unknown' || empty($b['cover_path'])) && $b['format'] === 'epub' && file_exists($b['file_path'])) {
-                if (class_exists('ZipArchive')) {
-                    $zip = new ZipArchive();
-                    if ($zip->open($b['file_path']) === true) {
-                        $containerXml = $zip->getFromName('META-INF/container.xml');
-                        if ($containerXml) {
-                            $container = simplexml_load_string($containerXml);
-                            $opfPath = (string)$container->rootfiles->rootfile['full-path'];
-                            $opfContent = $zip->getFromName($opfPath);
-                            if ($opfContent) {
-                                $opf = simplexml_load_string($opfContent);
-                                $opf->registerXPathNamespace('dc', 'http://purl.org/dc/elements/1.1/');
-                                
-                                $creatorNodes = $opf->xpath('//dc:creator');
-                                $newAuthor = !empty($creatorNodes) ? (string)$creatorNodes[0] : $b['author'];
+            if ($repairBudget <= 0) break;
+            $needsRepair = (int)($b['meta_checked'] ?? 0) === 0
+                && $b['format'] === 'epub'
+                && ($b['author'] === 'Unknown' || empty($b['cover_path']))
+                && file_exists($b['file_path']);
+            if (!$needsRepair) continue;
+            $repairBudget--;
 
-                                $opfDir = dirname($opfPath);
-                                $opfDir = ($opfDir === '.') ? '' : $opfDir . '/';
-                                $metaCover = $opf->xpath('//meta[@name="cover"]/@content');
-                                $newCover = $b['cover_path'];
+            $meta = readEpubMetadata($b['file_path']);
+            $newAuthor = $meta['author'] ?? $b['author'];
+            $newCover = $b['cover_path'];
 
-                                if (!empty($metaCover)) {
-                                    $coverId = (string)$metaCover[0];
-                                    $coverHref = $opf->xpath("//item[@id='{$coverId}']/@href");
-                                    if (!empty($coverHref)) {
-                                        $coverPathInZip = $opfDir . (string)$coverHref[0];
-                                        $coverData = $zip->getFromName($coverPathInZip);
-                                        if ($coverData) {
-                                            $coverExt = pathinfo($coverPathInZip, PATHINFO_EXTENSION) ?: 'jpg';
-                                            $coverFileName = $b['id'] . '_cover.' . $coverExt;
-                                            file_put_contents($coverDir . $coverFileName, $coverData);
-                                            $newCover = '../data/covers/' . $coverFileName;
-                                        }
-                                    }
-                                }
-
-                                // Update DB entry
-                                $uStmt = $db->prepare("UPDATE books SET author = :a, cover_path = :c WHERE id = :id");
-                                $uStmt->execute([':a' => $newAuthor, ':c' => $newCover, ':id' => $b['id']]);
-                                $b['author'] = $newAuthor;
-                                $b['cover_path'] = $newCover;
-                            }
-                        }
-                        $zip->close();
-                    }
+            if ($meta['cover_data'] !== null) {
+                if (!file_exists($coverDir)) mkdir($coverDir, 0750, true);
+                $coverFileName = $b['id'] . '_cover.' . $meta['cover_ext'];
+                if (file_put_contents($coverDir . $coverFileName, $meta['cover_data']) !== false) {
+                    $newCover = '../data/covers/' . $coverFileName;
                 }
             }
+
+            $uStmt = $db->prepare("UPDATE books SET author = :a, cover_path = :c, meta_checked = 1 WHERE id = :id");
+            $uStmt->execute([':a' => $newAuthor, ':c' => $newCover, ':id' => $b['id']]);
+            $b['author'] = $newAuthor;
+            $b['cover_path'] = $newCover;
+            $b['meta_checked'] = 1;
         }
+        unset($b);
 
         echo json_encode([
             'success' => true,
@@ -146,6 +128,7 @@ try {
 
     // UPLOAD BOOK
     if ($method === 'POST') {
+        requireCsrf();
         if (!$canUpload) {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'UPLOAD_PERMISSION_DENIED']);
@@ -172,14 +155,27 @@ try {
             exit();
         }
 
+        // Verify real content, not just the extension
+        $fh = fopen($file['tmp_name'], 'rb');
+        $magic = $fh ? fread($fh, 4) : '';
+        if ($fh) fclose($fh);
+        $validMagic = ($ext === 'pdf' && strncmp($magic, '%PDF', 4) === 0)
+                   || ($ext === 'epub' && strncmp($magic, "PK\x03\x04", 4) === 0);
+        if (!$validMagic) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'INVALID_FILE_CONTENT']);
+            exit();
+        }
+
         $uploadDir = dirname(__DIR__, 2) . '/data/books/';
         $coverDir  = dirname(__DIR__, 2) . '/data/covers/';
 
-        if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
-        if (!file_exists($coverDir)) mkdir($coverDir, 0777, true);
+        if (!file_exists($uploadDir)) mkdir($uploadDir, 0750, true);
+        if (!file_exists($coverDir)) mkdir($coverDir, 0750, true);
 
         $safeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-        $targetFileName = time() . '_' . $safeName . '.' . $ext;
+        $uniquePrefix = time() . '_' . bin2hex(random_bytes(3));
+        $targetFileName = $uniquePrefix . '_' . $safeName . '.' . $ext;
         $targetPath = $uploadDir . $targetFileName;
 
         $moved = move_uploaded_file($file['tmp_name'], $targetPath);
@@ -193,49 +189,21 @@ try {
             $author = 'Unknown';
             $coverRelPath = null;
 
-            if ($ext === 'epub' && class_exists('ZipArchive')) {
-                $zip = new ZipArchive();
-                if ($zip->open($targetPath) === true) {
-                    $containerXml = $zip->getFromName('META-INF/container.xml');
-                    if ($containerXml) {
-                        $container = simplexml_load_string($containerXml);
-                        $opfPath = (string)$container->rootfiles->rootfile['full-path'];
-                        $opfContent = $zip->getFromName($opfPath);
-                        if ($opfContent) {
-                            $opf = simplexml_load_string($opfContent);
-                            $opf->registerXPathNamespace('dc', 'http://purl.org/dc/elements/1.1/');
-                            
-                            $titleNodes = $opf->xpath('//dc:title');
-                            if (!empty($titleNodes)) $title = (string)$titleNodes[0];
+            if ($ext === 'epub') {
+                $meta = readEpubMetadata($targetPath);
+                if ($meta['title'] !== null) $title = $meta['title'];
+                if ($meta['author'] !== null) $author = $meta['author'];
 
-                            $creatorNodes = $opf->xpath('//dc:creator');
-                            if (!empty($creatorNodes)) $author = (string)$creatorNodes[0];
-
-                            $opfDir = dirname($opfPath);
-                            $opfDir = ($opfDir === '.') ? '' : $opfDir . '/';
-                            $metaCover = $opf->xpath('//meta[@name="cover"]/@content');
-                            if (!empty($metaCover)) {
-                                $coverId = (string)$metaCover[0];
-                                $coverHref = $opf->xpath("//item[@id='{$coverId}']/@href");
-                                if (!empty($coverHref)) {
-                                    $coverPathInZip = $opfDir . (string)$coverHref[0];
-                                    $coverData = $zip->getFromName($coverPathInZip);
-                                    if ($coverData) {
-                                        $coverExt = pathinfo($coverPathInZip, PATHINFO_EXTENSION) ?: 'jpg';
-                                        $coverFileName = time() . '_' . $safeName . '_cover.' . $coverExt;
-                                        file_put_contents($coverDir . $coverFileName, $coverData);
-                                        $coverRelPath = '../data/covers/' . $coverFileName;
-                                    }
-                                }
-                            }
-                        }
+                if ($meta['cover_data'] !== null) {
+                    $coverFileName = $uniquePrefix . '_' . $safeName . '_cover.' . $meta['cover_ext'];
+                    if (file_put_contents($coverDir . $coverFileName, $meta['cover_data']) !== false) {
+                        $coverRelPath = '../data/covers/' . $coverFileName;
                     }
-                    $zip->close();
                 }
             }
 
-            $stmt = $db->prepare("INSERT INTO books (title, author, description, format, file_path, cover_path, file_size, uploaded_by) 
-                                  VALUES (:t, :a, '', :f, :fp, :cp, :fs, :ub)");
+            $stmt = $db->prepare("INSERT INTO books (title, author, description, format, file_path, cover_path, file_size, uploaded_by, meta_checked)
+                                  VALUES (:t, :a, '', :f, :fp, :cp, :fs, :ub, 1)");
             $stmt->execute([
                 ':t' => $title,
                 ':a' => $author,
@@ -255,6 +223,5 @@ try {
     }
 
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    failInternal('BOOKS', $e);
 }

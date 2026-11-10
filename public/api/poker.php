@@ -6,8 +6,13 @@ initSession();
 header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? $_POST['action'] ?? 'state';
+
+// Every request that mutates game state must carry the CSRF token
+if ($action !== 'state' || $_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireCsrf();
+}
 $inputTarget = trim($_REQUEST['table_id'] ?? 'general');
-$username = $_SESSION['username'] ?? ('guest_' . substr(md5(session_id()), 0, 4));
+$username = $_SESSION['username'];
 $userId = $_SESSION['user_id'] ?? null;
 
 $db = getDbConnection();
@@ -152,6 +157,27 @@ function resolveWinner($db, $tableId, $community) {
     $db->prepare("UPDATE poker_tables SET pot = 0, last_winner_msg = :m WHERE id = :tid")->execute([':m' => $msg, ':tid' => $tableId]);
 }
 
+/** Fisher-Yates with a CSPRNG (PHP's shuffle() is predictable). */
+function secureShuffle(array &$items): void {
+    for ($i = count($items) - 1; $i > 0; $i--) {
+        $j = random_int(0, $i);
+        [$items[$i], $items[$j]] = [$items[$j], $items[$i]];
+    }
+}
+
+/** Read-only check, so plain state polling doesn't need the write lock. */
+function botTurnPending($db, $tableId): bool {
+    $stmt = $db->prepare("SELECT game_stage, current_turn_seat FROM poker_tables WHERE id = :id");
+    $stmt->execute([':id' => $tableId]);
+    $table = $stmt->fetch();
+    if (!$table || in_array($table['game_stage'], ['waiting', 'showdown'], true)) return false;
+
+    $stmt = $db->prepare("SELECT is_bot, is_folded FROM poker_players WHERE table_id = :tid AND seat = :s");
+    $stmt->execute([':tid' => $tableId, ':s' => $table['current_turn_seat']]);
+    $p = $stmt->fetch();
+    return $p && (int)$p['is_bot'] === 1 && (int)$p['is_folded'] === 0;
+}
+
 function processBotTurn($db, $tableId) {
     $maxIterations = 5;
     while ($maxIterations-- > 0) {
@@ -166,9 +192,9 @@ function processBotTurn($db, $tableId) {
         $currentPlayer = $stmt->fetch();
 
         if ($currentPlayer && $currentPlayer['is_bot'] == 1 && $currentPlayer['is_folded'] == 0) {
-            $callAmount = max(0, $table['current_bet'] - $currentPlayer['current_bet']);
-            $newChips = max(0, $currentPlayer['chips'] - $callAmount);
-            
+            $callAmount = min((int)$currentPlayer['chips'], max(0, $table['current_bet'] - $currentPlayer['current_bet']));
+            $newChips = (int)$currentPlayer['chips'] - $callAmount;
+
             $updPlayer = $db->prepare("UPDATE poker_players SET chips = :c, current_bet = :b WHERE id = :id");
             $updPlayer->execute([':c' => $newChips, ':b' => $table['current_bet'], ':id' => $currentPlayer['id']]);
 
@@ -224,6 +250,20 @@ try {
 
         echo json_encode(['success' => true, 'room_id' => $newRoomId, 'room_code' => $roomCode]);
         exit();
+    }
+
+    // All mutations run in one exclusive transaction: two concurrent requests can no longer
+    // advance the same bot turn twice or double-submit a play. It is committed when the script exits.
+    if ($action !== 'state' || botTurnPending($db, $tableId)) {
+        $db->exec('BEGIN IMMEDIATE');
+        $GLOBALS['pokerTxOpen'] = true;
+        register_shutdown_function(function () use ($db) {
+            // PDO::inTransaction() does not see a raw BEGIN on SQLite, so track it ourselves
+            if (!empty($GLOBALS['pokerTxOpen'])) {
+                $GLOBALS['pokerTxOpen'] = false;
+                try { $db->exec('COMMIT'); } catch (Throwable $e) { /* nothing to commit */ }
+            }
+        });
     }
 
     processBotTurn($db, $tableId);
@@ -348,7 +388,18 @@ try {
             '2c','3c','4c','5c','6c','7c','8c','9c','10c','Jc','Qc','Kc','Ac',
             '2s','3s','4s','5s','6s','7s','8s','9s','10s','Js','Qs','Ks','As'
         ];
-        shuffle($deck);
+        secureShuffle($deck);
+
+        $stmt = $db->prepare("SELECT COUNT(*) FROM poker_players WHERE table_id = :tid AND username = :u AND is_bot = 0");
+        $stmt->execute([':tid' => $tableId, ':u' => $username]);
+        if ((int)$stmt->fetchColumn() === 0) {
+            echo json_encode(['success' => false, 'error' => 'Join the table first.']);
+            exit();
+        }
+        if (!in_array($table['game_stage'], ['waiting', 'showdown'], true)) {
+            echo json_encode(['success' => false, 'error' => 'A hand is already in progress.']);
+            exit();
+        }
 
         $stmt = $db->prepare("SELECT id, seat FROM poker_players WHERE table_id = :tid ORDER BY seat ASC");
         $stmt->execute([':tid' => $tableId]);
@@ -398,8 +449,8 @@ try {
                 $updTable = $db->prepare("UPDATE poker_tables SET pot = pot + :b, current_bet = current_bet + :b WHERE id = :tid");
                 $updTable->execute([':b' => $actualBet, ':tid' => $tableId]);
             } else {
-                $callAmount = max(0, $table['current_bet'] - $player['current_bet']);
-                $newChips = max(0, $currentPlayer['chips'] ?? $player['chips'] - $callAmount);
+                $callAmount = min((int)$player['chips'], max(0, $table['current_bet'] - $player['current_bet']));
+                $newChips = (int)$player['chips'] - $callAmount;
                 
                 $upd = $db->prepare("UPDATE poker_players SET chips = :c, current_bet = :b WHERE id = :id");
                 $upd->execute([':c' => $newChips, ':b' => $table['current_bet'], ':id' => $player['id']]);
@@ -435,6 +486,9 @@ try {
     }
 
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    if (!empty($GLOBALS['pokerTxOpen'])) {
+        $GLOBALS['pokerTxOpen'] = false;
+        try { $db->exec('ROLLBACK'); } catch (Throwable $ignored) {}
+    }
+    failInternal('POKER', $e);
 }

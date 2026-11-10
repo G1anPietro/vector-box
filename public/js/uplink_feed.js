@@ -150,7 +150,9 @@ document.addEventListener("DOMContentLoaded", () => {
         window.chatRooms.forEach(room => {
             const tabBtn = document.createElement('button');
             tabBtn.className = `chat-tab ${room.id === window.activeRoomId ? 'active' : ''}`;
-            tabBtn.innerHTML = `<span>#${room.name}</span>`;
+            const tabLabel = document.createElement('span');
+            tabLabel.textContent = `#${room.name}`;
+            tabBtn.appendChild(tabLabel);
 
             if (unreadCounts[room.id] > 0 && room.id !== window.activeRoomId) {
                 const badge = document.createElement('span');

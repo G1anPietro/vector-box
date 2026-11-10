@@ -203,7 +203,13 @@
             players.forEach(name => {
                 const li = document.createElement('li');
                 li.className = 'player-item';
-                li.innerHTML = `<span>${name}</span> <button class="btn-remove" onclick="removePlayer('${name}')">×</button>`;
+                const label = document.createElement('span');
+                label.textContent = name;
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove';
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', () => removePlayer(name));
+                li.append(label, document.createTextNode(' '), removeBtn);
                 list.appendChild(li);
             });
         }
