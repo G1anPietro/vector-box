@@ -15,7 +15,7 @@ test.before(async () => {
 test.after(() => site.stop());
 
 test('migration V3 created the guestbook table', () => {
-    assert.equal(site.db('PRAGMA user_version')[0].user_version, 3);
+    assert.ok(site.db('PRAGMA user_version')[0].user_version >= 3);
     assert.ok(site.db("SELECT name FROM sqlite_master WHERE name = 'guestbook'").length === 1);
 });
 

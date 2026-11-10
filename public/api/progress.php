@@ -18,6 +18,19 @@ $db = getDbConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
+    if ($method === 'GET' && isset($_GET['all'])) {
+        // Every book this user has opened, newest first (continue-reading shelf + card progress bars)
+        $stmt = $db->prepare("SELECT book_id, percentage, updated_at FROM reading_progress
+                              WHERE user_id = :uid ORDER BY updated_at DESC LIMIT 500");
+        $stmt->execute([':uid' => $userId]);
+        $rows = array_map(fn($r) => [
+            'book_id'    => (int)$r['book_id'],
+            'percentage' => (float)$r['percentage'],
+            'updated_at' => $r['updated_at'],
+        ], $stmt->fetchAll());
+        jsonResponse(['success' => true, 'progress' => $rows]);
+    }
+
     if ($method === 'GET') {
         $bookId = isset($_GET['book_id']) ? (int)$_GET['book_id'] : 0;
         if ($bookId <= 0) {

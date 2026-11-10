@@ -303,6 +303,15 @@ function accountRestriction(PDO $db, ?int $userId): ?string {
     return null;
 }
 
+/** Book reader permission: admins always, others need accounts.can_read_books = 1. */
+function userCanReadBooks(PDO $db, ?int $userId, bool $isAdmin): bool {
+    if ($isAdmin) return true;
+    if (!$userId) return false;
+    $stmt = $db->prepare("SELECT can_read_books FROM accounts WHERE id = :id");
+    $stmt->execute([':id' => $userId]);
+    return (int)$stmt->fetchColumn() === 1;
+}
+
 /** mbstring is optional on some hosts: fall back to byte functions. */
 function textLength(string $s): int {
     return function_exists('mb_strlen') ? mb_strlen($s) : strlen($s);

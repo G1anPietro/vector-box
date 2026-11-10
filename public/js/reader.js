@@ -33,6 +33,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let epubCurrentPage = 1;
     let currentTheme = localStorage.getItem('vector_reader_theme') || 'light';
     let progressDebounceTimer = null;
+    let currentLocation = null;   // EPUB CFI or PDF page number (string)
+    let currentPct = 0;
+    let catalogBooks = [];
+    let progressMap = new Map();  // book_id -> { percentage, updated_at }
+
+    const continueSection = document.getElementById('continue-section');
+    const continueShelf = document.getElementById('continue-shelf');
+    const addBookmarkBtn = document.getElementById('add-bookmark-btn');
+    const bookmarksToggleBtn = document.getElementById('bookmarks-toggle-btn');
+    const bookmarksPanel = document.getElementById('bookmarks-panel');
 
     const THEME_STYLES = {
         light: { bg: '#ffffff', color: '#212529' },
@@ -125,47 +135,126 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
 
             if (data.success) {
-                renderCatalog(data.books);
+                catalogBooks = data.books || [];
+                await loadProgressMap();
+                renderCatalog(catalogBooks);
+                renderContinueShelf(query ? [] : catalogBooks);
             } else {
-                catalogContainer.innerHTML = `<p style="grid-column: 1/-1; color: red;">Error: ${data.error}</p>`;
+                const p = document.createElement('p');
+                p.style.cssText = 'grid-column: 1/-1; color: red;';
+                p.textContent = `Error: ${data.error || 'unknown'}`;
+                catalogContainer.replaceChildren(p);
             }
         } catch (err) {
             catalogContainer.innerHTML = '<p style="grid-column: 1/-1; color: red;">Impossibile caricare i libri.</p>';
         }
     }
 
-    function renderCatalog(books) {
-        if (!books || books.length === 0) {
-            catalogContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">Nessun libro trovato.</p>';
-            return;
+    async function loadProgressMap() {
+        progressMap = new Map();
+        try {
+            const res = await fetch('../api/progress.php?all=1');
+            const data = await res.json();
+            if (data.success) {
+                data.progress.forEach((p) => progressMap.set(p.book_id, p));
+            }
+        } catch (err) { /* guests / offline: no progress */ }
+    }
+
+    // One card, built with DOM methods (no innerHTML / inline handlers)
+    function buildBookCard(book) {
+        const card = document.createElement('div');
+        card.className = 'book-card';
+
+        const cover = document.createElement('div');
+        cover.className = 'book-cover';
+        if (book.cover_path) {
+            const img = document.createElement('img');
+            img.src = book.cover_path;
+            img.alt = book.title || '';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+            cover.appendChild(img);
+        } else {
+            const fmt = document.createElement('span');
+            fmt.textContent = String(book.format || '').toUpperCase();
+            cover.appendChild(fmt);
         }
 
-        catalogContainer.innerHTML = '';
-        books.forEach(book => {
-            const card = document.createElement('div');
-            card.className = 'book-card';
-            card.innerHTML = `
-                <div class="book-cover">
-                    ${book.cover_path 
-                        ? `<img src="${book.cover_path}" alt="${escapeHTML(book.title)}" style="width:100%;height:100%;object-fit:cover;">` 
-                        : `<span>${escapeHTML(book.format.toUpperCase())}</span>`}
-                </div>
-                <div class="book-info">
-                    <div class="book-title" title="${escapeHTML(book.title)}">${escapeHTML(book.title)}</div>
-                    <div class="book-author">${escapeHTML(book.author || 'Autore Sconosciuto')}</div>
-                    <div class="card-footer">
-                        <span class="book-badge">${escapeHTML(book.format)}</span>
-                        <a href="../api/books.php?action=download&id=${book.id}" class="btn" style="padding:0.15rem 0.4rem; font-size:0.75rem;" onclick="event.stopPropagation();" title="Scarica">
-                            &darr;
-                        </a>
-                    </div>
-                </div>
-            `;
-            
-            card.querySelector('.book-cover').addEventListener('click', () => openBook(book));
-            card.querySelector('.book-title').addEventListener('click', () => openBook(book));
-            catalogContainer.appendChild(card);
-        });
+        const prog = progressMap.get(Number(book.id));
+        if (prog && prog.percentage > 0) {
+            const track = document.createElement('div');
+            track.title = `${Math.round(prog.percentage)}% letto`;
+            track.style.cssText = 'width:100%; height:4px; background:var(--bg-tertiary); margin-top:auto;';
+            const fill = document.createElement('div');
+            fill.style.cssText = `height:100%; width:${Math.min(100, prog.percentage)}%; background:var(--accent-color);`;
+            track.appendChild(fill);
+            cover.style.position = 'relative';
+            track.style.position = 'absolute';
+            track.style.bottom = '0';
+            track.style.left = '0';
+            cover.appendChild(track);
+        }
+
+        const info = document.createElement('div');
+        info.className = 'book-info';
+
+        const title = document.createElement('div');
+        title.className = 'book-title';
+        title.title = book.title || '';
+        title.textContent = book.title || '';
+
+        const author = document.createElement('div');
+        author.className = 'book-author';
+        author.textContent = book.author || 'Autore Sconosciuto';
+
+        const footer = document.createElement('div');
+        footer.className = 'card-footer';
+        const badge = document.createElement('span');
+        badge.className = 'book-badge';
+        badge.textContent = prog && prog.percentage > 0 ? `${book.format} \u00B7 ${Math.round(prog.percentage)}%` : book.format;
+        const dl = document.createElement('a');
+        dl.href = `../api/books.php?action=download&id=${encodeURIComponent(book.id)}`;
+        dl.className = 'btn';
+        dl.style.cssText = 'padding:0.15rem 0.4rem; font-size:0.75rem;';
+        dl.title = 'Scarica';
+        dl.textContent = '\u2193';
+        dl.addEventListener('click', (e) => e.stopPropagation());
+        footer.appendChild(badge);
+        footer.appendChild(dl);
+
+        info.appendChild(title);
+        info.appendChild(author);
+        info.appendChild(footer);
+        card.appendChild(cover);
+        card.appendChild(info);
+
+        cover.addEventListener('click', () => openBook(book));
+        title.addEventListener('click', () => openBook(book));
+        return card;
+    }
+
+    function renderCatalog(books) {
+        if (!books || books.length === 0) {
+            const p = document.createElement('p');
+            p.style.cssText = 'grid-column: 1/-1; text-align: center; color: var(--text-muted);';
+            p.textContent = 'Nessun libro trovato.';
+            catalogContainer.replaceChildren(p);
+            return;
+        }
+        catalogContainer.replaceChildren(...books.map(buildBookCard));
+    }
+
+    // Books started but not finished, most recently read first
+    function renderContinueShelf(books) {
+        if (!continueSection || !continueShelf) return;
+        const byId = new Map(books.map((b) => [Number(b.id), b]));
+        const reading = [...progressMap.values()]
+            .filter((p) => p.percentage > 0 && p.percentage < 99 && byId.has(p.book_id))
+            .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+            .slice(0, 6)
+            .map((p) => byId.get(p.book_id));
+        continueSection.style.display = reading.length ? '' : 'none';
+        continueShelf.replaceChildren(...reading.map(buildBookCard));
     }
 
     async function getCachedBookBuffer(bookId, fetchUrl) {
@@ -219,6 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         viewerModal.classList.add('active');
         applyTheme(currentTheme);
+        currentLocation = null;
+        currentPct = 0;
+        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
+        loadBookmarks();
 
         const savedProgress = await getSavedProgress(book.id);
         const fileUrl = `../api/books.php?action=stream&id=${book.id}`;
@@ -239,6 +332,120 @@ document.addEventListener('DOMContentLoaded', () => {
         epubBook = null;
         pdfDoc = null;
         currentBookId = null;
+        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
+        // Refresh progress bars / continue shelf after reading (give the debounced save time to land)
+        setTimeout(async () => {
+            await loadProgressMap();
+            renderCatalog(catalogBooks);
+            renderContinueShelf(searchInput && searchInput.value.trim() ? [] : catalogBooks);
+        }, 2500);
+    }
+
+    // ---- Bookmarks -------------------------------------------------------------
+    let bookmarks = [];
+
+    async function loadBookmarks() {
+        bookmarks = [];
+        renderBookmarks();
+        if (!currentBookId) return;
+        try {
+            const res = await fetch(`../api/bookmarks.php?book_id=${encodeURIComponent(currentBookId)}`);
+            const data = await res.json();
+            if (data.success) {
+                bookmarks = data.bookmarks;
+                renderBookmarks();
+            }
+        } catch (err) {}
+    }
+
+    function goToBookmark(bm) {
+        if (currentFormat === 'epub' && epubRendition) {
+            epubRendition.display(bm.location);
+        } else if (currentFormat === 'pdf' && pdfDoc) {
+            const page = parseInt(bm.location, 10);
+            if (page >= 1 && page <= pdfTotalPages) renderPdfPage(page);
+        }
+        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
+    }
+
+    async function deleteBookmark(id) {
+        try {
+            const res = await fetch('../api/bookmarks.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id })
+            });
+            if ((await res.json()).success) {
+                bookmarks = bookmarks.filter((b) => b.id !== id);
+                renderBookmarks();
+            }
+        } catch (err) {}
+    }
+
+    function renderBookmarks() {
+        if (bookmarksToggleBtn) bookmarksToggleBtn.textContent = `Segnalibri (${bookmarks.length}) \u25BE`;
+        if (!bookmarksPanel) return;
+        bookmarksPanel.replaceChildren();
+        if (!bookmarks.length) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'font-size:0.8rem; color:var(--text-muted); padding:0.3rem;';
+            empty.textContent = 'Nessun segnalibro. Usa "+ Segnalibro" per salvare la posizione attuale.';
+            bookmarksPanel.appendChild(empty);
+            return;
+        }
+        bookmarks.forEach((bm) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; align-items:center; gap:0.4rem; padding:0.25rem 0.3rem; border-bottom:1px solid var(--border-color); font-size:0.82rem;';
+            const go = document.createElement('button');
+            go.className = 'btn';
+            go.style.cssText = 'flex:1; text-align:left; padding:0.2rem 0.4rem; font-size:0.8rem;';
+            go.textContent = bm.label || `${Math.round(bm.percentage)}%`;
+            go.title = String(bm.created_at || '');
+            go.addEventListener('click', () => goToBookmark(bm));
+            const del = document.createElement('button');
+            del.className = 'btn';
+            del.style.cssText = 'padding:0.2rem 0.45rem; font-size:0.75rem;';
+            del.title = 'Elimina segnalibro';
+            del.textContent = '\u2715';
+            del.addEventListener('click', () => deleteBookmark(bm.id));
+            row.appendChild(go);
+            row.appendChild(del);
+            bookmarksPanel.appendChild(row);
+        });
+    }
+
+    async function addBookmark() {
+        if (!currentBookId || !currentLocation) return;
+        const label = currentFormat === 'pdf'
+            ? `Pagina ${currentLocation} (${currentPct}%)`
+            : `Pagina ${epubCurrentPage} (${currentPct}%)`;
+        try {
+            const res = await fetch('../api/bookmarks.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'add', book_id: currentBookId, location: currentLocation, label, percentage: currentPct })
+            });
+            const data = await res.json();
+            if (data.success) {
+                await loadBookmarks();
+                if (addBookmarkBtn) {
+                    addBookmarkBtn.textContent = '\u2713 Salvato';
+                    setTimeout(() => { addBookmarkBtn.textContent = '+ Segnalibro'; }, 1500);
+                }
+            } else {
+                alert(data.error || 'Impossibile salvare il segnalibro.');
+            }
+        } catch (err) {}
+    }
+
+    if (addBookmarkBtn) addBookmarkBtn.addEventListener('click', addBookmark);
+    if (bookmarksToggleBtn && bookmarksPanel) {
+        bookmarksToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            bookmarksPanel.style.display = bookmarksPanel.style.display === 'none' ? 'block' : 'none';
+        });
+        bookmarksPanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => { bookmarksPanel.style.display = 'none'; });
     }
 
     function turnPage(direction) {
@@ -332,6 +539,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 updateEpubPageNumber(cfi);
+                currentLocation = cfi;
+                currentPct = percentage;
                 saveProgress(currentBookId, cfi, percentage);
             });
 
@@ -390,6 +599,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const percentage = Math.round((pageNum / pdfTotalPages) * 100);
         pageJumpInput.value = pageNum;
 
+        currentLocation = pageNum.toString();
+        currentPct = percentage;
         saveProgress(currentBookId, pageNum.toString(), percentage);
     }
 

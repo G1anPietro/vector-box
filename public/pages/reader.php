@@ -90,6 +90,10 @@ if (!$canRead) {
         </section>
 
         <main>
+            <section id="continue-section" style="display: none; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-secondary);">Continua a leggere</h2>
+                <div id="continue-shelf" class="book-grid"></div>
+            </section>
             <h2 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-secondary);">La tua Libreria</h2>
             <div id="book-catalog" class="book-grid"></div>
         </main>
@@ -118,6 +122,12 @@ if (!$canRead) {
                         <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
                     </svg>
                     <input type="range" id="blue-light-slider" min="0" max="60" value="0" step="5" class="slider-bar">
+                </div>
+
+                <div style="position: relative; display: flex; gap: 0.35rem;">
+                    <button id="add-bookmark-btn" class="btn" title="Aggiungi segnalibro alla posizione attuale">+ Segnalibro</button>
+                    <button id="bookmarks-toggle-btn" class="btn" title="Mostra segnalibri">Segnalibri &#9662;</button>
+                    <div id="bookmarks-panel" style="display: none; position: absolute; top: 110%; right: 0; z-index: 50; min-width: 260px; max-height: 320px; overflow-y: auto; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem; box-shadow: var(--shadow-md);"></div>
                 </div>
 
                 <a id="download-book-btn" class="btn" href="#" download title="Scarica file originale">

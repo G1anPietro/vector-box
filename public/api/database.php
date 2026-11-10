@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 3;
+const DB_SCHEMA_VERSION = 4;
 
 /**
  * Session bootstrap.
@@ -190,6 +190,20 @@ function migrateV3(PDO $db): void {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_guestbook_visible ON guestbook(is_deleted, id)");
 }
 
+function migrateV4(PDO $db): void {
+    // Per-user reader bookmarks (EPUB CFI or PDF page number in `location`)
+    $db->exec("CREATE TABLE IF NOT EXISTS bookmarks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        book_id INTEGER NOT NULL,
+        location TEXT NOT NULL,
+        label VARCHAR(100) NOT NULL DEFAULT '',
+        percentage REAL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_bookmarks_user_book ON bookmarks(user_id, book_id)");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -203,6 +217,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 3) {
             migrateV3($db);
+        }
+        if ($current < 4) {
+            migrateV4($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
