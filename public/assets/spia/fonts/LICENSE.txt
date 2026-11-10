@@ -1,0 +1,3 @@
+Courier Prime (Alan Dague-Greene / Quote-Unquote Apps) and Big Shoulders Stencil (Patric King / Chicago Design System)
+are licensed under the SIL Open Font License 1.1: https://openfontlicense.org
+Latin subsets downloaded from Google Fonts.

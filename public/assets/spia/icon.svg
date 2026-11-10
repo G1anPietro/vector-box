@@ -1,36 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3b1a6b"/>
-      <stop offset="1" stop-color="#0f0c1b"/>
-    </linearGradient>
-    <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#5dfbe6"/>
-      <stop offset="1" stop-color="#00b39b"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.5">
-      <stop offset="0" stop-color="#9d4edd" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#9d4edd" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <circle cx="256" cy="230" r="210" fill="url(#glow)"/>
+  <rect width="512" height="512" rx="104" fill="#18213b"/>
   <!-- coat collar -->
-  <path d="M96 512 L178 352 L256 430 L334 352 L416 512 Z" fill="#7b2cbf"/>
-  <path d="M178 352 L256 430 L214 512 L150 512 Z" fill="#5a1f93"/>
-  <path d="M334 352 L256 430 L298 512 L362 512 Z" fill="#5a1f93"/>
-  <!-- face shadow -->
-  <path d="M176 262 Q176 360 256 384 Q336 360 336 262 Z" fill="#120e24"/>
-  <!-- hat crown -->
-  <path d="M150 238 C150 150 186 104 256 104 C326 104 362 150 362 238 Z" fill="#120e24"/>
-  <!-- hat band -->
-  <path d="M152 206 H360 V238 H152 Z" fill="#00f5d4"/>
-  <!-- brim -->
-  <ellipse cx="256" cy="244" rx="168" ry="30" fill="#1d1733"/>
-  <!-- glasses -->
-  <rect x="168" y="276" width="78" height="44" rx="16" fill="url(#lens)"/>
-  <rect x="266" y="276" width="78" height="44" rx="16" fill="url(#lens)"/>
-  <path d="M246 292 H266" stroke="#00f5d4" stroke-width="8" stroke-linecap="round"/>
-  <path d="M182 290 L204 290" stroke="#ffffff" stroke-opacity="0.8" stroke-width="7" stroke-linecap="round"/>
-  <path d="M280 290 L302 290" stroke="#ffffff" stroke-opacity="0.8" stroke-width="7" stroke-linecap="round"/>
+  <path d="M96 512 L178 352 L256 430 L334 352 L416 512 Z" fill="#e8d5a3"/>
+  <path d="M178 352 L256 430 L214 512 L150 512 Z" fill="#c9b27a"/>
+  <path d="M334 352 L256 430 L298 512 L362 512 Z" fill="#c9b27a"/>
+  <!-- face in shadow -->
+  <path d="M176 262 Q176 360 256 384 Q336 360 336 262 Z" fill="#0e1428"/>
+  <!-- hat -->
+  <path d="M150 238 C150 150 186 104 256 104 C326 104 362 150 362 238 Z" fill="#e8d5a3"/>
+  <path d="M152 204 H360 V238 H152 Z" fill="#b8322a"/>
+  <ellipse cx="256" cy="244" rx="168" ry="30" fill="#c9b27a"/>
+  <!-- dark glasses -->
+  <rect x="168" y="278" width="78" height="42" rx="12" fill="#1f2433" stroke="#e8d5a3" stroke-width="6"/>
+  <rect x="266" y="278" width="78" height="42" rx="12" fill="#1f2433" stroke="#e8d5a3" stroke-width="6"/>
+  <path d="M246 294 H266" stroke="#e8d5a3" stroke-width="6" stroke-linecap="round"/>
+  <path d="M184 292 L204 292" stroke="#f3e9cc" stroke-opacity="0.85" stroke-width="6" stroke-linecap="round"/>
+  <path d="M282 292 L302 292" stroke="#f3e9cc" stroke-opacity="0.85" stroke-width="6" stroke-linecap="round"/>
 </svg>

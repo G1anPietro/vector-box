@@ -416,9 +416,8 @@
         const prefill = new URLSearchParams(location.search).get('room') || '';
         return h('div', { class: 'lobby' },
             h('div', { class: 'hero' },
-                h('img', { src: '../assets/spia/icon.svg', alt: '', class: 'hero-icon', draggable: 'false' }),
-                h('h1', null, t('title')),
-                h('p', { class: 'muted' }, t('tagline'))),
+                h('h1', { class: 'stencil' }, t('title')),
+                h('p', null, t('tagline'))),
             h('button', { class: 'btn primary big', onclick: createRoom }, t('create_room')),
             h('form', {
                 class: 'join', onsubmit: (e) => { e.preventDefault(); joinRoom(document.getElementById('join-code').value); },
@@ -451,7 +450,7 @@
 
         if (mode === 'online') parts.push(section(t('players_count', { n: s.players.length }), phonesList()));
         if (s.settings.scores && s.players.length) parts.push(section(t('scores'), scoreList()));
-        parts.push(section(t('settings'), settingsSummary(),
+        parts.push(plainSection(t('settings'), settingsSummary(),
             h('button', { class: 'btn ghost', onclick: () => openSheet('settings') }, host ? t('edit_settings') : t('view_settings'))));
 
         const enough = s.players.length >= 3;
@@ -465,6 +464,9 @@
 
     function section(title, ...body) {
         return h('section', { class: 'panel' }, h('h2', null, title), body);
+    }
+    function plainSection(title, ...body) {
+        return h('section', { class: 'plain' }, h('h2', null, title), body);
     }
 
     function offlineBanner() {
@@ -563,7 +565,7 @@
                 h('span', { class: 'role' }, spy ? t('spy') : roleName(res.location_id, res.roles[id], custom)));
         });
         return h('section', { class: 'panel result ' + res.winner },
-            h('div', { class: 'result-title' }, win),
+            h('div', { class: 'stamp result-stamp' }, win),
             h('div', { class: 'muted' }, t('reason_' + res.reason, {
                 name: res.out ? pname(res.out) : (res.guesser ? pname(res.guesser) : ''),
             })),
@@ -619,11 +621,11 @@
     function holdCard(card, onReleased) {
         const el = h('div', { class: 'card', tabindex: '0', role: 'button', 'aria-label': t('hold_to_reveal') },
             h('div', { class: 'card-inner' },
+                cardBack(card),
                 h('div', { class: 'card-face card-front' },
+                    h('div', { class: 'card-name' }, pname(card.player_id)),
                     svg(ICON_FP),
-                    h('div', { class: 'card-hint' }, t('hold_to_reveal')),
-                    h('div', { class: 'card-name' }, pname(card.player_id))),
-                cardBack(card)));
+                    h('div', { class: 'card-hint' }, t('hold_to_reveal')))));
         const show = (e) => {
             if (e.cancelable) e.preventDefault();
             if (el.classList.contains('revealed')) return;
@@ -653,7 +655,7 @@
         if (card.spy) {
             return h('div', { class: 'card-face card-back spy', dataset: { player: card.player_id } },
                 h('div', { class: 'card-label' }, pname(card.player_id)),
-                h('div', { class: 'spy-title' }, t('you_are_spy')),
+                h('div', { class: 'stamp' }, t('you_are_spy')),
                 card.hint ? h('div', { class: 'card-sub' }, t('hint_is', { cat: catName(card.hint) })) : null,
                 h('p', { class: 'card-text' }, t('spy_goal')));
         }
@@ -700,7 +702,7 @@
             });
         }
 
-        const head = h('section', { class: 'panel round-head' },
+        const head = h('section', { class: 'round-head' },
             h('div', { class: 'round-line' },
                 h('strong', null, t('round_n', { n: r.number })),
                 h('span', { class: 'chip soft' }, t('spies_n', { n: r.spy_count === null ? '?' : r.spy_count }))),
@@ -712,7 +714,7 @@
 
         if (r.vote.open) {
             const voted = r.vote.voted.filter((id) => al.includes(id)).length;
-            parts.push(h('section', { class: 'panel vote-status' },
+            parts.push(h('section', { class: 'vote-status' },
                 h('strong', null, r.vote.forced ? t('final_vote') : t('vote_running')),
                 h('div', { class: 'muted' }, t('voted_n', { n: voted, total: al.length })),
                 state.is_host ? h('button', {
@@ -728,7 +730,7 @@
         }))));
 
         const events = r.log.slice().reverse().map(logLine).filter(Boolean).slice(0, 6);
-        if (events.length) parts.push(section(t('what_happened'), h('ul', { class: 'log' }, events.map((e) => h('li', null, e)))));
+        if (events.length) parts.push(plainSection(t('what_happened'), h('ul', { class: 'log' }, events.map((e) => h('li', null, e)))));
 
         const buttons = [];
         buttons.push(h('button', { class: 'btn big', onclick: () => { ui.flow = { kind: 'review', pid: null }; scheduleRender(); } }, t('see_role_again')));
