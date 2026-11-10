@@ -50,6 +50,7 @@ if (file_exists('version.php')) {
                 <a href="pages/resume.php" class="menu-item btn-dossier">// VIEW DOSSIER</a>
                 <a href="pages/ads.php" class="menu-item btn-adwall">// AD WALL</a>
                 <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
+                <a href="pages/lupus.html" class="menu-item">// LUPUS</a>
                 <a href="pages/hack.php" class="menu-item">// NODE BREACH</a>
                 <a href="pages/vault.php" class="menu-item">// ARG VAULT</a>
                 

@@ -5,6 +5,12 @@
 (() => {
     'use strict';
     const API = '../api/spia.php';
+    // The same app runs both games: <html data-game="lupus"> on pages/lupus.html
+    const GAME = document.documentElement.dataset.game === 'lupus' ? 'lupus' : 'spia';
+    const K = (k) => `${GAME}_${k}`; // per-game storage keys (spia_token, lupus_token, ...)
+    const PAGES = { spia: 'spia.html', lupus: 'lupus.html' };
+    const MIN_PLAYERS = GAME === 'lupus' ? 4 : 3;
+    let LG = null; // Lupus screens (js/lupus/game.js), set up in boot()
     const POLL_MS = 2000;
     const POLL_HIDDEN_MS = 8000;
     const LANGS = { it: 'Italiano', en: 'English', es: 'Español', fr: 'Français', de: 'Deutsch' };
@@ -21,10 +27,10 @@
 
     let LOC = { categories: [], locations: [] };
     const locById = {};
-    let mode = store.get('spia_mode');            // 'online' | 'local' | null (lobby)
-    let token = store.get('spia_token');
-    let state = mode === 'online' ? store.get('spia_state') : null;
-    let pending = store.get('spia_pending', []);  // 'seen' actions made while offline
+    let mode = store.get(K('mode'));              // 'online' | 'local' | null (lobby)
+    let token = store.get(K('token'));
+    let state = mode === 'online' ? store.get(K('state')) : null;
+    let pending = store.get(K('pending'), []);    // 'seen' actions made while offline
     let netOk = true;
     let serverOffset = 0;
     let pollTimer = null;
@@ -203,7 +209,7 @@
         // Cards marked seen while offline stay seen until the server confirms
         if (pending.length && s.cards) s.cards.forEach((c) => { if (isPending(c.player_id)) c.seen = true; });
         state = s;
-        if (mode === 'online') store.set('spia_state', s);
+        if (mode === 'online') store.set(K('state'), s);
         if (ui.draft && JSON.stringify(ui.draft) === JSON.stringify(s.settings)) ui.draft = null;
         scheduleRender();
     }
@@ -213,7 +219,7 @@
             const p = pending[0];
             try { await api('POST', { action: 'seen', player_id: p.player_id }); } catch (e) { if (e.code === 'offline') return; }
             pending.shift();
-            store.set('spia_pending', pending);
+            store.set(K('pending'), pending);
         }
     }
 
@@ -239,17 +245,17 @@
     function enterOnline(tok) {
         token = tok;
         mode = 'online';
-        store.set('spia_token', tok);
-        store.set('spia_mode', 'online');
+        store.set(K('token'), tok);
+        store.set(K('mode'), 'online');
         pending = [];
-        store.set('spia_pending', pending);
+        store.set(K('pending'), pending);
         resetFlow();
         poll();
     }
 
     function enterLocal(names = [], settings = null) {
         mode = 'local';
-        store.set('spia_mode', 'local');
+        store.set(K('mode'), 'local');
         state = Local.create(settings || {}, names);
         resetFlow();
         poll();
@@ -260,7 +266,7 @@
         token = null;
         state = null;
         pending = [];
-        ['spia_mode', 'spia_token', 'spia_state', 'spia_pending'].forEach((k) => store.set(k, null));
+        ['mode', 'token', 'state', 'pending'].forEach((k) => store.set(K(k), null));
         resetFlow();
         ui.sheet = null;
         clearTimeout(pollTimer);
@@ -273,10 +279,10 @@
 
     async function createRoom() {
         try {
-            const r = await api('POST', { action: 'create', players: [] });
+            const r = await api('POST', { action: 'create', game: GAME, players: [] });
             enterOnline(r.token);
         } catch (e) {
-            if (e.code === 'offline') askConfirm(t('offline_create'), t('play_offline'), () => enterLocal());
+            if (e.code === 'offline' && GAME === 'spia') askConfirm(t('offline_create'), t('play_offline'), () => enterLocal());
             else toast(errText(e.code), 'bad');
         }
     }
@@ -286,6 +292,12 @@
         if (code.length !== 4) { toast(t('err_room_not_found'), 'bad'); return; }
         try {
             const r = await api('POST', { action: 'join', code });
+            if (r.game && r.game !== GAME && PAGES[r.game]) {
+                store.set(`${r.game}_token`, r.token);
+                store.set(`${r.game}_mode`, 'online');
+                location.href = PAGES[r.game];
+                return;
+            }
             enterOnline(r.token);
         } catch (e) {
             toast(errText(e.code), 'bad');
@@ -296,7 +308,7 @@
         if (!state || !state.code) return;
         const url = `${location.origin}${location.pathname}?room=${state.code}`;
         try {
-            if (navigator.share) { await navigator.share({ title: t('title'), text: t('share_text', { code: state.code }), url }); return; }
+            if (navigator.share) { await navigator.share({ title: gameTitle(), text: t('share_text', { code: state.code }), url }); return; }
             await navigator.clipboard.writeText(url);
             toast(t('link_copied'));
         } catch (e) { /* user cancelled */ }
@@ -318,7 +330,8 @@
     const vibrate = (ms) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* unsupported */ } };
 
     async function keepAwake() {
-        const want = !!(mode && state && state.round && state.round.status === 'play' && !document.hidden);
+        const playing = (state && state.round && state.round.status === 'play') || (state && state.lupus && state.lupus.status === 'play');
+        const want = !!(mode && playing && !document.hidden);
         try {
             if (want && !wakeLock && navigator.wakeLock) {
                 wakeLock = await navigator.wakeLock.request('screen');
@@ -380,8 +393,8 @@
         if (mode === 'online' && !netOk) chips.push(h('span', { class: 'chip warn' }, t('offline')));
         return h('header', { class: 'topbar' },
             h('div', { class: 'brand', id: 'spia-title' },
-                h('img', { src: '../assets/spia/icon.svg', alt: '', class: 'brand-icon', draggable: 'false' }),
-                h('span', null, t('title'))),
+                h('img', { src: `../assets/${GAME}/icon.svg`, alt: '', class: 'brand-icon', draggable: 'false' }),
+                h('span', null, gameTitle())),
             h('div', { class: 'top-chips' }, chips),
             h('button', { class: 'icon-btn', onclick: () => openSheet('lang'), 'aria-label': t('language') }, lang.toUpperCase()),
             h('button', { class: 'icon-btn', onclick: () => openSheet('help'), 'aria-label': t('help') }, '?'),
@@ -396,9 +409,12 @@
     function closeSheet() { ui.sheet = null; scheduleRender(); }
 
     // ---------- main views ----------
+    function gameTitle() { return GAME === 'lupus' ? t('lw_title') : t('title'); }
+
     function mainView() {
         if (!mode) return lobbyView();
         if (!state) return h('div', { class: 'center muted' }, t('loading'));
+        if (GAME === 'lupus') return state.lupus && state.lupus.status === 'play' ? LG.playView() : roomView();
         const r = state.round;
         if (r && r.status === 'play') {
             const next = nextReveal();
@@ -416,8 +432,8 @@
         const prefill = new URLSearchParams(location.search).get('room') || '';
         return h('div', { class: 'lobby' },
             h('div', { class: 'hero' },
-                h('h1', { class: 'stencil' }, t('title')),
-                h('p', null, t('tagline'))),
+                h('h1', { class: 'stencil' }, gameTitle()),
+                h('p', null, GAME === 'lupus' ? t('lw_tagline') : t('tagline'))),
             h('button', { class: 'btn primary big', onclick: createRoom }, t('create_room')),
             h('form', {
                 class: 'join', onsubmit: (e) => { e.preventDefault(); joinRoom(document.getElementById('join-code').value); },
@@ -428,9 +444,11 @@
                 oninput: (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); },
             }),
             h('button', { class: 'btn', type: 'submit' }, t('join'))),
-            h('div', { class: 'divider' }, h('span', null, t('or'))),
-            h('button', { class: 'btn ghost big', onclick: () => enterLocal() }, t('play_offline')),
-            h('p', { class: 'muted small center' }, t('offline_note')),
+            GAME === 'spia' ? [
+                h('div', { class: 'divider' }, h('span', null, t('or'))),
+                h('button', { class: 'btn ghost big', onclick: () => enterLocal() }, t('play_offline')),
+                h('p', { class: 'muted small center' }, t('offline_note')),
+            ] : h('p', { class: 'muted small center' }, t('lw_one_phone_note')),
             h('div', { class: 'lobby-links' },
                 h('button', { class: 'link', onclick: () => { ui.introStep = 0; openSheet('intro'); } }, t('how_to_play')),
                 h('a', { class: 'link', href: '../index.php' }, t('back_to_site'))));
@@ -444,22 +462,24 @@
         const parts = [];
 
         if (mode === 'online' && !netOk) parts.push(offlineBanner());
-        if (r && r.status === 'ended' && r.result) parts.push(resultCard(r));
+        if (GAME === 'spia' && r && r.status === 'ended' && r.result) parts.push(resultCard(r));
+        if (GAME === 'lupus' && s.lupus && s.lupus.status === 'ended') parts.push(LG.resultCard());
 
         parts.push(section(t('on_this_phone'), myPlayersEditor()));
 
         if (mode === 'online') parts.push(section(t('players_count', { n: s.players.length }), phonesList()));
         if (s.settings.scores && s.players.length) parts.push(section(t('scores'), scoreList()));
-        parts.push(plainSection(t('settings'), settingsSummary(),
+        parts.push(plainSection(t('settings'), GAME === 'lupus' ? LG.summary() : settingsSummary(),
             h('button', { class: 'btn ghost', onclick: () => openSheet('settings') }, host ? t('edit_settings') : t('view_settings'))));
 
-        const enough = s.players.length >= 3;
+        const enough = s.players.length >= MIN_PLAYERS;
+        const again = GAME === 'lupus' ? !!s.lupus : !!(r && r.status === 'ended');
         const bottom = host
             ? h('button', { class: 'btn primary big', disabled: !enough, onclick: () => { resetFlow(); run('start'); } },
-                r && r.status === 'ended' ? t('new_round') : t('start_round'))
+                GAME === 'lupus' ? (again ? t('lw_new_match') : t('lw_start')) : (again ? t('new_round') : t('start_round')))
             : h('div', { class: 'waiting' }, t('waiting_host'));
         return [h('div', { class: 'stack' }, parts),
-            h('div', { class: 'bottom-bar' }, !enough ? h('div', { class: 'muted small center' }, t('need_three')) : null, bottom)];
+            h('div', { class: 'bottom-bar' }, !enough ? h('div', { class: 'muted small center' }, GAME === 'lupus' ? t('lw_need_four') : t('need_three')) : null, bottom)];
     }
 
     function section(title, ...body) {
@@ -470,6 +490,7 @@
     }
 
     function offlineBanner() {
+        if (GAME === 'lupus') return h('div', { class: 'banner warn' }, h('div', null, t('connection_lost')));
         return h('div', { class: 'banner warn' },
             h('div', null, t('connection_lost')),
             h('button', {
@@ -599,7 +620,7 @@
             ui.heldOnce = null;
             if (mode === 'online' && !netOk) {
                 pending.push({ player_id: pid });
-                store.set('spia_pending', pending);
+                store.set(K('pending'), pending);
                 card.seen = true;
                 scheduleRender(true);
                 return;
@@ -607,7 +628,7 @@
             try {
                 await act('seen', { player_id: pid });
             } catch (e) {
-                if (e.code === 'offline') { pending.push({ player_id: pid }); store.set('spia_pending', pending); card.seen = true; }
+                if (e.code === 'offline') { pending.push({ player_id: pid }); store.set(K('pending'), pending); card.seen = true; }
                 scheduleRender(true);
             }
         };
@@ -619,7 +640,8 @@
             h('div', { class: 'bottom-bar' }, btn));
     }
 
-    function holdCard(card, onReleased) {
+    /** The folder you hold to read what's inside. `back` replaces the spy-game sheet (used by Lupus). */
+    function holdCard(card, onReleased, back = null) {
         const el = h('div', { class: 'card', tabindex: '0', role: 'button', 'aria-label': t('hold_to_reveal') },
             h('div', { class: 'card-inner' },
                 cardBack(card),
@@ -627,6 +649,7 @@
                     h('div', { class: 'card-name' }, pname(card.player_id)),
                     svg(ICON_FP),
                     h('div', { class: 'card-hint' }, t('hold_to_reveal')))));
+        if (back) el.querySelector('.card-inner').replaceChild(back, el.querySelector('.card-back'));
         const show = (e) => {
             if (e.cancelable) e.preventDefault();
             if (el.classList.contains('revealed')) return;
@@ -913,7 +936,9 @@
     }
 
     function helpSheet() {
-        const topics = ['basics', 'spies', 'vote', 'guess', 'phones', 'shared', 'offline', 'scores', 'settings'];
+        const topics = GAME === 'lupus'
+            ? ['lw_basics', 'lw_roles', 'lw_night', 'lw_day', 'lw_win', 'phones', 'shared', 'lw_settings']
+            : ['basics', 'spies', 'vote', 'guess', 'phones', 'shared', 'offline', 'scores', 'settings'];
         return [
             h('div', { class: 'accordion' }, topics.map((k, i) => {
                 const open = ui.helpOpen === i;
@@ -930,11 +955,12 @@
         const steps = [1, 2, 3];
         const i = Math.min(ui.introStep, steps.length - 1);
         const last = i === steps.length - 1;
-        const finish = () => { store.set('spia_intro_done', true); closeSheet(); };
+        const finish = () => { store.set(K('intro_done'), true); closeSheet(); };
+        const pre = GAME === 'lupus' ? 'intro_lw_' : 'intro_';
         return h('div', { class: 'intro' },
             h('div', { class: 'intro-num' }, `${i + 1} / ${steps.length}`),
-            h('h3', null, t(`intro_${steps[i]}_t`)),
-            h('p', null, t(`intro_${steps[i]}`)),
+            h('h3', null, t(`${pre}${steps[i]}_t`)),
+            h('p', null, t(`${pre}${steps[i]}`)),
             h('div', { class: 'dots' }, steps.map((_, k) => h('span', { class: 'dot ' + (k === i ? 'on' : 'off') }))),
             h('div', { class: 'row2' },
                 h('button', { class: 'btn ghost', onclick: finish }, t('skip')),
@@ -968,6 +994,14 @@
             h('button', { class: 'step', disabled: !host || s[key] <= min, onclick: () => set({ [key]: Math.max(min, s[key] - 1) }), 'aria-label': '−' }, '−'),
             h('span', { class: 'step-val' }, String(s[key])),
             h('button', { class: 'step', disabled: !host || s[key] >= max, onclick: () => set({ [key]: Math.min(max, s[key] + 1) }), 'aria-label': '+' }, '+'));
+
+        if (GAME === 'lupus') {
+            return [
+                !host ? h('p', { class: 'banner' }, t('only_host_settings')) : null,
+                ...LG.settings(s, { set, toggle, stepper, host }),
+                state && state.lupus && state.lupus.status === 'play' ? h('p', { class: 'muted small' }, t('lw_settings_next_match')) : null,
+            ];
+        }
 
         const spyBlock = h('div', { class: 'set-row' },
             h('div', { class: 'set-text' }, h('span', { class: 'set-title' }, t('set_spies')), h('span', { class: 'set-desc' }, t('set_spies_d'))),
@@ -1047,9 +1081,10 @@
         LOC.locations.forEach((l) => { locById[l.id] = l; });
         Local.setData(LOC);
 
-        if (mode === 'local' && !Local.active()) mode = null;
+        if (mode === 'local' && (GAME !== 'spia' || !Local.active())) mode = null;
         if (mode === 'online' && !token) mode = null;
-        if (!store.get('spia_intro_done')) ui.sheet = 'intro';
+        if (!store.get(K('intro_done'))) ui.sheet = 'intro';
+        if (GAME === 'lupus') LG = window.LupusGame.init(core());
 
         scheduleRender(true);
         const session = await loadSession();
@@ -1065,6 +1100,17 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden && mode) poll(); keepAwake(); });
     window.addEventListener('online', () => { if (mode) poll(); });
     setInterval(updateTimers, 1000);
+
+    /** Shared building blocks for the Lupus screens (js/lupus/game.js). */
+    function core() {
+        return {
+            h, t, ui, run, act, toast, askConfirm, vibrate, svg,
+            scheduleRender, passView, holdCard, section, plainSection, pname, playerById, myPlayers, openSheet,
+            get state() { return state; },
+            get netOk() { return netOk; },
+            get mode() { return mode; },
+        };
+    }
 
     // Small read-only surface for optional extensions
     window.SpiaApp = {
