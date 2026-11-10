@@ -653,6 +653,7 @@ h2 { font-size: 17px; font-weight: 700; }
 /* settings: a paper form with tick boxes */
 .set-row { padding: 14px 0; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--rule); }
 .set-row:first-child { padding-top: 2px; }
+.set-group { font: 800 22px/1 var(--stencil); margin-top: 18px; padding-bottom: 4px; border-bottom: 1.5px solid var(--ink); }
 .set-main { display: flex; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer; }
 .set-main.sub { padding-top: 10px; border-top: 1px dotted var(--ink-soft); }
 .set-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }

@@ -22,7 +22,7 @@ window.LupusGame = (() => {
         const g = G();
         const key = `${g.match}-${g.day}-${g.phase}-${g.vote.open ? 'v' : ''}`;
         if (!C.ui.lw || C.ui.lw.key !== key) {
-            C.ui.lw = { key, pick: null, heal: false, kill: NOBODY, seerShow: C.ui.lw && C.ui.lw.seerShow, review: null };
+            C.ui.lw = { key, pick: null, pick2: NOBODY, picks: [], heal: false, kill: NOBODY, judge: false, seerShow: C.ui.lw && C.ui.lw.seerShow, review: null };
             if (g.phase !== 'night') C.ui.lw.seerShow = null;
         }
         return C.ui.lw;
@@ -43,7 +43,7 @@ window.LupusGame = (() => {
 
     function pickList(options, selected, onPick) {
         return h('div', { class: 'pick-list' }, options.map((o) => h('button', {
-            class: 'btn big pick' + (selected === o.id ? ' selected' : '') + (o.id === NOBODY ? ' nospy' : ''),
+            class: 'btn big pick' + ((Array.isArray(selected) ? selected.includes(o.id) : selected === o.id) ? ' selected' : '') + (o.id === NOBODY ? ' nospy' : ''),
             disabled: !!o.disabled,
             onclick: () => onPick(o.id),
         }, o.label)));
@@ -58,15 +58,19 @@ window.LupusGame = (() => {
 
     // ---------- the role card ----------
     function roleBack(m) {
-        const wolf = m.role === 'wolf';
+        const wolf = m.role === 'wolf' || m.role === 'white_wolf';
+        const masons = (m.masons || []).filter((id) => id !== m.player_id);
         const mates = (m.pack || []).filter((id) => id !== m.player_id);
         return h('div', { class: 'card-face card-back' + (wolf ? ' spy' : ''), dataset: { player: m.player_id } },
             h('div', { class: 'card-label' }, C.pname(m.player_id)),
             h('div', { class: 'card-sub' }, t('lw_your_role')),
-            wolf ? h('div', { class: 'stamp' }, roleName('wolf')) : h('div', { class: 'card-loc' }, roleName(m.role)),
+            wolf ? h('div', { class: 'stamp' }, roleName(m.role)) : h('div', { class: 'card-loc' }, roleName(m.role)),
             h('p', { class: 'card-text' }, t('lw_desc_' + m.role)),
             wolf && mates.length ? h('p', { class: 'card-text' }, t('lw_pack', { names: names(mates) })) : null,
             m.fished ? h('p', { class: 'card-text' }, t('lw_fished_note', { name: C.pname(m.fished.p) })) : null,
+            masons.length ? h('p', { class: 'card-text' }, t('lw_masons', { names: names(masons) })) : null,
+            m.lover ? h('p', { class: 'card-text' }, t('lw_lover', { name: C.pname(m.lover) })) : null,
+            m.power_lost ? h('p', { class: 'card-text' }, t('lw_power_lost')) : null,
             !m.alive ? h('p', { class: 'card-text' }, t('lw_you_are_dead')) : null);
     }
 
@@ -119,8 +123,10 @@ window.LupusGame = (() => {
 
     function nightWait(msg) {
         const g = G();
-        const line = lastLynchLine();
-        return waitView(t('lw_night_n', { n: g.day }), msg, line ? h('div', { class: 'banner' }, line) : null);
+        const lines = [lastLynchLine()];
+        if (g.log.some((e) => e.t === 'powers_lost' && e.day === g.day - 1)) lines.push(t('lw_powers_lost_line'));
+        const shown = lines.filter(Boolean);
+        return waitView(t('lw_night_n', { n: g.day }), msg, shown.length ? h('div', { class: 'banner' }, shown.join(' ')) : null);
     }
 
     function nightActView(m) {
@@ -131,34 +137,68 @@ window.LupusGame = (() => {
             const others = g.alive.filter((id) => id !== pid);
             const opt = (id) => ({ id, label: C.pname(id) });
             let title, options, note = null;
-            if (m.role === 'wolf') {
+            let extra = null;          // second list: the white killer's optional extra kill
+            let multi = false;         // cupid picks two names
+            const role = m.power_lost ? 'villager' : m.role;
+            const dummy = () => {
+                title = t('lw_night_dummy');
+                options = [...others.map(opt), { id: NOBODY, label: t('lw_nobody') }];
+            };
+            if (role === 'wolf' || role === 'white_wolf') {
                 title = t('lw_night_wolf');
-                const pack = m.pack || [];
+                const pack = m.pack || [pid];
                 options = others.filter((id) => !pack.includes(id)).map(opt);
                 const votes = Object.entries(m.pack_votes || {}).filter(([w]) => +w !== pid);
                 if (votes.length) note = votes.map(([w, v]) => t('lw_pack_vote', { wolf: C.pname(+w), name: C.pname(+v) })).join(' ');
-            } else if (m.role === 'seer') {
+                if (role === 'white_wolf' && m.white_night) {
+                    const mates = pack.filter((id) => id !== pid && isAlive(id));
+                    if (mates.length) {
+                        extra = h('div', { class: 'stack' },
+                            h('h2', { class: 'center' }, t('lw_white_extra')),
+                            pickList([...mates.map(opt), { id: NOBODY, label: t('lw_nobody') }], s.pick2, (id) => { s.pick2 = id; C.scheduleRender(); }));
+                    }
+                }
+            } else if (role === 'seer') {
                 title = t('lw_night_seer');
                 options = others.map(opt);
-            } else if (m.role === 'fisher' && (m.fish_candidates || []).length) {
+            } else if (role === 'guard' || role === 'whore') {
+                title = role === 'guard' ? t('lw_night_guard') : t('lw_night_whore');
+                options = g.alive.map((id) => ({ id, label: C.pname(id), disabled: id === m.guard_last }));
+                if (m.guard_last) note = t('lw_guard_note', { name: C.pname(m.guard_last) });
+            } else if (role === 'fisher' && (m.fish_candidates || []).length) {
                 title = t('lw_night_fisher');
                 options = m.fish_candidates.map((c) => ({ id: c.p, label: c.role ? `${C.pname(c.p)} (${roleName(c.role)})` : C.pname(c.p) }));
                 note = t('lw_fish_note');
-            } else if (m.role === 'guard') {
-                title = t('lw_night_guard');
-                options = g.alive.map((id) => ({ id, label: C.pname(id), disabled: id === m.guard_last }));
-                if (m.guard_last) note = t('lw_guard_note', { name: C.pname(m.guard_last) });
-            } else {
-                // villager, witch (her move comes later), hunter: a question that changes nothing
-                title = t('lw_night_dummy');
+            } else if (role === 'cupid' && m.cupid_turn) {
+                title = t('lw_night_cupid');
+                options = g.alive.map(opt);
+                multi = true;
+            } else if (role === 'crow') {
+                title = t('lw_night_crow');
                 options = [...others.map(opt), { id: NOBODY, label: t('lw_nobody') }];
+            } else {
+                // everyone else answers a question that changes nothing; the medium also learns something
+                dummy();
+                if (role === 'medium' && m.medium_info) {
+                    note = t('lw_medium_info', { name: C.pname(m.medium_info.p), role: roleName(m.medium_info.role) });
+                }
             }
+            if (m.power_lost) note = t('lw_power_lost');
+            const ready = multi ? s.picks.length === 2 : s.pick !== null;
+            const choose = (id) => {
+                if (multi) {
+                    s.picks = s.picks.includes(id) ? s.picks.filter((x) => x !== id) : [...s.picks, id].slice(-2);
+                } else s.pick = id;
+                C.scheduleRender();
+            };
             const send = async () => {
-                if (s.pick === null) return;
-                const r = await C.run('night', { player_id: pid, target: s.pick });
+                if (!ready) return;
+                const body = multi ? { player_id: pid, target: s.picks[0], target2: s.picks[1] } : { player_id: pid, target: s.pick };
+                if (extra && s.pick2) body.target2 = s.pick2;
+                const r = await C.run('night', body);
                 if (!r) return;
-                if (m.role === 'seer') s.seerShow = pid; else C.ui.passed = null;
-                s.pick = null;
+                if (role === 'seer') s.seerShow = pid; else C.ui.passed = null;
+                s.pick = null; s.pick2 = NOBODY; s.picks = [];
                 C.vibrate(15);
                 C.scheduleRender(true);
             };
@@ -167,8 +207,9 @@ window.LupusGame = (() => {
                     h('div', { class: 'muted small' }, t('lw_night_who', { n: g.day, name: C.pname(pid), role: roleName(m.role) })),
                     h('h2', null, title),
                     note ? h('p', { class: 'muted small' }, note) : null),
-                pickList(options, s.pick, (id) => { s.pick = id; C.scheduleRender(); }),
-                h('div', { class: 'bottom-bar' }, h('button', { class: 'btn primary big', disabled: s.pick === null, onclick: send }, t('lw_confirm'))));
+                pickList(options, multi ? s.picks : s.pick, choose),
+                extra,
+                h('div', { class: 'bottom-bar' }, h('button', { class: 'btn primary big', disabled: !ready, onclick: send }, t('lw_confirm'))));
         });
     }
 
@@ -233,11 +274,14 @@ window.LupusGame = (() => {
         const g = G();
         const lines = [];
         if (g.dawn && g.dawn.day === g.day) {
+            if (g.dawn.whore) lines.push(t('lw_dawn_whore'));
             if (!g.dawn.died.length) lines.push(t('lw_nobody_died'));
             for (const p of g.dawn.died) {
                 const d = g.dead.find((x) => x.p === p);
+                if (d && d.cause === 'love') { lines.push(t('lw_died_love', { name: C.pname(p) })); continue; }
                 lines.push(d && d.role ? t('lw_died_role', { name: C.pname(p), role: roleName(d.role) }) : t('lw_died', { name: C.pname(p) }));
             }
+            if (g.dawn.crow && isAlive(g.dawn.crow)) lines.push(t('lw_dawn_crow', { name: C.pname(g.dawn.crow) }));
         }
         for (const ev of g.log.filter((e) => e.day === g.day && e.t === 'shot' && e.target)) {
             lines.push(t('lw_hunter_shot', { hunter: C.pname(ev.p), name: C.pname(ev.target) }));
@@ -375,7 +419,10 @@ window.LupusGame = (() => {
     function resultCard() {
         const g = G();
         const res = g.result || { winner: 'none', reason: 'host_ended', roles: {} };
-        const stamp = { village: t('lw_win_village'), wolves: t('lw_win_wolves'), jester: t('lw_win_jester'), none: t('lw_win_none') }[res.winner];
+        const stamp = {
+            village: t('lw_win_village'), wolves: t('lw_win_wolves'), jester: t('lw_win_jester'),
+            lovers: t('lw_win_lovers'), white_wolf: t('lw_win_white_wolf'), none: t('lw_win_none'),
+        }[res.winner];
         const cls = res.winner === 'village' ? 'civilians' : res.winner === 'wolves' ? 'spies' : 'none';
         return h('section', { class: 'panel result ' + cls },
             h('div', { class: 'stamp result-stamp' }, stamp),
@@ -384,7 +431,7 @@ window.LupusGame = (() => {
                 const role = res.roles[id];
                 const orig = (res.orig_roles || {})[id];
                 const label = role ? (orig && orig !== role ? `${roleName(orig)} → ${roleName(role)}` : roleName(role)) : '';
-                return h('li', { class: role === 'wolf' ? 'is-spy' : '' },
+                return h('li', { class: role === 'wolf' || role === 'white_wolf' ? 'is-spy' : '' },
                     h('span', null, C.pname(id) + (isAlive(id) ? '' : ' †')),
                     h('span', { class: 'role' }, label));
             })));
@@ -393,13 +440,21 @@ window.LupusGame = (() => {
     function summary() {
         const s = C.state.settings;
         const chips = [s.wolves_mode === 'auto' ? t('lw_sum_wolves_auto') : t('lw_sum_wolves', { n: s.wolves })];
-        for (const r of ['seer', 'guard', 'witch', 'hunter', 'fisher', 'judge', 'jester']) if (s[r]) chips.push(roleName(r));
+        for (const r of SETTING_ROLES) if (s[r]) chips.push(roleName(r === 'masons' ? 'mason' : r));
         if (s.day_timer) chips.push(t('sum_timer', { n: s.day_min }));
         if (s.scores) chips.push(t('set_scores'));
         return h('div', { class: 'chips' }, chips.map((c) => h('span', { class: 'chip soft' }, c)));
     }
 
+    const HOUSE_ROLES = ['whore', 'jester', 'fisher'];
+    const OPTIONAL_ROLES = ['seer', 'guard', 'witch', 'hunter', 'judge', 'cupid', 'medium', 'minion', 'mayor', 'crow', 'elder', 'masons', 'white_wolf'];
+    const SETTING_ROLES = [...HOUSE_ROLES, ...OPTIONAL_ROLES];
+
     function settings(s, { set, toggle, stepper, host }) {
+        const roleToggle = (r, extra = null) => toggle(r, roleName(r === 'masons' ? 'mason' : r), t('lw_desc_' + (r === 'masons' ? 'mason' : r)), extra);
+        const fisherSees = h('label', { class: 'set-main sub' },
+            h('span', { class: 'set-text' }, h('span', { class: 'set-title' }, t('lw_set_fisher_sees')), h('span', { class: 'set-desc' }, t('lw_set_fisher_sees_d'))),
+            h('input', { type: 'checkbox', role: 'switch', class: 'switch', checked: !!s.fisher_sees, disabled: !host, onchange: (e) => set({ fisher_sees: e.target.checked }) }));
         const wolves = h('div', { class: 'set-row' },
             h('div', { class: 'set-text' }, h('span', { class: 'set-title' }, t('lw_set_wolves')), h('span', { class: 'set-desc' }, t('lw_set_wolves_d'))),
             h('div', { class: 'segmented' },
@@ -408,15 +463,11 @@ window.LupusGame = (() => {
             s.wolves_mode === 'fixed' ? stepper('wolves', t('how_many'), 1, 9) : null);
         return [
             wolves,
-            toggle('seer', roleName('seer'), t('lw_desc_seer')),
-            toggle('guard', roleName('guard'), t('lw_desc_guard')),
-            toggle('witch', roleName('witch'), t('lw_desc_witch')),
-            toggle('hunter', roleName('hunter'), t('lw_desc_hunter')),
-            toggle('fisher', roleName('fisher'), t('lw_desc_fisher'), h('label', { class: 'set-main sub' },
-                h('span', { class: 'set-text' }, h('span', { class: 'set-title' }, t('lw_set_fisher_sees')), h('span', { class: 'set-desc' }, t('lw_set_fisher_sees_d'))),
-                h('input', { type: 'checkbox', role: 'switch', class: 'switch', checked: !!s.fisher_sees, disabled: !host, onchange: (e) => set({ fisher_sees: e.target.checked }) }))),
-            toggle('judge', roleName('judge'), t('lw_desc_judge')),
-            toggle('jester', roleName('jester'), t('lw_desc_jester')),
+            h('h3', { class: 'set-group' }, t('lw_set_group_house')),
+            ...HOUSE_ROLES.map((r) => roleToggle(r, r === 'fisher' ? fisherSees : null)),
+            h('h3', { class: 'set-group' }, t('lw_set_group_optional')),
+            ...OPTIONAL_ROLES.map((r) => roleToggle(r)),
+            h('h3', { class: 'set-group' }, t('lw_set_group_rules')),
             toggle('wolves_know', t('lw_set_know'), t('lw_set_know_d')),
             toggle('reveal_dead', t('lw_set_reveal'), t('lw_set_reveal_d')),
             toggle('dead_see_all', t('lw_set_dead_see'), t('lw_set_dead_see_d')),
