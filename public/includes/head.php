@@ -48,6 +48,7 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customSc
             <script src="<?php echo $pathPrefix; ?>js/poker.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/tools.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/status.js?v=<?php echo $ver; ?>" defer></script>
+            <script src="<?php echo $pathPrefix; ?>js/guestbook.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/arg.js?v=<?php echo $ver; ?>" defer></script>
         <?php endif; ?>
     <?php endif; ?>

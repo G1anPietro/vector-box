@@ -309,6 +309,28 @@ if (file_exists('version.php')) {
                 <div id="status-body"><span class="term-muted">Polling node...</span></div>
             </div>
         </div>
+
+        <!-- 8. GUESTBOOK / GRAFFITI WALL WINDOW -->
+        <div id="win-guestbook" class="cyber-panel draggable-window hidden" style="top: 160px; left: 280px; width: 520px; height: 380px;">
+            <div class="window-header">
+                <span>>_ GRAFFITI_WALL // GUESTBOOK</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
+            <div class="window-content-inner" style="padding: 8px; display: flex; flex-direction: column; gap: 6px; height: calc(100% - 30px); box-sizing: border-box;">
+                <div id="guestbook-ticker" style="overflow: hidden; white-space: nowrap; border: 1px solid var(--border-color); padding: 3px 0; font-size: 0.78rem; color: var(--accent-color, #00f3ff); min-height: 1.2em;"></div>
+                <div id="guestbook-list" style="flex: 1; overflow-y: auto; padding-right: 4px;"></div>
+                <div class="terminal-input-line clean-input-line">
+                    <span class="prompt-symbol">TAG:$</span>
+                    <input type="text" id="guestbook-input" class="terminal-input" maxlength="200" placeholder="Leave your mark (max 200 chars)..." autocomplete="off">
+                    <button id="guestbook-sign-btn" class="nav-btn" style="padding: 2px 10px;">SIGN</button>
+                </div>
+                <div id="guestbook-status" style="font-size: 0.75rem; min-height: 1em;"></div>
+            </div>
+        </div>
     </main>
 
     <!-- CONSOLIDATED APPLICATION TASKBAR & FOOTER -->
@@ -321,6 +343,7 @@ if (file_exists('version.php')) {
             <button class="taskbar-btn" id="tb-win-tools">>_ TOOLS</button>
             <button class="taskbar-btn" id="tb-win-vault">>_ VAULT</button>
             <button class="taskbar-btn" id="tb-win-status">>_ STATUS</button>
+            <button class="taskbar-btn" id="tb-win-guestbook">>_ WALL</button>
             <?php if ($canReadBooks): ?>
                 <a href="pages/reader.php" class="taskbar-btn" style="text-decoration: none; border-color: #00f3ff; color: #00f3ff; display: inline-flex; align-items: center;">>_ READER</a>
             <?php endif; ?>

@@ -288,6 +288,21 @@ function sendPageSecurityHeaders(): void {
 
 sendBaseSecurityHeaders();
 
+/** Ban / timeout check for logged-in accounts. Returns a user-facing reason, or null if allowed. */
+function accountRestriction(PDO $db, ?int $userId): ?string {
+    if (!$userId) return null;
+    $stmt = $db->prepare("SELECT is_banned, banned_until FROM accounts WHERE id = :id");
+    $stmt->execute([':id' => $userId]);
+    $acc = $stmt->fetch();
+    if (!$acc) return null;
+    if ((int)$acc['is_banned'] === 1) return 'ACCESS DENIED: Account permanently banned';
+    if (!empty($acc['banned_until']) && strtotime($acc['banned_until']) > time()) {
+        $mins = (int)ceil((strtotime($acc['banned_until']) - time()) / 60);
+        return "ACCESS RESTRICTED: Timed out for {$mins} more minute(s)";
+    }
+    return null;
+}
+
 /** mbstring is optional on some hosts: fall back to byte functions. */
 function textLength(string $s): int {
     return function_exists('mb_strlen') ? mb_strlen($s) : strlen($s);

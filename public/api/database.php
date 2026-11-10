@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 2;
+const DB_SCHEMA_VERSION = 3;
 
 /**
  * Session bootstrap.
@@ -176,6 +176,20 @@ function migrateV2(PDO $db): void {
     addColumnIfMissing($db, 'books', 'meta_checked', 'INTEGER DEFAULT 0');
 }
 
+function migrateV3(PDO $db): void {
+    // Public guestbook / graffiti wall
+    $db->exec("CREATE TABLE IF NOT EXISTS guestbook (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NULL,
+        username VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        sender_ip VARCHAR(45) NOT NULL,
+        is_deleted INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_guestbook_visible ON guestbook(is_deleted, id)");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -186,6 +200,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 2) {
             migrateV2($db);
+        }
+        if ($current < 3) {
+            migrateV3($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
