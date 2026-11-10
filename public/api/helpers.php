@@ -129,6 +129,12 @@ function startWritableSession(): void {
     if (!is_dir($dir)) @mkdir($dir, 0700, true);
 
     session_save_path($dir);
+    // Debian/Ubuntu ship session.gc_probability = 0 and clean only /var/lib/php/sessions
+    // with a cron job, so files in our own save path would never be deleted.
+    // Run PHP's GC on ~1% of requests; it removes files idle longer than the cookie lifetime.
+    ini_set('session.gc_probability', '1');
+    ini_set('session.gc_divisor', '100');
+    ini_set('session.gc_maxlifetime', (string)(86400 * 7));
     session_set_cookie_params([
         'lifetime' => 86400 * 7,
         'path'     => '/',
