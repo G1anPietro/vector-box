@@ -601,8 +601,11 @@ app.use((req, res) => {
     res.status(404).type('text/plain').send('Not found');
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`>>> System Hypervisor fully operational on interface port: ${PORT}`);
+// Loopback by default: reach it through the reverse proxy (TLS), not directly.
+// Set BIND_HOST=0.0.0.0 only if it must be reachable without the proxy.
+const BIND_HOST = process.env.BIND_HOST || '127.0.0.1';
+const server = app.listen(PORT, BIND_HOST, () => {
+    console.log(`>>> System Hypervisor fully operational on ${BIND_HOST}:${PORT}`);
 });
 
 // ==========================================
