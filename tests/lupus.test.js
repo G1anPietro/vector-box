@@ -229,3 +229,95 @@ test('admin LIVE shows lupus roles; nothing extra reaches normal phones', async 
         assert.ok(!raw.includes(`"${pid}":"`), 'no role of another phone in the payload');
     }
 });
+
+/** Start, then force the roles: { P1: 'wolf', ... }; everybody not listed becomes a villager. */
+async function startWith(r, assign) {
+    await r.a.post({ action: 'start' });
+    const g = r.game();
+    for (const pid of Object.keys(g.roles)) g.roles[pid] = 'villager';
+    for (const [name, role] of Object.entries(assign)) g.roles[r.id[name]] = role;
+    g.orig_roles = { ...g.roles };
+    r.setGame(g);
+    await seeAll(r);
+}
+
+test('fisher: takes the role of the executed wolf and joins the pack', async () => {
+    const r = await lupusRoom({ wolves_mode: 'fixed', wolves: 2, seer: false, guard: false, witch: false, hunter: false });
+    await startWith(r, { P1: 'wolf', P2: 'wolf', P3: 'fisher', P4: 'villager', P5: 'villager', P6: 'villager' });
+    const [w1, w2, fisher] = [r.id.P1, r.id.P2, r.id.P3];
+    // night 1: nobody died yet, the fisher only gets the dummy question
+    const st1 = (await r.a.state()).lupus.me.find((m) => m.player_id === fisher);
+    assert.deepEqual(st1.fish_candidates, []);
+    await night(r, { [w1]: r.id.P4, [w2]: r.id.P4 });
+    assert.ok(r.game().dawn.died.includes(r.id.P4));
+    // day 1: the village executes wolf P1
+    await r.a.post({ action: 'vote_call' });
+    for (const pid of r.game().alive) await r.as(pid, { action: 'vote', target: pid === w1 ? r.id.P5 : w1 });
+    assert.equal(r.game().phase, 'night');
+    // night 2: the fisher may choose between the eaten villager and the executed wolf, roles visible
+    const me = (await r.a.state()).lupus.me.find((m) => m.player_id === fisher);
+    assert.deepEqual(me.fish_candidates.map((c) => [c.p, c.role]).sort(), [[r.id.P4, 'villager'], [w1, 'wolf']].sort());
+    assert.equal((await r.as(fisher, { action: 'night', target: r.id.P6 })).json.error, 'bad_target', 'only the dead can be fished');
+    await night(r, { [fisher]: w1, [w2]: r.id.P5 });
+    const g = r.game();
+    assert.equal(g.roles[fisher], 'wolf');
+    assert.equal(g.orig_roles[fisher], 'fisher');
+    const view = (await r.a.state()).lupus.me.find((m) => m.player_id === fisher);
+    assert.equal(view.role, 'wolf');
+    assert.equal(view.fished.role, 'wolf');
+    assert.ok(view.pack.includes(w2), 'the new wolf sees the pack');
+    // fisher-wolf + wolf vs P6 alone: wolves have parity
+    assert.equal(g.status, 'ended');
+    assert.equal(g.result.winner, 'wolves');
+});
+
+test('fisher_sees off: candidates come without roles', async () => {
+    const r = await lupusRoom({ ...fixed, seer: false, guard: false, witch: false, hunter: false, fisher_sees: false });
+    await startWith(r, { P1: 'wolf', P2: 'fisher' });
+    await night(r, { [r.id.P1]: r.id.P3 });
+    await r.a.post({ action: 'skip_day' });
+    const me = (await r.a.state()).lupus.me.find((m) => m.player_id === r.id.P2);
+    assert.deepEqual(me.fish_candidates, [{ p: r.id.P3, role: null }]);
+});
+
+test('judge: the hammer overrides the vote once per game', async () => {
+    const r = await lupusRoom({ ...fixed, seer: false, guard: false, witch: false, hunter: false });
+    await startWith(r, { P1: 'wolf', P2: 'judge', P3: 'villager', P4: 'villager', P5: 'villager', P6: 'villager' });
+    await night(r, { [r.id.P1]: r.id.P6 });
+    await r.a.post({ action: 'vote_call' });
+    // everybody votes P3, the judge hammers P1
+    for (const pid of r.game().alive) {
+        if (pid === r.id.P2) await r.as(pid, { action: 'vote', target: r.id.P1, judge: true });
+        else await r.as(pid, { action: 'vote', target: pid === r.id.P3 ? r.id.P4 : r.id.P3 });
+    }
+    const g = r.game();
+    assert.equal(g.lynch.p, r.id.P1);
+    assert.equal(g.lynch.judge, true);
+    assert.equal(g.result.winner, 'village');
+    // a non-judge cannot use the hammer
+    const r2 = await lupusRoom({ ...fixed, seer: false, guard: false, witch: false, hunter: false });
+    await startWith(r2, { P1: 'wolf', P2: 'judge' });
+    await night(r2, { [r2.id.P1]: r2.id.P6 });
+    await r2.a.post({ action: 'vote_call' });
+    assert.equal((await r2.as(r2.id.P3, { action: 'vote', target: r2.id.P1, judge: true })).json.error, 'bad_target');
+});
+
+test('jester: wins when executed, just dies when eaten', async () => {
+    const r = await lupusRoom({ ...fixed, seer: false, guard: false, witch: false, hunter: false, scores: true });
+    await startWith(r, { P1: 'wolf', P2: 'jester', P3: 'villager', P4: 'villager', P5: 'villager', P6: 'villager' });
+    await night(r, { [r.id.P1]: r.id.P6 });
+    await r.a.post({ action: 'vote_call' });
+    for (const pid of r.game().alive) await r.as(pid, { action: 'vote', target: pid === r.id.P2 ? r.id.P3 : r.id.P2 });
+    const g = r.game();
+    assert.equal(g.result.winner, 'jester');
+    assert.equal(g.result.jester, r.id.P2);
+    const scores = Object.fromEntries((await r.a.state()).players.map((p) => [p.id, p.score]));
+    assert.equal(scores[r.id.P2], 1);
+    assert.equal(scores[r.id.P3], 0);
+
+    const r2 = await lupusRoom({ ...fixed, seer: false, guard: false, witch: false, hunter: false });
+    await startWith(r2, { P1: 'wolf', P2: 'jester' });
+    await night(r2, { [r2.id.P1]: r2.id.P2 });
+    assert.equal(r2.game().status, 'play');
+    assert.ok(r2.game().dawn.died.includes(r2.id.P2));
+});

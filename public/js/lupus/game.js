@@ -66,19 +66,20 @@ window.LupusGame = (() => {
             wolf ? h('div', { class: 'stamp' }, roleName('wolf')) : h('div', { class: 'card-loc' }, roleName(m.role)),
             h('p', { class: 'card-text' }, t('lw_desc_' + m.role)),
             wolf && mates.length ? h('p', { class: 'card-text' }, t('lw_pack', { names: names(mates) })) : null,
+            m.fished ? h('p', { class: 'card-text' }, t('lw_fished_note', { name: C.pname(m.fished.p) })) : null,
             !m.alive ? h('p', { class: 'card-text' }, t('lw_you_are_dead')) : null);
     }
 
-    function revealView(m) {
+    function revealView(m, action = 'seen') {
         const pid = m.player_id;
         return withPass(pid, t('pass_phone_to'), () => {
             const done = async () => {
-                const r = await C.run('seen', { player_id: pid });
+                const r = await C.run(action, { player_id: pid });
                 if (r) { C.ui.passed = null; C.ui.heldOnce = null; C.scheduleRender(true); }
             };
             const btn = h('button', { class: 'btn primary big', disabled: C.ui.heldOnce !== pid, onclick: done }, t('got_it'));
             return h('div', { class: 'reveal' },
-                h('div', { class: 'muted center' }, t('lw_your_card')),
+                h('div', { class: 'muted center' }, action === 'fish_seen' ? t('lw_fish_reveal') : t('lw_your_card')),
                 C.holdCard({ player_id: pid }, () => { C.ui.heldOnce = pid; btn.disabled = false; }, roleBack(m)),
                 h('p', { class: 'muted small center' }, t('hold_note')),
                 h('div', { class: 'bottom-bar' }, btn));
@@ -112,6 +113,7 @@ window.LupusGame = (() => {
         if (!g.lynch || g.lynch.day !== g.day - 1) return null;
         if (!g.lynch.p) return t('lw_lynch_nobody');
         const d = g.dead.find((x) => x.p === g.lynch.p);
+        if (g.lynch.judge) return t('lw_judge_used') + ' ' + (d && d.role ? t('lw_lynch_role', { name: C.pname(g.lynch.p), role: roleName(d.role) }) : t('lw_lynch', { name: C.pname(g.lynch.p) }));
         return d && d.role ? t('lw_lynch_role', { name: C.pname(g.lynch.p), role: roleName(d.role) }) : t('lw_lynch', { name: C.pname(g.lynch.p) });
     }
 
@@ -138,6 +140,10 @@ window.LupusGame = (() => {
             } else if (m.role === 'seer') {
                 title = t('lw_night_seer');
                 options = others.map(opt);
+            } else if (m.role === 'fisher' && (m.fish_candidates || []).length) {
+                title = t('lw_night_fisher');
+                options = m.fish_candidates.map((c) => ({ id: c.p, label: c.role ? `${C.pname(c.p)} (${roleName(c.role)})` : C.pname(c.p) }));
+                note = t('lw_fish_note');
             } else if (m.role === 'guard') {
                 title = t('lw_night_guard');
                 options = g.alive.map((id) => ({ id, label: C.pname(id), disabled: id === m.guard_last }));
@@ -307,20 +313,28 @@ window.LupusGame = (() => {
 
     function voteView(pid) {
         const g = G();
+        const m = meOf(pid);
         return withPass(pid, t('lw_vote_pass'), () => {
             const s = lw();
+            const hammer = !!(m && m.judge_available && s.judge);
             const send = async () => {
-                if (s.pick === null) return;
-                const r = await C.run('vote', { player_id: pid, target: s.pick });
-                if (r) { C.ui.passed = null; s.pick = null; C.vibrate(15); C.scheduleRender(true); }
+                if (s.pick === null || (hammer && s.pick === NOBODY)) return;
+                const r = await C.run('vote', { player_id: pid, target: s.pick, judge: hammer });
+                if (r) { C.ui.passed = null; s.pick = null; s.judge = false; C.vibrate(15); C.scheduleRender(true); }
             };
+            const options = g.alive.filter((id) => id !== pid).map((id) => ({ id, label: C.pname(id) }));
+            if (!hammer) options.push({ id: NOBODY, label: t('lw_nobody') });
             return h('div', { class: 'stack' },
                 h('div', { class: 'center' },
                     h('div', { class: 'muted small' }, t('voting_as', { name: C.pname(pid) })),
                     h('h2', null, t('lw_vote_title')),
                     g.vote.forced ? h('div', { class: 'chip warn' }, t('final_vote')) : null),
-                pickList([...g.alive.filter((id) => id !== pid).map((id) => ({ id, label: C.pname(id) })), { id: NOBODY, label: t('lw_nobody') }],
-                    s.pick, (id) => { s.pick = id; C.scheduleRender(); }),
+                m && m.judge_available ? h('button', {
+                    class: 'btn big pick' + (hammer ? ' selected' : ''),
+                    onclick: () => { s.judge = !s.judge; if (s.judge && s.pick === NOBODY) s.pick = null; C.scheduleRender(); },
+                }, t('lw_judge_hammer')) : null,
+                hammer ? h('p', { class: 'muted small center' }, t('lw_judge_note')) : null,
+                pickList(options, s.pick, (id) => { s.pick = id; C.scheduleRender(); }),
                 h('div', { class: 'bottom-bar' }, h('button', { class: 'btn primary big', disabled: s.pick === null, onclick: send }, t('confirm_vote'))));
         });
     }
@@ -348,6 +362,8 @@ window.LupusGame = (() => {
             case 'hunter':
                 return mine.some((x) => x.player_id === g.hunter) ? hunterView(g.hunter) : waitView(t('lw_role_hunter'), t('lw_wait_hunter', { name: C.pname(g.hunter) }));
             case 'day': {
+                const fished = mine.find((x) => x.fished && !x.fished.seen);
+                if (fished) return revealView(fished, 'fish_seen');
                 const voter = g.vote.open ? mine.find((x) => x.alive && !g.vote.voted.includes(x.player_id)) : null;
                 return voter ? voteView(voter.player_id) : dayView();
             }
@@ -359,23 +375,25 @@ window.LupusGame = (() => {
     function resultCard() {
         const g = G();
         const res = g.result || { winner: 'none', reason: 'host_ended', roles: {} };
-        const stamp = { village: t('lw_win_village'), wolves: t('lw_win_wolves'), none: t('lw_win_none') }[res.winner];
+        const stamp = { village: t('lw_win_village'), wolves: t('lw_win_wolves'), jester: t('lw_win_jester'), none: t('lw_win_none') }[res.winner];
         const cls = res.winner === 'village' ? 'civilians' : res.winner === 'wolves' ? 'spies' : 'none';
         return h('section', { class: 'panel result ' + cls },
             h('div', { class: 'stamp result-stamp' }, stamp),
             h('div', { class: 'muted' }, t('lw_reason_' + res.reason)),
             h('ul', { class: 'result-list' }, g.in_game.filter((id) => C.playerById(id)).map((id) => {
                 const role = res.roles[id];
+                const orig = (res.orig_roles || {})[id];
+                const label = role ? (orig && orig !== role ? `${roleName(orig)} → ${roleName(role)}` : roleName(role)) : '';
                 return h('li', { class: role === 'wolf' ? 'is-spy' : '' },
                     h('span', null, C.pname(id) + (isAlive(id) ? '' : ' †')),
-                    h('span', { class: 'role' }, role ? roleName(role) : ''));
+                    h('span', { class: 'role' }, label));
             })));
     }
 
     function summary() {
         const s = C.state.settings;
         const chips = [s.wolves_mode === 'auto' ? t('lw_sum_wolves_auto') : t('lw_sum_wolves', { n: s.wolves })];
-        for (const r of ['seer', 'guard', 'witch', 'hunter']) if (s[r]) chips.push(roleName(r));
+        for (const r of ['seer', 'guard', 'witch', 'hunter', 'fisher', 'judge', 'jester']) if (s[r]) chips.push(roleName(r));
         if (s.day_timer) chips.push(t('sum_timer', { n: s.day_min }));
         if (s.scores) chips.push(t('set_scores'));
         return h('div', { class: 'chips' }, chips.map((c) => h('span', { class: 'chip soft' }, c)));
@@ -394,6 +412,11 @@ window.LupusGame = (() => {
             toggle('guard', roleName('guard'), t('lw_desc_guard')),
             toggle('witch', roleName('witch'), t('lw_desc_witch')),
             toggle('hunter', roleName('hunter'), t('lw_desc_hunter')),
+            toggle('fisher', roleName('fisher'), t('lw_desc_fisher'), h('label', { class: 'set-main sub' },
+                h('span', { class: 'set-text' }, h('span', { class: 'set-title' }, t('lw_set_fisher_sees')), h('span', { class: 'set-desc' }, t('lw_set_fisher_sees_d'))),
+                h('input', { type: 'checkbox', role: 'switch', class: 'switch', checked: !!s.fisher_sees, disabled: !host, onchange: (e) => set({ fisher_sees: e.target.checked }) }))),
+            toggle('judge', roleName('judge'), t('lw_desc_judge')),
+            toggle('jester', roleName('jester'), t('lw_desc_jester')),
             toggle('wolves_know', t('lw_set_know'), t('lw_set_know_d')),
             toggle('reveal_dead', t('lw_set_reveal'), t('lw_set_reveal_d')),
             toggle('dead_see_all', t('lw_set_dead_see'), t('lw_set_dead_see_d')),

@@ -8,7 +8,8 @@
 //        -> [witch] -> dawn deaths -> [hunter] -> day (discussion, vote) -> [hunter] -> night ...
 
 const LUPUS_MIN_PLAYERS = 4;
-const LUPUS_ROLES = ['wolf', 'seer', 'guard', 'witch', 'hunter', 'villager'];
+const LUPUS_ROLES = ['wolf', 'seer', 'guard', 'witch', 'hunter', 'fisher', 'judge', 'jester', 'villager'];
+const LUPUS_SPECIALS = ['seer', 'guard', 'witch', 'hunter', 'fisher', 'judge', 'jester'];
 const LUPUS_NOBODY = 0;   // vote / pick target meaning "nobody"
 
 function lupusDefaultSettings(): array {
@@ -19,6 +20,10 @@ function lupusDefaultSettings(): array {
         'guard'        => true,
         'witch'        => true,
         'hunter'       => true,
+        'fisher'       => false,   // takes the role of someone who died since the previous night
+        'fisher_sees'  => true,    // the fisher sees the dead's roles while choosing
+        'judge'        => false,   // once per game, decides the day's execution alone
+        'jester'       => false,   // wins alone by being executed
         'wolves_know'  => true,    // wolves see each other
         'reveal_dead'  => true,    // a dead player's role is shown to everybody
         'dead_see_all' => false,   // phones whose players are all dead see every role
@@ -34,7 +39,7 @@ function lupusSanitizeSettings(array $in, array $base): array {
     $int = fn($v, $min, $max, $def) => is_numeric($v) ? max($min, min($max, (int)$v)) : $def;
     if (isset($in['wolves_mode']) && in_array($in['wolves_mode'], ['auto', 'fixed'], true)) $s['wolves_mode'] = $in['wolves_mode'];
     $s['wolves'] = $int($in['wolves'] ?? $s['wolves'], 1, 9, 1);
-    foreach (['seer', 'guard', 'witch', 'hunter', 'wolves_know', 'reveal_dead', 'dead_see_all', 'day_timer', 'scores'] as $k) {
+    foreach ([...LUPUS_SPECIALS, 'fisher_sees', 'wolves_know', 'reveal_dead', 'dead_see_all', 'day_timer', 'scores'] as $k) {
         $s[$k] = $bool($in[$k] ?? $s[$k], (bool)$s[$k]);
     }
     $s['day_min'] = $int($in['day_min'] ?? $s['day_min'], 1, 30, 5);
@@ -85,7 +90,7 @@ function lupusStart(PDO $db, array $room): ?string {
     if ($n < LUPUS_MIN_PLAYERS) return 'need_players_lupus';
 
     $deck = array_fill(0, lupusWolfCount($s, $n), 'wolf');
-    foreach (['seer', 'guard', 'witch', 'hunter'] as $special) {
+    foreach (LUPUS_SPECIALS as $special) {
         if ($s[$special] && count($deck) < $n) $deck[] = $special;
     }
     while (count($deck) < $n) $deck[] = 'villager';
@@ -103,6 +108,9 @@ function lupusStart(PDO $db, array $room): ?string {
         'day' => 0,
         'rules' => $s,
         'roles' => $roles,
+        'orig_roles' => $roles,   // roles as dealt (the fisher's changes over the game)
+        'judge_used' => false,
+        'fished' => [],           // fisher pid => ['p' => fished player, 'role' => new role, 'day' => n, 'seen' => bool]
         'in_game' => $ids,
         'alive' => $ids,
         'seen' => [],
@@ -140,7 +148,7 @@ function lupusEnd(array &$g, string $winner, string $reason): void {
     $g['phase'] = 'ended';
     $g['vote']['open'] = false;
     $g['timer_ends'] = null;
-    $g['result'] = ['winner' => $winner, 'reason' => $reason, 'roles' => $g['roles']];
+    $g['result'] = ['winner' => $winner, 'reason' => $reason, 'roles' => $g['roles'], 'orig_roles' => $g['orig_roles'] ?? $g['roles']];
 }
 
 /** Record a death. The hunter gets a last shot unless they left the game. */
@@ -168,7 +176,7 @@ function lupusStartNight(array &$g): void {
     $g['night'] = ['acted' => [], 'wolf' => [], 'seer' => [], 'guard' => []];
     $g['vote'] = ['open' => false, 'no' => $g['vote']['no'], 'forced' => false, 'votes' => []];
     $g['timer_ends'] = null;
-    $g['lynch'] = null;
+    // $g['lynch'] stays: the night screens show yesterday's execution (it carries its own day)
 }
 
 function lupusStartDay(array &$g): void {
@@ -212,8 +220,17 @@ function lupusNightAct(array &$g, int $pid, int $target): ?string {
             if (($g['guard_last'][(string)$pid] ?? null) === $target) return 'guard_repeat';
             $g['night']['guard'][(string)$pid] = $target;
             break;
+        case 'fisher':
+            $cands = lupusFishCandidates($g);
+            if ($cands) {
+                if (!in_array($target, $cands, true)) return 'bad_target';
+                $g['night']['fish'][(string)$pid] = $target;
+                break;
+            }
+            if ($target !== LUPUS_NOBODY && !$validOther) return 'bad_target';
+            break;
         default:
-            // villager, witch (her real move comes later), hunter: dummy pick, ignored
+            // villager, witch (her real move comes later), hunter, judge, jester: dummy pick, ignored
             if ($target !== LUPUS_NOBODY && !$validOther) return 'bad_target';
     }
     if (!in_array($pid, $g['night']['acted'], true)) $g['night']['acted'][] = $pid;
@@ -258,8 +275,24 @@ function lupusWitchAct(array &$g, int $pid, bool $heal, int $kill): ?string {
     return null;
 }
 
+/** Players the fisher may take a role from tonight: who died since the previous night (not who left). */
+function lupusFishCandidates(array $g): array {
+    $out = [];
+    foreach ($g['dead'] as $d) {
+        if ($d['day'] === $g['day'] - 1 && $d['cause'] !== 'left') $out[] = (int)$d['p'];
+    }
+    return $out;
+}
+
 function lupusResolveNight(array &$g): void {
     $n = $g['night'];
+    // The fisher becomes what the chosen dead player was, before tonight's deaths
+    foreach ($n['fish'] ?? [] as $fisher => $target) {
+        $dead = array_values(array_filter($g['dead'], fn($d) => (int)$d['p'] === (int)$target));
+        if (!$dead || lupusRole($g, (int)$fisher) !== 'fisher') continue;
+        $g['roles'][(string)$fisher] = $dead[0]['role'];
+        $g['fished'][(string)$fisher] = ['p' => (int)$target, 'role' => $dead[0]['role'], 'day' => $g['day'], 'seen' => false];
+    }
     $died = [];
     $victim = $n['victim'] ?? null;
     $protected = in_array($victim, array_map('intval', array_values($n['guard'])), true);
@@ -292,10 +325,15 @@ function lupusOpenVote(array &$g, bool $forced): void {
     $g['timer_ends'] = null;
 }
 
-function lupusVote(array &$g, int $pid, int $target): ?string {
+function lupusVote(array &$g, int $pid, int $target, bool $judge = false): ?string {
     if ($g['phase'] !== 'day' || !$g['vote']['open']) return 'no_vote';
     if (!lupusIsAlive($g, $pid)) return 'you_are_out';
     if ($target !== LUPUS_NOBODY && ($target === $pid || !lupusIsAlive($g, $target))) return 'bad_target';
+    if ($judge) {
+        // The judge's hammer: once per game, this player alone decides who is executed
+        if (lupusRole($g, $pid) !== 'judge' || !empty($g['judge_used']) || $target === LUPUS_NOBODY) return 'bad_target';
+        $g['vote']['judge'] = $target;
+    }
     $g['vote']['votes'][(string)$pid] = $target;
     if (!array_diff($g['alive'], array_map('intval', array_keys($g['vote']['votes'])))) lupusResolveVote($g);
     return null;
@@ -309,9 +347,23 @@ function lupusResolveVote(array &$g): void {
     $top = array_keys($counts);
     $tie = !$counts || (count($counts) > 1 && $counts[$top[0]] === $counts[$top[1]]);
     $out = $tie ? LUPUS_NOBODY : (int)$top[0];
-    $g['lynch'] = ['day' => $g['day'], 'p' => $out, 'counts' => $counts];
-    lupusLog($g, ['t' => 'lynch', 'p' => $out, 'counts' => $counts]);
-    if ($out !== LUPUS_NOBODY) lupusKill($g, $out, 'lynch');
+    $judged = isset($g['vote']['judge']) && lupusIsAlive($g, (int)$g['vote']['judge']);
+    if ($judged) {
+        $out = (int)$g['vote']['judge'];
+        $g['judge_used'] = true;
+    }
+    $g['lynch'] = ['day' => $g['day'], 'p' => $out, 'counts' => $counts, 'judge' => $judged];
+    lupusLog($g, ['t' => 'lynch', 'p' => $out, 'counts' => $counts, 'judge' => $judged]);
+    if ($out !== LUPUS_NOBODY) {
+        lupusKill($g, $out, 'lynch');
+        // The jester wanted exactly this
+        if (lupusRole($g, $out) === 'jester') {
+            $g['hunter'] = null;
+            lupusEnd($g, 'jester', 'jester_lynched');
+            $g['result']['jester'] = $out;
+            return;
+        }
+    }
     lupusContinue($g, 'night');
 }
 
@@ -347,11 +399,13 @@ function lupusTick(array &$g): bool {
 }
 
 function lupusAwardScores(PDO $db, array $g): void {
-    if (empty($g['rules']['scores']) || !in_array($g['result']['winner'] ?? '', ['wolves', 'village'], true)) return;
+    $winner = $g['result']['winner'] ?? '';
+    if (empty($g['rules']['scores']) || !in_array($winner, ['wolves', 'village', 'jester'], true)) return;
     $add = $db->prepare('UPDATE spia_players SET score = score + 1 WHERE id = :id AND removed = 0');
     foreach ($g['roles'] as $pid => $role) {
-        $wolf = $role === 'wolf';
-        if (($g['result']['winner'] === 'wolves') === $wolf) $add->execute([':id' => (int)$pid]);
+        $won = $winner === 'jester' ? (int)$pid === (int)($g['result']['jester'] ?? 0)
+            : ($winner === 'wolves' ? $role === 'wolf' : $role !== 'wolf' && $role !== 'jester');
+        if ($won) $add->execute([':id' => (int)$pid]);
     }
 }
 
@@ -385,6 +439,12 @@ function lupusHandle(PDO $db, array $room, array $device, bool $isHost, array $i
             if (!$playing) return 'no_round';
             lupusEnd($g, 'none', 'host_ended');
             break;
+        case 'fish_seen':
+            if (!$playing) return 'no_round';
+            $pid = $own($in['player_id'] ?? 0);
+            if ($pid === null || !isset($g['fished'][(string)$pid])) return 'not_your_player';
+            $g['fished'][(string)$pid]['seen'] = true;
+            break;
         case 'seen':
         case 'night':
         case 'witch':
@@ -397,7 +457,7 @@ function lupusHandle(PDO $db, array $room, array $device, bool $isHost, array $i
             if ($action === 'night') $err = lupusNightAct($g, $pid, $target);
             elseif ($action === 'witch') $err = lupusWitchAct($g, $pid, !empty($in['heal']), (int)($in['kill'] ?? 0));
             elseif ($action === 'shoot') $err = lupusHunterShoot($g, $pid, $target);
-            else $err = lupusVote($g, $pid, $target);
+            else $err = lupusVote($g, $pid, $target, !empty($in['judge']));
             if ($err) return $err;
             break;
         case 'vote_call':
@@ -479,6 +539,14 @@ function lupusView(PDO $db, array $room, array $device, bool $adminSession): arr
             if ($g['phase'] === 'night') $me['pack_votes'] = $g['night']['wolf'];
         }
         if ($role === 'seer') $me['seen_results'] = $g['seer_results'][(string)$pid] ?? [];
+        if ($role === 'fisher' && $g['phase'] === 'night') {
+            $me['fish_candidates'] = array_map(function ($c) use ($g) {
+                $d = array_values(array_filter($g['dead'], fn($x) => (int)$x['p'] === $c))[0];
+                return ['p' => $c, 'role' => !empty($g['rules']['fisher_sees']) ? $d['role'] : null];
+            }, lupusFishCandidates($g));
+        }
+        if (isset($g['fished'][(string)$pid])) $me['fished'] = $g['fished'][(string)$pid];
+        if ($role === 'judge') $me['judge_available'] = empty($g['judge_used']);
         if ($role === 'guard') $me['guard_last'] = $g['guard_last'][(string)$pid] ?? null;
         if ($role === 'witch') {
             $me['potions'] = $g['witch'];
