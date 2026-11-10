@@ -87,15 +87,23 @@ function evaluateHand($holeCards, $communityCards) {
 }
 
 function advanceStage($db, $tableId, &$table) {
-    $fullDeck = [
+    $community = json_decode($table['community_cards'], true) ?: [];
+
+    // Turn/river come from the cards NOT already in play (community + every hole card),
+    // otherwise duplicates like two Ah could appear. CSPRNG shuffle, like the deal.
+    $inPlay = $community;
+    $stmtHoles = $db->prepare("SELECT hole_cards FROM poker_players WHERE table_id = :tid");
+    $stmtHoles->execute([':tid' => $tableId]);
+    foreach ($stmtHoles->fetchAll(PDO::FETCH_COLUMN) as $holes) {
+        $inPlay = array_merge($inPlay, json_decode($holes, true) ?: []);
+    }
+    $fullDeck = array_values(array_diff([
         '2h','3h','4h','5h','6h','7h','8h','9h','10h','Jh','Qh','Kh','Ah',
         '2d','3d','4d','5d','6d','7d','8d','9d','10d','Jd','Qd','Kd','Ad',
         '2c','3c','4c','5c','6c','7c','8c','9c','10c','Jc','Qc','Kc','Ac',
         '2s','3s','4s','5s','6s','7s','8s','9s','10s','Js','Qs','Ks','As'
-    ];
-    shuffle($fullDeck);
-
-    $community = json_decode($table['community_cards'], true) ?: [];
+    ], $inPlay));
+    secureShuffle($fullDeck);
 
     if ($table['game_stage'] === 'flop') {
         $community[] = array_pop($fullDeck);
