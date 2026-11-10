@@ -1,5 +1,9 @@
 <?php
 // public/includes/head.php
+// Every page includes this before any output: send the security headers here.
+require_once __DIR__ . '/../api/helpers.php';
+sendPageSecurityHeaders();
+
 if (!defined('APP_VERSION')) {
     if (file_exists(__DIR__ . '/../version.php')) {
         require_once __DIR__ . '/../version.php';

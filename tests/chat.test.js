@@ -97,3 +97,13 @@ test('moderation commands: admin gets a success notice, users are refused', asyn
     assert.match(ok.json.notice, /COMMAND SUCCESS/);
     assert.equal((await user.send('general', '/ban root_admin')).status, 403);
 });
+
+test('security headers: baseline on API, CSP (report-only by default) on pages', async () => {
+    const api = await guest.get('/api/get_feed.php?room_id=general');
+    assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(api.headers.get('x-frame-options'), 'SAMEORIGIN');
+    const page = await guest.get('/');
+    const csp = page.headers.get('content-security-policy-report-only');
+    assert.ok(csp && csp.includes("frame-ancestors 'self'") && csp.includes("object-src 'none'"));
+    assert.equal(page.headers.get('content-security-policy'), null);
+});

@@ -236,6 +236,57 @@ function isRoomHidden(PDO $db, string $roomId): bool {
     return (int)$stmt->fetchColumn() === 1;
 }
 
+// ------------------------------------------------------------------
+// Security headers
+// ------------------------------------------------------------------
+
+/** Baseline headers for every PHP response (sent when helpers.php is loaded). */
+function sendBaseSecurityHeaders(): void {
+    if (PHP_SAPI === 'cli' || headers_sent()) return;
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+}
+
+/**
+ * Content-Security-Policy for HTML pages (called from includes/head.php).
+ * Report-only unless CSP_ENFORCE=true: violations show up in the browser console
+ * without breaking anything, so the policy can be tuned before enforcing it.
+ */
+function sendPageSecurityHeaders(): void {
+    if (PHP_SAPI === 'cli' || headers_sent()) return;
+
+    $connect = ["'self'"];
+    $streamUrl = (string)envValue('CHAT_STREAM_URL', '');
+    if (preg_match('#^(https?://[^/]+)#i', $streamUrl, $m)) {
+        $connect[] = $m[1]; // chat hub on another origin
+    }
+
+    $policy = implode('; ', [
+        "default-src 'self'",
+        // reader.php loads jszip/pdf.js/epub.js from these CDNs
+        "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+        // many inline style="" attributes and element.style writes
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self' data:",
+        'connect-src ' . implode(' ', $connect),
+        "worker-src 'self' blob: https://cdnjs.cloudflare.com",
+        // epub.js renders chapters in blob:/srcdoc iframes
+        "frame-src 'self' blob: data:",
+        "frame-ancestors 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+    ]);
+
+    $enforce = strtolower((string)envValue('CSP_ENFORCE', 'false')) === 'true';
+    header(($enforce ? 'Content-Security-Policy: ' : 'Content-Security-Policy-Report-Only: ') . $policy);
+}
+
+sendBaseSecurityHeaders();
+
 /** mbstring is optional on some hosts: fall back to byte functions. */
 function textLength(string $s): int {
     return function_exists('mb_strlen') ? mb_strlen($s) : strlen($s);
