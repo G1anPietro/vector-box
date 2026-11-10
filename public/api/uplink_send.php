@@ -103,7 +103,7 @@ try {
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
                 } else {
-                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: Granted book reader access to '{$targetUser}'"]);
+                    jsonResponse(['success' => true, 'notice' => "COMMAND SUCCESS: Granted book reader access to '{$targetUser}'"]);
                 }
                 exit();
             }
@@ -115,7 +115,7 @@ try {
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
                 } else {
-                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: Revoked book reader access from '{$targetUser}'"]);
+                    jsonResponse(['success' => true, 'notice' => "COMMAND SUCCESS: Revoked book reader access from '{$targetUser}'"]);
                 }
                 exit();
             }
@@ -127,7 +127,7 @@ try {
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
                 } else {
-                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' permanently banned"]);
+                    jsonResponse(['success' => true, 'notice' => "COMMAND SUCCESS: User '{$targetUser}' permanently banned"]);
                 }
                 exit();
             }
@@ -144,7 +144,7 @@ try {
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found or is an admin"]);
                 } else {
-                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' timed out for {$minutes} minute(s)"]);
+                    jsonResponse(['success' => true, 'notice' => "COMMAND SUCCESS: User '{$targetUser}' timed out for {$minutes} minute(s)"]);
                 }
                 exit();
             }
@@ -156,7 +156,7 @@ try {
                 if ($stmt->rowCount() === 0) {
                     echo json_encode(['success' => false, 'error' => "User '{$targetUser}' not found"]);
                 } else {
-                    echo json_encode(['success' => false, 'error' => "COMMAND SUCCESS: User '{$targetUser}' unbanned"]);
+                    jsonResponse(['success' => true, 'notice' => "COMMAND SUCCESS: User '{$targetUser}' unbanned"]);
                 }
                 exit();
             }

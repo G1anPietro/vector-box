@@ -281,7 +281,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     body: JSON.stringify({ message: rawVal })
                 });
                 const data = await res.json();
-                if (data.error) {
+                if (data.notice) {
+                    printGuestLog(`>> ${data.notice}`, "#33ff77");
+                } else if (data.error) {
                     printGuestLog(`>> ${data.error}`, "#ff3333");
                 }
             } catch (err) {

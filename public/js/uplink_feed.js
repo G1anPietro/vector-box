@@ -149,7 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const textSpan = document.createElement('span');
         textSpan.className = 'chat-msg-body';
-        if (isError) textSpan.style.color = '#ff3333';
+        // isError: true = red warning, 'notice' = green confirmation (e.g. moderation commands)
+        if (isError) textSpan.style.color = isError === 'notice' ? '#33ff77' : '#ff3333';
         appendTextWithLinks(textSpan, data.message || '');
 
         p.appendChild(prefixContainer);
@@ -491,6 +492,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (data.success) {
                         chatInput.value = '';
+                        if (data.notice) {
+                            appendMessageToUI({
+                                created_at: new Date().toISOString().substring(11, 19),
+                                username: 'SYSTEM',
+                                message: `>> ${data.notice}`
+                            }, getRoomState(window.activeRoomId), 'notice');
+                        }
                     } else {
                         const state = getRoomState(window.activeRoomId);
                         appendMessageToUI({
