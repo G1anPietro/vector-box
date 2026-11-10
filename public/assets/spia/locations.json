@@ -1,0 +1,1482 @@
+{
+ "version": 1,
+ "categories": [
+  {
+   "id": "travel",
+   "name": {
+    "it": "Viaggi",
+    "en": "Travel",
+    "es": "Viajes",
+    "fr": "Voyages",
+    "de": "Reisen"
+   }
+  },
+  {
+   "id": "adventure",
+   "name": {
+    "it": "Avventura",
+    "en": "Adventure",
+    "es": "Aventura",
+    "fr": "Aventure",
+    "de": "Abenteuer"
+   }
+  },
+  {
+   "id": "show",
+   "name": {
+    "it": "Spettacolo",
+    "en": "Entertainment",
+    "es": "Espectáculo",
+    "fr": "Spectacle",
+    "de": "Unterhaltung"
+   }
+  },
+  {
+   "id": "city",
+   "name": {
+    "it": "Città",
+    "en": "City life",
+    "es": "Ciudad",
+    "fr": "Ville",
+    "de": "Stadtleben"
+   }
+  }
+ ],
+ "locations": [
+  {
+   "id": "space_station",
+   "cat": "adventure",
+   "name": {
+    "it": "Stazione Spaziale",
+    "en": "Space Station",
+    "es": "Estación espacial",
+    "fr": "Station spatiale",
+    "de": "Raumstation"
+   },
+   "roles": [
+    {
+     "it": "Comandante",
+     "en": "Commander",
+     "es": "Comandante",
+     "fr": "Commandant",
+     "de": "Kommandant"
+    },
+    {
+     "it": "Astronauta",
+     "en": "Astronaut",
+     "es": "Astronauta",
+     "fr": "Astronaute",
+     "de": "Astronaut"
+    },
+    {
+     "it": "Ingegnere Meccanico",
+     "en": "Mechanical Engineer",
+     "es": "Ingeniero mecánico",
+     "fr": "Ingénieur mécanicien",
+     "de": "Maschinenbauingenieur"
+    },
+    {
+     "it": "Medico di Bordo",
+     "en": "Ship's Doctor",
+     "es": "Médico de a bordo",
+     "fr": "Médecin de bord",
+     "de": "Bordarzt"
+    },
+    {
+     "it": "Pilota",
+     "en": "Pilot",
+     "es": "Piloto",
+     "fr": "Pilote",
+     "de": "Pilot"
+    },
+    {
+     "it": "Turista",
+     "en": "Tourist",
+     "es": "Turista",
+     "fr": "Touriste",
+     "de": "Tourist"
+    },
+    {
+     "it": "Scienziato",
+     "en": "Scientist",
+     "es": "Científico",
+     "fr": "Scientifique",
+     "de": "Wissenschaftler"
+    },
+    {
+     "it": "Addetto alle Comunicazioni",
+     "en": "Communications Officer",
+     "es": "Oficial de comunicaciones",
+     "fr": "Officier des communications",
+     "de": "Funker"
+    }
+   ]
+  },
+  {
+   "id": "submarine",
+   "cat": "adventure",
+   "name": {
+    "it": "Sottomarino",
+    "en": "Submarine",
+    "es": "Submarino",
+    "fr": "Sous-marin",
+    "de": "U-Boot"
+   },
+   "roles": [
+    {
+     "it": "Capitano",
+     "en": "Captain",
+     "es": "Capitán",
+     "fr": "Capitaine",
+     "de": "Kapitän"
+    },
+    {
+     "it": "Addetto al Sonar",
+     "en": "Sonar Operator",
+     "es": "Operador de sonar",
+     "fr": "Opérateur sonar",
+     "de": "Sonar-Operator"
+    },
+    {
+     "it": "Cuoco",
+     "en": "Cook",
+     "es": "Cocinero",
+     "fr": "Cuisinier",
+     "de": "Koch"
+    },
+    {
+     "it": "Meccanico",
+     "en": "Mechanic",
+     "es": "Mecánico",
+     "fr": "Mécanicien",
+     "de": "Mechaniker"
+    },
+    {
+     "it": "Navigatore",
+     "en": "Navigator",
+     "es": "Navegante",
+     "fr": "Navigateur",
+     "de": "Navigator"
+    },
+    {
+     "it": "Medico",
+     "en": "Doctor",
+     "es": "Médico",
+     "fr": "Médecin",
+     "de": "Arzt"
+    },
+    {
+     "it": "Tecnico dei Siluri",
+     "en": "Torpedo Technician",
+     "es": "Técnico de torpedos",
+     "fr": "Technicien torpilles",
+     "de": "Torpedotechniker"
+    }
+   ]
+  },
+  {
+   "id": "pirate_ship",
+   "cat": "adventure",
+   "name": {
+    "it": "Nave Pirata",
+    "en": "Pirate Ship",
+    "es": "Barco pirata",
+    "fr": "Bateau pirate",
+    "de": "Piratenschiff"
+   },
+   "roles": [
+    {
+     "it": "Capitano",
+     "en": "Captain",
+     "es": "Capitán",
+     "fr": "Capitaine",
+     "de": "Kapitän"
+    },
+    {
+     "it": "Mozzo",
+     "en": "Cabin Boy",
+     "es": "Grumete",
+     "fr": "Mousse",
+     "de": "Schiffsjunge"
+    },
+    {
+     "it": "Navigatore",
+     "en": "Navigator",
+     "es": "Navegante",
+     "fr": "Navigateur",
+     "de": "Navigator"
+    },
+    {
+     "it": "Cuoco di Bordo",
+     "en": "Ship's Cook",
+     "es": "Cocinero de a bordo",
+     "fr": "Cuisinier de bord",
+     "de": "Smutje"
+    },
+    {
+     "it": "Cannoniere",
+     "en": "Gunner",
+     "es": "Artillero",
+     "fr": "Canonnier",
+     "de": "Kanonier"
+    },
+    {
+     "it": "Medico di Bordo",
+     "en": "Ship's Doctor",
+     "es": "Médico de a bordo",
+     "fr": "Médecin de bord",
+     "de": "Schiffsarzt"
+    },
+    {
+     "it": "Nostromo",
+     "en": "Boatswain",
+     "es": "Contramaestre",
+     "fr": "Maître d'équipage",
+     "de": "Bootsmann"
+    },
+    {
+     "it": "Prigioniero",
+     "en": "Prisoner",
+     "es": "Prisionero",
+     "fr": "Prisonnier",
+     "de": "Gefangener"
+    }
+   ]
+  },
+  {
+   "id": "tv_studio",
+   "cat": "show",
+   "name": {
+    "it": "Studio Televisivo",
+    "en": "TV Studio",
+    "es": "Estudio de televisión",
+    "fr": "Studio de télévision",
+    "de": "Fernsehstudio"
+   },
+   "roles": [
+    {
+     "it": "Presentatore",
+     "en": "TV Host",
+     "es": "Presentador",
+     "fr": "Présentateur",
+     "de": "Moderator"
+    },
+    {
+     "it": "Cameraman",
+     "en": "Camera Operator",
+     "es": "Cámara",
+     "fr": "Cadreur",
+     "de": "Kameramann"
+    },
+    {
+     "it": "Regista",
+     "en": "Director",
+     "es": "Director",
+     "fr": "Réalisateur",
+     "de": "Regisseur"
+    },
+    {
+     "it": "Ospite VIP",
+     "en": "VIP Guest",
+     "es": "Invitado VIP",
+     "fr": "Invité VIP",
+     "de": "VIP-Gast"
+    },
+    {
+     "it": "Truccatore",
+     "en": "Makeup Artist",
+     "es": "Maquillador",
+     "fr": "Maquilleur",
+     "de": "Maskenbildner"
+    },
+    {
+     "it": "Tecnico del Suono",
+     "en": "Sound Technician",
+     "es": "Técnico de sonido",
+     "fr": "Ingénieur du son",
+     "de": "Tontechniker"
+    },
+    {
+     "it": "Scenografo",
+     "en": "Set Designer",
+     "es": "Escenógrafo",
+     "fr": "Décorateur",
+     "de": "Bühnenbildner"
+    }
+   ]
+  },
+  {
+   "id": "prison",
+   "cat": "adventure",
+   "name": {
+    "it": "Carcere di Massima Sicurezza",
+    "en": "Maximum Security Prison",
+    "es": "Cárcel de máxima seguridad",
+    "fr": "Prison de haute sécurité",
+    "de": "Hochsicherheitsgefängnis"
+   },
+   "roles": [
+    {
+     "it": "Guardia Carceraria",
+     "en": "Prison Guard",
+     "es": "Guardia de prisión",
+     "fr": "Gardien de prison",
+     "de": "Gefängniswärter"
+    },
+    {
+     "it": "Direttore",
+     "en": "Warden",
+     "es": "Director",
+     "fr": "Directeur",
+     "de": "Gefängnisdirektor"
+    },
+    {
+     "it": "Detenuto",
+     "en": "Inmate",
+     "es": "Recluso",
+     "fr": "Détenu",
+     "de": "Häftling"
+    },
+    {
+     "it": "Cuoco",
+     "en": "Cook",
+     "es": "Cocinero",
+     "fr": "Cuisinier",
+     "de": "Koch"
+    },
+    {
+     "it": "Avvocato",
+     "en": "Lawyer",
+     "es": "Abogado",
+     "fr": "Avocat",
+     "de": "Anwalt"
+    },
+    {
+     "it": "Medico",
+     "en": "Doctor",
+     "es": "Médico",
+     "fr": "Médecin",
+     "de": "Arzt"
+    },
+    {
+     "it": "Cappellano",
+     "en": "Chaplain",
+     "es": "Capellán",
+     "fr": "Aumônier",
+     "de": "Gefängnisseelsorger"
+    },
+    {
+     "it": "Visitatore",
+     "en": "Visitor",
+     "es": "Visitante",
+     "fr": "Visiteur",
+     "de": "Besucher"
+    }
+   ]
+  },
+  {
+   "id": "casino",
+   "cat": "show",
+   "name": {
+    "it": "Casinò",
+    "en": "Casino",
+    "es": "Casino",
+    "fr": "Casino",
+    "de": "Kasino"
+   },
+   "roles": [
+    {
+     "it": "Croupier",
+     "en": "Croupier",
+     "es": "Crupier",
+     "fr": "Croupier",
+     "de": "Croupier"
+    },
+    {
+     "it": "Giocatore d'Azzardo",
+     "en": "Gambler",
+     "es": "Jugador",
+     "fr": "Joueur",
+     "de": "Spieler"
+    },
+    {
+     "it": "Barista",
+     "en": "Bartender",
+     "es": "Barman",
+     "fr": "Barman",
+     "de": "Barkeeper"
+    },
+    {
+     "it": "Buttafuori",
+     "en": "Bouncer",
+     "es": "Portero",
+     "fr": "Videur",
+     "de": "Türsteher"
+    },
+    {
+     "it": "Direttore di Sala",
+     "en": "Floor Manager",
+     "es": "Jefe de sala",
+     "fr": "Chef de salle",
+     "de": "Saalchef"
+    },
+    {
+     "it": "Baro",
+     "en": "Cheater",
+     "es": "Tramposo",
+     "fr": "Tricheur",
+     "de": "Falschspieler"
+    },
+    {
+     "it": "Turista",
+     "en": "Tourist",
+     "es": "Turista",
+     "fr": "Touriste",
+     "de": "Tourist"
+    },
+    {
+     "it": "Cassiere",
+     "en": "Cashier",
+     "es": "Cajero",
+     "fr": "Caissier",
+     "de": "Kassierer"
+    }
+   ]
+  },
+  {
+   "id": "airport",
+   "cat": "travel",
+   "name": {
+    "it": "Aeroporto",
+    "en": "Airport",
+    "es": "Aeropuerto",
+    "fr": "Aéroport",
+    "de": "Flughafen"
+   },
+   "roles": [
+    {
+     "it": "Pilota",
+     "en": "Pilot",
+     "es": "Piloto",
+     "fr": "Pilote",
+     "de": "Pilot"
+    },
+    {
+     "it": "Assistente di volo",
+     "en": "Flight Attendant",
+     "es": "Auxiliar de vuelo",
+     "fr": "Agent de bord",
+     "de": "Flugbegleiter"
+    },
+    {
+     "it": "Passeggero",
+     "en": "Passenger",
+     "es": "Pasajero",
+     "fr": "Passager",
+     "de": "Passagier"
+    },
+    {
+     "it": "Valigia",
+     "en": "Suitcase",
+     "es": "Maleta",
+     "fr": "Valise",
+     "de": "Koffer"
+    },
+    {
+     "it": "Terrorista",
+     "en": "Terrorist",
+     "es": "Terrorista",
+     "fr": "Terroriste",
+     "de": "Terrorist"
+    },
+    {
+     "it": "Addetto alle pulizie",
+     "en": "Cleaner",
+     "es": "Limpiador",
+     "fr": "Agent d'entretien",
+     "de": "Reinigungskraft"
+    },
+    {
+     "it": "Segnalatore aeroportuale",
+     "en": "Aircraft Marshaller",
+     "es": "Señalero de pista",
+     "fr": "Placeur d'avions",
+     "de": "Einwinker"
+    },
+    {
+     "it": "Uno che ha perso il volo",
+     "en": "Guy Who Missed His Flight",
+     "es": "El que perdió el vuelo",
+     "fr": "Celui qui a raté son vol",
+     "de": "Einer, der seinen Flug verpasst hat"
+    }
+   ]
+  },
+  {
+   "id": "hospital",
+   "cat": "city",
+   "name": {
+    "it": "Ospedale",
+    "en": "Hospital",
+    "es": "Hospital",
+    "fr": "Hôpital",
+    "de": "Krankenhaus"
+   },
+   "roles": [
+    {
+     "it": "Chirurgo",
+     "en": "Surgeon",
+     "es": "Cirujano",
+     "fr": "Chirurgien",
+     "de": "Chirurg"
+    },
+    {
+     "it": "Morto",
+     "en": "Corpse",
+     "es": "Muerto",
+     "fr": "Mort",
+     "de": "Leiche"
+    },
+    {
+     "it": "Paziente",
+     "en": "Patient",
+     "es": "Paciente",
+     "fr": "Patient",
+     "de": "Patient"
+    },
+    {
+     "it": "Anestetizzato",
+     "en": "Anesthetized Patient",
+     "es": "Anestesiado",
+     "fr": "Patient anesthésié",
+     "de": "Narkosepatient"
+    },
+    {
+     "it": "Vecchio in punto di morte",
+     "en": "Dying Old Man",
+     "es": "Anciano moribundo",
+     "fr": "Vieillard mourant",
+     "de": "Sterbender Greis"
+    },
+    {
+     "it": "Receptionist",
+     "en": "Receptionist",
+     "es": "Recepcionista",
+     "fr": "Réceptionniste",
+     "de": "Empfangskraft"
+    },
+    {
+     "it": "Addetto alle pulizie",
+     "en": "Cleaner",
+     "es": "Limpiador",
+     "fr": "Agent d'entretien",
+     "de": "Reinigungskraft"
+    },
+    {
+     "it": "Bebè",
+     "en": "Newborn Baby",
+     "es": "Bebé",
+     "fr": "Bébé",
+     "de": "Neugeborenes"
+    }
+   ]
+  },
+  {
+   "id": "cruise_ship",
+   "cat": "travel",
+   "name": {
+    "it": "Nave da Crociera",
+    "en": "Cruise Ship",
+    "es": "Crucero",
+    "fr": "Bateau de croisière",
+    "de": "Kreuzfahrtschiff"
+   },
+   "roles": [
+    {
+     "it": "Capitano",
+     "en": "Captain",
+     "es": "Capitán",
+     "fr": "Capitaine",
+     "de": "Kapitän"
+    },
+    {
+     "it": "Barista",
+     "en": "Bartender",
+     "es": "Barman",
+     "fr": "Barman",
+     "de": "Barkeeper"
+    },
+    {
+     "it": "Turista",
+     "en": "Tourist",
+     "es": "Turista",
+     "fr": "Touriste",
+     "de": "Tourist"
+    },
+    {
+     "it": "Delfino",
+     "en": "Dolphin",
+     "es": "Delfín",
+     "fr": "Dauphin",
+     "de": "Delfin"
+    },
+    {
+     "it": "Animatore",
+     "en": "Entertainer",
+     "es": "Animador",
+     "fr": "Animateur",
+     "de": "Animateur"
+    },
+    {
+     "it": "Cuoco",
+     "en": "Cook",
+     "es": "Cocinero",
+     "fr": "Cuisinier",
+     "de": "Koch"
+    },
+    {
+     "it": "Passeggero col mal di mare",
+     "en": "Seasick Passenger",
+     "es": "Pasajero mareado",
+     "fr": "Passager qui a le mal de mer",
+     "de": "Seekranker Passagier"
+    },
+    {
+     "it": "Bagnino",
+     "en": "Lifeguard",
+     "es": "Socorrista",
+     "fr": "Maître-nageur",
+     "de": "Bademeister"
+    }
+   ]
+  },
+  {
+   "id": "film_set",
+   "cat": "show",
+   "name": {
+    "it": "Set Cinematografico",
+    "en": "Film Set",
+    "es": "Set de rodaje",
+    "fr": "Plateau de tournage",
+    "de": "Filmset"
+   },
+   "roles": [
+    {
+     "it": "Regista",
+     "en": "Director",
+     "es": "Director",
+     "fr": "Réalisateur",
+     "de": "Regisseur"
+    },
+    {
+     "it": "Attore protagonista",
+     "en": "Lead Actor",
+     "es": "Actor protagonista",
+     "fr": "Acteur principal",
+     "de": "Hauptdarsteller"
+    },
+    {
+     "it": "Controfigura",
+     "en": "Stunt Double",
+     "es": "Doble de acción",
+     "fr": "Cascadeur",
+     "de": "Stuntdouble"
+    },
+    {
+     "it": "Cameraman",
+     "en": "Camera Operator",
+     "es": "Cámara",
+     "fr": "Cadreur",
+     "de": "Kameramann"
+    },
+    {
+     "it": "Truccatore",
+     "en": "Makeup Artist",
+     "es": "Maquillador",
+     "fr": "Maquilleur",
+     "de": "Maskenbildner"
+    },
+    {
+     "it": "Scenografo",
+     "en": "Set Designer",
+     "es": "Escenógrafo",
+     "fr": "Décorateur",
+     "de": "Szenenbildner"
+    },
+    {
+     "it": "Robin Williams",
+     "en": "Robin Williams",
+     "es": "Robin Williams",
+     "fr": "Robin Williams",
+     "de": "Robin Williams"
+    },
+    {
+     "it": "Attore",
+     "en": "Actor",
+     "es": "Actor",
+     "fr": "Acteur",
+     "de": "Schauspieler"
+    }
+   ]
+  },
+  {
+   "id": "castle",
+   "cat": "adventure",
+   "name": {
+    "it": "Castello",
+    "en": "Castle",
+    "es": "Castillo",
+    "fr": "Château",
+    "de": "Burg"
+   },
+   "roles": [
+    {
+     "it": "Re",
+     "en": "King",
+     "es": "Rey",
+     "fr": "Roi",
+     "de": "König"
+    },
+    {
+     "it": "Cavaliere",
+     "en": "Knight",
+     "es": "Caballero",
+     "fr": "Chevalier",
+     "de": "Ritter"
+    },
+    {
+     "it": "Giullare",
+     "en": "Jester",
+     "es": "Bufón",
+     "fr": "Bouffon",
+     "de": "Hofnarr"
+    },
+    {
+     "it": "Mago",
+     "en": "Wizard",
+     "es": "Mago",
+     "fr": "Magicien",
+     "de": "Zauberer"
+    },
+    {
+     "it": "Fornaio",
+     "en": "Baker",
+     "es": "Panadero",
+     "fr": "Boulanger",
+     "de": "Bäcker"
+    },
+    {
+     "it": "Guardia",
+     "en": "Guard",
+     "es": "Guardia",
+     "fr": "Garde",
+     "de": "Wache"
+    },
+    {
+     "it": "Principessa",
+     "en": "Princess",
+     "es": "Princesa",
+     "fr": "Princesse",
+     "de": "Prinzessin"
+    },
+    {
+     "it": "Drago",
+     "en": "Dragon",
+     "es": "Dragón",
+     "fr": "Dragon",
+     "de": "Drache"
+    }
+   ]
+  },
+  {
+   "id": "high_school",
+   "cat": "city",
+   "name": {
+    "it": "Scuola Superiore",
+    "en": "High School",
+    "es": "Instituto",
+    "fr": "Lycée",
+    "de": "Gymnasium"
+   },
+   "roles": [
+    {
+     "it": "Professore",
+     "en": "Teacher",
+     "es": "Profesor",
+     "fr": "Professeur",
+     "de": "Lehrer"
+    },
+    {
+     "it": "Studente",
+     "en": "Student",
+     "es": "Estudiante",
+     "fr": "Élève",
+     "de": "Schüler"
+    },
+    {
+     "it": "Preside",
+     "en": "Principal",
+     "es": "Director",
+     "fr": "Proviseur",
+     "de": "Schulleiter"
+    },
+    {
+     "it": "Bidello",
+     "en": "Janitor",
+     "es": "Conserje",
+     "fr": "Concierge",
+     "de": "Hausmeister"
+    },
+    {
+     "it": "Drogato",
+     "en": "Druggie",
+     "es": "Drogata",
+     "fr": "Drogué",
+     "de": "Junkie"
+    },
+    {
+     "it": "Spacciatore",
+     "en": "Dealer",
+     "es": "Camello",
+     "fr": "Dealer",
+     "de": "Dealer"
+    },
+    {
+     "it": "Prof di educazione fisica",
+     "en": "PE Teacher",
+     "es": "Profe de educación física",
+     "fr": "Prof de sport",
+     "de": "Sportlehrer"
+    },
+    {
+     "it": "Secchione",
+     "en": "Nerd",
+     "es": "Empollón",
+     "fr": "Intello",
+     "de": "Streber"
+    }
+   ]
+  },
+  {
+   "id": "circus",
+   "cat": "show",
+   "name": {
+    "it": "Circo",
+    "en": "Circus",
+    "es": "Circo",
+    "fr": "Cirque",
+    "de": "Zirkus"
+   },
+   "roles": [
+    {
+     "it": "Leone",
+     "en": "Lion",
+     "es": "León",
+     "fr": "Lion",
+     "de": "Löwe"
+    },
+    {
+     "it": "Trapezista",
+     "en": "Trapeze Artist",
+     "es": "Trapecista",
+     "fr": "Trapéziste",
+     "de": "Trapezkünstler"
+    },
+    {
+     "it": "Pagliaccio",
+     "en": "Clown",
+     "es": "Payaso",
+     "fr": "Clown",
+     "de": "Clown"
+    },
+    {
+     "it": "Presentatore",
+     "en": "Ringmaster",
+     "es": "Presentador",
+     "fr": "Monsieur Loyal",
+     "de": "Zirkusdirektor"
+    },
+    {
+     "it": "Illusionista",
+     "en": "Illusionist",
+     "es": "Ilusionista",
+     "fr": "Illusionniste",
+     "de": "Illusionist"
+    },
+    {
+     "it": "Acrobata",
+     "en": "Acrobat",
+     "es": "Acróbata",
+     "fr": "Acrobate",
+     "de": "Akrobat"
+    },
+    {
+     "it": "Mangiafuoco",
+     "en": "Fire Eater",
+     "es": "Tragafuegos",
+     "fr": "Cracheur de feu",
+     "de": "Feuerschlucker"
+    },
+    {
+     "it": "Domatore",
+     "en": "Lion Tamer",
+     "es": "Domador",
+     "fr": "Dompteur",
+     "de": "Dompteur"
+    }
+   ]
+  },
+  {
+   "id": "hotel",
+   "cat": "travel",
+   "name": {
+    "it": "Hotel",
+    "en": "Hotel",
+    "es": "Hotel",
+    "fr": "Hôtel",
+    "de": "Hotel"
+   },
+   "roles": [
+    {
+     "it": "Portiere",
+     "en": "Doorman",
+     "es": "Portero",
+     "fr": "Portier",
+     "de": "Portier"
+    },
+    {
+     "it": "Receptionist",
+     "en": "Receptionist",
+     "es": "Recepcionista",
+     "fr": "Réceptionniste",
+     "de": "Rezeptionist"
+    },
+    {
+     "it": "Cameriera",
+     "en": "Maid",
+     "es": "Camarera de piso",
+     "fr": "Femme de chambre",
+     "de": "Zimmermädchen"
+    },
+    {
+     "it": "Addetto alle pulizie",
+     "en": "Cleaner",
+     "es": "Limpiador",
+     "fr": "Agent d'entretien",
+     "de": "Reinigungskraft"
+    },
+    {
+     "it": "Cliente VIP",
+     "en": "VIP Guest",
+     "es": "Cliente VIP",
+     "fr": "Client VIP",
+     "de": "VIP-Gast"
+    },
+    {
+     "it": "Facchino",
+     "en": "Bellhop",
+     "es": "Botones",
+     "fr": "Bagagiste",
+     "de": "Page"
+    },
+    {
+     "it": "Chef",
+     "en": "Chef",
+     "es": "Chef",
+     "fr": "Chef",
+     "de": "Küchenchef"
+    },
+    {
+     "it": "Capo mafioso",
+     "en": "Mafia Boss",
+     "es": "Capo mafioso",
+     "fr": "Parrain de la mafia",
+     "de": "Mafiaboss"
+    }
+   ]
+  },
+  {
+   "id": "stadium",
+   "cat": "show",
+   "name": {
+    "it": "Stadio di Calcio",
+    "en": "Football Stadium",
+    "es": "Estadio de fútbol",
+    "fr": "Stade de football",
+    "de": "Fußballstadion"
+   },
+   "roles": [
+    {
+     "it": "Calciatore",
+     "en": "Footballer",
+     "es": "Futbolista",
+     "fr": "Footballeur",
+     "de": "Fußballer"
+    },
+    {
+     "it": "Allenatore",
+     "en": "Coach",
+     "es": "Entrenador",
+     "fr": "Entraîneur",
+     "de": "Trainer"
+    },
+    {
+     "it": "Arbitro",
+     "en": "Referee",
+     "es": "Árbitro",
+     "fr": "Arbitre",
+     "de": "Schiedsrichter"
+    },
+    {
+     "it": "Telecronista",
+     "en": "Commentator",
+     "es": "Comentarista",
+     "fr": "Commentateur",
+     "de": "Kommentator"
+    },
+    {
+     "it": "Tifoso ultras",
+     "en": "Ultra Fan",
+     "es": "Ultra",
+     "fr": "Supporter ultra",
+     "de": "Ultra-Fan"
+    },
+    {
+     "it": "Raccattapalle",
+     "en": "Ball Boy",
+     "es": "Recogepelotas",
+     "fr": "Ramasseur de balles",
+     "de": "Balljunge"
+    },
+    {
+     "it": "Paramedico",
+     "en": "Paramedic",
+     "es": "Paramédico",
+     "fr": "Secouriste",
+     "de": "Sanitäter"
+    },
+    {
+     "it": "Panchinaro",
+     "en": "Benchwarmer",
+     "es": "Suplente",
+     "fr": "Remplaçant",
+     "de": "Ersatzspieler"
+    }
+   ]
+  },
+  {
+   "id": "mall",
+   "cat": "city",
+   "name": {
+    "it": "Centro Commerciale",
+    "en": "Shopping Mall",
+    "es": "Centro comercial",
+    "fr": "Centre commercial",
+    "de": "Einkaufszentrum"
+   },
+   "roles": [
+    {
+     "it": "Commesso",
+     "en": "Shop Assistant",
+     "es": "Dependiente",
+     "fr": "Vendeur",
+     "de": "Verkäufer"
+    },
+    {
+     "it": "Guardiano notturno",
+     "en": "Night Watchman",
+     "es": "Vigilante nocturno",
+     "fr": "Gardien de nuit",
+     "de": "Nachtwächter"
+    },
+    {
+     "it": "Senzatetto",
+     "en": "Homeless Person",
+     "es": "Persona sin hogar",
+     "fr": "Sans-abri",
+     "de": "Obdachloser"
+    },
+    {
+     "it": "Cliente",
+     "en": "Customer",
+     "es": "Cliente",
+     "fr": "Client",
+     "de": "Kunde"
+    },
+    {
+     "it": "Vedova",
+     "en": "Widow",
+     "es": "Viuda",
+     "fr": "Veuve",
+     "de": "Witwe"
+    },
+    {
+     "it": "Addetto alle pulizie",
+     "en": "Cleaner",
+     "es": "Limpiador",
+     "fr": "Agent d'entretien",
+     "de": "Reinigungskraft"
+    },
+    {
+     "it": "Ragazzo in cerca di alcol",
+     "en": "Teen Looking for Booze",
+     "es": "Chaval buscando alcohol",
+     "fr": "Ado qui cherche de l'alcool",
+     "de": "Teenager auf der Suche nach Alkohol"
+    },
+    {
+     "it": "Nonno che ha perso il nipote",
+     "en": "Grandpa Who Lost His Grandkid",
+     "es": "Abuelo que ha perdido a su nieto",
+     "fr": "Papi qui a perdu son petit-fils",
+     "de": "Opa, der seinen Enkel verloren hat"
+    }
+   ]
+  },
+  {
+   "id": "bank",
+   "cat": "city",
+   "name": {
+    "it": "Banca",
+    "en": "Bank",
+    "es": "Banco",
+    "fr": "Banque",
+    "de": "Bank"
+   },
+   "roles": [
+    {
+     "it": "Cassiere",
+     "en": "Teller",
+     "es": "Cajero",
+     "fr": "Guichetier",
+     "de": "Kassierer"
+    },
+    {
+     "it": "Direttore mafioso",
+     "en": "Crooked Manager",
+     "es": "Director mafioso",
+     "fr": "Directeur mafieux",
+     "de": "Mafiöser Direktor"
+    },
+    {
+     "it": "Agente di scorta",
+     "en": "Security Escort",
+     "es": "Escolta",
+     "fr": "Convoyeur de fonds",
+     "de": "Geldtransportfahrer"
+    },
+    {
+     "it": "Cliente",
+     "en": "Customer",
+     "es": "Cliente",
+     "fr": "Client",
+     "de": "Kunde"
+    },
+    {
+     "it": "Consulente finanziario",
+     "en": "Financial Advisor",
+     "es": "Asesor financiero",
+     "fr": "Conseiller financier",
+     "de": "Finanzberater"
+    },
+    {
+     "it": "Guardiana di sicurezza",
+     "en": "Security Guard",
+     "es": "Guardia de seguridad",
+     "fr": "Agente de sécurité",
+     "de": "Sicherheitsmitarbeiterin"
+    },
+    {
+     "it": "Ladro",
+     "en": "Robber",
+     "es": "Ladrón",
+     "fr": "Braqueur",
+     "de": "Bankräuber"
+    },
+    {
+     "it": "Poveraccio",
+     "en": "Broke Guy",
+     "es": "Pobretón",
+     "fr": "Fauché",
+     "de": "Pleitegeier"
+    }
+   ]
+  },
+  {
+   "id": "restaurant",
+   "cat": "city",
+   "name": {
+    "it": "Ristorante Stellato",
+    "en": "Michelin-Star Restaurant",
+    "es": "Restaurante con estrella Michelin",
+    "fr": "Restaurant étoilé",
+    "de": "Sternerestaurant"
+   },
+   "roles": [
+    {
+     "it": "Chef",
+     "en": "Chef",
+     "es": "Chef",
+     "fr": "Chef",
+     "de": "Küchenchef"
+    },
+    {
+     "it": "Sommelier",
+     "en": "Sommelier",
+     "es": "Sumiller",
+     "fr": "Sommelier",
+     "de": "Sommelier"
+    },
+    {
+     "it": "Cannavacciuolo",
+     "en": "Celebrity Chef",
+     "es": "Chef famoso",
+     "fr": "Chef célèbre",
+     "de": "Starkoch"
+    },
+    {
+     "it": "Cameriere",
+     "en": "Waiter",
+     "es": "Camarero",
+     "fr": "Serveur",
+     "de": "Kellner"
+    },
+    {
+     "it": "Lavapiatti",
+     "en": "Dishwasher",
+     "es": "Friegaplatos",
+     "fr": "Plongeur",
+     "de": "Tellerwäscher"
+    },
+    {
+     "it": "Critico",
+     "en": "Food Critic",
+     "es": "Crítico gastronómico",
+     "fr": "Critique gastronomique",
+     "de": "Restaurantkritiker"
+    },
+    {
+     "it": "Cliente",
+     "en": "Customer",
+     "es": "Cliente",
+     "fr": "Client",
+     "de": "Gast"
+    },
+    {
+     "it": "Un coglione che scapperà",
+     "en": "Guy Who'll Dash Without Paying",
+     "es": "El que se irá sin pagar",
+     "fr": "Celui qui va partir sans payer",
+     "de": "Zechpreller"
+    }
+   ]
+  },
+  {
+   "id": "beach",
+   "cat": "travel",
+   "name": {
+    "it": "Spiaggia",
+    "en": "Beach",
+    "es": "Playa",
+    "fr": "Plage",
+    "de": "Strand"
+   },
+   "roles": [
+    {
+     "it": "Bagnino",
+     "en": "Lifeguard",
+     "es": "Socorrista",
+     "fr": "Maître-nageur",
+     "de": "Rettungsschwimmer"
+    },
+    {
+     "it": "Barista",
+     "en": "Bartender",
+     "es": "Camarero de chiringuito",
+     "fr": "Barman",
+     "de": "Strandbar-Kellner"
+    },
+    {
+     "it": "Turista",
+     "en": "Tourist",
+     "es": "Turista",
+     "fr": "Touriste",
+     "de": "Tourist"
+    },
+    {
+     "it": "Venditore ambulante",
+     "en": "Beach Vendor",
+     "es": "Vendedor ambulante",
+     "fr": "Vendeur ambulant",
+     "de": "Strandverkäufer"
+    },
+    {
+     "it": "Dj",
+     "en": "DJ",
+     "es": "DJ",
+     "fr": "DJ",
+     "de": "DJ"
+    },
+    {
+     "it": "Istruttore di surf",
+     "en": "Surf Instructor",
+     "es": "Instructor de surf",
+     "fr": "Moniteur de surf",
+     "de": "Surflehrer"
+    },
+    {
+     "it": "Bambino col secchiello",
+     "en": "Kid with a Bucket",
+     "es": "Niño con su cubo",
+     "fr": "Enfant avec un seau",
+     "de": "Kind mit Eimer"
+    },
+    {
+     "it": "Nudista",
+     "en": "Nudist",
+     "es": "Nudista",
+     "fr": "Naturiste",
+     "de": "FKK-Anhänger"
+    }
+   ]
+  },
+  {
+   "id": "train_station",
+   "cat": "travel",
+   "name": {
+    "it": "Stazione",
+    "en": "Train Station",
+    "es": "Estación de tren",
+    "fr": "Gare",
+    "de": "Bahnhof"
+   },
+   "roles": [
+    {
+     "it": "Macchinista",
+     "en": "Train Driver",
+     "es": "Maquinista",
+     "fr": "Conducteur de train",
+     "de": "Lokführer"
+    },
+    {
+     "it": "Controllore",
+     "en": "Ticket Inspector",
+     "es": "Revisor",
+     "fr": "Contrôleur",
+     "de": "Schaffner"
+    },
+    {
+     "it": "Ritardatario",
+     "en": "Latecomer",
+     "es": "Rezagado",
+     "fr": "Retardataire",
+     "de": "Zuspätkommer"
+    },
+    {
+     "it": "Pendolare",
+     "en": "Commuter",
+     "es": "Viajero habitual",
+     "fr": "Navetteur",
+     "de": "Pendler"
+    },
+    {
+     "it": "Musicista di strada",
+     "en": "Street Musician",
+     "es": "Músico callejero",
+     "fr": "Musicien de rue",
+     "de": "Straßenmusiker"
+    },
+    {
+     "it": "Agente di polizia",
+     "en": "Police Officer",
+     "es": "Policía",
+     "fr": "Policier",
+     "de": "Polizist"
+    },
+    {
+     "it": "Spacciatore",
+     "en": "Dealer",
+     "es": "Camello",
+     "fr": "Dealer",
+     "de": "Dealer"
+    },
+    {
+     "it": "Drogato",
+     "en": "Junkie",
+     "es": "Drogadicto",
+     "fr": "Drogué",
+     "de": "Junkie"
+    }
+   ]
+  },
+  {
+   "id": "museum",
+   "cat": "show",
+   "name": {
+    "it": "Museo d'Arte",
+    "en": "Art Museum",
+    "es": "Museo de arte",
+    "fr": "Musée d'art",
+    "de": "Kunstmuseum"
+   },
+   "roles": [
+    {
+     "it": "Custode",
+     "en": "Museum Guard",
+     "es": "Vigilante",
+     "fr": "Gardien",
+     "de": "Museumswärter"
+    },
+    {
+     "it": "Ladro",
+     "en": "Art Thief",
+     "es": "Ladrón de arte",
+     "fr": "Voleur d'art",
+     "de": "Kunstdieb"
+    },
+    {
+     "it": "Guida turistica",
+     "en": "Tour Guide",
+     "es": "Guía turístico",
+     "fr": "Guide",
+     "de": "Fremdenführer"
+    },
+    {
+     "it": "Ragazzi annoiati",
+     "en": "Bored Teens",
+     "es": "Adolescentes aburridos",
+     "fr": "Ados qui s'ennuient",
+     "de": "Gelangweilte Teenager"
+    },
+    {
+     "it": "Restauratore",
+     "en": "Restorer",
+     "es": "Restaurador",
+     "fr": "Restaurateur",
+     "de": "Restaurator"
+    },
+    {
+     "it": "Turista",
+     "en": "Tourist",
+     "es": "Turista",
+     "fr": "Touriste",
+     "de": "Tourist"
+    },
+    {
+     "it": "Ragazzo che prova a rimorchiare una ragazza alla quale interessa",
+     "en": "Guy Hitting on an Art Lover",
+     "es": "Chico ligando con una amante del arte",
+     "fr": "Gars qui drague une passionnée d'art",
+     "de": "Typ, der eine Kunstliebhaberin anbaggert"
+    },
+    {
+     "it": "Studente d'arte",
+     "en": "Art Student",
+     "es": "Estudiante de arte",
+     "fr": "Étudiant en art",
+     "de": "Kunststudent"
+    }
+   ]
+  }
+ ]
+}
