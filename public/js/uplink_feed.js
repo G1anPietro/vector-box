@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const unreadCounts = {};
 
     let eventSource = null;
+    let streamResumeId = 0;   // newest message id known before the stream starts
+    let reconnectTimer = null;
     let isSubmitting = false;
     let isLoadingHistory = false;
 
@@ -244,6 +246,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await res.json();
 
                 state.isInitialized = true;
+                if (data.success && data.latest_id > streamResumeId) {
+                    streamResumeId = data.latest_id;
+                }
                 if (data.success && data.messages.length > 0) {
                     state.messages = data.messages;
                     state.oldestId = data.messages[0].id;
@@ -299,34 +304,50 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {}
     };
 
+    const handleIncomingMessage = (data) => {
+        if (!data || !data.id) return;
+        const rId = data.room_id || 'general';
+        const state = getRoomState(rId);
+        if (data.id <= state.latestId) return; // already shown (history or replay)
+
+        state.latestId = data.id;
+        state.messages.push(data);
+
+        if (rId === window.activeRoomId) {
+            appendMessageToUI(data, state);
+        } else {
+            unreadCounts[rId] = (unreadCounts[rId] || 0) + 1;
+            renderRoomTabs();
+        }
+    };
+
+    // PHP fallback stream: event ids are message ids, so the browser's automatic
+    // reconnect (Last-Event-ID) resumes without gaps.
     const initSSE = () => {
+        clearTimeout(reconnectTimer);
         if (eventSource) eventSource.close();
-        eventSource = new EventSource(`api/uplink_stream.php`);
+
+        eventSource = new EventSource(`api/uplink_stream.php?last_id=${encodeURIComponent(streamResumeId)}`);
 
         eventSource.onmessage = (event) => {
-            // Filter heartbeats & empty frames to prevent SyntaxError
-            if (!event.data || !event.data.trim() || event.data.trim() === ': heartbeat') {
-                return;
-            }
-
+            if (event.lastEventId) streamResumeId = Math.max(streamResumeId, Number(event.lastEventId) || 0);
+            if (!event.data || !event.data.trim()) return;
             try {
-                const data = JSON.parse(event.data);
-                const rId = data.room_id || 'general';
-                const state = getRoomState(rId);
-
-                if (data.id && data.id > state.latestId) {
-                    state.latestId = data.id;
-                    state.messages.push(data);
-
-                    if (rId === window.activeRoomId) {
-                        appendMessageToUI(data, state);
-                    } else {
-                        unreadCounts[rId] = (unreadCounts[rId] || 0) + 1;
-                        renderRoomTabs();
-                    }
-                }
+                handleIncomingMessage(JSON.parse(event.data));
             } catch (err) {
-                // Ignore silent parsing anomalies on teardown
+                // Ignore malformed frames
+            }
+        };
+
+        eventSource.addEventListener('ready', (event) => {
+            if (event.lastEventId) streamResumeId = Math.max(streamResumeId, Number(event.lastEventId) || 0);
+        });
+
+        eventSource.onerror = () => {
+            // CONNECTING = the browser retries by itself (with Last-Event-ID).
+            // CLOSED = HTTP error: rebuild the stream ourselves from the last id we saw.
+            if (eventSource.readyState === EventSource.CLOSED) {
+                reconnectTimer = setTimeout(initSSE, 3000);
             }
         };
     };

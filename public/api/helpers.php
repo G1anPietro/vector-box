@@ -155,6 +155,19 @@ function establishSession(array $account): string {
     return $csrf;
 }
 
+/** Shape of one chat message as sent to the browser (feed, streams, hub). */
+function formatTransmission(array $row): array {
+    $timestamp = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+    return [
+        'id'         => (int)$row['id'],
+        'room_id'    => !empty($row['room_id']) ? $row['room_id'] : 'general',
+        'username'   => !empty($row['username']) ? $row['username'] : 'guest',
+        'message'    => (string)$row['message'],
+        'date'       => substr($timestamp, 0, 10),
+        'created_at' => substr($timestamp, 11, 8),
+    ];
+}
+
 /** mbstring is optional on some hosts: fall back to byte functions. */
 function textLength(string $s): int {
     return function_exists('mb_strlen') ? mb_strlen($s) : strlen($s);

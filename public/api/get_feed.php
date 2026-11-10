@@ -20,6 +20,10 @@ try {
         jsonResponse(['success' => false, 'error' => 'FORBIDDEN: Restricted room'], 403);
     }
 
+    // Newest id overall (read BEFORE the rows): the live stream resumes from here,
+    // so nothing posted between this request and the stream connecting is lost.
+    $latestId = (int)$db->query("SELECT COALESCE(MAX(id), 0) FROM transmissions")->fetchColumn();
+
     if ($beforeId > 0) {
         $stmt = $db->prepare("SELECT id, room_id, username, message, created_at 
                               FROM transmissions 
@@ -40,22 +44,13 @@ try {
 
     $messages = array_reverse($rows);
 
-    $formatted = array_map(function($row) {
-        $timestamp = isset($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
-        return [
-            'id' => (int)$row['id'],
-            'room_id' => $row['room_id'] ?? 'general',
-            'username' => !empty($row['username']) ? $row['username'] : 'guest',
-            'message' => $row['message'],
-            'date' => substr($timestamp, 0, 10),
-            'created_at' => substr($timestamp, 11, 8)
-        ];
-    }, $messages);
+    $formatted = array_map('formatTransmission', $messages);
 
     echo json_encode([
         'success' => true,
         'messages' => $formatted,
-        'has_more' => count($rows) === $limit
+        'has_more' => count($rows) === $limit,
+        'latest_id' => $latestId
     ]);
 
 } catch (Exception $e) {
