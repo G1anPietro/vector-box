@@ -28,7 +28,7 @@ test.before(async () => {
 test.after(() => site.stop());
 
 test('migration V5 created poker_stats', () => {
-    assert.equal(site.db('PRAGMA user_version')[0].user_version, 5);
+    assert.ok(site.db('PRAGMA user_version')[0].user_version >= 5);
 });
 
 test('hands are recorded for humans only; leaderboard ranks by hands won', async () => {

@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 5;
+const DB_SCHEMA_VERSION = 6;
 
 /**
  * Session bootstrap.
@@ -218,6 +218,79 @@ function migrateV5(PDO $db): void {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_poker_stats_rank ON poker_stats(hands_won DESC, chips_won DESC)");
 }
 
+function migrateV6(PDO $db): void {
+    // "Who's the Spy" multiplayer rooms. Times are unix seconds.
+    $db->exec("CREATE TABLE IF NOT EXISTS spia_rooms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code VARCHAR(8) NOT NULL UNIQUE,
+        host_device_id INTEGER NOT NULL DEFAULT 0,
+        settings TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1,
+        round_id INTEGER NULL,
+        round_count INTEGER NOT NULL DEFAULT 0,
+        recent_locations TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS spia_devices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id INTEGER NOT NULL,
+        token_hash CHAR(64) NOT NULL UNIQUE,
+        joined_at INTEGER NOT NULL,
+        last_seen INTEGER NOT NULL
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_spia_devices_room ON spia_devices(room_id)");
+    $db->exec("CREATE TABLE IF NOT EXISTS spia_players (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id INTEGER NOT NULL,
+        device_id INTEGER NOT NULL,
+        name VARCHAR(40) NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        is_owner INTEGER NOT NULL DEFAULT 0,
+        removed INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_spia_players_room ON spia_players(room_id, removed)");
+    $db->exec("CREATE TABLE IF NOT EXISTS spia_rounds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id INTEGER NOT NULL,
+        number INTEGER NOT NULL,
+        location_id VARCHAR(40) NOT NULL,
+        pool TEXT NOT NULL,
+        rules TEXT NOT NULL,
+        spy_count INTEGER NOT NULL,
+        deal_players INTEGER NOT NULL,
+        status VARCHAR(10) NOT NULL DEFAULT 'play',
+        result TEXT NULL,
+        vote_no INTEGER NOT NULL DEFAULT 0,
+        vote_open INTEGER NOT NULL DEFAULT 0,
+        vote_forced INTEGER NOT NULL DEFAULT 0,
+        timer_ends INTEGER NULL,
+        starter_player_id INTEGER NULL,
+        log TEXT NOT NULL DEFAULT '[]',
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER NULL
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_spia_rounds_room ON spia_rounds(room_id)");
+    $db->exec("CREATE TABLE IF NOT EXISTS spia_assign (
+        round_id INTEGER NOT NULL,
+        player_id INTEGER NOT NULL,
+        is_spy INTEGER NOT NULL DEFAULT 0,
+        role INTEGER NULL,
+        fake_role INTEGER NULL,
+        seen INTEGER NOT NULL DEFAULT 0,
+        out_reason VARCHAR(10) NULL,
+        PRIMARY KEY (round_id, player_id)
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS spia_votes (
+        round_id INTEGER NOT NULL,
+        vote_no INTEGER NOT NULL,
+        voter_id INTEGER NOT NULL,
+        target_id INTEGER NOT NULL,
+        PRIMARY KEY (round_id, vote_no, voter_id)
+    )");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -237,6 +310,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 5) {
             migrateV5($db);
+        }
+        if ($current < 6) {
+            migrateV6($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
