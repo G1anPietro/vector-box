@@ -1,6 +1,7 @@
 <?php
 // public/api/poker.php
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/poker_stats.php';
 
 initSession();
 header('Content-Type: application/json');
@@ -127,6 +128,11 @@ function resolveWinner($db, $tableId, $community) {
     $stmtTable->execute([':tid' => $tableId]);
     $pot = (int)$stmtTable->fetchColumn();
 
+    // Everyone dealt into the hand (folded too) counts as having played it
+    $stmtAll = $db->prepare("SELECT id, user_id, username, is_bot FROM poker_players WHERE table_id = :tid");
+    $stmtAll->execute([':tid' => $tableId]);
+    $handPlayers = $stmtAll->fetchAll();
+
     if (count($activePlayers) === 1) {
         $winner = $activePlayers[0];
         $db->prepare("UPDATE poker_players SET chips = chips + :pot WHERE id = :id")->execute([':pot' => $pot, ':id' => $winner['id']]);
@@ -155,6 +161,7 @@ function resolveWinner($db, $tableId, $community) {
     }
 
     $db->prepare("UPDATE poker_tables SET pot = 0, last_winner_msg = :m WHERE id = :tid")->execute([':m' => $msg, ':tid' => $tableId]);
+    recordHandResult($db, $handPlayers, $winner ?? null, $pot);
 }
 
 /** Fisher-Yates with a CSPRNG (PHP's shuffle() is predictable). */

@@ -203,6 +203,7 @@ if (file_exists('version.php')) {
                             <option value="3">3 Bots</option>
                         </select>
                         <button id="poker-btn-create-room" type="button" class="nav-btn" style="border-color: #00ff66; color: #00ff66; padding: 4px 8px; font-size: 0.75rem;">+ CREATE</button>
+                        <button id="poker-btn-leaderboard" type="button" class="nav-btn" title="Leaderboard" style="border-color: #ffc800; color: #ffc800; padding: 4px 8px; font-size: 0.75rem;">TOP</button>
                     </div>
                 </div>
 
@@ -214,6 +215,7 @@ if (file_exists('version.php')) {
                     <div id="poker-community-cards" style="display: flex; gap: 6px;"></div>
                 </div>
 
+                <div id="poker-leaderboard" class="hidden" style="border: 1px solid #ffc800; padding: 6px 8px; margin: 6px 0; font-family: monospace; font-size: 0.78rem; max-height: 220px; overflow-y: auto;"></div>
                 <div id="poker-seats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0; flex: 1; align-content: start;"></div>
 
                 <div id="poker-winner-banner" class="hidden" style="background: rgba(0, 255, 102, 0.15); border: 1px solid var(--accent-color); padding: 6px; text-align: center; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px;"></div>

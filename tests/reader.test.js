@@ -18,7 +18,7 @@ test.before(async () => {
 test.after(() => site.stop());
 
 test('migration V4 created the bookmarks table', () => {
-    assert.equal(site.db('PRAGMA user_version')[0].user_version, 4);
+    assert.ok(site.db('PRAGMA user_version')[0].user_version >= 4);
     assert.equal(site.db("SELECT name FROM sqlite_master WHERE name = 'bookmarks'").length, 1);
 });
 

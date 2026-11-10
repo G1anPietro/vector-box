@@ -26,6 +26,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!seatsGrid) return;
 
+    // ---- Leaderboard ----------------------------------------------------------
+    const btnLeaderboard = document.getElementById('poker-btn-leaderboard');
+    const leaderboardBox = document.getElementById('poker-leaderboard');
+
+    const renderLeaderboard = (data) => {
+        leaderboardBox.replaceChildren();
+        const title = document.createElement('div');
+        title.style.cssText = 'color:#ffc800; font-weight:bold; margin-bottom:4px;';
+        title.textContent = '== TOP PLAYERS // hands won ==';
+        leaderboardBox.appendChild(title);
+
+        const line = (cells, color) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:grid; grid-template-columns: 2.2em 1fr 4.5em 4.5em 6em; gap:6px; padding:1px 0;';
+            if (color) row.style.color = color;
+            cells.forEach((c) => {
+                const span = document.createElement('span');
+                span.textContent = String(c);
+                span.style.overflow = 'hidden';
+                span.style.textOverflow = 'ellipsis';
+                span.style.whiteSpace = 'nowrap';
+                row.appendChild(span);
+            });
+            leaderboardBox.appendChild(row);
+        };
+
+        line(['#', 'PLAYER', 'WON', 'WIN%', 'CR WON'], 'var(--text-muted, #8ab4f8)');
+        if (!data.top.length) {
+            const empty = document.createElement('div');
+            empty.className = 'term-muted';
+            empty.textContent = 'No hands recorded yet. Log in and play to get on the board.';
+            leaderboardBox.appendChild(empty);
+        }
+        data.top.forEach((r) => line([r.rank, r.username, `${r.hands_won}/${r.hands_played}`, `${r.win_rate}%`, r.chips_won]));
+        if (data.me && !data.top.some((r) => r.username === data.me.username)) {
+            line(['..', '', '', '', '']);
+            line([data.me.rank, data.me.username, `${data.me.hands_won}/${data.me.hands_played}`, `${data.me.win_rate}%`, data.me.chips_won], '#00f3ff');
+        }
+        if (data.me) {
+            const best = document.createElement('div');
+            best.className = 'term-muted';
+            best.style.marginTop = '4px';
+            best.textContent = `Your biggest pot: ${data.me.biggest_pot} CR`;
+            leaderboardBox.appendChild(best);
+        }
+    };
+
+    if (btnLeaderboard && leaderboardBox) {
+        btnLeaderboard.addEventListener('click', async () => {
+            if (!leaderboardBox.classList.contains('hidden')) {
+                leaderboardBox.classList.add('hidden');
+                return;
+            }
+            leaderboardBox.classList.remove('hidden');
+            leaderboardBox.textContent = 'Loading...';
+            try {
+                const res = await fetch('api/poker_leaderboard.php', { credentials: 'same-origin' });
+                const data = await res.json();
+                if (data.success) renderLeaderboard(data);
+                else leaderboardBox.textContent = '>> Leaderboard unavailable.';
+            } catch (err) {
+                leaderboardBox.textContent = '>> Leaderboard unavailable.';
+            }
+        });
+    }
+
     window.switchPokerRoom = (roomOrCode) => {
         currentRoomTarget = roomOrCode || 'general';
         fetchPokerState();

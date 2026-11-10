@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 4;
+const DB_SCHEMA_VERSION = 5;
 
 /**
  * Session bootstrap.
@@ -204,6 +204,20 @@ function migrateV4(PDO $db): void {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_bookmarks_user_book ON bookmarks(user_id, book_id)");
 }
 
+function migrateV5(PDO $db): void {
+    // Poker leaderboard: lifetime stats per account (bots/guests not tracked)
+    $db->exec("CREATE TABLE IF NOT EXISTS poker_stats (
+        user_id INTEGER PRIMARY KEY,
+        username VARCHAR(50) NOT NULL,
+        hands_played INTEGER NOT NULL DEFAULT 0,
+        hands_won INTEGER NOT NULL DEFAULT 0,
+        chips_won INTEGER NOT NULL DEFAULT 0,
+        biggest_pot INTEGER NOT NULL DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_poker_stats_rank ON poker_stats(hands_won DESC, chips_won DESC)");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -220,6 +234,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 4) {
             migrateV4($db);
+        }
+        if ($current < 5) {
+            migrateV5($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
