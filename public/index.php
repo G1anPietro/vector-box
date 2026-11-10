@@ -255,7 +255,17 @@ if (file_exists('version.php')) {
                         <option value="url-dec">URL Decode</option>
                         <option value="hex-enc">Hex Encode</option>
                         <option value="sha256">SHA-256 Hash</option>
+                        <option value="banner">ASCII Banner</option>
+                        <option value="rot13">ROT13</option>
+                        <option value="rot47">ROT47</option>
+                        <option value="caesar">Caesar Shift (+key)</option>
+                        <option value="caesar-dec">Caesar Unshift (-key)</option>
+                        <option value="morse-enc">Morse Encode</option>
+                        <option value="morse-dec">Morse Decode</option>
+                        <option value="bin-enc">Binary Encode</option>
+                        <option value="bin-dec">Binary Decode</option>
                     </select>
+                    <input type="number" id="tool-key" class="tools-select" min="1" max="25" value="3" title="Caesar key" style="display: none;">
                     <textarea id="tool-input" class="tools-textarea" placeholder="Input raw string..."></textarea>
                     <textarea id="tool-output" class="tools-textarea" placeholder="Converted result..." readonly></textarea>
                 </div>
