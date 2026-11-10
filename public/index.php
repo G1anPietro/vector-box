@@ -294,6 +294,21 @@ if (file_exists('version.php')) {
                 </div>
             </div>
         </div>
+
+        <!-- 7. PUBLIC SYSTEM STATUS WINDOW -->
+        <div id="win-status" class="cyber-panel draggable-window hidden" style="top: 120px; left: 760px; width: 360px; height: 300px;">
+            <div class="window-header">
+                <span>>_ SYSTEM // STATUS</span>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min" title="Minimize">_</button>
+                    <button class="win-btn win-btn-max" title="Maximize">□</button>
+                    <button class="win-btn win-btn-close" title="Close">X</button>
+                </div>
+            </div>
+            <div class="window-content-inner" style="padding: 10px; overflow-y: auto;">
+                <div id="status-body"><span class="term-muted">Polling node...</span></div>
+            </div>
+        </div>
     </main>
 
     <!-- CONSOLIDATED APPLICATION TASKBAR & FOOTER -->
@@ -305,6 +320,7 @@ if (file_exists('version.php')) {
             <button class="taskbar-btn" id="tb-win-poker">>_ POKER</button>
             <button class="taskbar-btn" id="tb-win-tools">>_ TOOLS</button>
             <button class="taskbar-btn" id="tb-win-vault">>_ VAULT</button>
+            <button class="taskbar-btn" id="tb-win-status">>_ STATUS</button>
             <?php if ($canReadBooks): ?>
                 <a href="pages/reader.php" class="taskbar-btn" style="text-decoration: none; border-color: #00f3ff; color: #00f3ff; display: inline-flex; align-items: center;">>_ READER</a>
             <?php endif; ?>
