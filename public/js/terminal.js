@@ -275,10 +275,8 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 const res = await fetch('api/uplink_send.php', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': window.SESSION_STATE?.csrfToken || ''
-                    },
+                    // csrf.js adds X-CSRF-Token (and fetches it if not known yet)
+                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
                     body: JSON.stringify({ message: rawVal })
                 });

@@ -109,10 +109,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
                     const res = await fetch('api/delete_message.php', {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json', 
-                            'X-CSRF-Token': window.SESSION_STATE.csrfToken || '' 
-                        },
+                        // csrf.js adds X-CSRF-Token
+                        headers: { 'Content-Type': 'application/json' },
                         credentials: 'same-origin',
                         body: JSON.stringify({ id: data.id })
                     });
@@ -361,10 +359,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 isSubmitting = true;
                 try {
+                    // csrf.js adds X-CSRF-Token
                     const headers = { 'Content-Type': 'application/json' };
-                    if (window.SESSION_STATE.csrfToken) {
-                        headers['X-CSRF-Token'] = window.SESSION_STATE.csrfToken;
-                    }
 
                     const res = await fetch('api/uplink_send.php', {
                         method: 'POST',

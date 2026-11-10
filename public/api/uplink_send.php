@@ -21,9 +21,8 @@ try {
         session_write_close();
     }
 
-    if (!empty($_SESSION['user_id'])) {
-        requireCsrf();
-    }
+    // Guests get a CSRF token from check_session.php too, so every sender is checked
+    requireCsrf();
 
     $senderKey = !empty($_SESSION['user_id']) ? 'u' . $_SESSION['user_id'] : getClientIp();
     if (empty($_SESSION['is_admin']) && !checkRateLimit('chat_send', 8, 10, $senderKey)) {
