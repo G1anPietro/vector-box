@@ -45,6 +45,7 @@ test.describe('chat hub', { skip: !hasDeps && 'node_modules missing (run npm ins
                 ...process.env, PORT: String(nodePort), CHAT_HUB_SECRET: SECRET,
                 SESSION_SECRET: 'test', ADMIN_PASSWORD: 'test-admin', GUEST_PASSWORD: 'test-guest',
                 NODE_ENV: 'development', MC_DIR: '/nonexistent', WAKE_SCRIPT: '/nonexistent',
+                NODE_SESSION_DB: path.join(site.root, 'data', 'node_sessions.sqlite'),
             },
             stdio: ['pipe', 'ignore', 'inherit'],
         });

@@ -51,7 +51,12 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: '10kb' }));
+const { createSessionStore } = require('./lib/sqlite-session-store');
+const sessionStore = createSessionStore(session,
+    process.env.NODE_SESSION_DB || path.join(__dirname, 'data', 'node_sessions.sqlite'));
+
 app.use(session({
+    ...(sessionStore ? { store: sessionStore } : {}),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
