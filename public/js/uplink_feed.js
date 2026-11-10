@@ -22,21 +22,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.SESSION_STATE = window.SESSION_STATE || { isAdmin: false, csrfToken: '' };
 
-    const escapeHTML = (str) => {
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    };
-
-    const formatLinksInText = (text) => {
-        const escaped = escapeHTML(text);
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        return escaped.replace(urlRegex, (url) => {
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-color, #00f3ff); text-decoration: underline; word-break: break-all;">${url}</a>`;
-        });
+    // Fill `container` with the message text, turning http(s) URLs into links.
+    // Built with text nodes only: user text never goes through innerHTML.
+    const appendTextWithLinks = (container, text) => {
+        const urlRegex = /https?:\/\/[^\s]+/g;
+        const str = String(text);
+        let last = 0;
+        let match;
+        while ((match = urlRegex.exec(str)) !== null) {
+            if (match.index > last) {
+                container.appendChild(document.createTextNode(str.slice(last, match.index)));
+            }
+            const a = document.createElement('a');
+            a.href = match[0];
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.style.cssText = 'color: var(--accent-color, #00f3ff); text-decoration: underline; word-break: break-all;';
+            a.textContent = match[0];
+            container.appendChild(a);
+            last = match.index + match[0].length;
+        }
+        if (last < str.length) {
+            container.appendChild(document.createTextNode(str.slice(last)));
+        }
     };
 
     const checkSessionState = async () => {
@@ -135,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const textSpan = document.createElement('span');
         textSpan.className = 'chat-msg-body';
         if (isError) textSpan.style.color = '#ff3333';
-        textSpan.innerHTML = formatLinksInText(data.message || '');
+        appendTextWithLinks(textSpan, data.message || '');
 
         p.appendChild(prefixContainer);
         p.appendChild(textSpan);
