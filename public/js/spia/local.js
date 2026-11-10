@@ -30,7 +30,9 @@ window.SpiaLocal = (() => {
 
     function setData(loc) {
         data = { locations: {}, categories: loc.categories.map((c) => c.id) };
-        for (const l of loc.locations) data.locations[l.id] = { cat: l.cat, roles: l.roles.length };
+        for (const l of loc.locations) {
+            data.locations[l.id] = { cat: l.cat, roles: l.roles.length, adult: l.roles.map((r, i) => (r.adult ? i : -1)).filter((i) => i >= 0) };
+        }
     }
 
     function defaults() {
@@ -38,7 +40,7 @@ window.SpiaLocal = (() => {
             spy_mode: 'fixed', spies: 1, spy_min: 1, spy_max: 2, show_count: false,
             vote: true, guess: true, timer: false, timer_min: 8, scores: false,
             spy_list: true, spy_hint: false, no_repeat: true, no_repeat_n: 5,
-            packs: data.categories.slice(), custom: false, custom_locations: [],
+            packs: data.categories.slice(), custom: false, custom_locations: [], family: false,
         };
     }
 
@@ -51,7 +53,7 @@ window.SpiaLocal = (() => {
         s.spy_min = int(inp.spy_min ?? s.spy_min, 0, MAX_PLAYERS, 0);
         s.spy_max = int(inp.spy_max ?? s.spy_max, 0, MAX_PLAYERS, 2);
         if (s.spy_max < s.spy_min) s.spy_max = s.spy_min;
-        for (const k of ['show_count', 'vote', 'guess', 'timer', 'scores', 'spy_list', 'spy_hint', 'no_repeat', 'custom']) {
+        for (const k of ['show_count', 'vote', 'guess', 'timer', 'scores', 'spy_list', 'spy_hint', 'no_repeat', 'custom', 'family']) {
             if (k in inp) s[k] = !!inp[k];
         }
         s.timer_min = int(inp.timer_min ?? s.timer_min, 1, 30, 8);
@@ -67,10 +69,20 @@ window.SpiaLocal = (() => {
     }
 
     const pool = (s) => [
-        ...Object.keys(data.locations).filter((id) => s.packs.includes(data.locations[id].cat)),
+        ...Object.keys(data.locations).filter((id) => s.packs.includes(data.locations[id].cat) && !(s.family && data.locations[id].cat === 'adult')),
         ...(s.custom ? s.custom_locations.map((_, i) => 'c' + i) : []),
     ];
-    const roleCount = (loc, s) => (/^c\d+$/.test(loc) ? (s.custom_locations[+loc.slice(1)] || { roles: [] }).roles.length : (data.locations[loc] || { roles: 0 }).roles);
+    /** Role indexes that may be dealt here; family mode drops tagged roles (same rule as the server). */
+    const rolePool = (loc, s) => {
+        if (/^c\d+$/.test(loc)) return [...Array((s.custom_locations[+loc.slice(1)] || { roles: [] }).roles.length).keys()];
+        const l = data.locations[loc];
+        if (!l) return [];
+        const all = [...Array(l.roles).keys()];
+        if (!s.family) return all;
+        const clean = all.filter((i) => !l.adult.includes(i));
+        return clean.length ? clean : all;
+    };
+    const pick = (list) => list[rnd(list.length)];
     const now = () => Math.floor(Date.now() / 1000);
     const players = () => g.players;
     const alive = (r) => Object.keys(r.assign).map(Number).filter((id) => !r.assign[id].out && players().some((p) => p.id === id));
@@ -94,11 +106,10 @@ window.SpiaLocal = (() => {
         const r = g.round;
         if (r && r.status === 'play') {
             const free = freeRoles(r);
-            const n = roleCount(r.location_id, r.rules);
             let spy = false;
             if (r.rules.late_spy_max > r.spy_count && r.deal_players > 0) spy = between(1, r.deal_players) <= Math.max(1, r.spy_count);
             r.assign[p.id] = spy ? { spy: true, role: null, seen: false, out: null }
-                : { spy: false, role: free.length ? free[rnd(free.length)] : rnd(n), seen: false, out: null };
+                : { spy: false, role: pick(free.length ? free : rolePool(r.location_id, r.rules)), seen: false, out: null };
             if (spy) r.spy_count++;
             log(r, { t: 'join', p: p.id });
         }
@@ -106,7 +117,7 @@ window.SpiaLocal = (() => {
 
     function freeRoles(r) {
         const taken = Object.values(r.assign).filter((a) => a.role !== null).map((a) => a.role);
-        return [...Array(roleCount(r.location_id, r.rules)).keys()].filter((i) => !taken.includes(i));
+        return rolePool(r.location_id, r.rules).filter((i) => !taken.includes(i));
     }
 
     function start() {
@@ -129,15 +140,16 @@ window.SpiaLocal = (() => {
         const rules = {
             vote: s.vote, guess: s.guess, scores: s.scores, timer: s.timer, timer_min: s.timer_min,
             spy_hint: s.spy_hint, spy_list: s.spy_list, count_visible: visible,
-            late_spy_max: visible ? 0 : s.spy_max, custom_locations: s.custom_locations,
+            late_spy_max: visible ? 0 : s.spy_max, custom_locations: s.custom_locations, family: s.family,
         };
         const order = shuffle(g.players.map((x) => x.id));
         const spyIds = order.slice(0, spies);
-        let roles = shuffle([...Array(roleCount(loc, s)).keys()]);
+        const allowed = rolePool(loc, s);
+        let roles = shuffle(allowed);
         const assign = {};
         for (const pl of g.players) {
             if (spyIds.includes(pl.id)) assign[pl.id] = { spy: true, role: null, seen: false, out: null };
-            else assign[pl.id] = { spy: false, role: roles.length ? roles.pop() : rnd(roleCount(loc, s)), seen: false, out: null };
+            else assign[pl.id] = { spy: false, role: roles.length ? roles.pop() : pick(allowed), seen: false, out: null };
         }
         g.roundCount++;
         g.recent = [...g.recent, loc].slice(-15);

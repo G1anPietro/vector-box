@@ -1,5 +1,5 @@
 {
- "version": 1,
+ "version": 2,
  "categories": [
   {
    "id": "travel",
@@ -39,6 +39,16 @@
     "es": "Ciudad",
     "fr": "Ville",
     "de": "Stadtleben"
+   }
+  },
+  {
+   "id": "adult",
+   "name": {
+    "it": "Vietato ai minori",
+    "en": "Adults only",
+    "es": "Solo adultos",
+    "fr": "Interdit aux mineurs",
+    "de": "Ab 18"
    }
   }
  ],
@@ -487,7 +497,8 @@
      "en": "Terrorist",
      "es": "Terrorista",
      "fr": "Terroriste",
-     "de": "Terrorist"
+     "de": "Terrorist",
+     "adult": true
     },
     {
      "it": "Addetto alle pulizie",
@@ -535,7 +546,8 @@
      "en": "Corpse",
      "es": "Muerto",
      "fr": "Mort",
-     "de": "Leiche"
+     "de": "Leiche",
+     "adult": true
     },
     {
      "it": "Paziente",
@@ -556,7 +568,8 @@
      "en": "Dying Old Man",
      "es": "Anciano moribundo",
      "fr": "Vieillard mourant",
-     "de": "Sterbender Greis"
+     "de": "Sterbender Greis",
+     "adult": true
     },
     {
      "it": "Receptionist",
@@ -832,14 +845,16 @@
      "en": "Druggie",
      "es": "Drogata",
      "fr": "Drogué",
-     "de": "Junkie"
+     "de": "Junkie",
+     "adult": true
     },
     {
      "it": "Spacciatore",
      "en": "Dealer",
      "es": "Camello",
      "fr": "Dealer",
-     "de": "Dealer"
+     "de": "Dealer",
+     "adult": true
     },
     {
      "it": "Prof di educazione fisica",
@@ -1122,7 +1137,8 @@
      "en": "Teen Looking for Booze",
      "es": "Chaval buscando alcohol",
      "fr": "Ado qui cherche de l'alcool",
-     "de": "Teenager auf der Suche nach Alkohol"
+     "de": "Teenager auf der Suche nach Alkohol",
+     "adult": true
     },
     {
      "it": "Nonno che ha perso il nipote",
@@ -1267,7 +1283,8 @@
      "en": "Guy Who'll Dash Without Paying",
      "es": "El que se irá sin pagar",
      "fr": "Celui qui va partir sans payer",
-     "de": "Zechpreller"
+     "de": "Zechpreller",
+     "adult": true
     }
    ]
   },
@@ -1336,7 +1353,8 @@
      "en": "Nudist",
      "es": "Nudista",
      "fr": "Naturiste",
-     "de": "FKK-Anhänger"
+     "de": "FKK-Anhänger",
+     "adult": true
     }
    ]
   },
@@ -1398,14 +1416,16 @@
      "en": "Dealer",
      "es": "Camello",
      "fr": "Dealer",
-     "de": "Dealer"
+     "de": "Dealer",
+     "adult": true
     },
     {
      "it": "Drogato",
      "en": "Junkie",
      "es": "Drogadicto",
      "fr": "Drogué",
-     "de": "Junkie"
+     "de": "Junkie",
+     "adult": true
     }
    ]
   },
@@ -1475,6 +1495,1461 @@
      "es": "Estudiante de arte",
      "fr": "Étudiant en art",
      "de": "Kunststudent"
+    }
+   ]
+  },
+  {
+   "id": "supermarket",
+   "cat": "city",
+   "name": {
+    "it": "Supermercato",
+    "en": "Supermarket",
+    "es": "Supermercado",
+    "fr": "Supermarché",
+    "de": "Supermarkt"
+   },
+   "roles": [
+    {
+     "it": "Cassiera",
+     "en": "Cashier",
+     "es": "Cajera",
+     "fr": "Caissière",
+     "de": "Kassiererin"
+    },
+    {
+     "it": "Magazziniere",
+     "en": "Stock Clerk",
+     "es": "Reponedor",
+     "fr": "Magasinier",
+     "de": "Lagerist"
+    },
+    {
+     "it": "Guardia giurata",
+     "en": "Security Guard",
+     "es": "Vigilante",
+     "fr": "Vigile",
+     "de": "Wachmann"
+    },
+    {
+     "it": "Cliente con i buoni sconto",
+     "en": "Coupon Hunter",
+     "es": "Cliente con cupones",
+     "fr": "Client avec ses bons de réduction",
+     "de": "Kunde mit Gutscheinen"
+    },
+    {
+     "it": "Bambino che fa i capricci",
+     "en": "Toddler Throwing a Tantrum",
+     "es": "Niño con una rabieta",
+     "fr": "Enfant qui fait un caprice",
+     "de": "Kind mit Wutanfall"
+    },
+    {
+     "it": "Addetto alla gastronomia",
+     "en": "Deli Counter Clerk",
+     "es": "Charcutero",
+     "fr": "Employé au rayon traiteur",
+     "de": "Fleischtheken-Verkäufer"
+    },
+    {
+     "it": "Taccheggiatore",
+     "en": "Shoplifter",
+     "es": "Ladrón de tiendas",
+     "fr": "Voleur à l'étalage",
+     "de": "Ladendieb"
+    },
+    {
+     "it": "Ubriaco al reparto vini",
+     "en": "Drunk in the Wine Aisle",
+     "es": "Borracho en el pasillo de vinos",
+     "fr": "Ivrogne au rayon vins",
+     "de": "Betrunkener in der Weinabteilung",
+     "adult": true
+    }
+   ]
+  },
+  {
+   "id": "gym",
+   "cat": "city",
+   "name": {
+    "it": "Palestra",
+    "en": "Gym",
+    "es": "Gimnasio",
+    "fr": "Salle de sport",
+    "de": "Fitnessstudio"
+   },
+   "roles": [
+    {
+     "it": "Personal trainer",
+     "en": "Personal Trainer",
+     "es": "Entrenador personal",
+     "fr": "Coach sportif",
+     "de": "Personal Trainer"
+    },
+    {
+     "it": "Culturista",
+     "en": "Bodybuilder",
+     "es": "Culturista",
+     "fr": "Culturiste",
+     "de": "Bodybuilder"
+    },
+    {
+     "it": "Influencer che fa i selfie",
+     "en": "Selfie Influencer",
+     "es": "Influencer haciéndose selfis",
+     "fr": "Influenceuse qui fait des selfies",
+     "de": "Selfie-Influencerin"
+    },
+    {
+     "it": "Istruttrice di spinning",
+     "en": "Spin Instructor",
+     "es": "Monitora de spinning",
+     "fr": "Prof de spinning",
+     "de": "Spinning-Trainerin"
+    },
+    {
+     "it": "Principiante",
+     "en": "Beginner",
+     "es": "Principiante",
+     "fr": "Débutant",
+     "de": "Anfänger"
+    },
+    {
+     "it": "Uno che urla mentre alza i pesi",
+     "en": "Guy Who Screams While Lifting",
+     "es": "El que grita levantando pesas",
+     "fr": "Celui qui crie en soulevant",
+     "de": "Einer, der beim Heben brüllt"
+    },
+    {
+     "it": "Receptionist",
+     "en": "Receptionist",
+     "es": "Recepcionista",
+     "fr": "Réceptionniste",
+     "de": "Empfangskraft"
+    },
+    {
+     "it": "Spacciatore di steroidi",
+     "en": "Steroid Dealer",
+     "es": "Camello de esteroides",
+     "fr": "Dealer de stéroïdes",
+     "de": "Steroid-Dealer",
+     "adult": true
+    }
+   ]
+  },
+  {
+   "id": "zoo",
+   "cat": "show",
+   "name": {
+    "it": "Zoo",
+    "en": "Zoo",
+    "es": "Zoo",
+    "fr": "Zoo",
+    "de": "Zoo"
+   },
+   "roles": [
+    {
+     "it": "Guardiano dello zoo",
+     "en": "Zookeeper",
+     "es": "Cuidador",
+     "fr": "Soigneur",
+     "de": "Tierpfleger"
+    },
+    {
+     "it": "Veterinario",
+     "en": "Vet",
+     "es": "Veterinario",
+     "fr": "Vétérinaire",
+     "de": "Tierarzt"
+    },
+    {
+     "it": "Scimmia",
+     "en": "Monkey",
+     "es": "Mono",
+     "fr": "Singe",
+     "de": "Affe"
+    },
+    {
+     "it": "Pinguino",
+     "en": "Penguin",
+     "es": "Pingüino",
+     "fr": "Pingouin",
+     "de": "Pinguin"
+    },
+    {
+     "it": "Giraffa",
+     "en": "Giraffe",
+     "es": "Jirafa",
+     "fr": "Girafe",
+     "de": "Giraffe"
+    },
+    {
+     "it": "Scolaresca in gita",
+     "en": "School Trip Kid",
+     "es": "Niño de excursión",
+     "fr": "Élève en sortie scolaire",
+     "de": "Kind auf Klassenausflug"
+    },
+    {
+     "it": "Venditore di zucchero filato",
+     "en": "Cotton Candy Seller",
+     "es": "Vendedor de algodón de azúcar",
+     "fr": "Vendeur de barbe à papa",
+     "de": "Zuckerwatte-Verkäufer"
+    },
+    {
+     "it": "Fotografo naturalista",
+     "en": "Wildlife Photographer",
+     "es": "Fotógrafo de naturaleza",
+     "fr": "Photographe animalier",
+     "de": "Tierfotograf"
+    }
+   ]
+  },
+  {
+   "id": "wedding",
+   "cat": "show",
+   "name": {
+    "it": "Matrimonio",
+    "en": "Wedding",
+    "es": "Boda",
+    "fr": "Mariage",
+    "de": "Hochzeit"
+   },
+   "roles": [
+    {
+     "it": "Sposa",
+     "en": "Bride",
+     "es": "Novia",
+     "fr": "Mariée",
+     "de": "Braut"
+    },
+    {
+     "it": "Sposo",
+     "en": "Groom",
+     "es": "Novio",
+     "fr": "Marié",
+     "de": "Bräutigam"
+    },
+    {
+     "it": "Testimone",
+     "en": "Best Man",
+     "es": "Padrino",
+     "fr": "Témoin",
+     "de": "Trauzeuge"
+    },
+    {
+     "it": "Suocera",
+     "en": "Mother-in-Law",
+     "es": "Suegra",
+     "fr": "Belle-mère",
+     "de": "Schwiegermutter"
+    },
+    {
+     "it": "Prete",
+     "en": "Priest",
+     "es": "Cura",
+     "fr": "Prêtre",
+     "de": "Pfarrer"
+    },
+    {
+     "it": "Fotografo",
+     "en": "Photographer",
+     "es": "Fotógrafo",
+     "fr": "Photographe",
+     "de": "Fotograf"
+    },
+    {
+     "it": "Ex della sposa",
+     "en": "Bride's Ex",
+     "es": "Ex de la novia",
+     "fr": "Ex de la mariée",
+     "de": "Ex der Braut"
+    },
+    {
+     "it": "Zio ubriaco",
+     "en": "Drunk Uncle",
+     "es": "Tío borracho",
+     "fr": "Oncle bourré",
+     "de": "Betrunkener Onkel",
+     "adult": true
+    }
+   ]
+  },
+  {
+   "id": "polar_station",
+   "cat": "adventure",
+   "name": {
+    "it": "Base in Antartide",
+    "en": "Antarctic Base",
+    "es": "Base en la Antártida",
+    "fr": "Base en Antarctique",
+    "de": "Antarktis-Station"
+   },
+   "roles": [
+    {
+     "it": "Ricercatore",
+     "en": "Researcher",
+     "es": "Investigador",
+     "fr": "Chercheur",
+     "de": "Forscher"
+    },
+    {
+     "it": "Cuoco",
+     "en": "Cook",
+     "es": "Cocinero",
+     "fr": "Cuisinier",
+     "de": "Koch"
+    },
+    {
+     "it": "Pilota di elicottero",
+     "en": "Helicopter Pilot",
+     "es": "Piloto de helicóptero",
+     "fr": "Pilote d'hélicoptère",
+     "de": "Hubschrauberpilot"
+    },
+    {
+     "it": "Medico",
+     "en": "Doctor",
+     "es": "Médico",
+     "fr": "Médecin",
+     "de": "Arzt"
+    },
+    {
+     "it": "Tecnico radio",
+     "en": "Radio Operator",
+     "es": "Operador de radio",
+     "fr": "Opérateur radio",
+     "de": "Funker"
+    },
+    {
+     "it": "Pinguino imperatore",
+     "en": "Emperor Penguin",
+     "es": "Pingüino emperador",
+     "fr": "Manchot empereur",
+     "de": "Kaiserpinguin"
+    },
+    {
+     "it": "Glaciologo",
+     "en": "Glaciologist",
+     "es": "Glaciólogo",
+     "fr": "Glaciologue",
+     "de": "Glaziologe"
+    },
+    {
+     "it": "Uno impazzito per il buio",
+     "en": "Guy Gone Mad from the Dark",
+     "es": "El que se volvió loco por la oscuridad",
+     "fr": "Celui que le noir a rendu fou",
+     "de": "Einer, den die Dunkelheit verrückt gemacht hat"
+    }
+   ]
+  },
+  {
+   "id": "camping",
+   "cat": "travel",
+   "name": {
+    "it": "Campeggio",
+    "en": "Campsite",
+    "es": "Camping",
+    "fr": "Camping",
+    "de": "Campingplatz"
+   },
+   "roles": [
+    {
+     "it": "Campeggiatore",
+     "en": "Camper",
+     "es": "Campista",
+     "fr": "Campeur",
+     "de": "Camper"
+    },
+    {
+     "it": "Ranger",
+     "en": "Ranger",
+     "es": "Guardabosques",
+     "fr": "Garde forestier",
+     "de": "Ranger"
+    },
+    {
+     "it": "Orso",
+     "en": "Bear",
+     "es": "Oso",
+     "fr": "Ours",
+     "de": "Bär"
+    },
+    {
+     "it": "Scout",
+     "en": "Scout",
+     "es": "Scout",
+     "fr": "Scout",
+     "de": "Pfadfinder"
+    },
+    {
+     "it": "Chitarrista intorno al fuoco",
+     "en": "Campfire Guitarist",
+     "es": "Guitarrista junto a la hoguera",
+     "fr": "Guitariste au coin du feu",
+     "de": "Gitarrist am Lagerfeuer"
+    },
+    {
+     "it": "Gestore del campeggio",
+     "en": "Campsite Owner",
+     "es": "Dueño del camping",
+     "fr": "Gérant du camping",
+     "de": "Platzwart"
+    },
+    {
+     "it": "Zanzara",
+     "en": "Mosquito",
+     "es": "Mosquito",
+     "fr": "Moustique",
+     "de": "Mücke"
+    },
+    {
+     "it": "Coppia che fa rumore in tenda",
+     "en": "Noisy Couple in the Tent",
+     "es": "Pareja ruidosa en la tienda",
+     "fr": "Couple bruyant sous la tente",
+     "de": "Lautes Pärchen im Zelt",
+     "adult": true
+    }
+   ]
+  },
+  {
+   "id": "amusement_park",
+   "cat": "show",
+   "name": {
+    "it": "Luna Park",
+    "en": "Amusement Park",
+    "es": "Parque de atracciones",
+    "fr": "Parc d'attractions",
+    "de": "Freizeitpark"
+   },
+   "roles": [
+    {
+     "it": "Addetto alle montagne russe",
+     "en": "Roller Coaster Operator",
+     "es": "Operario de la montaña rusa",
+     "fr": "Opérateur des montagnes russes",
+     "de": "Achterbahn-Mitarbeiter"
+    },
+    {
+     "it": "Mascotte",
+     "en": "Mascot",
+     "es": "Mascota",
+     "fr": "Mascotte",
+     "de": "Maskottchen"
+    },
+    {
+     "it": "Bambino",
+     "en": "Kid",
+     "es": "Niño",
+     "fr": "Enfant",
+     "de": "Kind"
+    },
+    {
+     "it": "Genitore esaurito",
+     "en": "Exhausted Parent",
+     "es": "Padre agotado",
+     "fr": "Parent épuisé",
+     "de": "Erschöpfte Mutter"
+    },
+    {
+     "it": "Uno che vomita dopo la giostra",
+     "en": "Guy Throwing Up After the Ride",
+     "es": "El que vomita tras la atracción",
+     "fr": "Celui qui vomit après le manège",
+     "de": "Einer, der nach der Fahrt kotzt"
+    },
+    {
+     "it": "Venditore di zucchero filato",
+     "en": "Cotton Candy Seller",
+     "es": "Vendedor de algodón de azúcar",
+     "fr": "Vendeur de barbe à papa",
+     "de": "Zuckerwatte-Verkäufer"
+    },
+    {
+     "it": "Fotografo della giostra",
+     "en": "Ride Photographer",
+     "es": "Fotógrafo de la atracción",
+     "fr": "Photographe du manège",
+     "de": "Fahrgeschäft-Fotograf"
+    },
+    {
+     "it": "Addetto alla sicurezza",
+     "en": "Security",
+     "es": "Seguridad",
+     "fr": "Agent de sécurité",
+     "de": "Sicherheitsdienst"
+    }
+   ]
+  },
+  {
+   "id": "police_station",
+   "cat": "city",
+   "name": {
+    "it": "Questura",
+    "en": "Police Station",
+    "es": "Comisaría",
+    "fr": "Commissariat",
+    "de": "Polizeirevier"
+   },
+   "roles": [
+    {
+     "it": "Commissario",
+     "en": "Police Chief",
+     "es": "Comisario",
+     "fr": "Commissaire",
+     "de": "Kommissar"
+    },
+    {
+     "it": "Agente",
+     "en": "Officer",
+     "es": "Agente",
+     "fr": "Agent",
+     "de": "Polizist"
+    },
+    {
+     "it": "Detective",
+     "en": "Detective",
+     "es": "Detective",
+     "fr": "Inspecteur",
+     "de": "Ermittler"
+    },
+    {
+     "it": "Arrestato",
+     "en": "Suspect",
+     "es": "Detenido",
+     "fr": "Suspect",
+     "de": "Festgenommener"
+    },
+    {
+     "it": "Avvocato d'ufficio",
+     "en": "Public Defender",
+     "es": "Abogado de oficio",
+     "fr": "Avocat commis d'office",
+     "de": "Pflichtverteidiger"
+    },
+    {
+     "it": "Testimone",
+     "en": "Witness",
+     "es": "Testigo",
+     "fr": "Témoin",
+     "de": "Zeuge"
+    },
+    {
+     "it": "Cane poliziotto",
+     "en": "Police Dog",
+     "es": "Perro policía",
+     "fr": "Chien policier",
+     "de": "Polizeihund"
+    },
+    {
+     "it": "Ubriaco in cella",
+     "en": "Drunk in the Cell",
+     "es": "Borracho en el calabozo",
+     "fr": "Ivrogne en cellule",
+     "de": "Betrunkener in der Zelle",
+     "adult": true
+    }
+   ]
+  },
+  {
+   "id": "parliament",
+   "cat": "city",
+   "name": {
+    "it": "Parlamento",
+    "en": "Parliament",
+    "es": "Parlamento",
+    "fr": "Parlement",
+    "de": "Parlament"
+   },
+   "roles": [
+    {
+     "it": "Deputato che dorme",
+     "en": "Sleeping MP",
+     "es": "Diputado dormido",
+     "fr": "Député qui dort",
+     "de": "Schlafender Abgeordneter"
+    },
+    {
+     "it": "Lobbista",
+     "en": "Lobbyist",
+     "es": "Lobista",
+     "fr": "Lobbyiste",
+     "de": "Lobbyist"
+    },
+    {
+     "it": "Giornalista",
+     "en": "Journalist",
+     "es": "Periodista",
+     "fr": "Journaliste",
+     "de": "Journalist"
+    },
+    {
+     "it": "Commesso",
+     "en": "Usher",
+     "es": "Ujier",
+     "fr": "Huissier",
+     "de": "Saaldiener"
+    },
+    {
+     "it": "Ministro indagato",
+     "en": "Minister Under Investigation",
+     "es": "Ministro investigado",
+     "fr": "Ministre mis en examen",
+     "de": "Minister unter Ermittlung"
+    },
+    {
+     "it": "Stagista",
+     "en": "Intern",
+     "es": "Becario",
+     "fr": "Stagiaire",
+     "de": "Praktikant"
+    },
+    {
+     "it": "Presidente della Camera",
+     "en": "Speaker",
+     "es": "Presidente de la Cámara",
+     "fr": "Président de l'Assemblée",
+     "de": "Parlamentspräsident"
+    },
+    {
+     "it": "Deputato che prende la mazzetta",
+     "en": "MP Taking a Bribe",
+     "es": "Diputado que acepta un soborno",
+     "fr": "Député qui touche un pot-de-vin",
+     "de": "Bestechlicher Abgeordneter",
+     "adult": true
+    }
+   ]
+  },
+  {
+   "id": "strip_club",
+   "cat": "adult",
+   "name": {
+    "it": "Strip club",
+    "en": "Strip Club",
+    "es": "Club de striptease",
+    "fr": "Club de strip-tease",
+    "de": "Stripclub"
+   },
+   "roles": [
+    {
+     "it": "Spogliarellista",
+     "en": "Stripper",
+     "es": "Stríper",
+     "fr": "Strip-teaseuse",
+     "de": "Stripperin"
+    },
+    {
+     "it": "Buttafuori",
+     "en": "Bouncer",
+     "es": "Portero",
+     "fr": "Videur",
+     "de": "Türsteher"
+    },
+    {
+     "it": "Futuro sposo",
+     "en": "Groom-to-Be",
+     "es": "Futuro novio",
+     "fr": "Futur marié",
+     "de": "Bräutigam in spe"
+    },
+    {
+     "it": "Barista",
+     "en": "Bartender",
+     "es": "Barman",
+     "fr": "Barman",
+     "de": "Barkeeper"
+    },
+    {
+     "it": "DJ",
+     "en": "DJ",
+     "es": "DJ",
+     "fr": "DJ",
+     "de": "DJ"
+    },
+    {
+     "it": "Cliente abituale",
+     "en": "Regular",
+     "es": "Cliente habitual",
+     "fr": "Habitué",
+     "de": "Stammgast"
+    },
+    {
+     "it": "Proprietario",
+     "en": "Owner",
+     "es": "Dueño",
+     "fr": "Patron",
+     "de": "Besitzer"
+    },
+    {
+     "it": "Uno che ha finito i soldi",
+     "en": "Guy Who's Out of Cash",
+     "es": "El que se ha quedado sin dinero",
+     "fr": "Celui qui n'a plus un sou",
+     "de": "Einer, der pleite ist"
+    }
+   ]
+  },
+  {
+   "id": "sex_shop",
+   "cat": "adult",
+   "name": {
+    "it": "Sexy shop",
+    "en": "Sex Shop",
+    "es": "Sex shop",
+    "fr": "Sex-shop",
+    "de": "Sexshop"
+   },
+   "roles": [
+    {
+     "it": "Commesso",
+     "en": "Clerk",
+     "es": "Dependiente",
+     "fr": "Vendeur",
+     "de": "Verkäufer"
+    },
+    {
+     "it": "Cliente timido",
+     "en": "Shy Customer",
+     "es": "Cliente tímido",
+     "fr": "Client timide",
+     "de": "Schüchterner Kunde"
+    },
+    {
+     "it": "Coppia sposata da trent'anni",
+     "en": "Couple Married for 30 Years",
+     "es": "Pareja casada desde hace treinta años",
+     "fr": "Couple marié depuis trente ans",
+     "de": "Seit 30 Jahren verheiratetes Paar"
+    },
+    {
+     "it": "Pensionato curioso",
+     "en": "Curious Pensioner",
+     "es": "Jubilado curioso",
+     "fr": "Retraité curieux",
+     "de": "Neugieriger Rentner"
+    },
+    {
+     "it": "Addio al nubilato",
+     "en": "Bachelorette Party",
+     "es": "Despedida de soltera",
+     "fr": "Enterrement de vie de jeune fille",
+     "de": "Junggesellinnenabschied"
+    },
+    {
+     "it": "Rappresentante di giocattoli",
+     "en": "Toy Sales Rep",
+     "es": "Representante de juguetes",
+     "fr": "Représentant en jouets",
+     "de": "Spielzeugvertreter"
+    },
+    {
+     "it": "Uno che è entrato per sbaglio",
+     "en": "Guy Who Walked In by Mistake",
+     "es": "El que entró por error",
+     "fr": "Celui qui est entré par erreur",
+     "de": "Einer, der aus Versehen reinkam"
+    },
+    {
+     "it": "Cassiera impassibile",
+     "en": "Deadpan Cashier",
+     "es": "Cajera impasible",
+     "fr": "Caissière impassible",
+     "de": "Unbeeindruckte Kassiererin"
+    }
+   ]
+  },
+  {
+   "id": "rave",
+   "cat": "adult",
+   "name": {
+    "it": "Rave illegale",
+    "en": "Illegal Rave",
+    "es": "Rave ilegal",
+    "fr": "Rave illégale",
+    "de": "Illegaler Rave"
+   },
+   "roles": [
+    {
+     "it": "DJ",
+     "en": "DJ",
+     "es": "DJ",
+     "fr": "DJ",
+     "de": "DJ"
+    },
+    {
+     "it": "Spacciatore",
+     "en": "Dealer",
+     "es": "Camello",
+     "fr": "Dealer",
+     "de": "Dealer"
+    },
+    {
+     "it": "Uno sotto acido",
+     "en": "Guy on Acid",
+     "es": "Uno colocado de ácido",
+     "fr": "Mec sous acide",
+     "de": "Typ auf LSD"
+    },
+    {
+     "it": "Raver col fischietto",
+     "en": "Raver with a Whistle",
+     "es": "Raver con silbato",
+     "fr": "Raveur avec un sifflet",
+     "de": "Raver mit Trillerpfeife"
+    },
+    {
+     "it": "Poliziotto in borghese",
+     "en": "Undercover Cop",
+     "es": "Policía de paisano",
+     "fr": "Flic en civil",
+     "de": "Zivilpolizist"
+    },
+    {
+     "it": "Uno che ha perso gli amici",
+     "en": "Guy Who Lost His Friends",
+     "es": "El que ha perdido a sus amigos",
+     "fr": "Celui qui a perdu ses potes",
+     "de": "Einer, der seine Freunde verloren hat"
+    },
+    {
+     "it": "Organizzatore",
+     "en": "Organizer",
+     "es": "Organizador",
+     "fr": "Organisateur",
+     "de": "Veranstalter"
+    },
+    {
+     "it": "Paramedico",
+     "en": "Paramedic",
+     "es": "Paramédico",
+     "fr": "Secouriste",
+     "de": "Sanitäter"
+    }
+   ]
+  },
+  {
+   "id": "bachelor_party",
+   "cat": "adult",
+   "name": {
+    "it": "Addio al celibato",
+    "en": "Bachelor Party",
+    "es": "Despedida de soltero",
+    "fr": "Enterrement de vie de garçon",
+    "de": "Junggesellenabschied"
+   },
+   "roles": [
+    {
+     "it": "Sposo",
+     "en": "Groom",
+     "es": "Novio",
+     "fr": "Futur marié",
+     "de": "Bräutigam"
+    },
+    {
+     "it": "Testimone",
+     "en": "Best Man",
+     "es": "Padrino",
+     "fr": "Témoin",
+     "de": "Trauzeuge"
+    },
+    {
+     "it": "Amico che vomita",
+     "en": "Friend Throwing Up",
+     "es": "Amigo vomitando",
+     "fr": "Pote qui vomit",
+     "de": "Kumpel, der kotzt"
+    },
+    {
+     "it": "Spogliarellista",
+     "en": "Stripper",
+     "es": "Stríper",
+     "fr": "Strip-teaseuse",
+     "de": "Stripperin"
+    },
+    {
+     "it": "Autista del party bus",
+     "en": "Party Bus Driver",
+     "es": "Conductor del party bus",
+     "fr": "Chauffeur du party bus",
+     "de": "Partybus-Fahrer"
+    },
+    {
+     "it": "Cugino imbarazzante",
+     "en": "Embarrassing Cousin",
+     "es": "Primo pesado",
+     "fr": "Cousin gênant",
+     "de": "Peinlicher Cousin"
+    },
+    {
+     "it": "Barista",
+     "en": "Bartender",
+     "es": "Barman",
+     "fr": "Barman",
+     "de": "Barkeeper"
+    },
+    {
+     "it": "Uno che si è svegliato in Spagna",
+     "en": "Guy Who Woke Up in Spain",
+     "es": "El que despertó en otro país",
+     "fr": "Celui qui s'est réveillé en Espagne",
+     "de": "Einer, der in Spanien aufwachte"
+    }
+   ]
+  },
+  {
+   "id": "love_motel",
+   "cat": "adult",
+   "name": {
+    "it": "Motel a ore",
+    "en": "Hourly Motel",
+    "es": "Motel por horas",
+    "fr": "Motel à l'heure",
+    "de": "Stundenhotel"
+   },
+   "roles": [
+    {
+     "it": "Receptionist che non fa domande",
+     "en": "Receptionist Who Asks No Questions",
+     "es": "Recepcionista que no pregunta",
+     "fr": "Réceptionniste qui ne pose pas de questions",
+     "de": "Rezeptionist, der keine Fragen stellt"
+    },
+    {
+     "it": "Amante",
+     "en": "Lover",
+     "es": "Amante",
+     "fr": "Amant",
+     "de": "Liebhaber"
+    },
+    {
+     "it": "Marito tradito",
+     "en": "Cheated-On Husband",
+     "es": "Marido engañado",
+     "fr": "Mari trompé",
+     "de": "Betrogener Ehemann"
+    },
+    {
+     "it": "Investigatore privato",
+     "en": "Private Investigator",
+     "es": "Detective privado",
+     "fr": "Détective privé",
+     "de": "Privatdetektiv"
+    },
+    {
+     "it": "Donna delle pulizie",
+     "en": "Cleaning Lady",
+     "es": "Limpiadora",
+     "fr": "Femme de ménage",
+     "de": "Putzfrau"
+    },
+    {
+     "it": "Politico in incognito",
+     "en": "Politician in Disguise",
+     "es": "Político de incógnito",
+     "fr": "Politicien incognito",
+     "de": "Politiker inkognito"
+    },
+    {
+     "it": "Camionista",
+     "en": "Trucker",
+     "es": "Camionero",
+     "fr": "Routier",
+     "de": "Lkw-Fahrer"
+    },
+    {
+     "it": "Coppia clandestina",
+     "en": "Secret Couple",
+     "es": "Pareja clandestina",
+     "fr": "Couple clandestin",
+     "de": "Heimliches Paar"
+    }
+   ]
+  },
+  {
+   "id": "morgue",
+   "cat": "adult",
+   "name": {
+    "it": "Obitorio",
+    "en": "Morgue",
+    "es": "Morgue",
+    "fr": "Morgue",
+    "de": "Leichenhalle"
+   },
+   "roles": [
+    {
+     "it": "Medico legale",
+     "en": "Coroner",
+     "es": "Médico forense",
+     "fr": "Médecin légiste",
+     "de": "Rechtsmediziner"
+    },
+    {
+     "it": "Cadavere",
+     "en": "Corpse",
+     "es": "Cadáver",
+     "fr": "Cadavre",
+     "de": "Leiche"
+    },
+    {
+     "it": "Detective",
+     "en": "Detective",
+     "es": "Detective",
+     "fr": "Inspecteur",
+     "de": "Ermittler"
+    },
+    {
+     "it": "Parente in lutto",
+     "en": "Grieving Relative",
+     "es": "Familiar de luto",
+     "fr": "Proche en deuil",
+     "de": "Trauernder Angehöriger"
+    },
+    {
+     "it": "Studente di medicina che sviene",
+     "en": "Fainting Med Student",
+     "es": "Estudiante de medicina que se desmaya",
+     "fr": "Étudiant en médecine qui tombe dans les pommes",
+     "de": "Medizinstudent, der umkippt"
+    },
+    {
+     "it": "Becchino",
+     "en": "Gravedigger",
+     "es": "Sepulturero",
+     "fr": "Fossoyeur",
+     "de": "Totengräber"
+    },
+    {
+     "it": "Tecnico delle autopsie",
+     "en": "Autopsy Technician",
+     "es": "Técnico de autopsias",
+     "fr": "Technicien d'autopsie",
+     "de": "Sektionsassistent"
+    },
+    {
+     "it": "Cadavere che si muove ancora",
+     "en": "Corpse That Still Moves",
+     "es": "Cadáver que todavía se mueve",
+     "fr": "Cadavre qui bouge encore",
+     "de": "Leiche, die sich noch bewegt"
+    }
+   ]
+  },
+  {
+   "id": "narco_lab",
+   "cat": "adult",
+   "name": {
+    "it": "Laboratorio dei narcos",
+    "en": "Cartel Drug Lab",
+    "es": "Narcolaboratorio",
+    "fr": "Labo du cartel",
+    "de": "Drogenlabor des Kartells"
+   },
+   "roles": [
+    {
+     "it": "Chimico",
+     "en": "Chemist",
+     "es": "Químico",
+     "fr": "Chimiste",
+     "de": "Chemiker"
+    },
+    {
+     "it": "Boss del cartello",
+     "en": "Cartel Boss",
+     "es": "Jefe del cártel",
+     "fr": "Chef du cartel",
+     "de": "Kartellboss"
+    },
+    {
+     "it": "Corriere",
+     "en": "Mule",
+     "es": "Mula",
+     "fr": "Mule",
+     "de": "Drogenkurier"
+    },
+    {
+     "it": "Poliziotto infiltrato",
+     "en": "Undercover Cop",
+     "es": "Policía infiltrado",
+     "fr": "Flic infiltré",
+     "de": "Verdeckter Ermittler"
+    },
+    {
+     "it": "Contabile",
+     "en": "Accountant",
+     "es": "Contable",
+     "fr": "Comptable",
+     "de": "Buchhalter"
+    },
+    {
+     "it": "Guardia armata",
+     "en": "Armed Guard",
+     "es": "Guardia armado",
+     "fr": "Garde armé",
+     "de": "Bewaffneter Wächter"
+    },
+    {
+     "it": "Assaggiatore",
+     "en": "Taster",
+     "es": "Catador",
+     "fr": "Goûteur",
+     "de": "Vorkoster"
+    },
+    {
+     "it": "Cane antidroga traditore",
+     "en": "Turncoat Drug Dog",
+     "es": "Perro antidroga traidor",
+     "fr": "Chien renifleur passé à l'ennemi",
+     "de": "Übergelaufener Drogenhund"
+    }
+   ]
+  },
+  {
+   "id": "club_bathroom",
+   "cat": "adult",
+   "name": {
+    "it": "Bagno della discoteca",
+    "en": "Nightclub Bathroom",
+    "es": "Baño de la discoteca",
+    "fr": "Toilettes de la boîte",
+    "de": "Clubtoilette"
+   },
+   "roles": [
+    {
+     "it": "Uno che vomita",
+     "en": "Guy Throwing Up",
+     "es": "El que vomita",
+     "fr": "Celui qui vomit",
+     "de": "Einer, der kotzt"
+    },
+    {
+     "it": "Coppia chiusa nel bagno",
+     "en": "Couple Locked in a Stall",
+     "es": "Pareja encerrada en el baño",
+     "fr": "Couple enfermé dans les WC",
+     "de": "Pärchen in der Kabine"
+    },
+    {
+     "it": "Spacciatore",
+     "en": "Dealer",
+     "es": "Camello",
+     "fr": "Dealer",
+     "de": "Dealer"
+    },
+    {
+     "it": "Ragazza che si rifà il trucco",
+     "en": "Girl Fixing Her Makeup",
+     "es": "Chica retocándose el maquillaje",
+     "fr": "Fille qui se remaquille",
+     "de": "Frau, die sich nachschminkt"
+    },
+    {
+     "it": "Addetto alle pulizie",
+     "en": "Cleaner",
+     "es": "Limpiador",
+     "fr": "Agent d'entretien",
+     "de": "Reinigungskraft"
+    },
+    {
+     "it": "Uno che piange per la ex",
+     "en": "Guy Crying over His Ex",
+     "es": "El que llora por su ex",
+     "fr": "Celui qui pleure son ex",
+     "de": "Einer, der wegen seiner Ex heult"
+    },
+    {
+     "it": "Buttafuori",
+     "en": "Bouncer",
+     "es": "Portero",
+     "fr": "Videur",
+     "de": "Türsteher"
+    },
+    {
+     "it": "Uno in fila da mezz'ora",
+     "en": "Guy Who's Been Queuing for Half an Hour",
+     "es": "El que lleva media hora en la cola",
+     "fr": "Celui qui fait la queue depuis une demi-heure",
+     "de": "Einer, der seit einer halben Stunde ansteht"
+    }
+   ]
+  },
+  {
+   "id": "funeral",
+   "cat": "adult",
+   "name": {
+    "it": "Funerale",
+    "en": "Funeral",
+    "es": "Funeral",
+    "fr": "Enterrement",
+    "de": "Beerdigung"
+   },
+   "roles": [
+    {
+     "it": "Vedova",
+     "en": "Widow",
+     "es": "Viuda",
+     "fr": "Veuve",
+     "de": "Witwe"
+    },
+    {
+     "it": "Prete",
+     "en": "Priest",
+     "es": "Cura",
+     "fr": "Prêtre",
+     "de": "Pfarrer"
+    },
+    {
+     "it": "Il morto",
+     "en": "The Deceased",
+     "es": "El difunto",
+     "fr": "Le défunt",
+     "de": "Der Verstorbene"
+    },
+    {
+     "it": "Parente che vuole l'eredità",
+     "en": "Relative After the Inheritance",
+     "es": "Pariente que quiere la herencia",
+     "fr": "Parent qui veut l'héritage",
+     "de": "Erbschleicher"
+    },
+    {
+     "it": "Amante del defunto",
+     "en": "The Deceased's Lover",
+     "es": "Amante del difunto",
+     "fr": "Maîtresse du défunt",
+     "de": "Geliebte des Verstorbenen"
+    },
+    {
+     "it": "Becchino",
+     "en": "Gravedigger",
+     "es": "Sepulturero",
+     "fr": "Fossoyeur",
+     "de": "Totengräber"
+    },
+    {
+     "it": "Fioraio",
+     "en": "Florist",
+     "es": "Florista",
+     "fr": "Fleuriste",
+     "de": "Florist"
+    },
+    {
+     "it": "Uno che non sa chi è il morto",
+     "en": "Guy Who Doesn't Know Who Died",
+     "es": "El que no sabe quién ha muerto",
+     "fr": "Celui qui ne sait pas qui est mort",
+     "de": "Einer, der nicht weiß, wer gestorben ist"
+    }
+   ]
+  },
+  {
+   "id": "swinger_club",
+   "cat": "adult",
+   "name": {
+    "it": "Club di scambisti",
+    "en": "Swingers Club",
+    "es": "Club de intercambio de parejas",
+    "fr": "Club échangiste",
+    "de": "Swingerclub"
+   },
+   "roles": [
+    {
+     "it": "Coppia alla prima volta",
+     "en": "First-Timer Couple",
+     "es": "Pareja primeriza",
+     "fr": "Couple qui vient pour la première fois",
+     "de": "Pärchen beim ersten Mal"
+    },
+    {
+     "it": "Organizzatrice",
+     "en": "Host",
+     "es": "Organizadora",
+     "fr": "Organisatrice",
+     "de": "Gastgeberin"
+    },
+    {
+     "it": "Barista",
+     "en": "Bartender",
+     "es": "Barman",
+     "fr": "Barman",
+     "de": "Barkeeper"
+    },
+    {
+     "it": "Single imbucato",
+     "en": "Single Who Snuck In",
+     "es": "Soltero colado",
+     "fr": "Célibataire incrusté",
+     "de": "Reingeschmuggelter Single"
+    },
+    {
+     "it": "Coppia veterana",
+     "en": "Veteran Couple",
+     "es": "Pareja veterana",
+     "fr": "Couple d'habitués",
+     "de": "Erfahrenes Paar"
+    },
+    {
+     "it": "Buttafuori",
+     "en": "Bouncer",
+     "es": "Portero",
+     "fr": "Videur",
+     "de": "Türsteher"
+    },
+    {
+     "it": "Il vicino di casa",
+     "en": "Your Next-Door Neighbour",
+     "es": "Tu vecino",
+     "fr": "Ton voisin de palier",
+     "de": "Dein Nachbar"
+    },
+    {
+     "it": "Uno che ha sbagliato festa",
+     "en": "Guy at the Wrong Party",
+     "es": "El que se equivocó de fiesta",
+     "fr": "Celui qui s'est trompé de soirée",
+     "de": "Einer auf der falschen Party"
+    }
+   ]
+  },
+  {
+   "id": "porn_set",
+   "cat": "adult",
+   "name": {
+    "it": "Set di un film porno",
+    "en": "Porn Film Set",
+    "es": "Rodaje de una peli porno",
+    "fr": "Tournage d'un film porno",
+    "de": "Pornodreh"
+   },
+   "roles": [
+    {
+     "it": "Regista",
+     "en": "Director",
+     "es": "Director",
+     "fr": "Réalisateur",
+     "de": "Regisseur"
+    },
+    {
+     "it": "Attrice",
+     "en": "Actress",
+     "es": "Actriz",
+     "fr": "Actrice",
+     "de": "Darstellerin"
+    },
+    {
+     "it": "Attore",
+     "en": "Actor",
+     "es": "Actor",
+     "fr": "Acteur",
+     "de": "Darsteller"
+    },
+    {
+     "it": "Idraulico",
+     "en": "Plumber",
+     "es": "Fontanero",
+     "fr": "Plombier",
+     "de": "Klempner"
+    },
+    {
+     "it": "Microfonista",
+     "en": "Boom Operator",
+     "es": "Microfonista",
+     "fr": "Perchman",
+     "de": "Tonangler"
+    },
+    {
+     "it": "Truccatrice",
+     "en": "Makeup Artist",
+     "es": "Maquilladora",
+     "fr": "Maquilleuse",
+     "de": "Maskenbildnerin"
+    },
+    {
+     "it": "Produttore",
+     "en": "Producer",
+     "es": "Productor",
+     "fr": "Producteur",
+     "de": "Produzent"
+    },
+    {
+     "it": "Stagista traumatizzato",
+     "en": "Traumatized Intern",
+     "es": "Becario traumatizado",
+     "fr": "Stagiaire traumatisé",
+     "de": "Traumatisierter Praktikant"
+    }
+   ]
+  },
+  {
+   "id": "oktoberfest",
+   "cat": "adult",
+   "name": {
+    "it": "Oktoberfest",
+    "en": "Oktoberfest",
+    "es": "Oktoberfest",
+    "fr": "Oktoberfest",
+    "de": "Oktoberfest"
+   },
+   "roles": [
+    {
+     "it": "Cameriera con dieci boccali",
+     "en": "Waitress with Ten Steins",
+     "es": "Camarera con diez jarras",
+     "fr": "Serveuse avec dix chopes",
+     "de": "Kellnerin mit zehn Maßkrügen"
+    },
+    {
+     "it": "Turista italiano ubriaco",
+     "en": "Drunk Italian Tourist",
+     "es": "Turista italiano borracho",
+     "fr": "Touriste italien bourré",
+     "de": "Betrunkener italienischer Tourist"
+    },
+    {
+     "it": "Suonatore della banda",
+     "en": "Brass Band Player",
+     "es": "Músico de la banda",
+     "fr": "Musicien de la fanfare",
+     "de": "Blasmusiker"
+    },
+    {
+     "it": "Venditore di brezel",
+     "en": "Pretzel Seller",
+     "es": "Vendedor de pretzels",
+     "fr": "Vendeur de bretzels",
+     "de": "Brezelverkäufer"
+    },
+    {
+     "it": "Uno in Lederhosen",
+     "en": "Guy in Lederhosen",
+     "es": "Uno con Lederhosen",
+     "fr": "Mec en culotte de peau",
+     "de": "Typ in Lederhosen"
+    },
+    {
+     "it": "Buttafuori della tenda",
+     "en": "Tent Bouncer",
+     "es": "Portero de la carpa",
+     "fr": "Videur de la tente",
+     "de": "Zelt-Türsteher"
+    },
+    {
+     "it": "Uno che dorme sul tavolo",
+     "en": "Guy Asleep on the Table",
+     "es": "El que duerme sobre la mesa",
+     "fr": "Celui qui dort sur la table",
+     "de": "Einer, der auf dem Tisch schläft"
+    },
+    {
+     "it": "Paramedico",
+     "en": "Paramedic",
+     "es": "Paramédico",
+     "fr": "Secouriste",
+     "de": "Sanitäter"
     }
    ]
   }

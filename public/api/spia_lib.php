@@ -19,7 +19,9 @@ function spiaLocationsData(): array {
     $data = ['locations' => [], 'categories' => []];
     foreach ($raw['categories'] ?? [] as $c) $data['categories'][] = $c['id'];
     foreach ($raw['locations'] ?? [] as $l) {
-        $data['locations'][$l['id']] = ['cat' => $l['cat'], 'roles' => count($l['roles'])];
+        $adult = [];
+        foreach ($l['roles'] as $i => $r) if (!empty($r['adult'])) $adult[] = $i;
+        $data['locations'][$l['id']] = ['cat' => $l['cat'], 'roles' => count($l['roles']), 'adult_roles' => $adult];
     }
     return $data;
 }
@@ -43,6 +45,7 @@ function spiaDefaultSettings(): array {
         'packs'       => spiaLocationsData()['categories'],
         'custom'      => false,
         'custom_locations' => [],
+        'family'      => false,    // hide "adults only" locations and heavy/vulgar roles
     ];
 }
 
@@ -62,7 +65,7 @@ function spiaSanitizeSettings(array $in, array $base): array {
     $s['spy_min'] = $int($in['spy_min'] ?? $s['spy_min'], 0, SPIA_MAX_PLAYERS, 0);
     $s['spy_max'] = $int($in['spy_max'] ?? $s['spy_max'], 0, SPIA_MAX_PLAYERS, 2);
     if ($s['spy_max'] < $s['spy_min']) $s['spy_max'] = $s['spy_min'];
-    foreach (['show_count', 'vote', 'guess', 'timer', 'scores', 'spy_list', 'spy_hint', 'no_repeat', 'custom'] as $k) {
+    foreach (['show_count', 'vote', 'guess', 'timer', 'scores', 'spy_list', 'spy_hint', 'no_repeat', 'custom', 'family'] as $k) {
         $s[$k] = $bool($in[$k] ?? $s[$k], (bool)$s[$k]);
     }
     $s['timer_min']   = $int($in['timer_min'] ?? $s['timer_min'], 1, 30, 8);
@@ -92,6 +95,7 @@ function spiaSanitizeSettings(array $in, array $base): array {
 function spiaPool(array $settings): array {
     $pool = [];
     foreach (spiaLocationsData()['locations'] as $id => $l) {
+        if (!empty($settings['family']) && $l['cat'] === 'adult') continue;
         if (in_array($l['cat'], $settings['packs'], true)) $pool[] = $id;
     }
     if (!empty($settings['custom'])) {
@@ -100,9 +104,27 @@ function spiaPool(array $settings): array {
     return $pool;
 }
 
-function spiaRoleCount(string $locId, array $settings): int {
-    if (preg_match('/^c(\d+)$/', $locId, $m)) return count($settings['custom_locations'][(int)$m[1]]['roles'] ?? []);
-    return spiaLocationsData()['locations'][$locId]['roles'] ?? 0;
+/**
+ * Role indexes that may be dealt at this location. Family mode drops the tagged roles
+ * (never all of them: a location always keeps at least one role). Custom roles are always allowed.
+ * $settings can be the room settings or a round's rules (both carry family + custom_locations).
+ */
+function spiaRolePool(string $locId, array $settings): array {
+    if (preg_match('/^c(\d+)$/', $locId, $m)) {
+        $n = count($settings['custom_locations'][(int)$m[1]]['roles'] ?? []);
+        return $n ? range(0, $n - 1) : [];
+    }
+    $loc = spiaLocationsData()['locations'][$locId] ?? null;
+    if (!$loc || $loc['roles'] === 0) return [];
+    $all = range(0, $loc['roles'] - 1);
+    if (empty($settings['family'])) return $all;
+    $clean = array_values(array_diff($all, $loc['adult_roles']));
+    return $clean ?: $all;
+}
+
+/** Random element of a non-empty list. */
+function spiaPick(array $list) {
+    return $list[random_int(0, count($list) - 1)];
 }
 
 function spiaShuffle(array $a): array {
@@ -197,7 +219,7 @@ function spiaStartRound(PDO $db, array $room): ?string {
         if ($fresh) $candidates = $fresh;
     }
     $location = $candidates[random_int(0, count($candidates) - 1)];
-    $roleCount = spiaRoleCount($location, $settings);
+    $rolePool = spiaRolePool($location, $settings);
 
     $n = count($players);
     $spyCount = spiaDrawSpyCount($settings, $n);
@@ -210,6 +232,7 @@ function spiaStartRound(PDO $db, array $room): ?string {
         // late joiners can only become spies while the count is secret, and within the range
         'late_spy_max' => $countVisible ? 0 : min($settings['spy_max'], SPIA_MAX_PLAYERS),
         'custom_locations' => $settings['custom_locations'],
+        'family' => $settings['family'],
     ];
 
     $shuffled = spiaShuffle($players);
@@ -224,7 +247,7 @@ function spiaStartRound(PDO $db, array $room): ?string {
     $roundId = (int)$db->lastInsertId();
 
     // Civilians take distinct roles while they last; then roles repeat (unavoidable with big groups)
-    $roles = spiaShuffle(range(0, $roleCount - 1));
+    $roles = spiaShuffle($rolePool);
     $used = [];
     $ins = $db->prepare('INSERT INTO spia_assign (round_id, player_id, is_spy, role, fake_role) VALUES (:r, :p, :s, :role, :fake)');
     $owners = [];
@@ -235,11 +258,11 @@ function spiaStartRound(PDO $db, array $room): ?string {
             $ins->execute([':r' => $roundId, ':p' => $p['id'], ':s' => 1, ':role' => null, ':fake' => null]);
             continue;
         }
-        $role = $roles ? array_pop($roles) : random_int(0, $roleCount - 1);
+        $role = $roles ? array_pop($roles) : spiaPick($rolePool);
         $used[] = $role;
         $ins->execute([':r' => $roundId, ':p' => $p['id'], ':s' => 0, ':role' => $role, ':fake' => null]);
     }
-    foreach ($owners as $pid) spiaGiveFakeRole($db, $roundId, $pid, $roleCount);
+    foreach ($owners as $pid) spiaGiveFakeRole($db, $roundId, $pid, $rolePool);
 
     $recent = json_decode($room['recent_locations'], true) ?: [];
     $recent[] = $location;
@@ -249,18 +272,18 @@ function spiaStartRound(PDO $db, array $room): ?string {
 }
 
 /** Roles of this round nobody holds yet (real civilian roles and fake ones). */
-function spiaFreeRoles(PDO $db, int $roundId, int $roleCount): array {
+function spiaFreeRoles(PDO $db, int $roundId, array $rolePool): array {
     $taken = [];
     foreach (spiaAssignments($db, $roundId) as $a) {
         if ($a['role'] !== null) $taken[] = (int)$a['role'];
         if ($a['fake_role'] !== null) $taken[] = (int)$a['fake_role'];
     }
-    return array_values(array_diff(range(0, $roleCount - 1), $taken));
+    return array_values(array_diff($rolePool, $taken));
 }
 
-function spiaGiveFakeRole(PDO $db, int $roundId, int $playerId, int $roleCount): void {
-    $free = spiaFreeRoles($db, $roundId, $roleCount);
-    $fake = $free ? $free[random_int(0, count($free) - 1)] : random_int(0, $roleCount - 1);
+function spiaGiveFakeRole(PDO $db, int $roundId, int $playerId, array $rolePool): void {
+    $free = spiaFreeRoles($db, $roundId, $rolePool);
+    $fake = spiaPick($free ?: $rolePool);
     $db->prepare('UPDATE spia_assign SET fake_role = :f WHERE round_id = :r AND player_id = :p')
        ->execute([':f' => $fake, ':r' => $roundId, ':p' => $playerId]);
 }
@@ -268,7 +291,7 @@ function spiaGiveFakeRole(PDO $db, int $roundId, int $playerId, int $roleCount):
 /** A player who joins while a round is running gets dealt in immediately. */
 function spiaDealLate(PDO $db, array $round, array $player): void {
     $rules = $round['rules'];
-    $roleCount = spiaRoleCount($round['location_id'], $rules);
+    $rolePool = spiaRolePool($round['location_id'], $rules);
     $isSpy = false;
     if ($rules['late_spy_max'] > (int)$round['spy_count'] && (int)$round['deal_players'] > 0) {
         // Same odds as the original deal, so a late joiner is not obviously "safe"
@@ -278,11 +301,11 @@ function spiaDealLate(PDO $db, array $round, array $player): void {
         $db->prepare('INSERT INTO spia_assign (round_id, player_id, is_spy) VALUES (:r, :p, 1)')
            ->execute([':r' => $round['id'], ':p' => $player['id']]);
         $db->prepare('UPDATE spia_rounds SET spy_count = spy_count + 1 WHERE id = :id')->execute([':id' => $round['id']]);
-        if ((int)$player['is_owner'] === 1) spiaGiveFakeRole($db, (int)$round['id'], (int)$player['id'], $roleCount);
+        if ((int)$player['is_owner'] === 1) spiaGiveFakeRole($db, (int)$round['id'], (int)$player['id'], $rolePool);
         return;
     }
-    $free = spiaFreeRoles($db, (int)$round['id'], $roleCount);
-    $role = $free ? $free[random_int(0, count($free) - 1)] : random_int(0, $roleCount - 1);
+    $free = spiaFreeRoles($db, (int)$round['id'], $rolePool);
+    $role = spiaPick($free ?: $rolePool);
     $db->prepare('INSERT INTO spia_assign (round_id, player_id, is_spy, role) VALUES (:r, :p, 0, :role)')
        ->execute([':r' => $round['id'], ':p' => $player['id'], ':role' => $role]);
 }

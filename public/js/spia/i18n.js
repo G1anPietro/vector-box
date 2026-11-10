@@ -6,6 +6,8 @@ window.SpiaI18n = (() => {
     const S = {};
 
     S.it = {
+        set_family: "Modalità per famiglie",
+        set_family_d: "Toglie i luoghi vietati ai minori e i ruoli volgari o pesanti (droga, morti, alcol…).",
         phone_offline: "Telefono offline: {names}",
         title: "Chi è la spia?",
         tagline: "Tutti conoscono il luogo segreto. Tranne la spia.",
@@ -205,7 +207,7 @@ window.SpiaI18n = (() => {
         help_scores_t: "Punteggi",
         help_scores: "Se sono attivi, i punteggi restano da un round all'altro.\nCivili: +1 a testa quando vincono.\nSpie: +2 se vincono senza essere eliminate, +1 in più a chi indovina il luogo.",
         help_settings_t: "Impostazioni",
-        help_settings: "Ogni regola si accende e si spegne: votazione, indovinare il luogo, timer, punteggi, lista dei luoghi, indizio per la spia, luoghi non ripetuti, pacchetti e luoghi personalizzati.\nLe modifiche valgono dal round successivo.",
+        help_settings: "Ogni regola si accende e si spegne: votazione, indovinare il luogo, timer, punteggi, lista dei luoghi, indizio per la spia, luoghi non ripetuti, pacchetti, luoghi personalizzati e modalità per famiglie.\nLe modifiche valgono dal round successivo.",
         err_generic: "Qualcosa è andato storto. Riprova.",
         err_offline: "Serve la connessione per farlo.",
         err_need_players: "Servono almeno 3 giocatori.",
@@ -228,6 +230,8 @@ window.SpiaI18n = (() => {
     };
 
     S.en = {
+        set_family: "Family mode",
+        set_family_d: "Removes the adults-only locations and the crude or heavy roles (drugs, death, booze…).",
         phone_offline: "Phone offline: {names}",
         title: "Who's the Spy?",
         tagline: "Everyone knows the secret location. Except the spy.",
@@ -427,7 +431,7 @@ window.SpiaI18n = (() => {
         help_scores_t: "Scores",
         help_scores: "When on, scores carry over from round to round.\nCivilians: +1 each when they win.\nSpies: +2 when they win without being out, +1 more for the spy who guesses the location.",
         help_settings_t: "Settings",
-        help_settings: "Every rule can be switched on or off: voting, guessing the location, timer, scores, location list, hint for the spy, no repeated locations, location packs and custom locations.\nChanges apply from the next round.",
+        help_settings: "Every rule can be switched on or off: voting, guessing the location, timer, scores, location list, hint for the spy, no repeated locations, location packs, custom locations and family mode.\nChanges apply from the next round.",
         err_generic: "Something went wrong. Try again.",
         err_offline: "You need a connection for that.",
         err_need_players: "You need at least 3 players.",
@@ -450,6 +454,8 @@ window.SpiaI18n = (() => {
     };
 
     S.es = {
+        set_family: "Modo familiar",
+        set_family_d: "Quita los lugares para adultos y los papeles groseros o duros (drogas, muertos, alcohol…).",
         phone_offline: "Móvil sin conexión: {names}",
         title: "¿Quién es el espía?",
         tagline: "Todos conocen el lugar secreto. Menos el espía.",
@@ -649,7 +655,7 @@ window.SpiaI18n = (() => {
         help_scores_t: "Puntuaciones",
         help_scores: "Si están activadas, las puntuaciones se mantienen de una ronda a otra.\nCiviles: +1 cada uno cuando ganan.\nEspías: +2 si ganan sin quedar fuera, +1 más para quien adivine el lugar.",
         help_settings_t: "Ajustes",
-        help_settings: "Cada regla se puede activar o desactivar: votación, adivinar el lugar, temporizador, puntuaciones, lista de lugares, pista para el espía, sin lugares repetidos, paquetes y lugares personalizados.\nLos cambios se aplican desde la siguiente ronda.",
+        help_settings: "Cada regla se puede activar o desactivar: votación, adivinar el lugar, temporizador, puntuaciones, lista de lugares, pista para el espía, sin lugares repetidos, paquetes, lugares personalizados y modo familiar.\nLos cambios se aplican desde la siguiente ronda.",
         err_generic: "Algo ha ido mal. Inténtalo de nuevo.",
         err_offline: "Necesitas conexión para hacer esto.",
         err_need_players: "Hacen falta al menos 3 jugadores.",
@@ -672,6 +678,8 @@ window.SpiaI18n = (() => {
     };
 
     S.fr = {
+        set_family: "Mode famille",
+        set_family_d: "Retire les lieux interdits aux mineurs et les rôles vulgaires ou durs (drogue, morts, alcool…).",
         phone_offline: "Téléphone hors ligne : {names}",
         title: "Qui est l'espion ?",
         tagline: "Tout le monde connaît le lieu secret. Sauf l'espion.",
@@ -871,7 +879,7 @@ window.SpiaI18n = (() => {
         help_scores_t: "Scores",
         help_scores: "Activés, les scores sont conservés d'une manche à l'autre.\nCivils : +1 chacun quand ils gagnent.\nEspions : +2 s'ils gagnent sans être éliminés, +1 de plus pour celui qui devine le lieu.",
         help_settings_t: "Réglages",
-        help_settings: "Chaque règle s'active ou se désactive : vote, deviner le lieu, minuteur, scores, liste des lieux, indice pour l'espion, pas de lieux répétés, packs et lieux personnalisés.\nLes changements s'appliquent à la manche suivante.",
+        help_settings: "Chaque règle s'active ou se désactive : vote, deviner le lieu, minuteur, scores, liste des lieux, indice pour l'espion, pas de lieux répétés, packs, lieux personnalisés et mode famille.\nLes changements s'appliquent à la manche suivante.",
         err_generic: "Une erreur s'est produite. Réessaie.",
         err_offline: "Il faut une connexion pour faire ça.",
         err_need_players: "Il faut au moins 3 joueurs.",
@@ -894,6 +902,8 @@ window.SpiaI18n = (() => {
     };
 
     S.de = {
+        set_family: "Familienmodus",
+        set_family_d: "Entfernt die Orte ab 18 und derbe oder heftige Rollen (Drogen, Tod, Alkohol…).",
         phone_offline: "Handy offline: {names}",
         title: "Wer ist der Spion?",
         tagline: "Alle kennen den geheimen Ort. Nur der Spion nicht.",
@@ -1093,7 +1103,7 @@ window.SpiaI18n = (() => {
         help_scores_t: "Punkte",
         help_scores: "Wenn aktiviert, bleiben die Punkte von Runde zu Runde erhalten.\nZivilisten: je +1, wenn sie gewinnen.\nSpione: +2, wenn sie gewinnen, ohne auszuscheiden, +1 extra für den, der den Ort errät.",
         help_settings_t: "Einstellungen",
-        help_settings: "Jede Regel lässt sich ein- und ausschalten: Abstimmung, Ort erraten, Timer, Punkte, Ortsliste, Hinweis für den Spion, keine Wiederholungen, Ortspakete und eigene Orte.\nÄnderungen gelten ab der nächsten Runde.",
+        help_settings: "Jede Regel lässt sich ein- und ausschalten: Abstimmung, Ort erraten, Timer, Punkte, Ortsliste, Hinweis für den Spion, keine Wiederholungen, Ortspakete, eigene Orte und Familienmodus.\nÄnderungen gelten ab der nächsten Runde.",
         err_generic: "Etwas ist schiefgelaufen. Versuch es nochmal.",
         err_offline: "Dafür brauchst du eine Verbindung.",
         err_need_players: "Ihr braucht mindestens 3 Spieler.",

@@ -550,6 +550,7 @@
         if (s.timer) chips.push(t('sum_timer', { n: s.timer_min }));
         if (s.scores) chips.push(t('set_scores'));
         if (s.spy_hint) chips.push(t('set_hint'));
+        if (s.family) chips.push(t('set_family'));
         if (s.custom && s.custom_locations.length) chips.push(t('sum_custom', { n: s.custom_locations.length }));
         return h('div', { class: 'chips' }, chips.map((c) => h('span', { class: 'chip soft' }, c)));
     }
@@ -989,10 +990,11 @@
         const packs = h('div', { class: 'set-row' },
             h('div', { class: 'set-text' }, h('span', { class: 'set-title' }, t('set_packs')), h('span', { class: 'set-desc' }, t('set_packs_d'))),
             h('div', { class: 'chips' }, LOC.categories.map((c) => {
-                const on = s.packs.includes(c.id);
+                const blocked = s.family && c.id === 'adult';
+                const on = s.packs.includes(c.id) && !blocked;
                 const count = LOC.locations.filter((l) => l.cat === c.id).length;
                 return h('button', {
-                    class: 'chip toggle' + (on ? ' on' : ''), disabled: !host, 'aria-pressed': on ? 'true' : 'false',
+                    class: 'chip toggle' + (on ? ' on' : ''), disabled: !host || blocked, 'aria-pressed': on ? 'true' : 'false',
                     onclick: () => set({ packs: on ? s.packs.filter((x) => x !== c.id) : [...s.packs, c.id] }),
                 }, `${lname(c.name)} (${count})`);
             })));
@@ -1026,6 +1028,7 @@
             toggle('spy_list', t('set_list'), t('set_list_d')),
             toggle('spy_hint', t('set_hint'), t('set_hint_d')),
             toggle('no_repeat', t('set_norepeat'), t('set_norepeat_d'), stepper('no_repeat_n', t('rounds'), 1, 15)),
+            toggle('family', t('set_family'), t('set_family_d')),
             packs,
             toggle('custom', t('set_custom'), t('set_custom_d'), customEditor),
             state && state.round && state.round.status === 'play' ? h('p', { class: 'muted small' }, t('settings_next_round')) : null,

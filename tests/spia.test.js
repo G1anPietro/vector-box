@@ -266,3 +266,30 @@ test('names are validated and unique per room; leaving the last phone deletes th
     await p.post({ action: 'leave' });
     assert.equal(site.db('SELECT COUNT(*) AS n FROM spia_rooms WHERE code = ?', [code])[0].n, 0);
 });
+
+test('family mode never deals adults-only locations or tagged roles; default mode does', async () => {
+    const data = require('../public/assets/spia/locations.json');
+    const byId = Object.fromEntries(data.locations.map((l) => [l.id, l]));
+    const isTagged = (loc, role) => !!(byId[loc].roles[role] || {}).adult;
+    const play = async (settings, rounds) => {
+        const { a, code } = await room({ ...settings, spies: 0, no_repeat: false });
+        await a.add('Dario'); await a.add('Elena'); await a.add('Fabio'); await a.add('Gino'); await a.add('Ivo');
+        const seen = { adultLoc: 0, taggedRole: 0 };
+        for (let i = 0; i < rounds; i++) {
+            await a.post({ action: 'start' });
+            const loc = site.db('SELECT location_id FROM spia_rounds WHERE id = (SELECT round_id FROM spia_rooms WHERE code = ?)', [code])[0].location_id;
+            if (byId[loc].cat === 'adult') seen.adultLoc++;
+            for (const t of truth(code)) if (t.role !== null && isTagged(loc, t.role)) seen.taggedRole++;
+            await a.post({ action: 'end' });
+        }
+        return seen;
+    };
+    const family = await play({ family: true }, 60);
+    assert.deepEqual(family, { adultLoc: 0, taggedRole: 0 });
+
+    const normal = await play({ family: false }, 60);
+    assert.ok(normal.adultLoc > 0, 'adults-only locations are in the default rotation');
+    // tagged roles are spread over few locations: just check they are reachable when only those packs are on
+    const tagged = await play({ family: false, packs: ['city', 'travel'] }, 60);
+    assert.ok(tagged.taggedRole > 0, 'tagged roles are dealt when family mode is off');
+});
