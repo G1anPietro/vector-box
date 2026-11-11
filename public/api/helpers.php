@@ -258,6 +258,30 @@ function sendBaseSecurityHeaders(): void {
  * Report-only unless CSP_ENFORCE=true: violations show up in the browser console
  * without breaking anything, so the policy can be tuned before enforcing it.
  */
+/** AdSense publisher id from .env (ca-pub-…), or '' when ads are off. */
+function adsenseClient(): string {
+    $c = trim((string)envValue('ADSENSE_CLIENT', ''));
+    return preg_match('/^ca-pub-\d{10,20}$/', $c) ? $c : '';
+}
+
+/**
+ * Language of the plain content pages (games, support, privacy, resume): ?lang=it|en
+ * (remembered in a cookie), then the cookie, then the browser's language.
+ */
+function pageLang(): string {
+    $q = $_GET['lang'] ?? '';
+    if ($q === 'it' || $q === 'en') {
+        if (!headers_sent()) {
+            setcookie('vb_lang', $q, ['expires' => time() + 31536000, 'path' => '/', 'samesite' => 'Lax',
+                                      'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true]);
+        }
+        return $q;
+    }
+    $c = $_COOKIE['vb_lang'] ?? '';
+    if ($c === 'it' || $c === 'en') return $c;
+    return stripos((string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), 'it') === 0 ? 'it' : 'en';
+}
+
 function sendPageSecurityHeaders(): void {
     if (PHP_SAPI === 'cli' || headers_sent()) return;
 
@@ -267,19 +291,27 @@ function sendPageSecurityHeaders(): void {
         $connect[] = $m[1]; // chat hub on another origin
     }
 
+    // Pages that show Google ads (they define VB_ADS_PAGE before including head.php, and only
+    // when ADSENSE_CLIENT is set) must let AdSense and Google's consent message load their
+    // scripts, frames and images. Those pages are static content: no user input on them.
+    $ads = defined('VB_ADS_PAGE') && adsenseClient() !== '';
+    $google = 'https://*.googlesyndication.com https://*.google.com https://*.googleadservices.com '
+            . 'https://*.gstatic.com https://*.doubleclick.net https://*.adtrafficquality.google';
+    if ($ads) $connect[] = $google;
+
     $policy = implode('; ', [
         "default-src 'self'",
         // reader.php loads jszip/pdf.js/epub.js from these CDNs
-        "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+        "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net" . ($ads ? " $google" : ''),
         // many inline style="" attributes and element.style writes; epub.js loads the book's CSS as blob:
         "style-src 'self' 'unsafe-inline' blob:",
-        "img-src 'self' data: blob:",
+        "img-src 'self' data: blob:" . ($ads ? ' https:' : ''),
         // fonts embedded in EPUBs are loaded as blob: too
         "font-src 'self' data: blob:",
         'connect-src ' . implode(' ', $connect),
         "worker-src 'self' blob: https://cdnjs.cloudflare.com",
         // epub.js renders chapters in blob:/srcdoc iframes
-        "frame-src 'self' blob: data:",
+        "frame-src 'self' blob: data:" . ($ads ? " $google" : ''),
         "frame-ancestors 'self'",
         "object-src 'none'",
         "base-uri 'self'",

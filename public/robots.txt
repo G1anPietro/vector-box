@@ -1,0 +1,7 @@
+# The library, the API and account pages are private: keep crawlers out.
+User-agent: *
+Disallow: /api/
+Disallow: /pages/reader.php
+Disallow: /pages/account.php
+Disallow: /pages/login.php
+Disallow: /pages/dashboard.php
