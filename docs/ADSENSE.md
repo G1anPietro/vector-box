@@ -38,8 +38,8 @@ Ads are **off** until `ADSENSE_CLIENT` is set in `.env`. They appear only on
 - Never ask people to click, view or "keep the page open" for the ads.
 - No ads on pages without real content, and none next to game buttons.
 - Don't click your own ads; don't reload the page to "generate views".
-- The library holds books we have no rights to: it must stay login-only and
-  out of search engines (`robots.txt`), and never get ads.
+- The library is private (friends only): it stays login-only, out of search
+  engines (`robots.txt`), and never gets ads.
 
 ## CSP
 
