@@ -6,6 +6,11 @@ window.SpiaI18n = (() => {
     const S = {};
 
     S.it = {
+        sol_theme: "Tema",
+        sol_theme_classic: "Classico (panno verde)",
+        sol_theme_neon: "Neon",
+        sol_theme_wood: "Legno",
+        sol_theme_night: "Notte (nero)",
         sol_title: "Solitario",
         sol_new: "Nuova partita",
         sol_auto: "Completa",
@@ -20,7 +25,7 @@ window.SpiaI18n = (() => {
         sol_won_d: "In {time} con {moves} mosse.",
         sol_streak: "{n} vittorie di fila.",
         sol_new_q: "Lasciare questa partita e iniziarne una nuova? Conta come persa.",
-        sol_help: "Lo scopo è mettere tutte le carte nelle quattro pile in alto a destra, una per seme, dall'asso al re.\nNelle sette colonne le carte si impilano in ordine decrescente, alternando rosso e nero. In una colonna vuota può andare solo un re.\nTocca una carta e va da sola nel posto migliore. Per scegliere tu dove metterla, tieni premuta la carta e poi tocca la colonna o la pila di destinazione.\nTocca il mazzo in alto a sinistra per pescare 1 o 3 carte (si cambia con il bottone in basso; vale dalla partita dopo). Quando il mazzo finisce, toccalo di nuovo per rimescolare.\nQuando tutte le carte sono scoperte compare \"Completa\", che finisce la partita da solo.",
+        sol_help: "Lo scopo è mettere tutte le carte nelle quattro pile in alto a destra, una per seme, dall'asso al re.\nNelle sette colonne le carte si impilano in ordine decrescente, alternando rosso e nero. In una colonna vuota può andare solo un re.\nTocca una carta e va da sola nel posto migliore. Per scegliere tu dove metterla, tieni premuta la carta e poi tocca la colonna o la pila di destinazione.\nTocca il mazzo in alto a sinistra per pescare 1 o 3 carte (si cambia con il bottone in basso; vale dalla partita dopo). Quando il mazzo finisce, toccalo di nuovo per rimescolare.\nQuando tutte le carte sono scoperte compare \"Completa\", che finisce la partita da solo.\nPuoi anche trascinare una carta, o una pila di carte, dove vuoi: se la mossa non è valida torna al suo posto. Con il mouse, il doppio clic manda la carta sulla pila del suo seme.\nIl bottone ◐ in alto cambia il tema del tavolo.",
         nh_title: "Non ho mai…",
         nh_tagline: "Un telefono in mezzo al tavolo. Chi l'ha fatto, beve (o perde una vita).",
         nh_categories: "Categorie",
@@ -433,6 +438,11 @@ window.SpiaI18n = (() => {
     };
 
     S.en = {
+        sol_theme: "Theme",
+        sol_theme_classic: "Classic (green baize)",
+        sol_theme_neon: "Neon",
+        sol_theme_wood: "Wood",
+        sol_theme_night: "Night (black)",
         sol_title: "Solitaire",
         sol_new: "New game",
         sol_auto: "Finish",
@@ -447,7 +457,7 @@ window.SpiaI18n = (() => {
         sol_won_d: "In {time} with {moves} moves.",
         sol_streak: "{n} wins in a row.",
         sol_new_q: "Abandon this game and start a new one? It counts as a loss.",
-        sol_help: "The goal is to move every card to the four piles at the top right, one per suit, from ace to king.\nIn the seven columns, cards stack in descending order, alternating red and black. Only a king can go into an empty column.\nTap a card and it moves to the best place on its own. To choose the spot yourself, press and hold the card, then tap the column or pile to drop it on.\nTap the stock at the top left to draw 1 or 3 cards (switch it with the button at the bottom; it applies from the next game). When the stock runs out, tap it again to recycle.\nWhen every card is face up, \"Finish\" appears and completes the game for you.",
+        sol_help: "The goal is to move every card to the four piles at the top right, one per suit, from ace to king.\nIn the seven columns, cards stack in descending order, alternating red and black. Only a king can go into an empty column.\nTap a card and it moves to the best place on its own. To choose the spot yourself, press and hold the card, then tap the column or pile to drop it on.\nTap the stock at the top left to draw 1 or 3 cards (switch it with the button at the bottom; it applies from the next game). When the stock runs out, tap it again to recycle.\nWhen every card is face up, \"Finish\" appears and completes the game for you.\nYou can also drag a card, or a stack of cards, wherever you like: if the move isn't valid it goes back. With a mouse, double-click sends the card to its foundation.\nThe ◐ button at the top changes the table's theme.",
         nh_title: "Never have I ever…",
         nh_tagline: "One phone in the middle of the table. If you've done it, drink (or lose a life).",
         nh_categories: "Categories",
@@ -860,6 +870,11 @@ window.SpiaI18n = (() => {
     };
 
     S.es = {
+        sol_theme: "Tema",
+        sol_theme_classic: "Clásico (tapete verde)",
+        sol_theme_neon: "Neón",
+        sol_theme_wood: "Madera",
+        sol_theme_night: "Noche (negro)",
         sol_title: "Solitario",
         sol_new: "Nueva partida",
         sol_auto: "Completar",
@@ -874,7 +889,7 @@ window.SpiaI18n = (() => {
         sol_won_d: "En {time} con {moves} movimientos.",
         sol_streak: "{n} victorias seguidas.",
         sol_new_q: "¿Dejar esta partida y empezar otra? Cuenta como perdida.",
-        sol_help: "El objetivo es llevar todas las cartas a los cuatro montones de arriba a la derecha, uno por palo, del as al rey.\nEn las siete columnas las cartas se apilan en orden descendente, alternando rojo y negro. En una columna vacía solo puede ir un rey.\nToca una carta y se mueve sola al mejor sitio. Para elegir tú, mantén pulsada la carta y luego toca la columna o el montón de destino.\nToca el mazo de arriba a la izquierda para robar 1 o 3 cartas (se cambia con el botón de abajo; vale desde la partida siguiente). Cuando se acaba, tócalo otra vez para volver a empezar.\nCuando todas las cartas están boca arriba aparece \"Completar\", que termina la partida solo.",
+        sol_help: "El objetivo es llevar todas las cartas a los cuatro montones de arriba a la derecha, uno por palo, del as al rey.\nEn las siete columnas las cartas se apilan en orden descendente, alternando rojo y negro. En una columna vacía solo puede ir un rey.\nToca una carta y se mueve sola al mejor sitio. Para elegir tú, mantén pulsada la carta y luego toca la columna o el montón de destino.\nToca el mazo de arriba a la izquierda para robar 1 o 3 cartas (se cambia con el botón de abajo; vale desde la partida siguiente). Cuando se acaba, tócalo otra vez para volver a empezar.\nCuando todas las cartas están boca arriba aparece \"Completar\", que termina la partida solo.\nTambién puedes arrastrar una carta, o un montón de cartas, a donde quieras: si el movimiento no es válido vuelve a su sitio. Con el ratón, el doble clic manda la carta a su montón.\nEl botón ◐ de arriba cambia el tema de la mesa.",
         nh_title: "Yo nunca…",
         nh_tagline: "Un móvil en medio de la mesa. Si lo has hecho, bebes (o pierdes una vida).",
         nh_categories: "Categorías",
@@ -1287,6 +1302,11 @@ window.SpiaI18n = (() => {
     };
 
     S.fr = {
+        sol_theme: "Thème",
+        sol_theme_classic: "Classique (tapis vert)",
+        sol_theme_neon: "Néon",
+        sol_theme_wood: "Bois",
+        sol_theme_night: "Nuit (noir)",
         sol_title: "Solitaire",
         sol_new: "Nouvelle partie",
         sol_auto: "Terminer",
@@ -1301,7 +1321,7 @@ window.SpiaI18n = (() => {
         sol_won_d: "En {time} avec {moves} coups.",
         sol_streak: "{n} victoires d'affilée.",
         sol_new_q: "Abandonner cette partie et en commencer une autre ? Elle compte comme perdue.",
-        sol_help: "Le but est de mettre toutes les cartes sur les quatre piles en haut à droite, une par couleur, de l'as au roi.\nDans les sept colonnes, les cartes s'empilent en ordre décroissant, en alternant rouge et noir. Seul un roi peut aller dans une colonne vide.\nTouche une carte et elle va toute seule au meilleur endroit. Pour choisir toi-même, maintiens la carte appuyée puis touche la colonne ou la pile de destination.\nTouche la pioche en haut à gauche pour tirer 1 ou 3 cartes (à changer avec le bouton en bas ; valable dès la partie suivante). Quand elle est vide, touche-la de nouveau pour la recycler.\nQuand toutes les cartes sont retournées, « Terminer » apparaît et finit la partie pour toi.",
+        sol_help: "Le but est de mettre toutes les cartes sur les quatre piles en haut à droite, une par couleur, de l'as au roi.\nDans les sept colonnes, les cartes s'empilent en ordre décroissant, en alternant rouge et noir. Seul un roi peut aller dans une colonne vide.\nTouche une carte et elle va toute seule au meilleur endroit. Pour choisir toi-même, maintiens la carte appuyée puis touche la colonne ou la pile de destination.\nTouche la pioche en haut à gauche pour tirer 1 ou 3 cartes (à changer avec le bouton en bas ; valable dès la partie suivante). Quand elle est vide, touche-la de nouveau pour la recycler.\nQuand toutes les cartes sont retournées, « Terminer » apparaît et finit la partie pour toi.\nTu peux aussi faire glisser une carte, ou une pile de cartes, où tu veux : si le coup n'est pas valable, elle revient à sa place. À la souris, le double-clic envoie la carte sur sa pile.\nLe bouton ◐ en haut change le thème de la table.",
         nh_title: "Je n'ai jamais…",
         nh_tagline: "Un téléphone au milieu de la table. Si tu l'as fait, tu bois (ou tu perds une vie).",
         nh_categories: "Catégories",
@@ -1714,6 +1734,11 @@ window.SpiaI18n = (() => {
     };
 
     S.de = {
+        sol_theme: "Design",
+        sol_theme_classic: "Klassisch (grüner Filz)",
+        sol_theme_neon: "Neon",
+        sol_theme_wood: "Holz",
+        sol_theme_night: "Nacht (schwarz)",
         sol_title: "Solitär",
         sol_new: "Neues Spiel",
         sol_auto: "Fertigstellen",
@@ -1728,7 +1753,7 @@ window.SpiaI18n = (() => {
         sol_won_d: "In {time} mit {moves} Zügen.",
         sol_streak: "{n} Siege in Folge.",
         sol_new_q: "Dieses Spiel aufgeben und ein neues starten? Es zählt als verloren.",
-        sol_help: "Ziel ist es, alle Karten auf die vier Stapel oben rechts zu legen, einen pro Farbe, vom Ass bis zum König.\nIn den sieben Spalten werden die Karten absteigend gestapelt, abwechselnd rot und schwarz. In eine leere Spalte darf nur ein König.\nTippe auf eine Karte und sie geht von selbst an den besten Platz. Um selbst zu wählen, halte die Karte gedrückt und tippe dann auf die Spalte oder den Stapel.\nTippe oben links auf den Stapel, um 1 oder 3 Karten zu ziehen (umstellen mit dem Knopf unten; gilt ab dem nächsten Spiel). Ist er leer, tippe erneut, um ihn neu zu mischen.\nSind alle Karten aufgedeckt, erscheint „Fertigstellen“ und beendet das Spiel für dich.",
+        sol_help: "Ziel ist es, alle Karten auf die vier Stapel oben rechts zu legen, einen pro Farbe, vom Ass bis zum König.\nIn den sieben Spalten werden die Karten absteigend gestapelt, abwechselnd rot und schwarz. In eine leere Spalte darf nur ein König.\nTippe auf eine Karte und sie geht von selbst an den besten Platz. Um selbst zu wählen, halte die Karte gedrückt und tippe dann auf die Spalte oder den Stapel.\nTippe oben links auf den Stapel, um 1 oder 3 Karten zu ziehen (umstellen mit dem Knopf unten; gilt ab dem nächsten Spiel). Ist er leer, tippe erneut, um ihn neu zu mischen.\nSind alle Karten aufgedeckt, erscheint „Fertigstellen“ und beendet das Spiel für dich.\nDu kannst eine Karte oder einen Stapel auch dorthin ziehen, wo du willst: Ist der Zug ungültig, springt sie zurück. Mit der Maus schickt ein Doppelklick die Karte auf ihren Ablagestapel.\nDer Knopf ◐ oben ändert das Design des Tisches.",
         nh_title: "Ich hab noch nie…",
         nh_tagline: "Ein Handy in der Mitte des Tisches. Wer es schon getan hat, trinkt (oder verliert ein Leben).",
         nh_categories: "Kategorien",

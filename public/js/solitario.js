@@ -18,7 +18,14 @@
     let lang = store.get('spia_lang') || I18N.detect(Object.keys(LANGS));
     const t = (k, v) => I18N.t(lang, k, v);
 
-    let settings = Object.assign({ draw: 1 }, store.get('sol_settings', {}));
+    let settings = Object.assign({ draw: 1, theme: 'classic' }, store.get('sol_settings', {}));
+    const THEMES = { classic: '#2c6a3a', neon: '#0b0e14', wood: '#3a2416', night: '#000000' };
+    function applyTheme() {
+        if (!THEMES[settings.theme]) settings.theme = 'classic';
+        document.documentElement.dataset.theme = settings.theme;
+        const meta = document.querySelector('meta[name=theme-color]');
+        if (meta) meta.content = THEMES[settings.theme];
+    }
     let stats = Object.assign({ played: 0, won: 0, best: null, streak: 0, bestStreak: 0 }, store.get('sol_stats', {}));
     let g = store.get('sol_game', null);
     let undoStack = [];
@@ -199,13 +206,49 @@
         return e;
     }
 
+    // Pip positions (x%, y%, upside-down) inside the card's centre box, as on real cards
+    const PIPS = {
+        2: [[50, 0], [50, 100, 1]],
+        3: [[50, 0], [50, 50], [50, 100, 1]],
+        4: [[0, 0], [100, 0], [0, 100, 1], [100, 100, 1]],
+        5: [[0, 0], [100, 0], [50, 50], [0, 100, 1], [100, 100, 1]],
+        6: [[0, 0], [100, 0], [0, 50], [100, 50], [0, 100, 1], [100, 100, 1]],
+        7: [[0, 0], [100, 0], [50, 25], [0, 50], [100, 50], [0, 100, 1], [100, 100, 1]],
+        8: [[0, 0], [100, 0], [50, 25], [0, 50], [100, 50], [50, 75, 1], [0, 100, 1], [100, 100, 1]],
+        9: [[0, 0], [100, 0], [0, 33], [100, 33], [50, 50], [0, 67, 1], [100, 67, 1], [0, 100, 1], [100, 100, 1]],
+        10: [[0, 0], [100, 0], [50, 17], [0, 33], [100, 33], [0, 67, 1], [100, 67, 1], [50, 83, 1], [0, 100, 1], [100, 100, 1]],
+    };
+
     function cardEl(c) {
         const e = el('div', 'card-sol' + (c.up ? (red(c) ? ' up red' : ' up') : ' down'));
-        if (c.up) {
-            e.appendChild(el('span', 'corner', RANK[c.r] + SYM[c.s]));
-            e.appendChild(el('span', 'pip', SYM[c.s]));
-            e.setAttribute('aria-label', RANK[c.r] + ' ' + SYM[c.s]);
+        if (!c.up) return e;
+        const corner = (cls) => {
+            const k = el('span', 'corner ' + cls);
+            k.appendChild(el('b', null, RANK[c.r]));
+            k.appendChild(el('i', null, SYM[c.s]));
+            return k;
+        };
+        e.appendChild(corner('tl'));
+        e.appendChild(corner('br'));
+        e.appendChild(el('span', 'pip', SYM[c.s]));            // simple themes: one big suit
+        if (c.r === 1) {
+            e.appendChild(el('span', 'ace', SYM[c.s]));
+        } else if (c.r > 10) {
+            const court = el('span', 'court');
+            court.appendChild(el('b', null, RANK[c.r]));
+            court.appendChild(el('i', null, SYM[c.s]));
+            e.appendChild(court);
+        } else {
+            const box = el('span', 'pips');
+            PIPS[c.r].forEach(([px, py, flip]) => {
+                const p = el('span', flip ? 'flip' : '', SYM[c.s]);
+                p.style.left = px + '%';
+                p.style.top = py + '%';
+                box.appendChild(p);
+            });
+            e.appendChild(box);
         }
+        e.setAttribute('aria-label', RANK[c.r] + ' ' + SYM[c.s]);
         return e;
     }
 
@@ -222,6 +265,7 @@
         const ch = Math.round(cw * 1.42);
         board.style.setProperty('--cw', cw + 'px');
         const x = (i) => i * (cw + gap) + (board.clientWidth - W) / 2;
+        GEO = { cw, ch, gap, x0: (board.clientWidth - W) / 2, top0: ch + 14 };
         const place = (node, left, top, z) => {
             node.style.left = left + 'px';
             node.style.top = top + 'px';
@@ -251,7 +295,7 @@
             const pile = g.found[s];
             const slot = place(el('div', 'slot found', SYM[s]), x(3 + i), 0);
             slot.classList.toggle('red', s === 'h' || s === 'd');
-            slot.addEventListener('click', () => { if (selected) tryMove(selected, { to: 'found' }); });
+            slot.addEventListener('click', () => { if (selected && !suppressed()) tryMove(selected, { to: 'found' }); });
             if (pile.length) bindCard(place(cardEl(pile[pile.length - 1]), x(3 + i), 0, 5), { from: 'found', s });
         });
 
@@ -260,7 +304,7 @@
         const avail = Math.max(ch * 2, board.clientHeight - top0 - 6);
         g.tab.forEach((col, ci) => {
             const slot = place(el('div', 'slot tab'), x(ci), top0);
-            slot.addEventListener('click', () => { if (selected) tryMove(selected, { to: 'tab', col: ci }); });
+            slot.addEventListener('click', () => { if (selected && !suppressed()) tryMove(selected, { to: 'tab', col: ci }); });
             const downs = col.filter((c) => !c.up).length;
             const ups = col.length - downs;
             let od = Math.round(ch * 0.13);
@@ -274,6 +318,8 @@
             let y = top0;
             col.forEach((c, idx) => {
                 const node = place(cardEl(c), x(ci), y, 20 + idx);
+                node.dataset.col = ci;
+                node.dataset.idx = idx;
                 if (c.up) bindCard(node, { from: 'tab', col: ci, idx });
                 if (selected && selected.from === 'tab' && selected.col === ci && idx >= selected.idx) node.classList.add('picked');
                 y += c.up ? ou : od;
@@ -294,39 +340,100 @@
         renderOverlay();
     }
 
+    // ---------- input: tap = best move, double-click = foundation, long press = pick, drag = move ----------
+    let GEO = null;
+    let press = null;
+    let suppressUntil = 0;
+    const suppressed = () => Date.now() < suppressUntil;
+
     function bindCard(node, src) {
         node.dataset.src = JSON.stringify(src);
-        let pressTimer = null;
-        let long = false;
-        node.addEventListener('pointerdown', () => {
-            long = false;
-            pressTimer = setTimeout(() => {
-                long = true;
+        node.addEventListener('pointerdown', (e) => {
+            if (g.won || (e.button !== undefined && e.button > 0)) return;
+            press = { src, node, x0: e.clientX, y0: e.clientY, dragging: false, long: false, nodes: null };
+            press.timer = setTimeout(() => {
+                if (!press || press.dragging) return;
+                press.long = true;
                 selected = src;
-                if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { /* unsupported */ } }
+                if (navigator.vibrate) { try { navigator.vibrate(15); } catch (err) { /* unsupported */ } }
                 render();
             }, 450);
         });
-        const cancel = () => clearTimeout(pressTimer);
-        node.addEventListener('pointerup', cancel);
-        node.addEventListener('pointerleave', cancel);
         node.addEventListener('contextmenu', (e) => e.preventDefault());
-        node.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (long) return;                      // the long press already picked it
-            if (selected) {
-                // tapping a card while something is picked: drop onto that card's pile
-                const target = src.from === 'tab' ? { to: 'tab', col: src.col } : src.from === 'found' ? { to: 'found' } : null;
-                const was = selected;
-                if (target && !(was.from === src.from && was.col === src.col && was.idx === src.idx) && tryMove(was, target)) return;
-                selected = null;
-                render();
-                return;
-            }
-            const dst = bestMove(src);
-            if (dst) tryMove(src, dst);
-            else { node.classList.remove('shake'); void node.offsetWidth; node.classList.add('shake'); }
+        node.addEventListener('dblclick', (e) => {
+            // desktop habit: double-click sends the card to its foundation
+            e.preventDefault();
+            if (cardsOf(src).length === 1) tryMove(src, { to: 'found' });
         });
+    }
+
+    function dragNodes(src, node) {
+        if (src.from !== 'tab') return [node];
+        return [...board.querySelectorAll('.card-sol.up')]
+            .filter((n) => +n.dataset.col === src.col && +n.dataset.idx >= src.idx)
+            .sort((a, b) => a.dataset.idx - b.dataset.idx);
+    }
+
+    window.addEventListener('pointermove', (e) => {
+        if (!press || press.long) return;
+        const dx = e.clientX - press.x0;
+        const dy = e.clientY - press.y0;
+        if (!press.dragging) {
+            if (Math.hypot(dx, dy) < 8 || !cardsOf(press.src).length) return;
+            press.dragging = true;
+            clearTimeout(press.timer);
+            press.nodes = dragNodes(press.src, press.node);
+            press.nodes.forEach((n, i) => { n.classList.add('dragging'); n.style.zIndex = 1000 + i; });
+        }
+        press.nodes.forEach((n) => { n.style.transform = `translate(${dx}px, ${dy}px)`; });
+    }, { passive: true });
+
+    function dropTarget(clientX, clientY) {
+        if (!GEO) return null;
+        const r = board.getBoundingClientRect();
+        const x = clientX - r.left - GEO.x0;
+        const y = clientY - r.top;
+        const col = Math.floor(x / (GEO.cw + GEO.gap));
+        if (col < 0 || col > 6) return null;
+        if (y < GEO.top0 - 4) return col >= 3 ? { to: 'found' } : null;
+        return { to: 'tab', col };
+    }
+
+    window.addEventListener('pointerup', (e) => {
+        if (!press) return;
+        const p = press;
+        press = null;
+        clearTimeout(p.timer);
+        if (p.long) { suppressUntil = Date.now() + 400; return; }
+        if (p.dragging) {
+            suppressUntil = Date.now() + 400;
+            const dst = dropTarget(e.clientX, e.clientY);
+            if (!dst || !tryMove(p.src, dst)) render();   // invalid drop: everything snaps back
+            return;
+        }
+        tapCard(p.src, p.node);
+        suppressUntil = Date.now() + 400;
+    });
+    window.addEventListener('pointercancel', () => {
+        if (press && press.dragging) render();
+        if (press) clearTimeout(press.timer);
+        press = null;
+    });
+
+    function tapCard(src, node) {
+        if (selected) {
+            // something is picked: drop it onto the tapped card's pile
+            const target = src.from === 'tab' ? { to: 'tab', col: src.col } : src.from === 'found' ? { to: 'found' } : null;
+            const was = selected;
+            const same = was.from === src.from && was.col === src.col && was.idx === src.idx;
+            if (target && !same && tryMove(was, target)) return;
+            selected = null;
+            render();
+            return;
+        }
+        const dst = bestMove(src);
+        if (dst) tryMove(src, dst);
+        else { node.classList.remove('shake'); void node.offsetWidth; node.classList.add('shake'); }
     }
 
     function renderOverlay() {
@@ -359,6 +466,15 @@
             t('sol_help').split('\n').forEach((p) => box.appendChild(el('p', null, p)));
             const c = el('button', 'btn primary', t('close')); c.addEventListener('click', close);
             box.appendChild(c);
+        } else if (sheet === 'theme') {
+            box.appendChild(el('h2', null, t('sol_theme')));
+            Object.keys(THEMES).forEach((key) => {
+                const b = el('button', 'btn theme-pick' + (key === settings.theme ? ' primary' : ''));
+                const sw = el('span', 'swatch ' + key);
+                b.append(sw, document.createTextNode(t('sol_theme_' + key)));
+                b.addEventListener('click', () => { settings.theme = key; applyTheme(); saveAll(); close(); });
+                box.appendChild(b);
+            });
         } else if (sheet === 'lang') {
             box.appendChild(el('h2', null, t('language')));
             Object.entries(LANGS).forEach(([code, label]) => {
@@ -379,6 +495,7 @@
         $('sol-moves-l').textContent = t('sol_moves');
         $('sol-time-l').textContent = t('sol_time');
         $('sol-lang').textContent = lang.toUpperCase();
+        $('sol-theme').setAttribute('aria-label', t('sol_theme'));
     }
 
     // ---------- wiring ----------
@@ -392,13 +509,15 @@
         if (g.moves === 0) newGame();   // fresh deal: apply right away; otherwise from the next game
     });
     $('sol-help').addEventListener('click', () => { sheet = 'help'; render(); });
+    $('sol-theme').addEventListener('click', () => { sheet = 'theme'; render(); });
     $('sol-lang').addEventListener('click', () => { sheet = 'lang'; render(); });
-    board.addEventListener('click', () => { if (selected) { selected = null; render(); } });
+    board.addEventListener('click', () => { if (selected && !suppressed()) { selected = null; render(); } });
     window.addEventListener('resize', () => render());
     document.addEventListener('visibilitychange', () => { if (g) { if (document.hidden) saveAll(); } });
     setInterval(() => { if (g && g.startedAt && !g.won && !document.hidden) $('sol-time').textContent = fmtTime(elapsed()); }, 1000);
 
     document.documentElement.lang = lang;
+    applyTheme();
     applyStatic();
     if (!g || !g.tab) newGame();
     else { if (g.startedAt) g.startedAt = Date.now(); render(); }
