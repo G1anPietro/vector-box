@@ -268,10 +268,11 @@ function sendPageSecurityHeaders(): void {
         "default-src 'self'",
         // reader.php loads jszip/pdf.js/epub.js from these CDNs
         "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
-        // many inline style="" attributes and element.style writes
-        "style-src 'self' 'unsafe-inline'",
+        // many inline style="" attributes and element.style writes; epub.js loads the book's CSS as blob:
+        "style-src 'self' 'unsafe-inline' blob:",
         "img-src 'self' data: blob:",
-        "font-src 'self' data:",
+        // fonts embedded in EPUBs are loaded as blob: too
+        "font-src 'self' data: blob:",
         'connect-src ' . implode(' ', $connect),
         "worker-src 'self' blob: https://cdnjs.cloudflare.com",
         // epub.js renders chapters in blob:/srcdoc iframes
