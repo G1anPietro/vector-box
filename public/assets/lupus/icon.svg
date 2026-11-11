@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="104" fill="#18213b"/>
+  <rect width="512" height="512" rx="104" fill="#22100f"/>
   <!-- full moon -->
-  <circle cx="300" cy="196" r="118" fill="#e8d5a3"/>
-  <circle cx="262" cy="160" r="18" fill="#c9b27a"/>
-  <circle cx="338" cy="236" r="12" fill="#c9b27a"/>
+  <circle cx="300" cy="196" r="118" fill="#e7d6b5"/>
+  <circle cx="262" cy="160" r="18" fill="#c9b48c"/>
+  <circle cx="338" cy="236" r="12" fill="#c9b48c"/>
   <!-- the dark wood -->
-  <path d="M0 512 V330 L60 270 L96 318 L150 228 L206 316 L250 262 L300 330 L352 252 L404 322 L452 276 L512 336 V512 Z" fill="#0e1428"/>
+  <path d="M0 512 V330 L60 270 L96 318 L150 228 L206 316 L250 262 L300 330 L352 252 L404 322 L452 276 L512 336 V512 Z" fill="#120707"/>
   <!-- two red eyes -->
-  <path d="M168 404 Q196 382 226 396 Q198 414 168 404 Z" fill="#b8322a"/>
-  <path d="M286 396 Q316 382 344 404 Q314 414 286 396 Z" fill="#b8322a"/>
+  <path d="M168 404 Q196 382 226 396 Q198 414 168 404 Z" fill="#d1402f"/>
+  <path d="M286 396 Q316 382 344 404 Q314 414 286 396 Z" fill="#d1402f"/>
 </svg>

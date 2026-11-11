@@ -1,0 +1,163 @@
+/* public/css/lupus.css — Lupus theme, loaded after spia.css on pages/lupus.html only.
+ * Direction: the village notice board at night. Oxblood night, vellum notices, candle-amber
+ * actions, blood-red for the assassins. Blackletter (UnifrakturCook) only for titles, headings and
+ * stamps; a readable book serif (Alegreya) for everything else, names included.
+ * The one bold thing: the role card is a letter closed with a red wax seal. */
+
+@font-face {
+    font-family: "Alegreya";
+    src: url("../assets/lupus/fonts/alegreya.woff2") format("woff2");
+    font-weight: 400 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Alegreya";
+    src: url("../assets/lupus/fonts/alegreya-italic.woff2") format("woff2");
+    font-weight: 700;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Fraktur";
+    src: url("../assets/lupus/fonts/unifraktur-cook-700.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+}
+
+:root {
+    --desk: #22100f;        /* night, with a drop of blood in it */
+    --desk-2: #331917;
+    --desk-line: #5c2d27;
+    --chalk: #f1e6d4;       /* bone */
+    --faded: #c7a998;
+    --paper: #e7d6b5;       /* vellum notice */
+    --sheet: #efe2c4;
+    --paper-edge: #b9996a;
+    --ink: #2b1712;         /* iron-gall ink */
+    --ink-soft: rgba(43, 23, 18, 0.68);
+    --rule: rgba(43, 23, 18, 0.18);
+    --stamp: #a3241b;       /* assassins, danger */
+    --archive: #4c6a45;     /* the village */
+    --candle: #e9a23b;      /* the main action */
+    --type: "Alegreya", Georgia, "Times New Roman", serif;
+    --stencil: "Fraktur", "Alegreya", Georgia, serif;
+}
+
+body {
+    font-size: 17px;
+    background:
+        radial-gradient(circle at 88% -10%, rgba(240, 220, 170, 0.10), transparent 38%),
+        var(--desk);
+    background-attachment: fixed;
+}
+
+/* Blackletter is for titles; never for names or numbers */
+.brand { font: 700 24px/1 var(--stencil); letter-spacing: 0; }
+.pass-name, .starter strong {
+    font-family: var(--type);
+    font-weight: 800;
+    font-style: italic;
+    letter-spacing: 0;
+}
+.timer { font-family: var(--type); font-weight: 800; }
+.code-input, .chip.code { font-family: var(--type); }
+h2 { font-weight: 700; }
+
+/* Main action: a candle in the dark */
+.btn.primary {
+    background: var(--candle);
+    color: #2a1405;
+    border-bottom-color: #a86b16;
+}
+.btn.primary:active:not(:disabled) { background: var(--candle); }
+.btn.primary:disabled { background: transparent; color: var(--faded); }
+.link { color: var(--candle); }
+:focus-visible { outline-color: var(--candle); }
+
+/* Notices are pinned, not filed: no folder tabs */
+.hero::before, .card-front::before { display: none; }
+.hero, .panel, .modal, .card-front, .card-back { border-radius: 2px; }
+.hero {
+    margin-top: 10px;
+    border-top: 6px double var(--paper-edge);
+    border-bottom: 6px double var(--paper-edge);
+}
+.hero h1 { font-size: clamp(64px, 22vw, 96px); line-height: 0.95; letter-spacing: 0; }
+.hero::after {
+    /* the village seal on the notice */
+    content: "L";
+    position: absolute;
+    right: 18px;
+    bottom: -26px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font: 700 34px/1 var(--stencil);
+    color: rgba(255, 224, 205, 0.8);
+    background: radial-gradient(circle at 35% 30%, #c8443a, #8b1d16 58%, #66110c);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), inset 0 0 0 5px rgba(0, 0, 0, 0.14);
+    transform: rotate(-12deg);
+}
+.lobby .hero { margin-bottom: 24px; }
+
+.panel { box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45); }
+.panel h2, .sheet-head h2 { font-family: var(--stencil); font-weight: 700; font-size: 24px; letter-spacing: 0; }
+.plain h2 { font-style: italic; }
+
+/* ---------- the sealed letter ---------- */
+.card-front {
+    background:
+        linear-gradient(to bottom right, transparent 49.6%, rgba(43, 23, 18, 0.10) 50%, transparent 50.4%),
+        linear-gradient(to bottom left, transparent 49.6%, rgba(43, 23, 18, 0.10) 50%, transparent 50.4%),
+        var(--paper);
+}
+.card-front .fp { display: none; }
+.card-name { order: 0; background: transparent; border: none; font-size: 22px; font-style: italic; }
+.card-front::after {
+    content: "L";
+    order: 1;
+    width: 92px;
+    height: 92px;
+    margin: 18px 0 10px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font: 700 48px/1 var(--stencil);
+    color: rgba(255, 224, 205, 0.82);
+    background: radial-gradient(circle at 35% 30%, #cf4a3f, #8f1e17 58%, #64100b);
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.28), inset 0 0 0 7px rgba(0, 0, 0, 0.13), inset 0 0 0 9px rgba(255, 210, 190, 0.08);
+}
+.card-hint { order: 2; font-style: italic; }
+.card-back {
+    background: var(--sheet);
+    box-shadow: inset 0 0 0 1px var(--paper-edge), inset 0 0 0 6px var(--sheet), inset 0 0 0 7px var(--paper-edge);
+}
+.card-loc { font-family: var(--stencil); font-weight: 700; font-size: 40px; }
+.card-label { font-style: italic; }
+
+/* Stamps in blackletter, in sentence case (blackletter capitals are hard to read) */
+.stamp {
+    font-family: var(--stencil);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 44px;
+    padding: 4px 16px 8px;
+}
+.result-stamp { font-size: 34px; }
+.card-back.spy .stamp { font-size: clamp(44px, 14vw, 60px); }
+
+/* Settings: candle-lit tick boxes */
+.switch:checked::after { border-color: var(--archive); }
+.segmented button.on, .sheet .btn.primary, .modal .btn.primary { background: var(--ink); color: var(--paper); }
+.sheet .chip.toggle.on { background: var(--ink); color: var(--paper); }
+.set-group { font-size: 26px; }
+.intro h3 { font-size: 40px; }
+
+.toast { font-family: var(--type); }
+
+/* Shadows in the night's colour, not the spy's navy */
+.hero, .card-front, .card-back, .modal, .toast, .lobby .hero { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45); }
+.card-back { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px var(--paper-edge), inset 0 0 0 6px var(--sheet), inset 0 0 0 7px var(--paper-edge); }

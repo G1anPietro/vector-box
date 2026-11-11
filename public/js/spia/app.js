@@ -393,7 +393,7 @@
         if (mode === 'online' && !netOk) chips.push(h('span', { class: 'chip warn' }, t('offline')));
         return h('header', { class: 'topbar' },
             h('div', { class: 'brand', id: 'spia-title' },
-                h('img', { src: `../assets/${GAME}/icon.svg`, alt: '', class: 'brand-icon', draggable: 'false' }),
+                h('img', { src: `../assets/${GAME}/icon.svg?v=4`, alt: '', class: 'brand-icon', draggable: 'false' }),
                 h('span', null, gameTitle())),
             h('div', { class: 'top-chips' }, chips),
             h('button', { class: 'icon-btn', onclick: () => openSheet('lang'), 'aria-label': t('language') }, lang.toUpperCase()),
