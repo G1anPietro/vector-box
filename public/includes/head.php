@@ -4,13 +4,18 @@
 require_once __DIR__ . '/../api/helpers.php';
 sendPageSecurityHeaders();
 
+// updatesite.sh writes version.php in the project root, outside public/ (it is not web-reachable).
+// APP_VERSION is the ?v= cache-buster of every CSS/JS file, so it must change on each deploy.
 if (!defined('APP_VERSION')) {
-    if (file_exists(__DIR__ . '/../version.php')) {
-        require_once __DIR__ . '/../version.php';
-    } else {
-        define('APP_VERSION', 'v2.4.0');
+    $versionFile = dirname(__DIR__, 2) . '/version.php';
+    if (file_exists($versionFile)) {
+        require_once $versionFile;
     }
+    unset($versionFile);
 }
+if (!defined('APP_VERSION')) define('APP_VERSION', 'v2.4.0');
+if (!defined('BUILD_DATE')) define('BUILD_DATE', date('Y-m-d'));
+if (!defined('BUILD_HASH')) define('BUILD_HASH', 'dev');
 
 function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customScripts = [], $isLightPage = false) {
     $pathPrefix = $isSubpage ? '../' : '';

@@ -25,13 +25,7 @@ if ($userId && !$isAdmin) {
         $canReadBooks = false;
     }
 }
-
-if (file_exists('version.php')) {
-    require_once 'version.php';
-} else {
-    define('BUILD_DATE', date('Y-m-d'));
-    define('BUILD_HASH', 'dev');
-}
+// APP_VERSION, BUILD_DATE and BUILD_HASH come from includes/head.php (version.php in the project root).
 ?>
 <!DOCTYPE html>
 <html lang="en">
