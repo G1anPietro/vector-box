@@ -46,6 +46,7 @@ if ($userId && !$isAdmin) {
                 <a href="pages/spia.html" class="menu-item">// WHO'S THE SPY</a> 
                 <a href="pages/lupus.html" class="menu-item">// LUPUS</a>
                 <a href="pages/nonhomai.html" class="menu-item">// NON HO MAI</a>
+                <a href="pages/solitario.html" class="menu-item">// SOLITARIO</a>
                 <a href="pages/hack.php" class="menu-item">// NODE BREACH</a>
                 <a href="pages/vault.php" class="menu-item">// ARG VAULT</a>
                 

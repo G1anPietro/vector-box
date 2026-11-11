@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0e14">
+    <meta name="color-scheme" content="dark">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Solitario">
+    <title>Solitario</title>
+    <link rel="icon" href="../assets/solitario/icon.svg?v=1" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../assets/solitario/apple-touch-icon.png?v=1">
+    <link rel="manifest" href="../assets/solitario/manifest.json?v=1">
+    <link rel="stylesheet" href="../css/solitario.css?v=1">
+</head>
+<body>
+    <header class="sol-top">
+        <a class="sol-brand" href="../index.php"><img src="../assets/solitario/icon.svg?v=1" alt=""><span id="sol-title">Solitario</span></a>
+        <div class="sol-meter"><span id="sol-time-l" class="lbl">Tempo</span><strong id="sol-time">0:00</strong></div>
+        <div class="sol-meter"><span id="sol-moves-l" class="lbl">Mosse</span><strong id="sol-moves">0</strong></div>
+        <button id="sol-lang" class="sol-icon" type="button">IT</button>
+        <button id="sol-help" class="sol-icon" type="button" aria-label="?">?</button>
+    </header>
+    <main id="board" class="board" aria-label="Solitario"></main>
+    <footer class="sol-bar">
+        <p id="sol-stats" class="sol-stats"></p>
+        <div class="sol-actions">
+            <button id="sol-undo" class="btn" type="button">Annulla</button>
+            <button id="sol-draw" class="btn" type="button">Pesca 1</button>
+            <button id="sol-auto" class="btn primary" type="button" hidden>Completa</button>
+            <button id="sol-new" class="btn primary" type="button">Nuova partita</button>
+        </div>
+    </footer>
+    <div id="overlay" class="overlay" hidden></div>
+    <script src="../js/spia/i18n.js?v=7"></script>
+    <script src="../js/solitario.js?v=1"></script>
+</body>
+</html>

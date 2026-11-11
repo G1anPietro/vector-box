@@ -1,0 +1,144 @@
+/* public/css/solitario.css — Klondike, phone first.
+ * A dark board with the site's grid, crisp white cards (readability first), card backs with a
+ * magenta/cyan circuit. Card size comes from js (--cw) so seven columns always fit the screen. */
+:root {
+    --bg: #0b0e14;
+    --grid: rgba(0, 243, 255, 0.05);
+    --text: #e8edf3;
+    --muted: #8a96a8;
+    --line: #263142;
+    --face: #f7f9fc;
+    --black: #14171c;
+    --red: #d42e4c;
+    --magenta: #ff2e88;
+    --cyan: #00e5ff;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+    background:
+        linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
+        var(--bg);
+    color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+
+/* ---------- top ---------- */
+.sol-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: calc(8px + var(--safe-top)) 12px 8px;
+    border-bottom: 1px solid var(--line);
+}
+.sol-brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: var(--text); text-decoration: none; font-weight: 800; font-size: 18px; letter-spacing: 0.02em; }
+.sol-brand img { width: 28px; height: 28px; border-radius: 7px; }
+.sol-meter { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.sol-meter .lbl { font-size: 11px; color: var(--muted); }
+.sol-meter strong { font-variant-numeric: tabular-nums; font-size: 16px; }
+.sol-icon { min-width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: transparent; font-weight: 700; }
+
+/* ---------- board ---------- */
+.board { position: relative; flex: 1; margin: 10px 8px 0; min-height: 0; }
+.slot, .card-sol {
+    position: absolute;
+    border-radius: calc(var(--cw) * 0.1);
+}
+.slot {
+    border: 1.5px dashed var(--line);
+    background: rgba(255, 255, 255, 0.02);
+    display: grid;
+    place-items: center;
+    color: var(--line);
+    font-size: calc(var(--cw) * 0.42);
+}
+.slot.found.red { color: rgba(212, 46, 76, 0.35); }
+.slot.stock { border-style: solid; padding: 0; overflow: visible; }
+.slot.stock .card-sol { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+.slot.stock.empty { color: var(--muted); font-size: calc(var(--cw) * 0.5); }
+
+.card-sol { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.card-sol.down {
+    border: 1px solid #3b1c35;
+    background:
+        repeating-linear-gradient(90deg, transparent 0 7px, rgba(0, 229, 255, 0.35) 7px 8px, transparent 8px 15px),
+        repeating-linear-gradient(0deg, transparent 0 7px, rgba(255, 46, 136, 0.35) 7px 8px, transparent 8px 15px),
+        linear-gradient(135deg, #2a0d26, #0c1a2b);
+}
+.card-sol.up {
+    background: var(--face);
+    border: 1px solid #c9d2de;
+    color: var(--black);
+    cursor: pointer;
+}
+.card-sol.up.red { color: var(--red); }
+.card-sol .corner {
+    position: absolute;
+    top: 3%;
+    left: 7%;
+    font-weight: 800;
+    font-size: calc(var(--cw) * 0.3);
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+.card-sol .pip {
+    position: absolute;
+    right: 8%;
+    bottom: 6%;
+    font-size: calc(var(--cw) * 0.5);
+    line-height: 1;
+}
+.card-sol.picked { outline: 3px solid var(--cyan); outline-offset: -1px; box-shadow: 0 0 12px rgba(0, 229, 255, 0.6); }
+.card-sol.shake { animation: shake 0.25s; }
+@keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+/* ---------- bottom ---------- */
+.sol-bar { padding: 8px 10px calc(10px + var(--safe-bottom)); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.sol-stats { font-size: 12px; color: var(--muted); text-align: center; min-height: 1em; white-space: pre; }
+.sol-actions { display: flex; gap: 8px; }
+.btn {
+    flex: 1;
+    min-height: 46px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #121824;
+    font-weight: 700;
+}
+.btn:disabled { opacity: 0.35; }
+.btn.primary { background: var(--magenta); border-color: var(--magenta); color: #fff; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+#sol-auto { background: var(--cyan); border-color: var(--cyan); color: #00222a; }
+
+/* ---------- overlays ---------- */
+.overlay { position: fixed; inset: 0; z-index: 200; background: rgba(5, 7, 12, 0.7); display: grid; place-items: center; padding: 20px; }
+.overlay[hidden] { display: none; }
+.win {
+    width: 100%;
+    max-width: 380px;
+    background: #121824;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    user-select: text;
+}
+.win h2 { font-size: 24px; }
+.win .muted { color: var(--muted); }
+.win .row2 { display: flex; gap: 8px; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .card-sol.shake { animation: none; } }
