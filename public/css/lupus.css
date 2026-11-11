@@ -19,7 +19,7 @@
 }
 @font-face {
     font-family: "Fraktur";
-    src: url("../assets/lupus/fonts/unifraktur-cook-700.woff2") format("woff2");
+    src: url("../assets/lupus/fonts/unifraktur-cook-700.woff2?v=2") format("woff2");
     font-weight: 700;
     font-display: swap;
 }
