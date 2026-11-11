@@ -1,0 +1,165 @@
+/* public/css/mobile.css
+ * Phone layout for the desktop page. Everything is scoped to body.m-app, which js/mobile.js sets
+ * only on screens up to 768px: the desktop layout is untouched.
+ * One app at a time, full screen between the header and a one-row tab bar. */
+
+body.m-app {
+    --m-head: 52px;
+    --m-tab: 60px;
+    --m-safe-top: env(safe-area-inset-top, 0px);
+    --m-safe-bottom: env(safe-area-inset-bottom, 0px);
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+/* ---------- header ---------- */
+body.m-app .cyber-header {
+    height: calc(var(--m-head) + var(--m-safe-top));
+    padding: var(--m-safe-top) 12px 0;
+    gap: 10px;
+}
+body.m-app .glitch {
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+}
+body.m-app #menu-toggle-btn { min-height: 40px; padding: 0 14px; flex: none; }
+body.m-app .cyber-panel.menu-dropdown {
+    position: fixed;
+    top: calc(var(--m-head) + var(--m-safe-top) + 6px);
+    left: 8px;
+    right: 8px;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: calc(100dvh - var(--m-head) - var(--m-safe-top) - 16px);
+    overflow-y: auto;
+}
+body.m-app .menu-dropdown .menu-item { padding-top: 12px; padding-bottom: 12px; }
+
+/* The rain stays, but behind solid panels and much dimmer */
+body.m-app #canvas { opacity: 0.22; }
+
+/* ---------- the app area ---------- */
+body.m-app .desktop-viewport {
+    position: fixed;
+    top: calc(var(--m-head) + var(--m-safe-top));
+    bottom: calc(var(--m-tab) + var(--m-safe-bottom));
+    left: 0;
+    right: 0;
+    width: auto;
+    height: auto;
+    padding: 0;
+    display: block;
+    overflow: hidden;
+}
+body.m-app.m-typing .desktop-viewport { bottom: 0; }
+
+body.m-app .draggable-window { display: none !important; }
+body.m-app .draggable-window.m-active {
+    display: flex !important;
+    position: absolute !important;
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px;
+    bottom: 8px;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0;
+    min-height: 0;
+    max-height: none;
+    background: #05070b;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+body.m-app .window-header {
+    padding: 11px 14px;
+    font-size: 0.8rem;
+    cursor: default !important;
+}
+/* Close / minimise / maximise make no sense with one app on screen */
+body.m-app .win-controls { display: none; }
+body.m-app .window-content-inner {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 16px or more: iOS does not zoom into a field when you tap it */
+body.m-app input,
+body.m-app textarea,
+body.m-app select { font-size: 16px !important; }
+body.m-app button,
+body.m-app .nav-btn { min-height: 40px; }
+
+/* ---------- tab bar ---------- */
+body.m-app .cyber-taskbar {
+    height: calc(var(--m-tab) + var(--m-safe-bottom));
+    padding: 8px 8px calc(8px + var(--m-safe-bottom));
+    flex-direction: row;
+    gap: 0;
+}
+body.m-app .taskbar-info { display: none; }
+body.m-app .taskbar-apps {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+}
+body.m-app .taskbar-apps::-webkit-scrollbar { display: none; }
+body.m-app .taskbar-btn {
+    flex: 0 0 auto;
+    min-width: 66px;
+    min-height: 44px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    scroll-snap-align: center;
+    /* desktop highlights every open window; here only the app on screen counts */
+    background: rgba(12, 14, 20, 0.95) !important;
+    color: #ffffff !important;
+    border-color: var(--border-color) !important;
+    box-shadow: none !important;
+}
+body.m-app .taskbar-btn.m-current {
+    background: var(--accent-color) !important;
+    color: #000000 !important;
+    border-color: var(--accent-color) !important;
+}
+/* The keyboard needs the space: hide the tab bar while typing */
+body.m-app.m-typing .cyber-taskbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    body.m-app .taskbar-apps { scroll-behavior: auto; }
+}
+
+/* ---------- per-app touches ---------- */
+/* Chat channels: one row you can swipe, never wider than the screen */
+body.m-app .chat-tab-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+}
+body.m-app .chat-tab-bar::-webkit-scrollbar { display: none; }
+body.m-app .chat-tab-bar > * { flex: 0 0 auto; white-space: nowrap; min-height: 40px; }
+
+/* Poker: the table-creation row wraps instead of squeezing the fields */
+body.m-app #poker-create-name,
+body.m-app #poker-create-code { flex: 1 1 110px; width: auto !important; min-width: 0; }
+body.m-app #poker-create-name { flex-basis: 140px; }
+body.m-app #win-poker div:has(> #poker-join-input),
+body.m-app #win-poker div:has(> #poker-create-name) { flex: 1 1 100% !important; flex-wrap: wrap; min-width: 0 !important; }
+body.m-app #win-poker div:has(> #poker-join-input) > *,
+body.m-app #win-poker div:has(> #poker-create-name) > * { min-height: 40px; }

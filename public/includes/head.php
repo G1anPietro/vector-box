@@ -36,6 +36,7 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customSc
         <link rel="stylesheet" href="<?php echo $pathPrefix; ?>css/layout.css?v=<?php echo $ver; ?>">
         <link rel="stylesheet" href="<?php echo $pathPrefix; ?>css/components.css?v=<?php echo $ver; ?>">
         <link rel="stylesheet" href="<?php echo $pathPrefix; ?>css/widgets.css?v=<?php echo $ver; ?>">
+        <link rel="stylesheet" href="<?php echo $pathPrefix; ?>css/mobile.css?v=<?php echo $ver; ?>">
 
         <!-- Core Engine Scripts -->
         <script src="<?php echo $pathPrefix; ?>js/cookie_consent.js?v=<?php echo $ver; ?>"></script>
@@ -50,6 +51,7 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customSc
             <script src="<?php echo $pathPrefix; ?>js/uplink.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/uplink_feed.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/window_manager.js?v=<?php echo $ver; ?>" defer></script>
+            <script src="<?php echo $pathPrefix; ?>js/mobile.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/poker.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/tools.js?v=<?php echo $ver; ?>" defer></script>
             <script src="<?php echo $pathPrefix; ?>js/status.js?v=<?php echo $ver; ?>" defer></script>
