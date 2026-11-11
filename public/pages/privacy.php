@@ -39,6 +39,7 @@ $updated = '2026-11-11';
         <ul>
             <li><strong>Se crei un account:</strong> nome utente, password (salvata solo in forma cifrata, non leggibile), preferenze, messaggi della chat e privati, statistiche del poker, segnalibri e avanzamento dei libri.</li>
             <li><strong>Indirizzo IP:</strong> registrato con i messaggi e nei registri del server, per sicurezza e per bloccare abusi (per esempio troppi tentativi di accesso).</li>
+            <li><strong>Visite:</strong> per ogni nuova visita vengono annotati data e ora, indirizzo IP, pagina, tipo di browser e sistema, e il sito da cui arrivi. Servono a chi gestisce il sito per sapere chi lo usa; il registro si sovrascrive da solo quando diventa grande.</li>
             <li><strong>Giochi:</strong> partite, impostazioni e statistiche restano nel tuo browser (memoria locale). Per le stanze multigiocatore il server conserva i nomi scelti e lo stato della partita.</li>
         </ul>
         <p>I dati stanno sul server di casa del sito, non vengono venduti né ceduti a nessuno.</p>
@@ -67,6 +68,7 @@ $updated = '2026-11-11';
         <ul>
             <li><strong>If you create an account:</strong> username, password (stored only as a one-way hash), preferences, chat and private messages, poker statistics, book bookmarks and reading progress.</li>
             <li><strong>IP address:</strong> stored with messages and in the server logs, for security and to stop abuse (for example too many login attempts).</li>
+            <li><strong>Visits:</strong> for each new visit the date and time, IP address, page, browser and system, and the site you came from are noted down, so whoever runs the site knows who uses it; the log overwrites itself when it grows large.</li>
             <li><strong>Games:</strong> games, settings and statistics stay in your browser (local storage). For multiplayer rooms the server keeps the chosen names and the game state.</li>
         </ul>
         <p>The data lives on the site’s home server and is never sold or handed to anyone.</p>

@@ -3,6 +3,8 @@
 // Every page includes this before any output: send the security headers here.
 require_once __DIR__ . '/../api/helpers.php';
 sendPageSecurityHeaders();
+require_once __DIR__ . '/../api/visits.php';
+recordVisit((string)parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
 
 // updatesite.sh writes version.php in the project root, outside public/ (it is not web-reachable).
 // APP_VERSION is the ?v= cache-buster of every CSS/JS file, so it must change on each deploy.
