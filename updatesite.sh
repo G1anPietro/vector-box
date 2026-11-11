@@ -44,6 +44,14 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "$PROJECT_DIR is not 
 # ---------- 1. Pre-flight ----------
 [ -f .env ] || die ".env is missing in $PROJECT_DIR. Create it first (see .env.example)."
 
+# The repo is public and has no .gitignore: keep secrets and data out of git on this machine
+# with the local, never-published exclude file.
+EXCLUDE_FILE="$(git rev-parse --git-path info/exclude)"
+mkdir -p "$(dirname "$EXCLUDE_FILE")"
+for p in .env data/ version.php node_modules/ '*.sqlite' '*.log'; do
+    grep -qxF "$p" "$EXCLUDE_FILE" 2>/dev/null || echo "$p" >> "$EXCLUDE_FILE"
+done
+
 say "Fetching origin/$BRANCH..."
 git fetch --quiet origin "$BRANCH" || die "git fetch failed (network or SSH key?)."
 OLD_REV=$(git rev-parse HEAD)

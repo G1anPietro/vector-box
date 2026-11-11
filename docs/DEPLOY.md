@@ -1,6 +1,6 @@
 # Deploying vector-box (server checklist)
 
-Written from the `tools/server-report.sh` output of 2026-11-10 (Ubuntu 26.04, nginx 1.28,
+Written from a report of the server of 2026-11-10 (Ubuntu 26.04, nginx 1.28,
 PHP-FPM 8.5, Node 22). Steps are in order; each says what it fixes. Nothing here is run
 automatically. `updatesite.sh` still only pulls `main`.
 
@@ -28,7 +28,7 @@ TRUSTED_PROXIES=127.0.0.1,::1
 TRUST_PROXY=loopback
 
 # Public STATUS window (names shown, hosts never published)
-STATUS_CHECKS=Minecraft=192.168.1.200:25565,Cloud=192.168.1.201:80
+STATUS_CHECKS=Minecraft=192.168.0.20:25565,Cloud=192.168.0.21:80
 
 # Content-Security-Policy: leave false until the browser console shows no CSP reports
 CSP_ENFORCE=false
