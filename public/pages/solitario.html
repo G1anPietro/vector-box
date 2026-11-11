@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" data-theme="classic">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#2c6a3a">
-    <meta name="color-scheme" content="dark">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,29 +12,40 @@
     <link rel="icon" href="../assets/solitario/icon.svg?v=1" type="image/svg+xml">
     <link rel="apple-touch-icon" href="../assets/solitario/apple-touch-icon.png?v=1">
     <link rel="manifest" href="../assets/solitario/manifest.json?v=1">
-    <link rel="stylesheet" href="../css/solitario.css?v=3">
+    <link rel="stylesheet" href="../css/solitario.css?v=4">
 </head>
-<body>
+<body class="touch">
+    <!-- desktop: window-style menu bar and toolbar (built by js) -->
+    <nav id="sol-menubar" class="menubar" aria-label="Menu"></nav>
+    <div id="sol-toolbar" class="toolbar" role="toolbar"></div>
+
+    <!-- touch: compact top bar -->
     <header class="sol-top">
         <a class="sol-brand" href="../index.php"><img src="../assets/solitario/icon.svg?v=1" alt=""><span id="sol-title">Solitario</span></a>
+        <div class="sol-meter"><span id="sol-score-l" class="lbl">Punteggio</span><strong id="sol-score">0</strong></div>
         <div class="sol-meter"><span id="sol-time-l" class="lbl">Tempo</span><strong id="sol-time">0:00</strong></div>
-        <div class="sol-meter"><span id="sol-moves-l" class="lbl">Mosse</span><strong id="sol-moves">0</strong></div>
-        <button id="sol-theme" class="sol-icon" type="button">◐</button>
-        <button id="sol-lang" class="sol-icon" type="button">IT</button>
-        <button id="sol-help" class="sol-icon" type="button" aria-label="?">?</button>
+        <button class="sol-icon" type="button" data-act="more" aria-label="Menu">⋯</button>
     </header>
+
     <main id="board" class="board" aria-label="Solitario"></main>
+
+    <!-- touch: big buttons; desktop: status bar -->
     <footer class="sol-bar">
-        <p id="sol-stats" class="sol-stats"></p>
+        <div class="status">
+            <span id="sol-msg" class="sol-msg"></span>
+            <span class="stat"><span id="sol-moves-l">Mosse</span>: <b id="sol-moves">0</b>
+                &nbsp;&nbsp; <span id="sol-score-l2">Punteggio</span>: <b id="sol-score2">0</b>
+                &nbsp;&nbsp; <span id="sol-time-l2">Tempo</span>: <b id="sol-time2">0:00</b></span>
+        </div>
         <div class="sol-actions">
-            <button id="sol-undo" class="btn" type="button">Annulla</button>
-            <button id="sol-draw" class="btn" type="button">Pesca 1</button>
-            <button id="sol-auto" class="btn primary" type="button" hidden>Completa</button>
-            <button id="sol-new" class="btn primary" type="button">Nuova partita</button>
+            <button class="btn" type="button" data-act="undo" data-label="nh_undo">Annulla</button>
+            <button class="btn" type="button" data-act="hint" data-label="sol_hint">Suggerimento</button>
+            <button class="btn primary" type="button" data-act="auto" data-label="sol_auto" hidden>Completa</button>
+            <button class="btn primary" type="button" data-act="new" data-label="sol_new">Nuova partita</button>
         </div>
     </footer>
     <div id="overlay" class="overlay" hidden></div>
-    <script src="../js/spia/i18n.js?v=8"></script>
-    <script src="../js/solitario.js?v=2"></script>
+    <script src="../js/spia/i18n.js?v=9"></script>
+    <script src="../js/solitario.js?v=3"></script>
 </body>
 </html>
