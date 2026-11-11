@@ -1,0 +1,912 @@
+{
+ "version": 1,
+ "categories": [
+  {
+   "id": "classic",
+   "name": {
+    "it": "Classiche",
+    "en": "Classics",
+    "es": "Clásicas",
+    "fr": "Classiques",
+    "de": "Klassiker"
+   }
+  },
+  {
+   "id": "party",
+   "name": {
+    "it": "Feste e alcol",
+    "en": "Parties & drinks",
+    "es": "Fiestas y alcohol",
+    "fr": "Fêtes et alcool",
+    "de": "Partys & Alkohol"
+   }
+  },
+  {
+   "id": "love",
+   "name": {
+    "it": "Amore",
+    "en": "Love",
+    "es": "Amor",
+    "fr": "Amour",
+    "de": "Liebe"
+   }
+  },
+  {
+   "id": "embarrassing",
+   "name": {
+    "it": "Figuracce",
+    "en": "Embarrassing",
+    "es": "Vergüenzas",
+    "fr": "La honte",
+    "de": "Peinlich"
+   }
+  },
+  {
+   "id": "travel",
+   "name": {
+    "it": "Viaggi",
+    "en": "Travel",
+    "es": "Viajes",
+    "fr": "Voyages",
+    "de": "Reisen"
+   }
+  },
+  {
+   "id": "dark",
+   "name": {
+    "it": "Senza filtri",
+    "en": "No filter",
+    "es": "Sin filtro",
+    "fr": "Sans filtre",
+    "de": "Ohne Filter"
+   }
+  },
+  {
+   "id": "adult",
+   "name": {
+    "it": "Vietato ai minori",
+    "en": "Adults only",
+    "es": "Solo adultos",
+    "fr": "Interdit aux mineurs",
+    "de": "Ab 18"
+   }
+  }
+ ],
+ "cards": [
+  {
+   "cat": "classic",
+   "it": "Non ho mai mangiato qualcosa caduto per terra.",
+   "en": "Never have I ever eaten something that fell on the floor."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai finto di stare male per saltare la scuola o il lavoro.",
+   "en": "Never have I ever faked being sick to skip school or work."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai riciclato un regalo.",
+   "en": "Never have I ever regifted a present."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai letto un messaggio e fatto finta di non averlo visto.",
+   "en": "Never have I ever read a message and pretended I hadn't seen it."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai cantato a squarciagola in macchina da solo.",
+   "en": "Never have I ever sung at the top of my lungs alone in the car."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai dormito più di 14 ore di fila.",
+   "en": "Never have I ever slept more than 14 hours straight."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai mandato un messaggio alla persona sbagliata.",
+   "en": "Never have I ever sent a text to the wrong person."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai rotto qualcosa e dato la colpa a qualcun altro.",
+   "en": "Never have I ever broken something and blamed someone else."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai mentito sulla mia età.",
+   "en": "Never have I ever lied about my age."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai pianto guardando un cartone animato.",
+   "en": "Never have I ever cried watching a cartoon."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai parlato da solo ad alta voce in mezzo alla gente.",
+   "en": "Never have I ever talked to myself out loud in public."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai mangiato una pizza intera da solo.",
+   "en": "Never have I ever eaten a whole pizza by myself."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai copiato durante un compito in classe.",
+   "en": "Never have I ever cheated on a test."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai fatto finta di conoscere una canzone per non sembrare fuori.",
+   "en": "Never have I ever pretended to know a song to fit in."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai inciampato davanti a tanta gente.",
+   "en": "Never have I ever tripped in front of a lot of people."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai dimenticato il compleanno di un amico.",
+   "en": "Never have I ever forgotten a friend's birthday."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai dovuto chiamare qualcuno perché ero rimasto chiuso fuori casa.",
+   "en": "Never have I ever had to call someone because I was locked out of my home."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai messo gli stessi calzini per più di due giorni.",
+   "en": "Never have I ever worn the same socks for more than two days."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai bevuto il latte direttamente dal cartone.",
+   "en": "Never have I ever drunk milk straight from the carton."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai stalkerato l'ex di qualcuno sui social.",
+   "en": "Never have I ever stalked someone's ex on social media."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai fatto uno screenshot di una chat per mandarlo a qualcun altro.",
+   "en": "Never have I ever screenshotted a chat to send it to someone else."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai risposto \"sto arrivando\" mentre ero ancora a letto.",
+   "en": "Never have I ever replied \"on my way\" while still in bed."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai mangiato i biscotti che erano per qualcun altro.",
+   "en": "Never have I ever eaten cookies that were meant for someone else."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai guardato una serie intera in un giorno.",
+   "en": "Never have I ever watched an entire series in one day."
+  },
+  {
+   "cat": "classic",
+   "it": "Non ho mai avuto paura del buio da adulto.",
+   "en": "Never have I ever been scared of the dark as an adult."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai vomitato a una festa.",
+   "en": "Never have I ever thrown up at a party."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai dimenticato come sono tornato a casa.",
+   "en": "Never have I ever forgotten how I got home."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai ballato sopra un tavolo.",
+   "en": "Never have I ever danced on a table."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai bevuto qualcosa senza sapere cosa fosse.",
+   "en": "Never have I ever drunk something without knowing what it was."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai scritto all'ex da ubriaco.",
+   "en": "Never have I ever texted an ex while drunk."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai perso il telefono durante una serata.",
+   "en": "Never have I ever lost my phone on a night out."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai fatto l'alba e poi sono andato dritto a scuola o al lavoro.",
+   "en": "Never have I ever stayed out till dawn and gone straight to school or work."
+  },
+  {
+   "cat": "party",
+   "it": "Non mi sono mai addormentato a una festa.",
+   "en": "Never have I ever fallen asleep at a party."
+  },
+  {
+   "cat": "party",
+   "it": "Non sono mai stato buttato fuori da un locale.",
+   "en": "Never have I ever been kicked out of a bar or club."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai fatto amicizia con uno sconosciuto in bagno.",
+   "en": "Never have I ever made friends with a stranger in the bathroom."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai cantato al karaoke senza sapere le parole.",
+   "en": "Never have I ever sung karaoke without knowing the words."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai ordinato da mangiare alle 4 di notte.",
+   "en": "Never have I ever ordered food at 4 a.m.."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai svegliato in un posto senza sapere dove fossi.",
+   "en": "Never have I ever woken up somewhere without knowing where I was."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai bevuto da un bicchiere che non era il mio.",
+   "en": "Never have I ever drunk from a glass that wasn't mine."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai fatto una figuraccia davanti ai genitori di qualcuno.",
+   "en": "Never have I ever embarrassed myself in front of someone's parents."
+  },
+  {
+   "cat": "party",
+   "it": "Non mi sono mai imbucato a una festa a cui non ero invitato.",
+   "en": "Never have I ever crashed a party I wasn't invited to."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai detto \"stasera non bevo\" e poi bevuto.",
+   "en": "Never have I ever said \"I'm not drinking tonight\" and then drank."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai chiamato qualcuno per sbaglio in piena notte.",
+   "en": "Never have I ever accidentally called someone in the middle of the night."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai rovesciato da bere addosso a qualcuno.",
+   "en": "Never have I ever spilled a drink on someone."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai pianto in discoteca.",
+   "en": "Never have I ever cried at a club."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai mangiato un kebab alle 5 del mattino.",
+   "en": "Never have I ever eaten a kebab at 5 a.m.."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai fatto un tatuaggio o un piercing dopo una serata.",
+   "en": "Never have I ever got a tattoo or a piercing after a night out."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai fatto finta di essere più sobrio di quanto fossi.",
+   "en": "Never have I ever pretended to be more sober than I was."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai dormito nella vasca da bagno.",
+   "en": "Never have I ever slept in a bathtub."
+  },
+  {
+   "cat": "party",
+   "it": "Non ho mai offerto da bere a tutto il locale.",
+   "en": "Never have I ever bought a round for the whole bar."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai mandato una dichiarazione e poi me ne sono pentito.",
+   "en": "Never have I ever sent a love confession and regretted it."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai ghostato qualcuno.",
+   "en": "Never have I ever ghosted someone."
+  },
+  {
+   "cat": "love",
+   "it": "Non sono mai stato ghostato.",
+   "en": "Never have I ever been ghosted."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai baciato qualcuno in questa stanza.",
+   "en": "Never have I ever kissed someone in this room."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai avuto una cotta per il partner di un amico.",
+   "en": "Never have I ever had a crush on a friend's partner."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai controllato il telefono del partner.",
+   "en": "Never have I ever checked my partner's phone."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai lasciato qualcuno per messaggio.",
+   "en": "Never have I ever broken up with someone by text."
+  },
+  {
+   "cat": "love",
+   "it": "Non sono mai tornato con un ex.",
+   "en": "Never have I ever got back together with an ex."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai inventato una scusa per andarmene da un appuntamento.",
+   "en": "Never have I ever made up an excuse to leave a date."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai avuto un appuntamento al buio.",
+   "en": "Never have I ever been on a blind date."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai usato un'app di incontri.",
+   "en": "Never have I ever used a dating app."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai detto \"ti amo\" senza pensarlo.",
+   "en": "Never have I ever said \"I love you\" without meaning it."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai tradito qualcuno.",
+   "en": "Never have I ever cheated on someone."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai baciato qualcuno di cui non sapevo il nome.",
+   "en": "Never have I ever kissed someone without knowing their name."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai avuto una relazione segreta.",
+   "en": "Never have I ever had a secret relationship."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai scritto una poesia o una canzone per qualcuno.",
+   "en": "Never have I ever written a poem or a song for someone."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai frequentato due persone contemporaneamente.",
+   "en": "Never have I ever dated two people at the same time."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai avuto una cotta per un professore o per un capo.",
+   "en": "Never have I ever had a crush on a teacher or a boss."
+  },
+  {
+   "cat": "love",
+   "it": "Non sono mai stato con qualcuno solo per non restare da solo.",
+   "en": "Never have I ever been with someone just so I wouldn't be alone."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai baciato un amico e poi fatto finta di niente.",
+   "en": "Never have I ever kissed a friend and acted like nothing happened."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai pianto per qualcuno che non mi meritava.",
+   "en": "Never have I ever cried over someone who didn't deserve me."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai stalkerato la nuova fiamma del mio ex.",
+   "en": "Never have I ever stalked my ex's new partner."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai flirtato per avere uno sconto.",
+   "en": "Never have I ever flirted to get a discount."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai dimenticato un anniversario.",
+   "en": "Never have I ever forgotten an anniversary."
+  },
+  {
+   "cat": "love",
+   "it": "Non ho mai chiesto il numero a uno sconosciuto.",
+   "en": "Never have I ever asked a stranger for their number."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non mi sono mai addormentato in pubblico russando.",
+   "en": "Never have I ever fallen asleep in public and snored."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai salutato qualcuno che in realtà salutava un altro.",
+   "en": "Never have I ever waved back at someone who was waving at someone else."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai tirato una porta con scritto \"spingere\".",
+   "en": "Never have I ever pulled a door that said \"push\"."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai fatto una videochiamata con la telecamera accesa senza saperlo.",
+   "en": "Never have I ever been on a video call with the camera on without knowing."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai mandato un vocale imbarazzante nel gruppo sbagliato.",
+   "en": "Never have I ever sent an embarrassing voice note to the wrong group."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai strappato i pantaloni in pubblico.",
+   "en": "Never have I ever ripped my pants in public."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non sono mai caduto dalla sedia.",
+   "en": "Never have I ever fallen off a chair."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai chiamato un professore \"mamma\" o \"papà\".",
+   "en": "Never have I ever called a teacher \"mum\" or \"dad\"."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai riso così forte da far uscire la bibita dal naso.",
+   "en": "Never have I ever laughed so hard a drink came out of my nose."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai girato tutto il giorno con la cerniera aperta.",
+   "en": "Never have I ever walked around all day with my fly open."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai sbagliato il nome di qualcuno per anni.",
+   "en": "Never have I ever called someone by the wrong name for years."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai fatto finta di essere al telefono per evitare qualcuno.",
+   "en": "Never have I ever pretended to be on the phone to avoid someone."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai googlato me stesso.",
+   "en": "Never have I ever googled myself."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai parlato male di qualcuno che era proprio dietro di me.",
+   "en": "Never have I ever talked badly about someone standing right behind me."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai messo like a una foto vecchia di anni mentre stalkeravo.",
+   "en": "Never have I ever liked a years-old photo while stalking someone."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai fatto un rumore imbarazzante in un momento di silenzio.",
+   "en": "Never have I ever made an embarrassing noise during a silence."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai sbagliato bagno.",
+   "en": "Never have I ever walked into the wrong bathroom."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai dormito con un peluche da adulto.",
+   "en": "Never have I ever slept with a stuffed animal as an adult."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai fatto un selfie con un vip senza sapere chi fosse.",
+   "en": "Never have I ever taken a selfie with a celebrity without knowing who they were."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai cantato per anni una canzone con le parole sbagliate.",
+   "en": "Never have I ever sung a song with the wrong lyrics for years."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai pianto davanti al capo o a un professore.",
+   "en": "Never have I ever cried in front of a boss or a teacher."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non sono mai rimasto bloccato in ascensore.",
+   "en": "Never have I ever been stuck in an elevator."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai fatto finta di aver letto un libro.",
+   "en": "Never have I ever pretended to have read a book."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai chiesto a una donna quando nasceva il bambino e non era incinta.",
+   "en": "Never have I ever asked a woman when the baby was due and she wasn't pregnant."
+  },
+  {
+   "cat": "embarrassing",
+   "it": "Non ho mai risposto \"anche a te\" al cameriere che diceva \"buon appetito\".",
+   "en": "Never have I ever said \"you too\" when the waiter said 'enjoy your meal'."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai perso un aereo.",
+   "en": "Never have I ever missed a flight."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai dormito in aeroporto.",
+   "en": "Never have I ever slept in an airport."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai fatto un viaggio da solo.",
+   "en": "Never have I ever traveled alone."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai viaggiato senza biglietto.",
+   "en": "Never have I ever traveled without a ticket."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai perso il bagaglio.",
+   "en": "Never have I ever lost my luggage."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai fatto l'autostop.",
+   "en": "Never have I ever hitchhiked."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai mangiato qualcosa all'estero senza sapere cosa fosse.",
+   "en": "Never have I ever eaten something abroad without knowing what it was."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai fatto il bagno nudo.",
+   "en": "Never have I ever gone skinny dipping."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai campeggiato dove non si poteva.",
+   "en": "Never have I ever camped somewhere I wasn't allowed to."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai fatto un viaggio deciso la mattina stessa.",
+   "en": "Never have I ever gone on a trip I decided on that same morning."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai perso il passaporto o la carta d'identità all'estero.",
+   "en": "Never have I ever lost my passport or ID abroad."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai visto l'alba dalla cima di una montagna.",
+   "en": "Never have I ever watched the sunrise from a mountaintop."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai guidato dall'altro lato della strada.",
+   "en": "Never have I ever driven on the other side of the road."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai fatto bungee jumping o paracadutismo.",
+   "en": "Never have I ever gone bungee jumping or skydiving."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai preso il treno sbagliato.",
+   "en": "Never have I ever taken the wrong train."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai finito i soldi durante un viaggio.",
+   "en": "Never have I ever run out of money on a trip."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai fatto amicizia in vacanza e poi mai più sentito.",
+   "en": "Never have I ever made a holiday friend and never heard from them again."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai detto di parlare una lingua che non parlo.",
+   "en": "Never have I ever claimed to speak a language I don't speak."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai dormito in macchina.",
+   "en": "Never have I ever slept in a car."
+  },
+  {
+   "cat": "travel",
+   "it": "Non ho mai avuto un amore estivo.",
+   "en": "Never have I ever had a summer fling."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai riso a un funerale.",
+   "en": "Never have I ever laughed at a funeral."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai rubato qualcosa in un negozio.",
+   "en": "Never have I ever stolen something from a shop."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai graffiato una macchina e me ne sono andato senza lasciare un biglietto.",
+   "en": "Never have I ever scratched a car and left without leaving a note."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai desiderato che qualcuno sparisse per sempre.",
+   "en": "Never have I ever wished someone would disappear forever."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai letto il diario di qualcuno.",
+   "en": "Never have I ever read someone's diary."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai mentito alla polizia.",
+   "en": "Never have I ever lied to the police."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai passato una notte in questura.",
+   "en": "Never have I ever spent a night at a police station."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai pensato a come nasconderei un corpo.",
+   "en": "Never have I ever thought about how I'd hide a body."
+  },
+  {
+   "cat": "dark",
+   "it": "Non sono mai andato a un funerale solo per il rinfresco.",
+   "en": "Never have I ever gone to a funeral just for the food."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai lasciato che un amico si prendesse la colpa al posto mio.",
+   "en": "Never have I ever let a friend take the blame for me."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai falsificato una firma.",
+   "en": "Never have I ever forged a signature."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai rubato soldi ai miei genitori.",
+   "en": "Never have I ever stolen money from my parents."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai finto un'emergenza per andarmene da qualche parte.",
+   "en": "Never have I ever faked an emergency to get out of somewhere."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai cancellato le prove di qualcosa.",
+   "en": "Never have I ever deleted the evidence of something."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai detto una bugia che è andata avanti per anni.",
+   "en": "Never have I ever told a lie that went on for years."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai goduto delle disgrazie di qualcun altro.",
+   "en": "Never have I ever enjoyed someone else's misfortune."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai venduto qualcosa che non era mio.",
+   "en": "Never have I ever sold something that wasn't mine."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai preso le medicine di qualcun altro.",
+   "en": "Never have I ever taken someone else's medication."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai guidato dopo aver bevuto troppo.",
+   "en": "Never have I ever driven after drinking too much."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai mandato un messaggio anonimo cattivo.",
+   "en": "Never have I ever sent a nasty anonymous message."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai tenuto un portafoglio trovato per strada.",
+   "en": "Never have I ever kept a wallet I found on the street."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai letto i sintomi su internet convincendomi di stare per morire.",
+   "en": "Never have I ever looked up my symptoms online and convinced myself I was dying."
+  },
+  {
+   "cat": "dark",
+   "it": "Non ho mai scritto il discorso per il funerale di qualcuno ancora vivo.",
+   "en": "Never have I ever written a eulogy for someone who's still alive."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso in un luogo pubblico.",
+   "en": "Never have I ever had sex in a public place."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai mandato una foto nudo.",
+   "en": "Never have I ever sent a nude photo."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai ricevuto una foto nuda che non avevo chiesto.",
+   "en": "Never have I ever received a nude I hadn't asked for."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai finto un orgasmo.",
+   "en": "Never have I ever faked an orgasm."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso in macchina.",
+   "en": "Never have I ever had sex in a car."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai avuto un'avventura di una notte.",
+   "en": "Never have I ever had a one-night stand."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso con un ex dopo esserci lasciati.",
+   "en": "Never have I ever slept with an ex after we broke up."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai comprato qualcosa in un sexy shop.",
+   "en": "Never have I ever bought something at a sex shop."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso al telefono o in videochiamata.",
+   "en": "Never have I ever had phone or video sex."
+  },
+  {
+   "cat": "adult",
+   "it": "Non sono mai stato beccato mentre facevo sesso.",
+   "en": "Never have I ever been caught having sex."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso con qualcuno conosciuto quel giorno stesso.",
+   "en": "Never have I ever slept with someone I'd met that same day."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto una cosa a tre.",
+   "en": "Never have I ever had a threesome."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso nel bagno di una festa.",
+   "en": "Never have I ever had sex in a bathroom at a party."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai usato le manette o una benda.",
+   "en": "Never have I ever used handcuffs or a blindfold."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto un sogno erotico su qualcuno in questa stanza.",
+   "en": "Never have I ever had a sex dream about someone in this room."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso a casa dei genitori di qualcuno.",
+   "en": "Never have I ever had sex at someone's parents' house."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai guardato un porno insieme a qualcun altro.",
+   "en": "Never have I ever watched porn with someone else."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai mandato un messaggio piccante alla persona sbagliata.",
+   "en": "Never have I ever sent a spicy text to the wrong person."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso in spiaggia.",
+   "en": "Never have I ever had sex on a beach."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai avuto una relazione solo di sesso.",
+   "en": "Never have I ever had a friends-with-benefits relationship."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso più di tre volte in un giorno.",
+   "en": "Never have I ever had sex more than three times in one day."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto uno spogliarello per qualcuno.",
+   "en": "Never have I ever done a striptease for someone."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai usato un'app di incontri solo per una notte.",
+   "en": "Never have I ever used a dating app just for a hookup."
+  },
+  {
+   "cat": "adult",
+   "it": "Non ho mai fatto sesso con un collega.",
+   "en": "Never have I ever slept with a coworker."
+  }
+ ]
+}

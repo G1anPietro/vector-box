@@ -1,0 +1,145 @@
+/* public/css/nonhomai.css — "Non ho mai…" theme, loaded after spia.css.
+ * Direction: the pub chalkboard. Slate-green board, chalk-white text, chalk-yellow for the main
+ * action, pink chalk for the spicy categories. The one bold thing: the card is a beer coaster
+ * with the phrase handwritten on it (Caveat); tap it and it flips to the next one. */
+
+@font-face {
+    font-family: "Alegreya";
+    src: url("../assets/lupus/fonts/alegreya.woff2") format("woff2");
+    font-weight: 400 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Caveat";
+    src: url("../assets/nonhomai/fonts/caveat-700.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+}
+
+:root {
+    --desk: #1f2b26;        /* slate chalkboard */
+    --desk-2: #27362f;
+    --desk-line: #455a50;
+    --chalk: #efeee6;
+    --faded: #aab8b0;
+    --paper: #e7dcc3;       /* panels: chalk-dusted card */
+    --sheet: #eee5d0;
+    --paper-edge: #b9a77e;
+    --ink: #2b2a22;
+    --ink-soft: rgba(43, 42, 34, 0.66);
+    --rule: rgba(43, 42, 34, 0.16);
+    --stamp: #e0577a;       /* pink chalk */
+    --archive: #7fb88c;
+    --yellow: #f2d16b;      /* chalk yellow: the main action */
+    --coaster: #d8c39c;
+    --coaster-ink: #3b2a1a;
+    --type: "Alegreya", Georgia, serif;
+    --hand: "Caveat", "Comic Sans MS", cursive;
+}
+
+body {
+    font-size: 17px;
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.05), transparent 55%),
+        radial-gradient(ellipse at 80% 85%, rgba(255, 255, 255, 0.04), transparent 50%),
+        var(--desk);
+    background-attachment: fixed;
+}
+
+.brand { font: 700 28px/1 var(--hand); text-decoration: none; color: var(--chalk); }
+.brand span { padding-top: 0; }
+
+.hero {
+    background: transparent;
+    color: var(--chalk);
+    box-shadow: none;
+    padding: 18px 4px 6px;
+    margin: 6px 0 0;
+}
+.hero::before { display: none; }
+.hero h1 { font: 700 clamp(56px, 18vw, 84px)/0.95 var(--hand); margin-bottom: 10px; }
+.hero p { color: var(--faded); }
+
+.panel { border-radius: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
+.panel h2, .sheet-head h2 { font: 700 30px/1 var(--hand); }
+
+.btn.primary { background: var(--yellow); color: #2a2508; border-bottom-color: #b89a2c; }
+.btn.primary:active:not(:disabled) { background: var(--yellow); }
+.btn.primary:disabled { background: transparent; color: var(--faded); }
+:focus-visible { outline-color: var(--yellow); }
+
+.chip.toggle.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.panel .chip.toggle { border-color: var(--ink); color: var(--ink); }
+.panel .chip.toggle.on { background: var(--ink); color: var(--paper); }
+.panel .chip.toggle.spicy { border-color: #b8325a; color: #9b2048; }
+.panel .chip.toggle.spicy.on { background: #b8325a; color: #fff; border-color: #b8325a; }
+.panel .chip.toggle:disabled { opacity: 0.35; }
+.custom-list li span { padding-right: 6px; }
+
+/* ---------- play ---------- */
+.play { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 6px; }
+.coaster {
+    width: min(84vw, 360px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: none;
+    padding: 34px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background:
+        radial-gradient(circle, transparent 60%, rgba(59, 42, 26, 0.10) 60.5%, transparent 62%),
+        radial-gradient(circle, transparent 67%, rgba(59, 42, 26, 0.22) 67.5%, rgba(59, 42, 26, 0.22) 69%, transparent 69.5%),
+        radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.25), transparent 55%),
+        var(--coaster);
+    color: var(--coaster-ink);
+    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 4px rgba(59, 42, 26, 0.12);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+}
+.coaster.flip-a { animation: flip-a 0.32s ease-out; }
+.coaster.flip-b { animation: flip-b 0.32s ease-out; }
+@keyframes flip-a { from { transform: rotateY(90deg); } to { transform: rotateY(0); } }
+@keyframes flip-b { from { transform: rotateY(-90deg); } to { transform: rotateY(0); } }
+.coaster-cat {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: rgba(59, 42, 26, 0.65);
+}
+.coaster-text {
+    font: 700 clamp(26px, 7.6vw, 36px)/1.12 var(--hand);
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.coaster.won { cursor: default; animation: none; }
+.coaster.won .coaster-text { font-size: clamp(34px, 10vw, 46px); }
+
+.roster-nh { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.roster-nh .chips { justify-content: center; }
+.chip.life {
+    height: auto;
+    min-height: 44px;
+    padding: 6px 12px;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0;
+    border-color: var(--desk-line);
+    color: var(--chalk);
+    background: transparent;
+    font-weight: 700;
+}
+.chip.life .dots { color: var(--yellow); font-size: 12px; letter-spacing: 2px; }
+.chip.life.marked { border-color: var(--stamp); background: rgba(224, 87, 122, 0.16); }
+.chip.life.marked .dots { color: var(--stamp); }
+.chip.life.out { opacity: 0.35; text-decoration: line-through; }
+
+.bottom-bar.row3 { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 8px; align-items: stretch; }
+.bottom-bar.row3 .btn { min-height: 52px; padding: 8px 6px; font-size: 15px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .coaster.flip-a, .coaster.flip-b { animation: none; }
+}
