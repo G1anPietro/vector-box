@@ -353,3 +353,7 @@ body.desk #sol-score, body.desk #sol-time { font-weight: 700; }
 .card-sol.hint, .slot.hint { outline: 3px solid var(--accent); outline-offset: 1px; }
 @keyframes hint { from { filter: brightness(1); } to { filter: brightness(1.25); } }
 @media (prefers-reduced-motion: reduce) { .hint { animation: none; } }
+
+/* drag target and right-button peek */
+.card-sol.drop-ok, .slot.drop-ok { outline: 3px solid var(--accent); outline-offset: 1px; }
+.card-sol.peek { z-index: 900 !important; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }

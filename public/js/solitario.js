@@ -252,20 +252,20 @@
     }
 
     const canAutoComplete = () => !g.won && !g.stock.length && !g.waste.length && g.tab.every((col) => col.every((c) => c.up));
-    function autoComplete() {
+    /** Send every card that can go to the foundations there, one at a time (waste and column tops). */
+    function collectAll() {
         clearTimeout(autoTimer);
         const step = () => {
             if (g.won) return;
-            for (let col = 0; col < 7; col++) {
-                const pile = g.tab[col];
-                if (pile.length && tryMove({ from: 'tab', col, idx: pile.length - 1 }, { to: 'found' })) {
-                    autoTimer = setTimeout(step, 80);
-                    return;
-                }
+            const srcs = [{ from: 'waste' }];
+            for (let col = 0; col < 7; col++) if (g.tab[col].length) srcs.push({ from: 'tab', col, idx: g.tab[col].length - 1 });
+            for (const src of srcs) {
+                if (tryMove(src, { to: 'found' })) { autoTimer = setTimeout(step, 90); return; }
             }
         };
         step();
     }
+    const autoComplete = collectAll;
 
     function saveAll() {
         if (g && g.startedAt && !g.won) { g.elapsed = elapsed(); g.startedAt = Date.now(); }
@@ -359,6 +359,7 @@
         stock.addEventListener('click', drawFromStock);
 
         const shown = g.waste.slice(-(g.draw === 3 ? 3 : 1));
+        if (g.waste.length > shown.length) place(cardEl(g.waste[g.waste.length - shown.length - 1]), x(1), 0, 9);
         shown.forEach((c, i) => {
             const node = place(cardEl(c), x(1) + i * Math.round(cw * 0.32), 0, 10 + i);
             if (i === shown.length - 1) bindCard(node, { from: 'waste' });
@@ -370,6 +371,8 @@
             slot.dataset.suit = s;
             slot.classList.toggle('red', s === 'h' || s === 'd');
             slot.addEventListener('click', () => { if (selected && !suppressed()) tryMove(selected, { to: 'found' }); });
+            slot.addEventListener('dblclick', (e) => { e.preventDefault(); collectAll(); });
+            if (pile.length > 1) place(cardEl(pile[pile.length - 2]), x(3 + i), 0, 4);
             if (pile.length) bindCard(place(cardEl(pile[pile.length - 1]), x(3 + i), 0, 5), { from: 'found', s });
         });
 
@@ -394,6 +397,7 @@
                 node.dataset.col = ci;
                 node.dataset.idx = idx;
                 if (c.up) bindCard(node, { from: 'tab', col: ci, idx });
+                else node.addEventListener('contextmenu', (e) => e.preventDefault());
                 y += c.up ? ou : od;
             });
         });
@@ -580,6 +584,7 @@
     function bindCard(node, src) {
         node.dataset.src = JSON.stringify(src);
         node.addEventListener('pointerdown', (e) => {
+            if (e.button === 2 || e.button === 1) { peek(node); return; }
             if (g.won || (e.button !== undefined && e.button > 0)) return;
             press = { src, node, x0: e.clientX, y0: e.clientY, dragging: false, long: false, nodes: null };
             press.timer = setTimeout(() => {
@@ -591,10 +596,7 @@
             }, 450);
         });
         node.addEventListener('contextmenu', (e) => e.preventDefault());
-        node.addEventListener('dblclick', (e) => {
-            e.preventDefault();
-            if (cardsOf(src).length === 1) tryMove(src, { to: 'found' });
-        });
+        node.addEventListener('dblclick', (e) => e.preventDefault());   // handled in tapCard (the board re-renders between clicks)
     }
 
     window.addEventListener('pointermove', (e) => {
@@ -610,7 +612,39 @@
             press.nodes.forEach((n, i) => { n.classList.add('dragging'); n.style.zIndex = 1000 + i; });
         }
         press.nodes.forEach((n) => { n.style.transform = `translate(${dx}px, ${dy}px)`; });
+        markDrop(press.src, dropTarget(e.clientX, e.clientY));
     }, { passive: true });
+
+    /** Would this move be legal? (no side effects) */
+    function canDrop(src, dst) {
+        const run = cardsOf(src);
+        if (!run.length || !dst) return false;
+        if (dst.to === 'found') return src.from !== 'found' && canFound(run[0], run);
+        return !(src.from === 'tab' && src.col === dst.col) && canTab(run[0], dst.col);
+    }
+    let dropNode = null;
+    function markDrop(src, dst) {
+        let node = null;
+        if (canDrop(src, dst)) {
+            node = dst.to === 'found'
+                ? board.querySelector(`.slot.found[data-suit="${cardsOf(src)[0].s}"]`)
+                : (board.querySelector(`.card-sol[data-col="${dst.col}"][data-idx="${g.tab[dst.col].length - 1}"]`)
+                    || board.querySelector(`.slot.tab[data-col="${dst.col}"]`));
+        }
+        if (node === dropNode) return;
+        if (dropNode) dropNode.classList.remove('drop-ok');
+        dropNode = node;
+        if (dropNode) dropNode.classList.add('drop-ok');
+    }
+
+    // Right (or middle) button held on a covered card: lift it to read it, put it back on release
+    let peeked = null;
+    function peek(node) {
+        peeked = node;
+        node.classList.add('peek');
+        const done = () => { if (peeked) peeked.classList.remove('peek'); peeked = null; window.removeEventListener('pointerup', done); };
+        window.addEventListener('pointerup', done);
+    }
 
     function dropTarget(clientX, clientY) {
         if (!GEO) return null;
@@ -630,6 +664,7 @@
         if (p.long) return;
         if (p.dragging) {
             const dst = dropTarget(e.clientX, e.clientY);
+            dropNode = null;
             if (!dst || !tryMove(p.src, dst)) render();   // invalid drop: everything snaps back
             return;
         }
@@ -641,16 +676,31 @@
         press = null;
     });
 
+    let lastTap = null;
     function tapCard(src, node) {
+        // double click / double tap: on a foundation it collects everything, on a card it sends it up
+        const top = cardsOf(src)[0];
+        const key = JSON.stringify(src) + (top ? top.s + top.r : '');
+        const now = Date.now();
+        if (lastTap && lastTap.key === key && now - lastTap.t < 450) {
+            lastTap = null;
+            selected = null;
+            if (src.from === 'found') collectAll();
+            else if (!(cardsOf(src).length === 1 && tryMove(src, { to: 'found' }))) render();
+            return;
+        }
+        lastTap = { key, t: now };
+        if (src.from === 'found' && !selected && !isDesk()) return;   // phone: wait for a possible double tap
         if (selected) {
             const target = src.from === 'tab' ? { to: 'tab', col: src.col } : src.from === 'found' ? { to: 'found' } : null;
             const was = selected;
             const same = was.from === src.from && was.col === src.col && was.idx === src.idx;
             if (target && !same && tryMove(was, target)) return;
-            selected = null;
+            selected = isDesk() && !same ? src : null;   // desktop: clicking another card picks that one
             render();
             return;
         }
+        if (isDesk()) { selected = src; render(); return; }
         const dst = bestMove(src);
         if (dst) tryMove(src, dst);
         else { node.classList.remove('shake'); void node.offsetWidth; node.classList.add('shake'); }
