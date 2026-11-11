@@ -1,6 +1,10 @@
 // public/js/poker.js
 document.addEventListener("DOMContentLoaded", () => {
     let currentRoomTarget = 'general';
+    // Leaving the page aborts the poll in flight; don't report that as an error
+    let leavingPage = false;
+    window.addEventListener('pagehide', () => { leavingPage = true; });
+    window.addEventListener('beforeunload', () => { leavingPage = true; });
 
     const potVal = document.getElementById('poker-pot-val');
     const stageIndicator = document.getElementById('poker-stage-indicator');
@@ -206,7 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
         } catch (err) {
-            console.error("Poker State Fetch Error:", err);
+            if (!leavingPage && err && err.name !== 'AbortError') console.error("Poker State Fetch Error:", err);
         }
     };
 
