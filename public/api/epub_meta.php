@@ -14,13 +14,18 @@ function epubReadEntry(ZipArchive $zip, string $name, int $maxBytes): ?string {
     return $data === false ? null : $data;
 }
 
+/** Can this PHP read EPUBs? Needs the zip and xml extensions (php-zip, php-xml). */
+function epubMetaSupported(): bool {
+    return class_exists('ZipArchive') && function_exists('simplexml_load_string');
+}
+
 /**
  * @return array{title:?string, author:?string, cover_data:?string, cover_ext:?string}
  */
 function readEpubMetadata(string $epubPath): array {
     $meta = ['title' => null, 'author' => null, 'cover_data' => null, 'cover_ext' => null];
 
-    if (!class_exists('ZipArchive')) {
+    if (!epubMetaSupported()) {
         return $meta;
     }
 

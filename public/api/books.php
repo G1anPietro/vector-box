@@ -112,13 +112,13 @@ try {
         $coverDir = dirname(__DIR__, 2) . '/data/covers/';
         $repairBudget = 3;
 
-        // Without PHP's zip extension EPUBs can't be opened: don't mark them as checked
-        // (they would never get a cover), just say so once in the error log.
-        if (!class_exists('ZipArchive')) {
+        // Without PHP's zip/xml extensions EPUBs can't be read: don't mark them as checked
+        // (they would never get a cover), just say so in the error log.
+        if (!epubMetaSupported()) {
             require_once __DIR__ . '/debug_logger.php';
             $repairBudget = 0;
             if (array_filter($books, fn($x) => $x['format'] === 'epub' && (int)($x['meta_checked'] ?? 0) === 0)) {
-                logSystemError('EPUB_META', 'PHP zip extension missing (apt install php-zip): EPUB covers and authors cannot be read');
+                logSystemError('EPUB_META', 'PHP zip or xml extension missing (apt install php-zip php-xml): EPUB covers and authors cannot be read');
             }
         }
 
@@ -131,7 +131,14 @@ try {
             if (!$needsRepair) continue;
             $repairBudget--;
 
-            $meta = readEpubMetadata($b['file_path']);
+            // One broken book must never take the whole library down
+            try {
+                $meta = readEpubMetadata($b['file_path']);
+            } catch (Throwable $e) {
+                require_once __DIR__ . '/debug_logger.php';
+                logSystemError('EPUB_META', 'Book ' . (int)$b['id'] . ': ' . $e->getMessage());
+                $meta = ['title' => null, 'author' => null, 'cover_data' => null, 'cover_ext' => null];
+            }
             $newAuthor = $meta['author'] ?? $b['author'];
             $newCover = $b['cover_path'];
 
