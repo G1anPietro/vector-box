@@ -270,6 +270,7 @@
     function saveAll() {
         if (g && g.startedAt && !g.won) { g.elapsed = elapsed(); g.startedAt = Date.now(); }
         store.set('sol_game', g);
+        store.set('sol_undo', { undo: undoStack.slice(-100), redo: redoStack.slice(-100) });
         store.set('sol_settings', settings);
         store.set('sol_stats', stats);
     }
@@ -333,9 +334,14 @@
         renderChrome();
         board.replaceChildren();
         const desk = isDesk();
-        const W = Math.min(board.clientWidth, desk ? 900 : 640);
+        let W = Math.min(board.clientWidth, desk ? 900 : 640);
         const gap = W < 420 ? 4 : (desk ? 14 : 8);
-        const cw = Math.floor((W - 6 * gap) / 7);
+        // Cards also have to fit in height: top row + a long column (6 covered + 8 face up) must fit,
+        // otherwise long columns get squeezed until the values can't be read
+        const H = board.clientHeight;
+        const maxCh = H / (1 + 0.15 + 1 + 6 * 0.13 + 9 * 0.3);
+        const cw = Math.max(36, Math.floor(Math.min((W - 6 * gap) / 7, maxCh / 1.42)));
+        W = 7 * cw + 6 * gap;
         const ch = Math.round(cw * 1.42);
         const x0 = (board.clientWidth - W) / 2;
         board.style.setProperty('--cw', cw + 'px');
@@ -388,8 +394,8 @@
             const need = downs * od + Math.max(0, ups - 1) * ou + ch;
             if (need > avail) {
                 const f = (avail - ch) / Math.max(1, downs * od + Math.max(0, ups - 1) * ou);
-                od = Math.max(3, Math.floor(od * f));
-                ou = Math.max(12, Math.floor(ou * f));
+                od = Math.max(4, Math.floor(od * f));
+                ou = Math.max(Math.round(cw * (settings.theme === 'night' ? 0.4 : 0.35)), Math.floor(ou * f));   // the value stays readable
             }
             let y = top0;
             col.forEach((c, idx) => {
@@ -738,6 +744,8 @@
         newGame();
     } else {
         if (g.score === undefined) g.score = 0;
+        const saved = store.get('sol_undo', null);
+        if (saved && Array.isArray(saved.undo)) { undoStack = saved.undo; redoStack = saved.redo || []; }
         if (g.startedAt) g.startedAt = Date.now();
         applyStatic();
         render();
