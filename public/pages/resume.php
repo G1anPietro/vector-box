@@ -51,6 +51,8 @@ $L = fn(string $i, string $e) => $it ? $i : $e;
                         <dd>C, Java, Python, PHP, JavaScript</dd>
                         <dt><?= $L('Strumenti', 'Tools') ?></dt>
                         <dd>Git, Let’s Encrypt, PM2, fail2ban</dd>
+                        <dt><?= $L('Lingue', 'Spoken languages') ?></dt>
+                        <dd><?= $L('Italiano, inglese', 'Italian, English') ?></dd>
                     </dl>
                 </section>
                 <section>
@@ -114,7 +116,7 @@ $L = fn(string $i, string $e) => $it ? $i : $e;
                 <section>
                     <h2><?= $L('Formazione', 'Education') ?></h2>
                     <div class="item">
-                        <div class="head"><h3><?= $L('Istituto tecnico, indirizzo Informatica', 'Technical high school, Computer Science track') ?></h3><span class="when"><?= $L('in corso', 'ongoing') ?></span></div>
+                        <div class="head"><h3><?= $L('Istituto tecnico, indirizzo Informatica', 'Technical high school, Computer Science track') ?></h3><span class="when"><?= $L('5° anno, 2026/27', 'final year, 2026/27') ?></span></div>
                     </div>
                 </section>
             </div>
