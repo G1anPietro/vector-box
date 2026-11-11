@@ -190,8 +190,11 @@ function chatHubSecret(): string {
 
 /**
  * Stream config for the browser, or null when the hub is not configured.
- * The token is short-lived and says who the viewer is (for the online list) and
- * whether they may read hidden (admin) rooms; the hub verifies it with the shared secret.
+ * The token says who the viewer is (for the online list) and whether they may read
+ * hidden (admin) rooms; the hub verifies it with the shared secret. It travels in the
+ * URL (EventSource can't send headers), so it ends up in proxy logs: it is valid for
+ * 60 seconds and ONE connection only (the hub remembers the nonce). The browser asks
+ * for a fresh one before every (re)connect.
  */
 function chatStreamConfig(bool $isAdmin, string $username = ''): ?array {
     $secret = chatHubSecret();
@@ -202,7 +205,7 @@ function chatStreamConfig(bool $isAdmin, string $username = ''): ?array {
         'p'   => 'chat',
         'adm' => $isAdmin ? 1 : 0,
         'u'   => textCut($username, 50), // shown in the hub's online list
-        'exp' => time() + 600,
+        'exp' => time() + 60,
         'n'   => bin2hex(random_bytes(8)),
     ]));
     $sig = base64UrlEncode(hash_hmac('sha256', $body, $secret, true));

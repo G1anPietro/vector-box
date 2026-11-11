@@ -450,6 +450,13 @@ function isLoopback(addr) {
     return addr === '127.0.0.1' || addr === '::1' || (typeof addr === 'string' && addr.startsWith('::ffff:127.'));
 }
 
+// Tokens are single-use: nonce -> expiry (ms). Swept as they expire.
+const usedChatNonces = new Map();
+setInterval(() => {
+    const now = Date.now();
+    for (const [n, exp] of usedChatNonces) if (exp < now) usedChatNonces.delete(n);
+}, 60 * 1000).unref();
+
 function verifyChatToken(token) {
     if (!CHAT_HUB_SECRET || typeof token !== 'string') return null;
     const [body, sig] = token.split('.');
@@ -465,6 +472,10 @@ function verifyChatToken(token) {
     if (!payload || payload.p !== 'chat' || typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) {
         return null;
     }
+    // One connection per token: a copy found in a log is useless
+    if (typeof payload.n !== 'string' || !payload.n || usedChatNonces.has(payload.n)) return null;
+    if (usedChatNonces.size > 100000) return null; // flood guard
+    usedChatNonces.set(payload.n, payload.exp * 1000);
     const username = typeof payload.u === 'string' ? payload.u.slice(0, 50) : '';
     return { isAdmin: payload.adm === 1, username };
 }

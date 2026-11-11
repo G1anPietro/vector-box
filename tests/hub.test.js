@@ -66,6 +66,18 @@ test.describe('chat hub', { skip: !hasDeps && 'node_modules missing (run npm ins
         assert.equal((await fetch(`${nodeBase}/api/chat/stream?token=abc.def`)).status, 401);
     });
 
+    test('a token works for one connection only (copies in logs are useless)', async () => {
+        const cfg = (await user.get('/api/check_session.php')).json.chat_stream;
+        const url = `${nodeBase}/api/chat/stream?token=${encodeURIComponent(cfg.token)}`;
+        const ctrl = new AbortController();
+        const first = await fetch(url, { signal: ctrl.signal });
+        assert.equal(first.status, 200);
+        ctrl.abort();
+        assert.equal((await fetch(url)).status, 401);
+        const exp = JSON.parse(Buffer.from(cfg.token.split('.')[0], 'base64url').toString()).exp;
+        assert.ok(exp - Date.now() / 1000 <= 61, 'token lives about a minute');
+    });
+
     test('messages are pushed; hidden rooms only reach admins; deletes propagate', async () => {
         let deletedId;
         const run = async () => {

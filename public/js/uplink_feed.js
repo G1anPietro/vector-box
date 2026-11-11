@@ -20,8 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let chatHub = null;       // { url, token } from check_session.php, null = PHP stream only
     let hubLastEventId = '';  // resume point on the hub ("<boot>-<seq>")
     let hubFailures = 0;
-    const HUB_MAX_FAILURES = 3;
-    const HUB_RETRY_MS = 5 * 60 * 1000;
+    const HUB_MAX_FAILURES = 5;      // retries at 1, 2, 4, 8 s cover a hub restart (pm2)
+    const HUB_RETRY_MS = 60 * 1000;  // on the PHP fallback, try the hub again every minute
     let isSubmitting = false;
     let isLoadingHistory = false;
     let usingHub = false;            // presence/typing only exist on the hub
@@ -471,9 +471,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // Preferred: one SSE connection to the Node chat hub (pushes new + deleted messages)
-    const initHubSSE = () => {
+    // Preferred: one SSE connection to the Node chat hub (pushes new + deleted messages).
+    // Hub tokens are single-use: every (re)connect fetches a fresh one, and the browser's
+    // own automatic reconnect (which would reuse the old URL) is never relied on.
+    const initHubSSE = async () => {
         if (eventSource) eventSource.close();
+        eventSource = null;
+        if (chatHub && chatHub.used) {
+            await checkSessionState();
+            if (!chatHub) { startStream(); return; }
+        }
+        if (eventSource) return; // another start won the race
+        chatHub.used = true;
 
         const url = new URL(chatHub.url, location.href);
         url.searchParams.set('token', chatHub.token);
@@ -514,17 +523,13 @@ document.addEventListener("DOMContentLoaded", () => {
         es.onerror = async () => {
             if (es !== eventSource) return;
             hubFailures++; // reset by onopen
-            // CONNECTING: the browser retries by itself (with Last-Event-ID), up to a limit.
-            // CLOSED: HTTP error (expired token -> 401, hub down -> 502).
-            // Either way, after too many failures refresh the token and pick a stream again
-            // (startStream falls back to PHP once HUB_MAX_FAILURES is reached).
-            if (es.readyState === EventSource.CLOSED || hubFailures >= HUB_MAX_FAILURES) {
-                es.close();
-                await checkSessionState();
-                if (es !== eventSource) return;
-                clearTimeout(reconnectTimer);
-                reconnectTimer = setTimeout(startStream, 2000);
-            }
+            // Never let the browser retry with the same (already used) token: close, and
+            // reconnect with a fresh token and last_id (startStream falls back to PHP once
+            // HUB_MAX_FAILURES is reached).
+            es.close();
+            clearTimeout(reconnectTimer);
+            const delay = 1000 * Math.min(8, 2 ** (hubFailures - 1));
+            reconnectTimer = setTimeout(() => { if (es === eventSource) startStream(); }, delay);
         };
     };
 
