@@ -459,3 +459,8 @@ input[type="file"]::file-selector-button:hover {
         padding: 0.25rem 0.45rem;
     }
 }
+/* multi-book upload */
+.upload-status { margin-top: 0.4rem; font-size: 0.85rem; opacity: 0.75; }
+.upload-status.ok { color: #2e9d57; opacity: 1; }
+.upload-status.err { color: #d0473a; opacity: 1; }
+.drop-target { outline: 2px dashed #0d6efd; outline-offset: 4px; }

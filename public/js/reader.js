@@ -62,29 +62,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (uploadForm && uploadInput) {
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const file = uploadInput.files[0];
-            if (!file) return;
+        const uploadStatus = document.getElementById('book-upload-status');
+        const uploadButton = uploadForm.querySelector('button[type="submit"]');
+        const say = (text, cls = '') => {
+            if (!uploadStatus) return;
+            uploadStatus.textContent = text;
+            uploadStatus.className = 'upload-status' + (cls ? ' ' + cls : '');
+        };
+        let uploading = false;
 
-            const formData = new FormData();
-            formData.append('book_file', file);
-
-            try {
-                const res = await fetch('../api/books.php?action=upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                if (data.success) {
-                    uploadInput.value = '';
-                    loadCatalog();
-                } else {
-                    alert(`Upload Error: ${data.error}`);
-                }
-            } catch (err) {
-                alert('Failed to upload file.');
+        // Several books: one request per file (each stays under the server's size limit),
+        // one after the other, with progress and a summary at the end.
+        const uploadFiles = async (files) => {
+            const list = Array.from(files).filter((f) => /\.(epub|pdf)$/i.test(f.name));
+            if (!list.length || uploading) {
+                if (!list.length) say('Solo file .epub o .pdf.', 'err');
+                return;
             }
+            uploading = true;
+            if (uploadButton) uploadButton.disabled = true;
+            const failed = [];
+            let done = 0;
+            for (const [i, file] of list.entries()) {
+                say(`Caricamento ${i + 1} di ${list.length}: ${file.name}`);
+                const formData = new FormData();
+                formData.append('book_file', file);
+                try {
+                    const res = await fetch('../api/books.php?action=upload', { method: 'POST', body: formData });
+                    let data = null;
+                    try { data = await res.json(); } catch (err) { /* nginx error page, e.g. file too large */ }
+                    if (data && data.success) done++;
+                    else failed.push(`${file.name} (${(data && data.error) || (res.status === 413 ? 'file troppo grande' : 'errore ' + res.status)})`);
+                } catch (err) {
+                    failed.push(`${file.name} (rete)`);
+                }
+            }
+            uploading = false;
+            if (uploadButton) uploadButton.disabled = false;
+            uploadInput.value = '';
+            say(`${done === 1 ? '1 libro caricato' : done + ' libri caricati'}` + (failed.length ? `. Non caricati: ${failed.join(', ')}` : '.'), failed.length ? 'err' : 'ok');
+            if (done) loadCatalog();
+        };
+
+        uploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            uploadFiles(uploadInput.files);
+        });
+        // Drag the files onto the upload box
+        const dropZone = uploadForm.parentElement;
+        ['dragenter', 'dragover'].forEach((t) => dropZone.addEventListener(t, (e) => {
+            if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes('Files')) return;
+            e.preventDefault();
+            dropZone.classList.add('drop-target');
+        }));
+        ['dragleave', 'drop'].forEach((t) => dropZone.addEventListener(t, (e) => {
+            if (t === 'dragleave' && dropZone.contains(e.relatedTarget)) return;
+            dropZone.classList.remove('drop-target');
+        }));
+        dropZone.addEventListener('drop', (e) => {
+            if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+            e.preventDefault();
+            uploadFiles(e.dataTransfer.files);
         });
     }
 

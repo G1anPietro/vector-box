@@ -83,9 +83,10 @@ if (!$canRead) {
 
             <?php if ($canUpload): ?>
                 <form id="book-upload-form" style="display: flex; gap: 0.5rem; align-items: center;" enctype="multipart/form-data">
-                    <input type="file" id="book-upload-input" accept=".epub,.pdf" class="input-text" style="padding: 0.35rem;" required>
-                    <button type="submit" class="btn btn-primary">Carica Libro</button>
+                    <input type="file" id="book-upload-input" accept=".epub,.pdf" class="input-text" style="padding: 0.35rem;" multiple required>
+                    <button type="submit" class="btn btn-primary">Carica libri</button>
                 </form>
+                <p id="book-upload-status" class="upload-status" aria-live="polite">Puoi scegliere più file insieme, o trascinarli qui.</p>
             <?php endif; ?>
         </section>
 
