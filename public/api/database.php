@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 8;
+const DB_SCHEMA_VERSION = 9;
 
 /**
  * Session bootstrap.
@@ -321,6 +321,21 @@ function migrateV8(PDO $db): void {
     )");
 }
 
+function migrateV9(PDO $db): void {
+    // Visit log: one row per visitor (hash of IP + browser), to tell a new visit from a page view
+    $db->exec("CREATE TABLE IF NOT EXISTS visitors (
+        vhash TEXT PRIMARY KEY,
+        first_seen INTEGER NOT NULL,
+        last_seen INTEGER NOT NULL,
+        last_new INTEGER NOT NULL,
+        visits INTEGER NOT NULL DEFAULT 1
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_visitors_new ON visitors(last_new)");
+    // EPUB covers: books checked while PHP had no zip extension got no cover and were never
+    // retried. Check them again (the repair now waits until ZipArchive is available).
+    $db->exec("UPDATE books SET meta_checked = 0 WHERE format = 'epub' AND (cover_path IS NULL OR cover_path = '')");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -349,6 +364,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 8) {
             migrateV8($db);
+        }
+        if ($current < 9) {
+            migrateV9($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

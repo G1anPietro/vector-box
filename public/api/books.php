@@ -112,6 +112,16 @@ try {
         $coverDir = dirname(__DIR__, 2) . '/data/covers/';
         $repairBudget = 3;
 
+        // Without PHP's zip extension EPUBs can't be opened: don't mark them as checked
+        // (they would never get a cover), just say so once in the error log.
+        if (!class_exists('ZipArchive')) {
+            require_once __DIR__ . '/debug_logger.php';
+            $repairBudget = 0;
+            if (array_filter($books, fn($x) => $x['format'] === 'epub' && (int)($x['meta_checked'] ?? 0) === 0)) {
+                logSystemError('EPUB_META', 'PHP zip extension missing (apt install php-zip): EPUB covers and authors cannot be read');
+            }
+        }
+
         foreach ($books as &$b) {
             if ($repairBudget <= 0) break;
             $needsRepair = (int)($b['meta_checked'] ?? 0) === 0
