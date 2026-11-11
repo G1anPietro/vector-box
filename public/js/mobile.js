@@ -58,14 +58,27 @@ document.addEventListener('DOMContentLoaded', () => {
         show(btn.id.replace(/^tb-/, ''));
     }, true);
 
-    // Hide the tab bar while the keyboard is up
-    const isField = (el) => el && (el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]), textarea, select, [contenteditable="true"]'));
-    document.addEventListener('focusin', (e) => {
-        if (document.body.classList.contains('m-app') && isField(e.target)) document.body.classList.add('m-typing');
-    });
-    document.addEventListener('focusout', () => {
-        setTimeout(() => { if (!isField(document.activeElement)) document.body.classList.remove('m-typing'); }, 50);
-    });
+    // Hide the tab bar only while the on-screen keyboard is really open. A focused field is
+    // not enough: the terminal keeps its focus after the keyboard is closed (back button), and
+    // the bar must come back then. The keyboard is "open" when the visible height drops well
+    // below the tallest height seen in this orientation.
+    const isField = (el) => el && el.matches && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), textarea, select, [contenteditable="true"]');
+    const vv = window.visualViewport;
+    let fullHeight = 0;
+    const visibleHeight = () => (vv ? vv.height : window.innerHeight);
+    const updateTyping = () => {
+        const h = visibleHeight();
+        fullHeight = Math.max(fullHeight, h, window.innerHeight);
+        const keyboardOpen = h < fullHeight * 0.78;
+        const typing = document.body.classList.contains('m-app') && keyboardOpen && isField(document.activeElement);
+        document.body.classList.toggle('m-typing', typing);
+    };
+    // the keyboard animates in: check again a little later too
+    const updateSoon = () => { updateTyping(); setTimeout(updateTyping, 150); setTimeout(updateTyping, 450); };
+    document.addEventListener('focusin', updateSoon);
+    document.addEventListener('focusout', updateSoon);
+    (vv || window).addEventListener('resize', updateTyping);
+    window.addEventListener('orientationchange', () => { fullHeight = 0; setTimeout(updateTyping, 300); });
 
     function enable() {
         document.body.classList.add('m-app');
