@@ -2,6 +2,13 @@
 // public/api/logout.php
 require_once __DIR__ . '/database.php';
 
+// Logout is a plain link (GET), so it can't carry a CSRF token. Refuse it when it comes from
+// another website (Sec-Fetch-Site, sent by every modern browser), so a page elsewhere can't log you out.
+if (strtolower($_SERVER['HTTP_SEC_FETCH_SITE'] ?? 'none') === 'cross-site') {
+    http_response_code(403);
+    exit('Logout must start from vector-box.');
+}
+
 startWritableSession();
 $_SESSION = [];
 

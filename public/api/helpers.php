@@ -135,6 +135,7 @@ function startWritableSession(): void {
     ini_set('session.gc_probability', '1');
     ini_set('session.gc_divisor', '100');
     ini_set('session.gc_maxlifetime', (string)(86400 * 7));
+    ini_set('session.use_strict_mode', '1');   // refuse session ids the server never issued
     session_set_cookie_params([
         'lifetime' => 86400 * 7,
         'path'     => '/',

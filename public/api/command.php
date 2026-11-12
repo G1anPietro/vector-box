@@ -6,6 +6,11 @@ require_once __DIR__ . '/rate_limiter.php';
 
 header('Content-Type: application/json');
 
+// It pushes a notification to the owner's phone: only from the site's own pages (CSRF token),
+// so other websites can't make visitors' browsers send messages.
+initSession();
+requireCsrf();
+
 $input = readJsonBody();
 $message = trim((string)($input['message'] ?? $_POST['message'] ?? ''));
 
