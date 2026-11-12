@@ -14,6 +14,7 @@ $pages = [
     ['/pages/cucu.html', 'monthly', '0.8'],
     ['/pages/progetto.php', 'monthly', '0.6'],
     ['/pages/ads.php', 'monthly', '0.4'],
+    ['/pages/dona.php', 'monthly', '0.3'],
     ['/pages/privacy.php', 'yearly', '0.2'],
 ];
 $root = __DIR__;

@@ -42,13 +42,13 @@ $other = $it ? 'en' : 'it';
             <li><strong>Segnalate problemi e idee</strong> con l’Uplink nella pagina principale: arrivano direttamente a chi gestisce il sito.</li>
             <li><strong>Il codice è pubblico</strong> su <a href="https://github.com/G1anPietro/vector-box" rel="noopener">GitHub</a>: se sapete programmare, potete guardarlo e proporre modifiche.</li>
         </ul>
-        <?php if (donateUrl()): ?>
+        <?php if (donationsOn()): ?>
             <h2>Offrimi un caffè</h2>
             <p>Se vector-box ti ha fatto passare una bella serata e ti va di contribuire alle spese, puoi lasciare qualcosa
             una volta sola o ogni mese. Si apre la pagina del servizio di donazioni: il sito non vede né salva i dati di pagamento.</p>
-            <a class="cta coffee" href="<?= htmlspecialchars(donateUrl()) ?>" rel="noopener" target="_blank">☕ Offrimi un caffè</a>
+            <a class="cta coffee" href="dona.php">☕ Offrimi un caffè</a>
         <?php endif; ?>
-        <a class="cta<?= donateUrl() ? ' secondary' : '' ?>" href="giochi.php">Vai ai giochi</a>
+        <a class="cta<?= donationsOn() ? ' secondary' : '' ?>" href="giochi.php">Vai ai giochi</a>
 <?php else: ?>
         <h1>Support vector-box</h1>
         <p>vector-box is home-made, literally: it runs on an old screenless laptop in a house in Italy and is looked after by a computer science student. It has a chat, a book reader for friends, and games anyone can play for free, with no account.</p>
@@ -63,13 +63,13 @@ $other = $it ? 'en' : 'it';
             <li><strong>Report problems and ideas</strong> through the Uplink on the main page: they go straight to whoever runs the site.</li>
             <li><strong>The code is public</strong> on <a href="https://github.com/G1anPietro/vector-box" rel="noopener">GitHub</a>: if you can program, have a look and suggest changes.</li>
         </ul>
-        <?php if (donateUrl()): ?>
+        <?php if (donationsOn()): ?>
             <h2>Buy me a coffee</h2>
             <p>If vector-box gave you a good evening and you'd like to help with the costs, you can chip in once or every
             month. The donation service's page opens: the site never sees or stores any payment details.</p>
-            <a class="cta coffee" href="<?= htmlspecialchars(donateUrl()) ?>" rel="noopener" target="_blank">☕ Buy me a coffee</a>
+            <a class="cta coffee" href="dona.php">☕ Buy me a coffee</a>
         <?php endif; ?>
-        <a class="cta<?= donateUrl() ? ' secondary' : '' ?>" href="giochi.php">Go to the games</a>
+        <a class="cta<?= donationsOn() ? ' secondary' : '' ?>" href="giochi.php">Go to the games</a>
 <?php endif; ?>
 
         <?= adsSlot('ADSENSE_SLOT_SUPPORT', $lang) ?>

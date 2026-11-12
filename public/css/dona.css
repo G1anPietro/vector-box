@@ -1,0 +1,12 @@
+/* public/css/dona.css — donation page (pages/dona.php), on top of giochi.css (.doc layout). */
+.dona .lead { font-size: 1.1em; color: var(--text); }
+.goal { margin: 22px 0 6px; padding: 16px; background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 8px; }
+.goal-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.goal-head span { font-variant-numeric: tabular-nums; color: var(--muted); }
+.goal-bar { height: 14px; margin-top: 10px; border-radius: 7px; background: var(--plank); overflow: hidden; }
+.goal-bar span { display: block; height: 100%; background: #f2c66d; border-radius: 7px; }
+.give { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.give .cta { margin-top: 0; }
+.small { font-size: 15px; }
+.notice { margin-top: 22px; padding: 14px 16px; border: 1px dashed var(--plank); border-radius: 8px; color: var(--muted); }
+.thanks { margin-top: 28px; font-weight: 700; }

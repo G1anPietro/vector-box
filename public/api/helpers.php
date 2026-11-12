@@ -285,6 +285,25 @@ function donateUrl(): string {
     return preg_match('#^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._~%/-]*)?$#', $u) ? $u : '';
 }
 
+/** PayPal.me link for donations (DONATE_PAYPAL_URL), or ''. */
+function donatePaypalUrl(): string {
+    $u = trim((string)envValue('DONATE_PAYPAL_URL', ''));
+    return preg_match('#^https://(www\.)?paypal\.me/[A-Za-z0-9._-]+/?$#', $u) ? $u : '';
+}
+
+/** True when at least one way to donate is configured. */
+function donationsOn(): bool {
+    return donateUrl() !== '' || donatePaypalUrl() !== '';
+}
+
+/** Optional goal shown on pages/dona.php: [what, goal €, raised €] or null. */
+function donateGoal(): ?array {
+    $what = trim((string)envValue('DONATE_GOAL_TEXT', ''));
+    $goal = (float)envValue('DONATE_GOAL_EUR', '0');
+    if ($what === '' || $goal <= 0) return null;
+    return [textCut($what, 80), $goal, max(0.0, (float)envValue('DONATE_RAISED_EUR', '0'))];
+}
+
 /** AdSense publisher id from .env (ca-pub-…), or '' when ads are off. */
 function adsenseClient(): string {
     $c = trim((string)envValue('ADSENSE_CLIENT', ''));
