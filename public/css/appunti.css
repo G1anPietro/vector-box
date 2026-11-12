@@ -75,7 +75,8 @@ button.mini { min-height: 34px; padding: 4px 10px; font-size: 14px; }
 .plain li:last-child { border-bottom: 0; }
 .switch { display: flex; gap: 8px; align-items: center; color: var(--text); font-size: 16px; margin-bottom: 8px; }
 
-.tabs { display: flex; gap: 6px; margin: 16px 0 4px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; gap: 6px; margin: 16px 0 4px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
 .tabs button { background: transparent; color: var(--muted); border-radius: 9px 9px 0 0; padding: 10px 14px; font-weight: 600; }
 .tabs button[aria-selected="true"] { color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
 
@@ -115,6 +116,58 @@ button.mini { min-height: 34px; padding: 4px 10px; font-size: 14px; }
 .tt-row { display: grid; grid-template-columns: 22px 92px 92px 1fr 1fr 1fr 34px; gap: 6px; align-items: center; margin: 6px 0; }
 .tt-row input { min-height: 38px; padding: 6px 8px; font-size: 15px; }
 .tt-row .n { color: var(--muted); font-size: 14px; text-align: right; }
+
+.section-title { font-size: 18px; margin: 22px 0 6px; }
+.ai-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.ai-bar p { margin: 0; }
+.test-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
+.test-card .docs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.test-card .docs button { min-height: 38px; }
+.doc-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.doc-row button { flex: none; }
+.doc-row .err { color: var(--danger); font-size: 13px; }
+
+.doc-view { margin-top: 12px; }
+.doc-tools { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.doc-tools .spacer { flex: 1; }
+.md { line-height: 1.6; overflow-wrap: anywhere; }
+.md h2 { font-size: 21px; margin: 22px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.md h3 { font-size: 18px; margin: 18px 0 6px; }
+.md h4, .md h5 { font-size: 16px; margin: 14px 0 4px; }
+.md p { margin: 8px 0; }
+.md ul, .md ol { margin: 6px 0 6px 22px; }
+.md li { margin: 3px 0; }
+.md li > ul, .md li > ol { margin: 2px 0 2px 20px; }
+.md blockquote { border-left: 3px solid var(--accent); padding: 4px 12px; margin: 10px 0; color: var(--muted); background: #11131a; border-radius: 0 8px 8px 0; }
+.md code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; background: #11131a; padding: 1px 5px; border-radius: 5px; }
+.md pre { background: #11131a; padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 10px 0; }
+.md pre code { background: none; padding: 0; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+.md .table-wrap { overflow-x: auto; margin: 10px 0; }
+.md table { border-collapse: collapse; min-width: 100%; font-size: 15px; }
+.md th, .md td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.md th { background: #11131a; }
+.md .cite { color: var(--muted); font-size: 0.8em; vertical-align: super; margin-left: 1px; }
+.ai-note { margin-top: 18px; }
+
+.quiz-q { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
+.quiz-q .topic { font-size: 13px; color: var(--muted); }
+.quiz-q .opts { display: grid; gap: 8px; margin-top: 8px; }
+.quiz-q .opts button { text-align: left; background: #11131a; color: var(--text); border: 1px solid var(--line); font-weight: 500; }
+.quiz-q .opts button.right { border-color: var(--ok); background: #14261b; }
+.quiz-q .opts button.wrong { border-color: var(--danger); background: #2a1614; }
+.quiz-q .why { margin-top: 8px; color: var(--muted); font-size: 15px; }
+.quiz-score { font-weight: 700; }
+
+@media print {
+    body { background: #fff; color: #000; }
+    .top, .head, .tabs, .status, .foot, .no-print, #study-list { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    .md blockquote, .md pre, .md code, .md th { background: #f2f2f2; color: #000; }
+    .md h2 { border-color: #999; }
+    .md th, .md td { border-color: #999; }
+    .ai-note { color: #555; }
+}
 
 .foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 14px; }
 

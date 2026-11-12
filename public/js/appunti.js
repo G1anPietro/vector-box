@@ -139,6 +139,7 @@
         $('#filter-kind').replaceChildren(el('option', { value: '', text: 'Tutti i tipi' }),
             ...Object.entries(KINDS).map(([k, v]) => el('option', { value: k, text: v })));
         $('#event-form [name="subject_id"]').replaceChildren(el('option', { value: '', text: 'Scegli…' }), ...opts());
+        $('#study-subject').replaceChildren(el('option', { value: '', text: 'Tutte le materie' }), ...opts());
     }
 
     function showTab(name) {
@@ -148,6 +149,7 @@
         status('');
         if (name === 'material' && current) { prepareUpload(); loadItems(); }
         if (name === 'calendar' && current) loadEvents();
+        if (name === 'study' && current) loadStudy();
         if (name === 'class' && current) renderClass();
         if (name === 'admin') loadAdmin();
     }
@@ -311,6 +313,232 @@
     async function deleteItem(it) {
         if (!confirm('Eliminare questo materiale e i suoi file?')) return;
         try { await notes_({ action: 'delete_item', id: it.id }); status('Eliminato.', 'ok'); loadItems(); updateUsage(); } catch (e) { status(e.message, 'err'); }
+    }
+
+
+    /* ---------- study: AI documents ---------- */
+
+    const DOC_KINDS = { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione' };
+    const DOC_ORDER = ['completo', 'riassunto', 'preparazione', 'quiz'];
+    let studyDocs = [];
+    let openDoc = null;
+
+    async function loadStudy() {
+        $('#doc-view').hidden = true;
+        $('#study-list').hidden = false;
+        try {
+            const [d, ev] = await Promise.all([
+                getJson(`../api/appunti.php?action=docs&class_id=${current.id}`),
+                getJson(`../api/appunti.php?action=events&class_id=${current.id}`),
+            ]);
+            studyDocs = d.docs;
+            renderAiBar(d.ai);
+            renderStudyTests(ev.events.filter((e) => e.date >= ev.today && e.kind !== 'altro'), d.ai);
+            renderStudyLessons();
+        } catch (e) { status(e.message, 'err'); }
+    }
+
+    function renderAiBar(ai) {
+        const bar = $('#ai-bar');
+        if (!ai.configured) { bar.replaceChildren(el('p', { class: 'muted', text: 'L\'AI non è ancora attiva su questo server: i riassunti arriveranno appena viene accesa.' })); return; }
+        const now = Date.now() / 1000;
+        const wait = ai.next_manual_at > now;
+        const at = new Date(ai.next_manual_at * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const btn = el('button', { text: ai.requested ? 'In coda…' : 'Genera ora', disabled: ai.requested || wait, onclick: generateNow });
+        bar.replaceChildren(
+            el('p', {}, el('b', { text: `Riassunto automatico ogni giorno alle ${ai.summary_time}.` }),
+                el('br'), el('span', { class: 'muted small', text:
+                    (ai.pending_files ? `${ai.pending_files} file da trascrivere. ` : '')
+                    + (ai.requested ? 'Richiesta in coda: ci vuole qualche minuto.' : wait ? `"Genera ora" di nuovo alle ${at}.` : 'Puoi chiedere di farlo subito (una volta l\'ora).') })),
+            btn);
+    }
+
+    async function generateNow() {
+        try {
+            await notes_({ action: 'generate', class_id: current.id });
+            status('Richiesta inviata: i documenti arrivano entro qualche minuto.', 'ok');
+        } catch (e) {
+            status(e.json && e.json.code === 'too_soon' ? 'Già chiesto nell\'ultima ora.' : e.json && e.json.code === 'ai_off' ? 'L\'AI non è attiva.' : e.message, 'err');
+        }
+        loadStudy();
+    }
+
+    function renderStudyTests(events, ai) {
+        const box = $('#study-tests');
+        if (!events.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Nessuna verifica in calendario. Aggiungile nella scheda Calendario: i documenti per studiare si preparano da soli.' })); return; }
+        box.replaceChildren(...events.map((e) => {
+            const docs = DOC_ORDER.map((k) => studyDocs.find((d) => d.event_id === e.id && d.kind === k)).filter(Boolean);
+            const d = parseDate(e.date);
+            return el('div', { class: 'test-card' },
+                el('div', { class: 'what' }, el('span', { class: 'badge ' + e.kind, text: EVENT_KINDS[e.kind] }), el('b', { text: e.subject }),
+                    ` · ${dayFmt.format(d)}`, e.title ? ` · ${e.title}` : ''),
+                docs.length
+                    ? el('div', { class: 'docs' }, ...docs.map((doc) => el('button', {
+                        class: doc.status === 'ok' ? '' : 'ghost', text: DOC_KINDS[doc.kind] + (doc.status === 'ok' ? '' : ' (errore)'),
+                        disabled: doc.status !== 'ok', onclick: () => showDoc(doc.id) })))
+                    : el('p', { class: 'muted small', text: ai.configured
+                        ? `I documenti arrivano con il prossimo riassunto (alle ${ai.summary_time}) o con "Genera ora", se c'è materiale caricato.`
+                        : 'I documenti arriveranno quando l\'AI sarà attiva.' }));
+        }));
+    }
+
+    function renderStudyLessons() {
+        const sid = Number($('#study-subject').value) || 0;
+        const list = studyDocs.filter((d) => d.kind === 'lezione' && (!sid || d.subject_id === sid));
+        const box = $('#study-lessons');
+        if (!list.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Ancora nessun riassunto delle lezioni.' })); return; }
+        box.replaceChildren(...list.map((d) => el('div', { class: 'doc-row' },
+            el('span', {}, el('b', { text: d.subject }), ' · ', d.lesson_date ? dayFmt.format(parseDate(d.lesson_date)) : '',
+                d.status !== 'ok' ? el('span', { class: 'err', text: ' (non riuscito, riprova più tardi)' }) : null),
+            el('button', { class: 'ghost mini', text: 'Apri', disabled: d.status !== 'ok', onclick: () => showDoc(d.id) }))));
+    }
+    $('#study-subject').addEventListener('change', renderStudyLessons);
+
+    async function showDoc(id) {
+        try {
+            const { doc } = await getJson(`../api/appunti.php?action=doc&id=${id}`);
+            openDoc = doc;
+            $('#study-list').hidden = true;
+            $('#doc-view').hidden = false;
+            $('#doc-title').textContent = doc.title;
+            $('#doc-meta').textContent = `Aggiornato il ${new Date(doc.updated_at * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`;
+            const body = $('#doc-body');
+            if (doc.kind === 'quiz') {
+                let quiz = null;
+                try { quiz = JSON.parse(doc.content); } catch (e) { /* shown as text below */ }
+                body.replaceChildren(quiz ? renderQuiz(quiz) : el('p', { text: 'Quiz non leggibile.' }));
+            } else {
+                body.replaceChildren(md(doc.content));
+            }
+            $('#doc-download').hidden = doc.kind === 'quiz';
+            $('#doc-sources').hidden = !doc.sources.length;
+            const kinds = { appunti: 'appunti', slide: 'slide del prof', libro: 'libro', domande: 'domande del prof', prova: 'verifica di prova', altro: 'altro' };
+            $('#doc-sources-list').replaceChildren(...doc.sources.map((s) => el('li', { value: s.n,
+                text: `${kinds[s.kind] || s.kind} di ${s.author || '?'}${s.title ? ' — ' + s.title : ''}` })));
+            window.scrollTo(0, 0);
+        } catch (e) { status(e.message, 'err'); }
+    }
+    $('#doc-back').addEventListener('click', () => { $('#doc-view').hidden = true; $('#study-list').hidden = false; });
+    $('#doc-print').addEventListener('click', () => window.print());
+    $('#doc-download').addEventListener('click', () => {
+        if (!openDoc) return;
+        const blob = new Blob([`# ${openDoc.title}\n\n${openDoc.content}\n`], { type: 'text/markdown;charset=utf-8' });
+        const a = el('a', { href: URL.createObjectURL(blob), download: openDoc.title.replace(/[\\/:*?"<>|]+/g, '-') + '.md' });
+        document.body.append(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    });
+
+    // Safe Markdown: builds DOM nodes, text always goes in as text (never as HTML)
+    function inline(text) {
+        const frag = document.createDocumentFragment();
+        const re = /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*\s][^*]*\*|\[L?\d+\])/g;
+        let last = 0;
+        for (const m of text.matchAll(re)) {
+            if (m.index > last) frag.append(text.slice(last, m.index));
+            const t = m[0];
+            if (t.startsWith('`')) frag.append(el('code', { text: t.slice(1, -1) }));
+            else if (t.startsWith('**') || t.startsWith('__')) frag.append(el('strong', {}, inline(t.slice(2, -2))));
+            else if (t.startsWith('[')) frag.append(el('span', { class: 'cite', text: t }));
+            else frag.append(el('em', {}, inline(t.slice(1, -1))));
+            last = m.index + t.length;
+        }
+        if (last < text.length) frag.append(text.slice(last));
+        return frag;
+    }
+
+    function md(src) {
+        const out = document.createDocumentFragment();
+        const lines = String(src || '').replace(/\r/g, '').split('\n');
+        let i = 0;
+        const isTableSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+        const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+        while (i < lines.length) {
+            const line = lines[i];
+            if (!line.trim()) { i++; continue; }
+            if (/^\s*```/.test(line)) {
+                const buf = [];
+                i++;
+                while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(lines[i++]);
+                i++;
+                out.append(el('pre', {}, el('code', { text: buf.join('\n') })));
+                continue;
+            }
+            const h = /^(#{1,4})\s+(.*)$/.exec(line);
+            if (h) { out.append(el('h' + Math.min(5, h[1].length + 1), {}, inline(h[2]))); i++; continue; }
+            if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { out.append(el('hr')); i++; continue; }
+            if (/^\s*>/.test(line)) {
+                const buf = [];
+                while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ''));
+                out.append(el('blockquote', {}, md(buf.join('\n'))));
+                continue;
+            }
+            if (line.includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+                const head = cells(line);
+                i += 2;
+                const rows = [];
+                while (i < lines.length && lines[i].includes('|') && lines[i].trim()) rows.push(cells(lines[i++]));
+                out.append(el('div', { class: 'table-wrap' }, el('table', {},
+                    el('thead', {}, el('tr', {}, ...head.map((c) => el('th', {}, inline(c))))),
+                    el('tbody', {}, ...rows.map((r) => el('tr', {}, ...r.map((c) => el('td', {}, inline(c)))))))));
+                continue;
+            }
+            const li = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(line);
+            if (li) {
+                const ordered = /\d/.test(li[2]);
+                const list = el(ordered ? 'ol' : 'ul');
+                while (i < lines.length) {
+                    const m = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(lines[i]);
+                    if (m && m[1].length >= 2 && list.lastChild) {
+                        // indented item: a sub-list inside the previous item
+                        const subOrdered = /\d/.test(m[2]);
+                        let sub = list.lastChild.lastElementChild;
+                        if (!sub || sub.tagName !== (subOrdered ? 'OL' : 'UL')) { sub = el(subOrdered ? 'ol' : 'ul'); list.lastChild.append(sub); }
+                        sub.append(el('li', {}, inline(m[3])));
+                        i++;
+                        continue;
+                    }
+                    if (m) { list.append(el('li', {}, inline(m[3]))); i++; continue; }
+                    if (lines[i].trim() && /^\s{2,}/.test(lines[i]) && list.lastChild) { list.lastChild.append(' ', inline(lines[i].trim())); i++; continue; }
+                    break;
+                }
+                out.append(list);
+                continue;
+            }
+            const buf = [];
+            while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*```|\s*>|\s*([-*+]|\d+[.)])\s)/.test(lines[i])
+                && !(lines[i].includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1]))) buf.push(lines[i++].trim());
+            if (!buf.length) { buf.push(lines[i++].trim()); }
+            out.append(el('p', {}, inline(buf.join(' '))));
+        }
+        return out;
+    }
+
+    function renderQuiz(quiz) {
+        const qs = quiz.questions || [];
+        let answered = 0;
+        let right = 0;
+        const score = el('p', { class: 'quiz-score', text: `0 / ${qs.length}` });
+        const box = el('div', {}, score);
+        qs.forEach((q, n) => {
+            const why = el('p', { class: 'why', hidden: true, text: q.explanation });
+            const opts = el('div', { class: 'opts' });
+            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: `${'ABCD'[k]}. ${o}`, onclick: (ev) => {
+                if (opts.dataset.done) return;
+                opts.dataset.done = '1';
+                answered++;
+                if (k === q.answer) right++;
+                ev.target.classList.add(k === q.answer ? 'right' : 'wrong');
+                opts.children[q.answer].classList.add('right');
+                why.hidden = !q.explanation;
+                score.textContent = `${right} / ${qs.length}` + (answered === qs.length ? ` · ${Math.round(100 * right / qs.length)}%` : '');
+            } })));
+            box.append(el('div', { class: 'quiz-q' },
+                q.topic ? el('div', { class: 'topic', text: q.topic }) : null,
+                el('div', {}, el('b', { text: `${n + 1}. ` }), q.question), opts, why));
+        });
+        box.append(el('button', { class: 'ghost', text: 'Ricomincia', onclick: () => $('#doc-body').replaceChildren(renderQuiz(quiz)) }));
+        return box;
     }
 
     /* ---------- calendar ---------- */

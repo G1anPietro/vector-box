@@ -9,7 +9,7 @@ $other = $it ? 'en' : 'it';
 $email = trim((string)envValue('CONTACT_EMAIL', ''));
 $email = filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
 $adsOn = adsenseClient() !== '';
-$updated = '2026-11-11';
+$updated = '2026-11-12';
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -41,6 +41,7 @@ $updated = '2026-11-11';
             <li><strong>Indirizzo IP:</strong> registrato con i messaggi e nei registri del server, per sicurezza e per bloccare abusi (per esempio troppi tentativi di accesso).</li>
             <li><strong>Visite:</strong> per ogni nuova visita vengono annotati data e ora, indirizzo IP, pagina, tipo di browser e sistema, e il sito da cui arrivi. Servono a chi gestisce il sito per sapere chi lo usa; il registro si sovrascrive da solo quando diventa grande.</li>
             <li><strong>Giochi:</strong> partite, impostazioni e statistiche restano nel tuo browser (memoria locale). Per le stanze multigiocatore il server conserva i nomi scelti e lo stato della partita.</li>
+            <li><strong>Appunti di classe:</strong> il materiale che carichi (testi, foto, file), con il tuo nome utente, la data e la materia, le date del calendario e i documenti di studio ricavati. Li vedono solo i compagni della stessa classe e l'amministratore. Restano finché tu, il responsabile della classe o l'amministratore non li cancellate, o finché la classe esiste.</li>
         </ul>
         <p>I dati stanno sul server di casa del sito, non vengono venduti né ceduti a nessuno.</p>
 
@@ -55,6 +56,7 @@ $updated = '2026-11-11';
         <p>Il bottone "Offrimi un caffè", se presente, porta alla pagina di un servizio di donazioni esterno: il pagamento
         avviene lì, e vector-box non vede né salva alcun dato di pagamento.</p>
         <p>Il lettore di libri (solo per gli account autorizzati) carica alcune librerie da cdnjs.cloudflare.com e cdn.jsdelivr.net, che vedono il tuo indirizzo IP come qualsiasi sito che visiti.</p>
+        <p><strong>Appunti di classe e intelligenza artificiale:</strong> per trascrivere le foto e preparare riassunti, dispense e quiz, il materiale caricato in una classe (con i nomi utente di chi l'ha caricato) viene inviato a <strong>Google Gemini</strong>. Si usa il livello gratuito del servizio: secondo i termini di Google, in questo caso Google può usare i contenuti per migliorare i propri prodotti e alcune persone possono leggerli. Per questo <strong>non caricare dati personali</strong> (tuoi o di altri), voti, documenti d'identità o informazioni sulla salute. Termini di Google: <a href="https://ai.google.dev/gemini-api/terms" rel="noopener">ai.google.dev/gemini-api/terms</a>.</p>
 
         <h2>Quanto tempo</h2>
         <p>I dati dell’account restano finché l’account esiste; i registri del server vengono cancellati automaticamente dopo un periodo limitato. Puoi chiedere in ogni momento di vedere, correggere o cancellare i tuoi dati, e hai diritto di presentare reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener">garanteprivacy.it</a>).</p>
@@ -72,6 +74,7 @@ $updated = '2026-11-11';
             <li><strong>IP address:</strong> stored with messages and in the server logs, for security and to stop abuse (for example too many login attempts).</li>
             <li><strong>Visits:</strong> for each new visit the date and time, IP address, page, browser and system, and the site you came from are noted down, so whoever runs the site knows who uses it; the log overwrites itself when it grows large.</li>
             <li><strong>Games:</strong> games, settings and statistics stay in your browser (local storage). For multiplayer rooms the server keeps the chosen names and the game state.</li>
+            <li><strong>Class notes:</strong> the material you upload (text, photos, files) with your username, date and subject, the calendar dates and the study documents made from them. Only classmates in the same class and the admin can see them. They stay until you, the class manager or the admin delete them, or while the class exists.</li>
         </ul>
         <p>The data lives on the site’s home server and is never sold or handed to anyone.</p>
 
@@ -86,6 +89,7 @@ $updated = '2026-11-11';
         <p>The "Buy me a coffee" button, when present, leads to an external donation service: payment happens there, and
         vector-box never sees or stores any payment details.</p>
         <p>The book reader (authorised accounts only) loads some libraries from cdnjs.cloudflare.com and cdn.jsdelivr.net, which see your IP address like any site you visit.</p>
+        <p><strong>Class notes and AI:</strong> to transcribe photos and write summaries, handouts and quizzes, the material uploaded to a class (with the usernames of who uploaded it) is sent to <strong>Google Gemini</strong>, on its free tier: under Google's terms, Google may then use the content to improve its products and some people may read it. So <strong>do not upload personal data</strong> (yours or others'), grades, ID documents or health information. Google's terms: <a href="https://ai.google.dev/gemini-api/terms" rel="noopener">ai.google.dev/gemini-api/terms</a>.</p>
 
         <h2>How long</h2>
         <p>Account data is kept while the account exists; server logs are deleted automatically after a limited time. You can ask at any time to see, correct or delete your data, and you have the right to complain to the Italian data protection authority (<a href="https://www.garanteprivacy.it" rel="noopener">garanteprivacy.it</a>).</p>

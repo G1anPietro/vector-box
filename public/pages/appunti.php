@@ -72,6 +72,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
 
         <nav id="tabs" class="tabs" hidden>
             <button data-tab="material" aria-selected="true">Materiale</button>
+            <button data-tab="study">Studio</button>
             <button data-tab="calendar">Calendario</button>
             <button data-tab="class">Classe</button>
             <button data-tab="admin" hidden>Admin</button>
@@ -105,6 +106,8 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
                     <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
                     <label>Testo (facoltativo) <textarea name="body" rows="4" maxlength="50000" placeholder="Puoi anche scrivere gli appunti qui"></textarea></label>
                     <button id="upload-btn">Carica</button>
+                    <p class="muted small">Il materiale lo vedono i compagni della classe e lo legge Google Gemini per preparare i riassunti:
+                        non caricare dati personali, voti o documenti. <a href="privacy.php">Privacy</a></p>
                     <p id="usage" class="muted small"></p>
                 </form>
             </details>
@@ -114,6 +117,33 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
                 <select id="filter-kind" aria-label="Tipo"><option value="">Tutti i tipi</option></select>
             </div>
             <div id="items"></div>
+        </section>
+
+        <!-- Study: AI documents -->
+        <section id="tab-study" class="tab" hidden>
+            <div id="study-list">
+                <div class="card ai-bar" id="ai-bar"></div>
+                <h2 class="section-title">Verifiche e interrogazioni in arrivo</h2>
+                <div id="study-tests"></div>
+                <h2 class="section-title">Appunti delle lezioni</h2>
+                <div class="filters row">
+                    <select id="study-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>
+                </div>
+                <div id="study-lessons"></div>
+            </div>
+            <article id="doc-view" class="doc-view" hidden>
+                <div class="doc-tools no-print">
+                    <button id="doc-back" class="ghost mini">← Indietro</button>
+                    <span class="spacer"></span>
+                    <button id="doc-download" class="ghost mini">Scarica</button>
+                    <button id="doc-print" class="ghost mini">Stampa / PDF</button>
+                </div>
+                <h2 id="doc-title"></h2>
+                <p id="doc-meta" class="muted small"></p>
+                <div id="doc-body" class="md"></div>
+                <details id="doc-sources" class="no-print"><summary>Da dove viene</summary><ol id="doc-sources-list"></ol></details>
+                <p class="muted small ai-note">Scritto da un'AI a partire dal materiale caricato: può sbagliare, controlla sempre con il libro e gli appunti originali.</p>
+            </article>
         </section>
 
         <!-- Calendar -->
