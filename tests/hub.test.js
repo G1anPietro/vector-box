@@ -56,6 +56,20 @@ test.describe('chat hub', { skip: !hasDeps && 'node_modules missing (run npm ins
     });
     test.after(async () => { node.kill(); await site.stop(); });
 
+    test('the token can come in the vb_chat_ticket cookie (same-origin hub), once', async () => {
+        const cfg = (await user.get('/api/check_session.php')).json.chat_stream;
+        const open = async () => {
+            const ctrl = new AbortController();
+            const res = await fetch(`${nodeBase}/api/chat/stream`, { headers: { Cookie: `other=1; vb_chat_ticket=${encodeURIComponent(cfg.token)}` }, signal: ctrl.signal });
+            ctrl.abort();
+            return res.status;
+        };
+        assert.equal(await open(), 200);
+        assert.equal(await open(), 401, 'single use, like the URL token');
+        const none = await fetch(`${nodeBase}/api/chat/stream`);
+        assert.equal(none.status, 401);
+    });
+
     test('check_session hands out a stream token', async () => {
         const cfg = (await user.get('/api/check_session.php')).json.chat_stream;
         assert.ok(cfg && cfg.token && cfg.url.endsWith('/api/chat/stream'));
@@ -136,5 +150,23 @@ test.describe('chat hub', { skip: !hasDeps && 'node_modules missing (run npm ins
         assert.equal((await user.post('/api/chat_typing.php', { room_id: 'admin' })).status, 403);
         assert.equal((await user.post('/api/chat_typing.php', { room_id: 'announcements' })).status, 403);
         assert.equal((await user.post('/api/chat_typing.php', { room_id: 'general' }, { csrf: false })).status, 403);
+    });
+});
+
+test.describe('chat hub on the same origin', () => {
+    let site2;
+    test.before(async () => { site2 = await startSite({ CHAT_HUB_SECRET: SECRET, CHAT_STREAM_URL: '/api/chat/stream' }); });
+    test.after(async () => { await site2.stop(); });
+
+    test('the stream token goes in an HttpOnly cookie for the hub path, not in the JSON', async () => {
+        const c = new Client(site2);
+        const r = await c.get('/api/check_session.php');
+        assert.deepEqual(r.json.chat_stream, { url: '/api/chat/stream', token: null, cookie: true });
+        const set = r.headers.getSetCookie().find((x) => x.startsWith('vb_chat_ticket='));
+        assert.ok(set, 'cookie set');
+        assert.match(set, /path=\/api\/chat\/stream/i);
+        assert.match(set, /httponly/i);
+        assert.match(set, /samesite=strict/i);
+        assert.match(decodeURIComponent(set.split(';')[0].split('=')[1]), /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     });
 });

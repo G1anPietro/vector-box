@@ -193,9 +193,10 @@ function chatHubSecret(): string {
  * Stream config for the browser, or null when the hub is not configured.
  * The token says who the viewer is (for the online list) and whether they may read
  * hidden (admin) rooms; the hub verifies it with the shared secret. It travels in the
- * URL (EventSource can't send headers), so it ends up in proxy logs: it is valid for
- * 60 seconds and ONE connection only (the hub remembers the nonce). The browser asks
- * for a fresh one before every (re)connect.
+ * URL (EventSource can't send headers) when the hub is on another origin; on the same origin it
+ * goes in a cookie instead (chatStreamCookie). Either way it is valid for 60 seconds and ONE
+ * connection only (the hub remembers the nonce). The browser asks for a fresh one before every
+ * (re)connect.
  */
 function chatStreamConfig(bool $isAdmin, string $username = ''): ?array {
     $secret = chatHubSecret();
@@ -211,7 +212,24 @@ function chatStreamConfig(bool $isAdmin, string $username = ''): ?array {
     ]));
     $sig = base64UrlEncode(hash_hmac('sha256', $body, $secret, true));
 
-    return ['url' => $url, 'token' => $body . '.' . $sig];
+    // Hub on the site's own address (a path like /api/chat/stream behind nginx): the token goes in a short-lived
+    // HttpOnly cookie limited to that path, so it never appears in a URL or in the access logs.
+    // A hub on another origin still gets it in the URL (cookies would not reach it).
+    return ['url' => $url, 'token' => $body . '.' . $sig, 'cookie' => str_starts_with($url, '/') && !str_starts_with($url, '//')];
+}
+
+/** For a same-origin hub: puts the stream token in its cookie and removes it from the JSON. */
+function chatStreamCookie(?array $cfg): ?array {
+    if (!$cfg || empty($cfg['cookie']) || headers_sent()) return $cfg;
+    setcookie('vb_chat_ticket', $cfg['token'], [
+        'expires' => time() + 60,
+        'path' => (string)parse_url($cfg['url'], PHP_URL_PATH),
+        'secure' => isHttps(),
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+    $cfg['token'] = null;
+    return $cfg;
 }
 
 /**

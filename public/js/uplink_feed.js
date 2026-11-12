@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let eventSource = null;
     let streamResumeId = 0;   // newest message id known before the stream starts
     let reconnectTimer = null;
-    let chatHub = null;       // { url, token } from check_session.php, null = PHP stream only
+    let chatHub = null;       // { url, token, cookie } from check_session.php, null = PHP stream only
     let hubLastEventId = '';  // resume point on the hub ("<boot>-<seq>")
     let hubFailures = 0;
     const HUB_MAX_FAILURES = 5;      // retries at 1, 2, 4, 8 s cover a hub restart (pm2)
@@ -94,7 +94,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.SESSION_STATE.isAdmin = data.is_admin === 1;
                 window.SESSION_STATE.csrfToken = data.csrf_token || '';
                 window.SESSION_STATE.username = data.username || '';
-                chatHub = data.chat_stream && data.chat_stream.url && data.chat_stream.token
+                // cookie: true = same-origin hub, the token travels in an HttpOnly cookie (not in the URL)
+                chatHub = data.chat_stream && data.chat_stream.url && (data.chat_stream.token || data.chat_stream.cookie)
                     ? data.chat_stream : null;
 
                 if (typeof loadAdminCommandsIfEligible === 'function') {
@@ -485,7 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chatHub.used = true;
 
         const url = new URL(chatHub.url, location.href);
-        url.searchParams.set('token', chatHub.token);
+        if (!chatHub.cookie) url.searchParams.set('token', chatHub.token);
         if (hubLastEventId) url.searchParams.set('last_id', hubLastEventId);
 
         const es = new EventSource(url.href);

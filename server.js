@@ -457,6 +457,16 @@ setInterval(() => {
     for (const [n, exp] of usedChatNonces) if (exp < now) usedChatNonces.delete(n);
 }, 60 * 1000).unref();
 
+function cookieValue(req, name) {
+    for (const part of String(req.headers.cookie || '').split(';')) {
+        const i = part.indexOf('=');
+        if (i > 0 && part.slice(0, i).trim() === name) {
+            try { return decodeURIComponent(part.slice(i + 1).trim()); } catch (e) { return null; }
+        }
+    }
+    return null;
+}
+
 function verifyChatToken(token) {
     if (!CHAT_HUB_SECRET || typeof token !== 'string') return null;
     const [body, sig] = token.split('.');
@@ -564,7 +574,8 @@ app.get('/api/chat/stream', (req, res) => {
         res.setHeader('Vary', 'Origin');
     }
 
-    const auth = verifyChatToken(req.query.token);
+    // Same-origin hub: the token comes in the vb_chat_ticket cookie (kept out of URLs and logs)
+    const auth = verifyChatToken(typeof req.query.token === 'string' && req.query.token ? req.query.token : cookieValue(req, 'vb_chat_ticket'));
     if (!auth) return res.status(401).end();
     if (chatClients.size >= CHAT_MAX_CLIENTS) return res.status(503).end();
 
