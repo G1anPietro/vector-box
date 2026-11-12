@@ -3,7 +3,8 @@
 (() => {
     'use strict';
 
-    const S = window.SESSION_STATE || {};
+    // No inline script on the page (CSP): csrf.js fetches the token itself, the admin flag comes from the API
+    let isAdmin = false;
     const $ = (sel, root = document) => root.querySelector(sel);
     const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
     const KINDS = {
@@ -98,6 +99,7 @@
     async function loadMine(selectId) {
         const mine = await getJson('../api/classi.php?action=mine');
         classes = mine.classes;
+        isAdmin = mine.is_admin;
         const sel = $('#class-select');
         sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}` })));
         sel.parentElement.hidden = classes.length === 0;
@@ -130,7 +132,7 @@
         current = (await getJson(`../api/classi.php?action=class&id=${id}`)).class;
         store(STORE_KEY, String(id));
         fillSubjectSelects();
-        showTab(currentTab === 'admin' && !S.isAdmin ? 'material' : currentTab);
+        showTab(currentTab === 'admin' && !isAdmin ? 'material' : currentTab);
     }
 
     function fillSubjectSelects() {

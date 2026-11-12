@@ -29,7 +29,6 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
     <meta name="robots" content="noindex">
     <title>Appunti di classe — vector-box</title>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
-    <script>window.SESSION_STATE = { csrfToken: <?= json_encode($csrf) ?>, username: <?= json_encode($username) ?>, isAdmin: <?= $isAdmin ? 'true' : 'false' ?> };</script>
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
 </head>

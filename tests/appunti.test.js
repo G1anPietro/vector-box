@@ -225,6 +225,14 @@ test('calendar: everyone adds, author or manager change', async () => {
     assert.equal((await ap(mario, { action: 'delete_event', id })).status, 200);
 });
 
+test('the notes page has no inline scripts (the CSP allows only files from the site)', async () => {
+    const r = await fetch(`${site.base}/pages/appunti.php`, { headers: { Cookie: luigi.cookieHeader() } });
+    const html = await r.text();
+    assert.equal(r.status, 200);
+    assert.match(html, /<script src="\.\.\/js\/appunti\.js/);
+    assert.equal(html.match(/<script(?![^>]*\bsrc=)[^>]*>/g), null);
+});
+
 test('deleting the class removes its material from disk', async () => {
     const dir = path.join(site.root, 'data/appunti', String(classId));
     assert.ok(fs.existsSync(dir));
