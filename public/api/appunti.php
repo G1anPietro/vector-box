@@ -378,6 +378,7 @@ try {
         if (!$canManage && (int)$event['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can change this', 403);
         if ($action === 'delete_event') {
             $db->prepare('DELETE FROM class_events WHERE id = :id')->execute([':id' => $event['id']]);
+            $db->prepare('DELETE FROM class_docs WHERE event_id = :id')->execute([':id' => $event['id']]);
             jsonResponse(['success' => true]);
         }
         $f = apEventFields($db, $class, $in);

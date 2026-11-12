@@ -24,9 +24,14 @@ const gemini = http.createServer((req, res) => {
         if (mode === 'quota') { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"quota"}}'); return; }
         const system = body.systemInstruction ? body.systemInstruction.parts[0].text : '';
         const user = body.contents ? body.contents[0].parts.filter((p) => p.text).map((p) => p.text).join(' ') : '';
-        const text = system.includes('trascrittore')
-            ? `TRASCRITTO ${user.replace('Trascrivi questo file: ', '')}`
-            : `## Lezione unita\nTutto il materiale [1][2]\n## Possibili domande all'interrogazione\n1. Chi era Napoleone?`;
+        const quiz = { questions: [0, 1, 2, 3].map((i) => ({ topic: 'Napoleone', question: `Domanda ${i}?`, options: ['a', 'b', 'c', 'd'], answer: i, explanation: 'perché sì' })) };
+        let text;
+        if (system.includes('trascrittore')) text = `TRASCRITTO ${user.replace('Trascrivi questo file: ', '')}`;
+        else if (system.includes('DISPENSA COMPLETA')) text = '## Argomenti\n- Napoleone\n## Napoleone\nTutto quanto [L1]';
+        else if (system.includes('RIASSUNTO')) text = '## Napoleone\n- in breve';
+        else if (system.includes('PREPARAZIONE MIRATA')) text = '## Domande probabili\n1. Chi era Napoleone?';
+        else if (system.includes('quiz')) text = mode === 'badquiz' ? 'non è json' : '```json\n' + JSON.stringify(quiz) + '\n```';
+        else text = `## Lezione unita\nTutto il materiale [1][2]\n## Possibili domande all'interrogazione\n1. Chi era Napoleone?`;
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ candidates: [{ content: { parts: [{ text }] }, finishReason: 'STOP' }] }));
     });
@@ -201,6 +206,64 @@ test('without a key the worker does nothing and the button says so', async () =>
     site.db('UPDATE school_classes SET ai_last_manual = NULL WHERE id = ?', [classId]);
     assert.equal((await ap(luigi, { action: 'generate', class_id: classId })).json.code, 'ai_off');
     setEnv();
+});
+
+test('tests: complete handout, summary, targeted prep and quiz from the material since the previous test', async () => {
+    const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    // an earlier test closes the previous period
+    await ap(luigi, { action: 'add_event', class_id: classId, subject_id: storia, kind: 'verifica', date: day(-20), title: 'Rivoluzione' });
+    const id = (await ap(luigi, { action: 'add_event', class_id: classId, subject_id: storia, kind: 'verifica', date: day(5),
+        title: 'Napoleone', topics: 'Napoleone e il Congresso di Vienna' })).json.id;
+    await upload(mario, { class_id: classId, subject_id: storia, kind: 'domande', lesson_date: day(0), body: 'Il prof chiede sempre le date delle battaglie' });
+    site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
+    calls.length = 0;
+    await worker();
+    const bySystem = (w) => calls.filter((c) => c.body.systemInstruction.parts[0].text.includes(w));
+    const completo = bySystem('DISPENSA COMPLETA');
+    assert.equal(completo.length, 1);
+    assert.match(completo[0].url, /gemini-3\.8-flash:/, 'the smart model writes the handout');
+    const prompt = completo[0].body.contents[0].parts[0].text;
+    assert.match(prompt, /Verifica del .*\(Napoleone\)/);
+    assert.match(prompt, /Argomenti annunciati dal prof: Napoleone e il Congresso di Vienna/);
+    assert.match(prompt, /\[L1\] Lezione del/);
+    assert.match(bySystem('PREPARAZIONE MIRATA')[0].body.contents[0].parts[0].text, /date delle battaglie/);
+    assert.equal(bySystem('RIASSUNTO').length, 1);
+    assert.match(bySystem('quiz')[0].url, /flash-lite/);
+
+    const docs = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.docs.filter((d) => d.event_id === id);
+    assert.deepEqual(docs.map((d) => d.kind).sort(), ['completo', 'preparazione', 'quiz', 'riassunto']);
+    const get = async (kind) => (await luigi.get(`/api/appunti.php?action=doc&id=${docs.find((d) => d.kind === kind).id}`)).json.doc;
+    const c = await get('completo');
+    assert.match(c.content, /^> Materiale dal .* lezioni riordinate/);
+    assert.match(c.content, /## Napoleone/);
+    assert.match(c.title, /^Storia — Verifica del .* — Completo$/);
+    const quiz = JSON.parse((await get('quiz')).content);
+    assert.equal(quiz.questions.length, 4);
+    assert.deepEqual(quiz.questions[2].options, ['a', 'b', 'c', 'd']);
+
+    // nothing changed: no new requests
+    site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
+    calls.length = 0;
+    await worker();
+    assert.equal(calls.length, 0);
+
+    // smart budget used up: the handout falls back to the fast model; a broken quiz is marked as an error
+    const pday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+    site.db("INSERT INTO ai_usage (day, model, requests) VALUES (?, 'gemini-3.8-flash', 18) ON CONFLICT(day, model) DO UPDATE SET requests = 18", [pday]);
+    await ap(luigi, { action: 'edit_event', id, subject_id: storia, kind: 'verifica', date: day(5), title: 'Napoleone', topics: 'anche Waterloo' });
+    site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
+    mode = 'badquiz';
+    calls.length = 0;
+    await worker();
+    mode = 'ok';
+    assert.match(bySystem('DISPENSA COMPLETA')[0].url, /flash-lite/);
+    const status = Object.fromEntries(site.db('SELECT kind, status FROM class_docs WHERE event_id = ?', [id]).map((r) => [r.kind, r.status]));
+    assert.deepEqual(status, { completo: 'ok', riassunto: 'ok', preparazione: 'ok', quiz: 'error' });
+    site.db('DELETE FROM ai_usage');
+
+    // deleting the test deletes its documents
+    await ap(luigi, { action: 'delete_event', id });
+    assert.equal(site.db('SELECT COUNT(*) AS n FROM class_docs WHERE event_id = ?', [id])[0].n, 0);
 });
 
 test('the worker cannot be run from the web', async () => {

@@ -30,8 +30,8 @@ if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) { echo "another run is in progre
 
 try {
     $stats = aiRun(getDbConnection(), time());
-    if ($stats['transcribed'] || $stats['lessons'] || $stats['classes']) {
-        aiLog("transcribed {$stats['transcribed']}, lesson docs {$stats['lessons']}, classes {$stats['classes']}");
+    if ($stats['transcribed'] || $stats['lessons'] || $stats['tests'] || $stats['classes']) {
+        aiLog("transcribed {$stats['transcribed']}, lesson docs {$stats['lessons']}, test docs {$stats['tests']}, classes {$stats['classes']}");
     }
 } catch (Throwable $e) {
     require_once __DIR__ . '/../public/api/debug_logger.php';
