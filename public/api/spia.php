@@ -11,6 +11,7 @@ require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/spia_lib.php';
 require_once __DIR__ . '/lupus_lib.php';
+require_once __DIR__ . '/cucu_lib.php';
 
 initSession();
 header('Cache-Control: no-store');
@@ -132,9 +133,13 @@ try {
         if (!checkRateLimit('spia_create', 10, 600)) spiaFail('slow_down', 429);
         $db->exec('BEGIN IMMEDIATE');
         spiaPruneRooms($db);
-        $game = ($in['game'] ?? 'spia') === 'lupus' ? 'lupus' : 'spia';
+        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu'], true) ? $in['game'] : 'spia';
         $rawSettings = is_array($in['settings'] ?? null) ? $in['settings'] : [];
-        $settings = $game === 'lupus' ? lupusSanitizeSettings($rawSettings, []) : spiaSanitizeSettings($rawSettings, []);
+        $settings = match ($game) {
+            'lupus' => lupusSanitizeSettings($rawSettings, []),
+            'cucu' => cucuSanitizeSettings($rawSettings, []),
+            default => spiaSanitizeSettings($rawSettings, []),
+        };
         $db->prepare('INSERT INTO spia_rooms (code, game, settings, created_at, updated_at) VALUES (:c, :g, :s, :t, :t)')
            ->execute([':c' => spiaNewCode($db), ':g' => $game, ':s' => json_encode($settings), ':t' => time()]);
         $roomId = (int)$db->lastInsertId();
@@ -179,6 +184,14 @@ try {
     $needHost = function () use ($isHost, $fail) { if (!$isHost) $fail('host_only', 403); };
 
     $handled = false;
+    if ($room['game'] === 'cucu') {
+        $r = cucuHandle($db, $room, $device, $isHost, $in, $action, $isAdmin);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'not_your_turn'], true) ? 403 : 409);
+        $handled = $r === true;
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
     if ($room['game'] === 'lupus') {
         $r = lupusHandle($db, $room, $device, $isHost, $in, $action);
         if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);

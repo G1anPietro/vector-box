@@ -1,0 +1,11 @@
+{
+  "name": "Cucù",
+  "short_name": "Cucù",
+  "description": "Cucù con le regole di casa: una carta a testa, il Re blocca, le vite a memoria.",
+  "start_url": "../../pages/cucu.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#2a170e",
+  "theme_color": "#2a170e",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

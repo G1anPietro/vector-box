@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 10;
+const DB_SCHEMA_VERSION = 11;
 
 /**
  * Session bootstrap.
@@ -341,6 +341,15 @@ function migrateV10(PDO $db): void {
     addColumnIfMissing($db, 'accounts', 'can_view_resume', 'INTEGER DEFAULT 0');
 }
 
+function migrateV11(PDO $db): void {
+    // Cucù (card game on the shared rooms): the whole match state as JSON, like lupus_games
+    $db->exec("CREATE TABLE IF NOT EXISTS cucu_games (
+        room_id INTEGER PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -375,6 +384,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 10) {
             migrateV10($db);
+        }
+        if ($current < 11) {
+            migrateV11($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

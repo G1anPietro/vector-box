@@ -6,11 +6,22 @@
     'use strict';
     const API = '../api/spia.php';
     // The same app runs both games: <html data-game="lupus"> on pages/lupus.html
-    const GAME = document.documentElement.dataset.game === 'lupus' ? 'lupus' : 'spia';
+    const GAME = ['lupus', 'cucu'].includes(document.documentElement.dataset.game) ? document.documentElement.dataset.game : 'spia';
+    // Games other than the spy game are "modules" (js/lupus/game.js, js/cucu/game.js) with the same interface:
+    // playView(), resultCard(), summary(), settings(). META holds their texts; M is null for the spy game.
+    const META = {
+        lupus: { key: 'lupus', title: 'lw_title', tagline: 'lw_tagline', note: 'lw_one_phone_note', need: 'lw_need_four',
+            start: 'lw_start', again: 'lw_new_match', intro: 'intro_lw_', nextMatch: 'lw_settings_next_match',
+            topics: ['lw_basics', 'lw_roles', 'lw_night', 'lw_day', 'lw_win', 'phones', 'shared', 'lw_settings'] },
+        cucu: { key: 'cucu', title: 'cu_title', tagline: 'cu_tagline', note: 'cu_one_phone_note', need: 'cu_need_two',
+            start: 'cu_start', again: 'cu_new_match', intro: 'intro_cu_', nextMatch: 'cu_settings_next_match',
+            topics: ['cu_basics', 'cu_hand', 'cu_lives', 'cu_dead', 'cu_host', 'phones', 'cu_settings'] },
+    };
+    const M = META[GAME] || null;
     const K = (k) => `${GAME}_${k}`; // per-game storage keys (spia_token, lupus_token, ...)
-    const PAGES = { spia: 'spia.html', lupus: 'lupus.html' };
-    const MIN_PLAYERS = GAME === 'lupus' ? 4 : 3;
-    let LG = null; // Lupus screens (js/lupus/game.js), set up in boot()
+    const PAGES = { spia: 'spia.html', lupus: 'lupus.html', cucu: 'cucu.html' };
+    const MIN_PLAYERS = { lupus: 4, cucu: 2 }[GAME] || 3;
+    let LG = null; // the module's screens (js/lupus/game.js or js/cucu/game.js), set up in boot()
     const POLL_MS = 2000;
     const POLL_HIDDEN_MS = 8000;
     const LANGS = { it: 'Italiano', en: 'English', es: 'Español', fr: 'Français', de: 'Deutsch' };
@@ -330,7 +341,7 @@
     const vibrate = (ms) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* unsupported */ } };
 
     async function keepAwake() {
-        const playing = (state && state.round && state.round.status === 'play') || (state && state.lupus && state.lupus.status === 'play');
+        const playing = (state && state.round && state.round.status === 'play') || !!(M && state && state[M.key] && state[M.key].status === 'play');
         const want = !!(mode && playing && !document.hidden);
         try {
             if (want && !wakeLock && navigator.wakeLock) {
@@ -409,12 +420,12 @@
     function closeSheet() { ui.sheet = null; scheduleRender(); }
 
     // ---------- main views ----------
-    function gameTitle() { return GAME === 'lupus' ? t('lw_title') : t('title'); }
+    function gameTitle() { return M ? t(M.title) : t('title'); }
 
     function mainView() {
         if (!mode) return lobbyView();
         if (!state) return h('div', { class: 'center muted' }, t('loading'));
-        if (GAME === 'lupus') return state.lupus && state.lupus.status === 'play' ? LG.playView() : roomView();
+        if (M) return state[M.key] && state[M.key].status === 'play' ? LG.playView() : roomView();
         const r = state.round;
         if (r && r.status === 'play') {
             const next = nextReveal();
@@ -433,7 +444,7 @@
         return h('div', { class: 'lobby' },
             h('div', { class: 'hero' },
                 h('h1', { class: 'stencil' }, gameTitle()),
-                h('p', null, GAME === 'lupus' ? t('lw_tagline') : t('tagline'))),
+                h('p', null, M ? t(M.tagline) : t('tagline'))),
             h('button', { class: 'btn primary big', onclick: createRoom }, t('create_room')),
             h('form', {
                 class: 'join', onsubmit: (e) => { e.preventDefault(); joinRoom(document.getElementById('join-code').value); },
@@ -448,7 +459,7 @@
                 h('div', { class: 'divider' }, h('span', null, t('or'))),
                 h('button', { class: 'btn ghost big', onclick: () => enterLocal() }, t('play_offline')),
                 h('p', { class: 'muted small center' }, t('offline_note')),
-            ] : h('p', { class: 'muted small center' }, t('lw_one_phone_note')),
+            ] : h('p', { class: 'muted small center' }, t(M.note)),
             h('div', { class: 'lobby-links' },
                 h('button', { class: 'link', onclick: () => { ui.introStep = 0; openSheet('intro'); } }, t('how_to_play')),
                 h('a', { class: 'link', href: '../index.php' }, t('back_to_site'))));
@@ -463,23 +474,23 @@
 
         if (mode === 'online' && !netOk) parts.push(offlineBanner());
         if (GAME === 'spia' && r && r.status === 'ended' && r.result) parts.push(resultCard(r));
-        if (GAME === 'lupus' && s.lupus && s.lupus.status === 'ended') parts.push(LG.resultCard());
+        if (M && s[M.key] && s[M.key].status === 'ended') parts.push(LG.resultCard());
 
         parts.push(section(t('on_this_phone'), myPlayersEditor()));
 
         if (mode === 'online') parts.push(section(t('players_count', { n: s.players.length }), phonesList()));
         if (s.settings.scores && s.players.length) parts.push(section(t('scores'), scoreList()));
-        parts.push(plainSection(t('settings'), GAME === 'lupus' ? LG.summary() : settingsSummary(),
+        parts.push(plainSection(t('settings'), M ? LG.summary() : settingsSummary(),
             h('button', { class: 'btn ghost', onclick: () => openSheet('settings') }, host ? t('edit_settings') : t('view_settings'))));
 
         const enough = s.players.length >= MIN_PLAYERS;
-        const again = GAME === 'lupus' ? !!s.lupus : !!(r && r.status === 'ended');
+        const again = M ? !!s[M.key] : !!(r && r.status === 'ended');
         const bottom = host
             ? h('button', { class: 'btn primary big', disabled: !enough, onclick: () => { resetFlow(); run('start'); } },
-                GAME === 'lupus' ? (again ? t('lw_new_match') : t('lw_start')) : (again ? t('new_round') : t('start_round')))
+                M ? (again ? t(M.again) : t(M.start)) : (again ? t('new_round') : t('start_round')))
             : h('div', { class: 'waiting' }, t('waiting_host'));
         return [h('div', { class: 'stack' }, parts),
-            h('div', { class: 'bottom-bar' }, !enough ? h('div', { class: 'muted small center' }, GAME === 'lupus' ? t('lw_need_four') : t('need_three')) : null, bottom)];
+            h('div', { class: 'bottom-bar' }, !enough ? h('div', { class: 'muted small center' }, M ? t(M.need) : t('need_three')) : null, bottom)];
     }
 
     function section(title, ...body) {
@@ -490,7 +501,7 @@
     }
 
     function offlineBanner() {
-        if (GAME === 'lupus') return h('div', { class: 'banner warn' }, h('div', null, t('connection_lost')));
+        if (M) return h('div', { class: 'banner warn' }, h('div', null, t('connection_lost')));
         return h('div', { class: 'banner warn' },
             h('div', null, t('connection_lost')),
             h('button', {
@@ -936,8 +947,7 @@
     }
 
     function helpSheet() {
-        const topics = GAME === 'lupus'
-            ? ['lw_basics', 'lw_roles', 'lw_night', 'lw_day', 'lw_win', 'phones', 'shared', 'lw_settings']
+        const topics = M ? M.topics
             : ['basics', 'spies', 'vote', 'guess', 'phones', 'shared', 'offline', 'scores', 'settings'];
         return [
             h('div', { class: 'accordion' }, topics.map((k, i) => {
@@ -956,7 +966,7 @@
         const i = Math.min(ui.introStep, steps.length - 1);
         const last = i === steps.length - 1;
         const finish = () => { store.set(K('intro_done'), true); closeSheet(); };
-        const pre = GAME === 'lupus' ? 'intro_lw_' : 'intro_';
+        const pre = M ? M.intro : 'intro_';
         return h('div', { class: 'intro' },
             h('div', { class: 'intro-num' }, `${i + 1} / ${steps.length}`),
             h('h3', null, t(`${pre}${steps[i]}_t`)),
@@ -995,11 +1005,11 @@
             h('span', { class: 'step-val' }, String(s[key])),
             h('button', { class: 'step', disabled: !host || s[key] >= max, onclick: () => set({ [key]: Math.min(max, s[key] + 1) }), 'aria-label': '+' }, '+'));
 
-        if (GAME === 'lupus') {
+        if (M) {
             return [
                 !host ? h('p', { class: 'banner' }, t('only_host_settings')) : null,
                 ...LG.settings(s, { set, toggle, stepper, host }),
-                state && state.lupus && state.lupus.status === 'play' ? h('p', { class: 'muted small' }, t('lw_settings_next_match')) : null,
+                state && state[M.key] && state[M.key].status === 'play' ? h('p', { class: 'muted small' }, t(M.nextMatch)) : null,
             ];
         }
 
@@ -1085,6 +1095,7 @@
         if (mode === 'online' && !token) mode = null;
         if (!store.get(K('intro_done'))) ui.sheet = 'intro';
         if (GAME === 'lupus') LG = window.LupusGame.init(core());
+        if (GAME === 'cucu') LG = window.CucuGame.init(core());
 
         scheduleRender(true);
         const session = await loadSession();
