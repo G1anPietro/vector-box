@@ -1,25 +1,119 @@
 # vector-box — documentazione
 
-> **Bozza** (2026-11-12). Le parti da completare sono segnate con **TODO**. Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-12 (schema del database **v10**, 84 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
 da soli. Gira su un piccolo server di casa (Ubuntu, nginx, PHP-FPM, Node.js).
 
+![Il desktop di vector-box](img/desktop.png)
+
+**Indice:** [Guida per chi usa il sito](#parte-1--guida-per-chi-usa-il-sito) ·
+[Comandi del terminale](#comandi-del-terminale) ·
+[Documentazione tecnica](#parte-2--documentazione-tecnica) · [API](#5-api) · [Sicurezza](#6-sicurezza) ·
+[Configurazione](#7-configurazione-env) · [Sviluppo](#8-sviluppo-in-locale) · [Pubblicazione](#9-pubblicazione-sul-server)
+
 ---
+
+# Parte 1 — Guida per chi usa il sito
+
+## Il desktop
+
+La home è un desktop: ogni funzione è una **finestra** che si apre dalla barra in basso, si trascina, si riduce, si
+ingrandisce e si chiude. Il **MENU** in alto a destra porta alle altre pagine (Giochi, Supporta, accesso, impostazioni
+dell'account) e ai temi grafici.
+
+| Finestra | A cosa serve |
+|---|---|
+| **TERMINAL** | Riga di comando: `help` mostra tutti i comandi (elenco più sotto). |
+| **CHAT_FEED** | La chat pubblica, divisa in stanze (le schede in alto). |
+| **UPLINK** | Lascia un messaggio privato a chi gestisce il sito: arriva come notifica sul suo telefono. |
+| **POKER** | Texas Hold'em con fiches finte, contro altri giocatori e bot (serve un account). |
+| **TOOLS** | Strumenti: banner ASCII, ROT13/ROT47, cifrario di Cesare, Morse, binario. |
+| **VAULT** | Il caveau dell'ARG: inserisci le chiavi trovate in giro per il sito. |
+| **STATUS** | Stato del server: da quanto è acceso, carico, memoria, servizi. |
+| **WALL** | Il muro dei graffiti: lascia una frase visibile a tutti. |
+| **DM** | Messaggi privati con gli altri utenti registrati. |
+| **READER** | La biblioteca (solo per gli account autorizzati). |
+
+**Sul telefono** si vede un'app alla volta, e si cambia con la barra di schede in basso (scorre di lato). Mentre la tastiera
+è aperta la barra si nasconde, poi torna.
+
+<img src="img/desktop-telefono.png" alt="Il desktop sul telefono" width="300">
+
+## Account
+
+- **Senza account** puoi leggere la chat, scrivere come ospite (`guest_` più 8 caratteri), usare il terminale e giocare
+  ai giochi da festa.
+- **Con un account** (MENU → LOGIN / REGISTER; password di almeno 8 caratteri) hai il tuo nome in chat, i messaggi
+  privati, il poker con la classifica e il tema grafico che resta.
+- La **biblioteca** e il **curriculum** si vedono solo se l'admin ti dà il permesso (`/grantbook`, `/grantcv`).
+
+## Chat e messaggi privati
+
+- Scegli la stanza dalle schede in alto. Alcune stanze sono solo per gli annunci (scrive solo l'admin).
+- Scrivi `@nome` per menzionare qualcuno: il messaggio si evidenzia e, se ha la scheda in background, riceve una notifica.
+- Quando il collegamento in tempo reale è attivo, sotto la chat vedi chi è online e chi sta scrivendo.
+- **Messaggi privati (DM):** cerca un utente per nome e scrivigli. Puoi **bloccare** qualcuno: nessuno dei due potrà più
+  scrivere all'altro. Scorrendo verso l'alto i messaggi più vecchi si caricano da soli. L'admin non ha un modo per leggerli.
+
+## Biblioteca
+
+Per chi ha il permesso: libri **EPUB** e **PDF** con copertina, scaffale "Continua a leggere", avanzamento salvato,
+segnalibri, quattro colori di pagina e luminosità. Chi può caricare sceglie più file insieme o li trascina sul riquadro.
+
+## Giochi
+
+Tutti i giochi sono nella pagina **Giochi** (MENU → GIOCHI), in italiano e inglese.
+
+![La pagina dei giochi](img/giochi.png)
+
+- **Chi è la spia?** (3–20 giocatori): tutti conoscono il luogo segreto tranne le spie. Si fanno domande a turno, poi si
+  vota; la spia può provare a indovinare il luogo. Si gioca con un telefono a testa (stanza con un codice di 4 lettere) o
+  con un solo telefono da passare. Nelle impostazioni della stanza: numero di spie, categorie di luoghi, modalità famiglia.
+- **Lupus** (4–20 giocatori): di notte gli assassini scelgono una vittima, di giorno il villaggio vota chi giustiziare.
+  Ruoli della casa (puttana, joker, pescatore, giudice) e ruoli facoltativi (veggente, guardia, strega, cacciatore…).
+- **Non ho mai…** (2 o più): un telefono in mezzo al tavolo, una frase alla volta; chi l'ha fatto perde una vita.
+- **Solitario**: Klondike. Si gioca toccando o trascinando le carte; doppio clic per mandarle sulle pile dei semi (doppio
+  clic su una pila raccoglie tutto quello che può salire). Suggerimento, annulla/ripeti, punteggio, quattro tavoli
+  (Classico, Neon, Legno, Notte). Sul computer ha menu e scorciatoie: Ctrl+Z, Ctrl+Y, H (suggerimento), D (distribuisci),
+  F2 (nuova partita).
+- **Node Breach**: trova la sequenza esadecimale nella griglia in 15 secondi.
+- **ARG Vault**: le chiavi sono nascoste in giro per il sito.
+- **Poker**: per ora è la finestra POKER del desktop.
+
+<img src="img/spia-telefono.png" alt="Chi è la spia? sul telefono" width="300"> <img src="img/solitario.png" alt="Il solitario" width="480">
+
+## Comandi del terminale
+
+Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
+
+| Gruppo | Comandi |
+|---|---|
+| **File (finti, solo nel browser)** | `ls`/`dir`, `cd`, `pwd`, `cat`, `nano`, `mkdir`, `touch`, `echo … > file`, `rm`, `find`, `grep` |
+| **Sistema e rete** | `whoami`/`id`, `uptime`, `history`, `ip` (il tuo IP pubblico), `ping`, `traceroute`, `scan`, `nmap`, `status`, `fetch` |
+| **Aspetto** | `theme <nome>` (cyberpunk, nord, catppuccin, gruvbox, dracula, synthwave, solarized), `rice`, `matrix <colore>`, `cmatrix`, `glitch`, `nuke`, `clear` |
+| **Chat** | `rooms`, `join <stanza>`, `create <id> [nome]`, `whois <utente>` |
+| **Finestre e giochi** | `poker …`, `vault`, `tools`, `hack` |
+| **Varie** | `fortune`/`quote`, `ascii <testo>`, `decrypt`, `sudo` |
+| **Solo admin** | `/ban <utente>`, `/timeout <utente> [minuti]`, `/unban <utente>`, `/grantbook`/`/revokebook <utente>` (biblioteca), `/grantcv`/`/revokecv <utente>` (curriculum), `syslog` (log degli errori) |
+
+---
+
+# Parte 2 — Documentazione tecnica
 
 ## 1. Panoramica
 
 | Parte | Cosa fa |
 |---|---|
-| **Desktop** (`public/index.php`) | Finestre trascinabili: TERMINAL, CHAT, UPLINK, POKER, TOOLS, VAULT, STATUS, WALL, DM, READER. Su telefono: un'app alla volta con una barra di schede in basso. |
-| **Terminale** | Comandi per utenti e admin (`help` per l'elenco), piccolo filesystem, minigiochi, comandi di moderazione. |
-| **Chat** | Stanze pubbliche, private (solo l'admin scrive) e nascoste (solo l'admin legge); menzioni @, chi è online, "sta scrivendo". |
-| **Messaggi privati** | Tra utenti registrati, con blocco; nessuna via di accesso per l'admin nelle API. |
-| **Lettore di libri** | EPUB e PDF, solo per gli account autorizzati: copertine, "continua a leggere", segnalibri, caricamento di più file. |
-| **Giochi** (`pages/giochi.php`) | Chi è la spia?, Lupus, Non ho mai…, Poker, Solitario, Node Breach, ARG Vault. |
-| **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Privacy, Credits. Il Curriculum (`resume.php`) è privato come la biblioteca (`/grantcv`). |
-| **Hub Node** (`server.js`) | Facoltativo: consegna la chat in tempo reale con una sola connessione SSE per browser. |
+| **Desktop** (`public/index.php`) | Finestre trascinabili; su telefono un'app alla volta (`js/mobile.js`, `css/mobile.css`). |
+| **Terminale** | `js/terminal.js`, `js/commands.js`, `js/admin_commands.js`. |
+| **Chat** | Stanze pubbliche, private (solo l'admin scrive) e nascoste (solo l'admin legge). |
+| **Messaggi privati** | `api/dm.php`, `js/dm.js`. Nessuna via di accesso per l'admin nelle API. |
+| **Lettore di libri** | `pages/reader.php`, `js/reader.js` (epub.js e pdf.js da CDN), `api/books.php`. |
+| **Giochi** | Pagine statiche (`pages/spia.html`, `lupus.html`, `nonhomai.html`, `solitario.html`) con motori lato server per le stanze (`api/spia_lib.php`, `api/lupus_lib.php`). |
+| **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Privacy, Credits. Curriculum (`resume.php`) privato. |
+| **Hub Node** (`server.js`) | Facoltativo: chat in tempo reale con una sola connessione SSE per browser. |
 
 ## 2. Architettura
 
@@ -33,11 +127,12 @@ da soli. Gira su un piccolo server di casa (Ubuntu, nginx, PHP-FPM, Node.js).
 - **PHP è la fonte di verità**: salva ogni messaggio, gestisce account, permessi e giochi.
 - **Node** (`server.js`) è opzionale: riceve da PHP i messaggi nuovi/cancellati (`/internal/chat/publish`, solo da
   loopback e con un segreto condiviso) e li spinge ai browser collegati a `/api/chat/stream`. Senza Node la chat usa lo
-  stream PHP (`api/uplink_stream.php`). Node contiene anche un vecchio pannello di controllo (Minecraft, Wake-on-LAN) non
-  esposto in produzione.
-- **Pagine statiche** (`pages/spia.html`, `lupus.html`, `nonhomai.html`, `solitario.html`): girano anche offline nel
-  browser e parlano con il server solo tramite le API dei giochi.
-- `data/` sta **fuori** dalla cartella pubblicata: database, sessioni PHP, libri, copertine, log.
+  stream PHP (`api/uplink_stream.php`). Node contiene anche un vecchio pannello di controllo (Minecraft, Wake-on-LAN) da
+  non esporre.
+- **Pagine statiche dei giochi**: funzionano anche offline nel browser e parlano con il server solo tramite `api/spia.php`.
+- `data/` sta **fuori** dalla cartella pubblicata: database, sessioni PHP, libri, copertine, log, registro visite.
+- **Registro visite**: `includes/head.php` (pagine PHP) e `api/visit.php` (pagine statiche) chiamano `recordVisit()`;
+  una visita è "nuova" dopo 30 minuti di assenza: una riga in `data/visits.log` e una notifica ntfy.
 
 ## 3. Struttura delle cartelle
 
@@ -45,7 +140,7 @@ da soli. Gira su un piccolo server di casa (Ubuntu, nginx, PHP-FPM, Node.js).
 public/            radice del sito (l'unica cartella servita da nginx)
   index.php        il desktop
   pages/           pagine: giochi, lettore, curriculum, privacy, supporta, giochi statici
-  api/             endpoint JSON e librerie condivise (helpers, database, rate limiter, motori dei giochi)
+  api/             endpoint JSON e librerie condivise (helpers, database, rate limiter, motori dei giochi, visite)
   includes/        head.php (intestazioni di sicurezza, versione, registro visite), ads.php
   js/ css/ assets/ script, stili, icone, font self-hosted
 lib/               codice condiviso con i test
@@ -53,7 +148,7 @@ server.js          hub Node / pannello
 tests/             test automatici (node:test)
 tools/backup.sh    backup notturno
 updatesite.sh      aggiornamento del sito sul server
-data/              (non in git) database, sessioni, libri, log
+data/              (non in git) database, sessioni, libri, copertine, log
 ```
 
 ## 4. Database
@@ -75,59 +170,108 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V10 | `accounts.can_view_resume` (curriculum privato) |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
-`runMigrations()` + `EXPECTED_SCHEMA` in `updatesite.sh`. Sul server il database non va aperto con `sqlite3` da un
-utente diverso da quello di PHP: usare una copia.
+`runMigrations()` + `EXPECTED_SCHEMA` in `updatesite.sh`. Sul server il database non va aperto con `sqlite3` da un utente
+diverso da quello di PHP (in WAL crea file `-shm`/`-wal` che poi PHP non può aprire): usare una copia.
 
-## 5. API (public/api)
+## 5. API
 
-Tutte rispondono in JSON. Le richieste che modificano qualcosa richiedono il token CSRF (`X-CSRF-Token`, aggiunto da
-solo da `js/csrf.js`).
+Tutte in `public/api/`, rispondono in JSON (`{"success": true|false, …}`; in caso di errore `"error"` con un messaggio
+generico). Le richieste che modificano qualcosa vogliono l'intestazione `X-CSRF-Token`, che `js/csrf.js` aggiunge da solo
+a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 
-| Endpoint | Chi | Cosa fa |
-|---|---|---|
-| `check_session.php` | tutti | sessione, token CSRF, configurazione dello stream della chat |
-| `login.php`, `logout.php` | tutti | registrazione, accesso, uscita |
-| `uplink_send.php` | utenti | invia un messaggio in chat |
-| `get_feed.php`, `uplink_stream.php` | tutti* | messaggi (storico / stream SSE di riserva) |
-| `rooms.php` | tutti* / admin | elenco stanze; creazione (admin) |
-| `delete_message.php` | admin | cancella un messaggio |
-| `chat_typing.php` | utenti | segnale "sta scrivendo" (solo via hub) |
-| `dm.php` | registrati | messaggi privati, blocco |
-| `books.php` | autorizzati | catalogo, caricamento, lettura/scaricamento, copertine |
-| `progress.php`, `bookmarks.php` | autorizzati | avanzamento e segnalibri |
-| `moderate_user.php`, `moderate_book_access.php` | admin | moderazione; permessi di biblioteca e curriculum (`scope`: `books` / `resume`) |
-| `spia.php` | tutti | stanze di Chi è la spia? e Lupus (token del dispositivo in `X-Spia-Device`) |
-| `poker.php`, `poker_stats.php`, `poker_leaderboard.php` | tutti / utenti | tavolo, statistiche, classifica |
-| `guestbook.php` | tutti | muro dei graffiti |
-| `status.php` | tutti | stato pubblico del server (finestra STATUS) |
-| `command.php` | tutti (con CSRF) | modulo "lascia un messaggio all'admin" (notifica ntfy) |
-| `get_log.php` | admin | log degli errori |
-| `visit.php` | tutti | beacon delle pagine statiche per il registro visite |
+**Chi:** *tutti* = anche gli ospiti; *utenti* = sessione (anche ospite con nome `guest_…`); *registrati* = account vero;
+*autorizzati* = account con il permesso della biblioteca; *admin* = `is_admin`.
+
+### Sessione e account
+
+| Endpoint | Chi | Richiesta | Risposta |
+|---|---|---|---|
+| `check_session.php` | tutti | GET | `logged_in`, `username`, `user_id`, `is_admin`, `csrf_token`, `chat_stream` (`url`, `token` monouso da 60 s) |
+| `login.php` | tutti | POST `{username, password}`; registrazione `{action:"register", username, password}` | `username`, `is_admin`, `theme`, `csrf_token`. Limiti: 10 tentativi/5 min per IP, 5 per utente; 5 registrazioni/ora per IP |
+| `logout.php` | tutti | GET o POST (rifiutato se parte da un altro sito) | redirect a `pages/login.php`, o JSON con `Accept: application/json` |
+| `save_theme.php` | registrati | POST `{theme}` | `theme` |
+| `get_user_profile.php` | tutti | GET `?username=` | `username`, `is_admin`, `created_at`, `bio` |
+| `get_ip.php` | tutti | GET | `ip` |
+
+### Chat
+
+| Endpoint | Chi | Richiesta | Risposta |
+|---|---|---|---|
+| `rooms.php` | tutti / admin | GET: elenco (le nascoste solo all'admin). POST (admin) `{id, name, is_private, is_hidden}` | `rooms` / `room` |
+| `get_feed.php` | tutti* | GET `?room_id=&limit=&before_id=` | `messages`, `has_more`, `latest_id` |
+| `uplink_send.php` | utenti | POST `{room_id, message}` | il messaggio salvato (nelle stanze private scrive solo l'admin) |
+| `uplink_stream.php` | tutti* | GET `?last_id=` (SSE) | flusso di messaggi, riprende dall'ultimo id |
+| `delete_message.php` | admin | POST `{id}` | `id`, `room_id` |
+| `chat_typing.php` | utenti | POST `{room_id}` | segnale "sta scrivendo" (solo via hub, non salvato) |
+| `command.php` | tutti (CSRF) | POST `{message}` (max 500 caratteri, 2 ogni 30 s) | invia una notifica ntfy all'admin |
 
 \* le stanze nascoste sono escluse per chi non è admin.
 
-**TODO:** parametri e risposte di ogni endpoint.
+### Messaggi privati — `dm.php` (registrati)
+
+| Richiesta | Risposta |
+|---|---|
+| GET `?action=conversations` | le mie conversazioni (ultimo messaggio, non letti) |
+| GET `?action=thread&with=ID[&before=ID]` | 50 messaggi con un utente in ordine cronologico, `more` se ce ne sono altri; segna come letti |
+| GET `?action=since&after=ID` | i miei messaggi più nuovi di ID (polling) |
+| GET `?action=users&q=TESTO` | utenti registrati il cui nome inizia con TESTO |
+| GET `?action=blocks` | utenti che ho bloccato |
+| POST `{action:"send", to, body}` · `{action:"block"|"unblock", user_id}` | esito |
+
+### Biblioteca (autorizzati)
+
+| Endpoint | Richiesta | Risposta |
+|---|---|---|
+| `books.php` | GET `?q=` (catalogo; ripara al massimo 3 copertine per richiesta) | `books`, `can_read`, `can_upload` |
+| `books.php` | GET `?action=stream&id=` / `?action=download&id=` / `?action=cover&id=` | il file (le copertine solo jpg/png/gif/webp) |
+| `books.php` | POST `?action=upload`, multipart `book_file` (chi ha `can_upload_books`) | `.epub` o `.pdf` con controllo del contenuto vero; limite 64 MB (nginx) |
+| `progress.php` | GET `?book_id=` o `?all=1`; POST `{book_id, cfi_or_page, percentage}` | avanzamento di lettura |
+| `bookmarks.php` | GET `?book_id=`; POST `{action:"add", book_id, location, label, percentage}` · `{action:"delete", id}` | segnalibri (max 100 per libro) |
+| `moderate_book_access.php` | admin: POST `{action:"grant"|"revoke", username, scope:"books"|"resume"}` | permesso di biblioteca o curriculum |
+
+### Giochi
+
+| Endpoint | Chi | Richiesta |
+|---|---|---|
+| `spia.php` | tutti (telefono identificato dall'intestazione `X-Spia-Device`) | GET `?action=state` (vista di questo telefono, ogni ~2 s); POST `{action}`: `create`, `join`, `leave`, `kick`, `host`, `take`, `player_add`, `player_remove`, `settings`, `start`, `seen`, `vote_call`, `vote`, `vote_close`, `guess`, `end`, `reset_scores` (e le azioni di Lupus per le stanze `game:"lupus"`) |
+| `poker.php` | utenti | GET `?action=state`; POST `?action=` `create_room`, `join`, `leave`, `deal`, `play` |
+| `poker_leaderboard.php` | tutti | classifica (`top`, e `me` se hai fatto l'accesso) |
+| `guestbook.php` | tutti / admin | GET: ultime frasi; POST `{action:"sign", message}` · admin `{action:"delete", id}` |
+| `visit.php` | tutti | GET `?p=/pages/…` → 204 (registro visite delle pagine statiche) |
+
+### Amministrazione e stato
+
+| Endpoint | Chi | Cosa fa |
+|---|---|---|
+| `moderate_user.php` | admin | POST `{action:"ban"|"timeout"|"unban", username, minutes}` |
+| `get_log.php` | admin | log degli errori (contiene IP) |
+| `status.php` | tutti | uptime, carico, memoria, servizi di `STATUS_CHECKS` (solo i nomi) |
+| `telemetry.php` | tutti | percentuali di CPU e RAM |
+
+Le librerie (`helpers.php`, `database.php`, `rate_limiter.php`, `epub_meta.php`, `spia_lib.php`, `lupus_lib.php`,
+`visits.php`, `debug_logger.php`) non sono endpoint: se richieste direttamente definiscono solo funzioni.
 
 ## 6. Sicurezza
 
-- **Sessioni:** `initSession()` apre e chiude subito (sola lettura); chi scrive in sessione usa `initSession(true)` e
-  `session_write_close()`.
-- **CSRF:** ogni endpoint che modifica chiama `requireCsrf()`; quelli admin anche `requireAdmin()`.
+- **Sessioni:** cookie `HttpOnly`, `Secure` (in HTTPS), `SameSite=Lax`, modalità strict (ID inventati rifiutati), ID
+  rigenerato al login. `initSession()` apre e chiude subito (sola lettura); chi scrive in sessione usa `initSession(true)`
+  e `session_write_close()`.
+- **CSRF:** ogni endpoint che modifica chiama `requireCsrf()`; quelli admin anche `requireAdmin()`. Il logout (un link)
+  rifiuta le richieste che partono da altri siti (`Sec-Fetch-Site`).
 - **Errori:** mai il messaggio dell'eccezione al browser: `failInternal()` scrive nel log e risponde in modo generico.
 - **IP del client:** solo con `getClientIp()`; `X-Forwarded-For` vale solo dai proxy in `TRUSTED_PROXIES`.
 - **XSS:** il testo degli utenti entra con `textContent`, mai `innerHTML` o `onclick` inline.
-- **Content-Security-Policy** (`sendPageSecurityHeaders()`): `CSP_ENFORCE=true` per applicarla; le pagine con
-  annunci (`VB_ADS_PAGE`) aprono solo i domini di Google necessari.
-- **Limiti di richieste** salvati in SQLite (`checkRateLimit()`).
+- **Content-Security-Policy** (`sendPageSecurityHeaders()`): `CSP_ENFORCE=true` per applicarla; le pagine con annunci
+  (`VB_ADS_PAGE`) aprono solo i domini di Google necessari, e solo con `ADSENSE_CLIENT` impostato.
+- **Limiti di richieste** in SQLite (`checkRateLimit()`): login, registrazione, chat, messaggi privati, guestbook,
+  modulo per l'admin, beacon delle visite, stanze dei giochi.
 - **Hub della chat:** token firmato (HMAC), valido 60 secondi e per **una sola** connessione.
-- **Biblioteca e curriculum privati:** pagina, file e copertine solo per gli account con il permesso (`/grantbook`,
-  `/grantcv`); `robots.txt` tiene fuori i motori di ricerca.
-- **Logout e modulo per l'admin** rifiutano le richieste che partono da altri siti; le sessioni accettano solo ID creati
-  dal server (`session.use_strict_mode`).
+- **File caricati:** estensione e contenuto vero controllati, nome ripulito, salvati fuori dalla cartella pubblica.
+- **Biblioteca e curriculum privati:** solo per gli account con il permesso; `robots.txt` tiene fuori i motori di ricerca.
 
 ## 7. Configurazione (`.env`)
 
-Si parte da `.env.example`. Le voci principali:
+Si parte da `.env.example`, che spiega ogni voce.
 
 | Variabile | A cosa serve |
 |---|---|
@@ -136,10 +280,11 @@ Si parte da `.env.example`. Le voci principali:
 | `NTFY_TOPIC_URL` | notifiche del modulo "messaggio all'admin" |
 | `CHAT_HUB_SECRET`, `CHAT_STREAM_URL`, `CHAT_HUB_INTERNAL_URL`, `CHAT_STREAM_CORS_ORIGIN`, `PORT`, `BIND_HOST` | hub della chat |
 | `CSP_ENFORCE` | applica la Content-Security-Policy |
-| `STATUS_CHECKS` | servizi mostrati nella finestra STATUS |
+| `STATUS_CHECKS` | servizi mostrati nella finestra STATUS (max 8) |
 | `ADSENSE_CLIENT`, `ADSENSE_SLOT_GAMES`, `ADSENSE_SLOT_SUPPORT` | annunci (spenti se vuoti), vedi `docs/ADSENSE.md` |
 | `CONTACT_EMAIL` | contatto nella pagina privacy |
 | `VISIT_NTFY_URL`, `VISIT_NOTIFY`, `VISIT_GAP_MIN`, `VISIT_NOTIFY_MAX_PER_HOUR` | registro visite e notifiche |
+| `MC_DIR`, `WAKE_SCRIPT` | vecchio pannello Node (Minecraft, Wake-on-LAN) |
 
 ## 8. Sviluppo in locale
 
@@ -148,32 +293,39 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 83 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi…
+npm test                          # 84 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi…
 ```
 
-Prima di ogni commit: `php -l` sui file PHP toccati e `node --check` sui JS. Usare sempre una **copia** del database.
+I test (`tests/*.test.js`) avviano ogni volta una **copia** del sito in una cartella temporanea con un database vuoto
+(`tests/helpers.js`: `startSite()`, `Client`, `makeAdmin()`). Prima di ogni commit: `npm test`, `php -l` sui file PHP
+toccati e `node --check` sui JS. Mai lavorare sul database vero.
+
+**Requisiti:** PHP 8.x con `pdo_sqlite`, `curl`, `zip` e `xml` (le ultime due per copertine e autori degli EPUB),
+`mbstring` consigliata (senza, il sito usa le sue funzioni `textLength()`/`textCut()`); Node.js 22 (usato sul server).
 
 ## 9. Pubblicazione sul server
 
-`sudo bash updatesite.sh` sul server: scarica `main`, conserva eventuali modifiche locali, aggiorna le dipendenze Node se
-cambiate, scrive la versione (`version.php`, usata per i `?v=` dei file), esegue le migrazioni, riavvia l'hub e controlla
-che lo schema sia quello atteso. Serve un `.env` già presente. Dettagli e configurazione nginx: `docs/DEPLOY.md`;
-backup: `docs/BACKUP.md`.
-
-Estensioni PHP necessarie: `pdo_sqlite`, `curl`, `zip` e `xml` (per le copertine EPUB), `mbstring` consigliata.
-**TODO:** elenco completo verificato.
+`sudo bash updatesite.sh` sul server: scarica `main`, mette da parte eventuali modifiche locali, aggiorna le dipendenze
+Node se cambiate, sistema i permessi di `data/`, esegue le migrazioni come utente di PHP, riavvia l'hub se gira sotto PM2,
+scrive la versione (`version.php`, usata per i `?v=` dei file) e controlla che lo schema sia quello atteso. Serve un `.env`
+già presente. Dettagli e configurazione nginx: `docs/DEPLOY.md`; backup: `docs/BACKUP.md`; annunci: `docs/ADSENSE.md`.
 
 ## 10. Come si fa…
 
 - **Aggiungere un gioco alla pagina Giochi:** una voce nell'elenco `$GAMES` in cima a `public/pages/giochi.php`
-  (gruppo, colori, link, icona, testi IT/EN) e lo stile della "scatola" in `public/css/giochi.css`.
-- **Aggiungere una tabella o una colonna:** nuova `migrateVN()` (vedi sezione 4).
+  (gruppo, colori, link, icona, testi IT/EN) e lo stile della "scatola" in `public/css/giochi.css`. Per le pagine statiche
+  nuove: `<script src="../js/visit.js?v=1" defer></script>` per il registro visite.
+- **Aggiungere una tabella o una colonna:** nuova `migrateVN()` (sezione 4).
 - **Aggiungere un endpoint che modifica dati:** `requireCsrf()` (e `requireAdmin()` se serve), `failInternal()` per gli
   errori, `checkRateLimit()` se può essere abusato, e un test in `tests/`.
+- **Aggiungere un permesso per account** (come biblioteca e curriculum): colonna in una migrazione, controllo nella pagina,
+  uno `scope` in `moderate_book_access.php`, comandi in `js/admin_commands.js` e `js/commands.js`.
 - **Aggiungere testi tradotti ai giochi:** chiavi in `public/js/spia/i18n.js` per tutte e 5 le lingue (it, en, es, fr, de).
+- **Cambiare un file CSS/JS di una pagina statica:** alzare a mano il suo `?v=` (le pagine PHP lo fanno da sole).
 
-## 11. Limiti noti e lavori aperti
+## 11. Limiti noti
 
 - Il pannello Node (Minecraft, Wake-on-LAN) è vecchio e non va esposto.
 - La pagina Doom non funziona.
-- **TODO:** schermate, guida per gli utenti (come si gioca, come si usa il terminale), elenco dei comandi del terminale.
+- Il poker è ancora una finestra del desktop: va rifatto come pagina della sezione Giochi.
+- Le cancellazioni dei messaggi arrivano in tempo reale solo con l'hub Node attivo.
