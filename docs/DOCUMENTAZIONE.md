@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-12 (schema del database **v13**, 153 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-12 (schema del database **v13**, 152 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -388,7 +388,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 153 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # 152 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 
