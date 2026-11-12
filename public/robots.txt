@@ -9,3 +9,4 @@ Disallow: /pages/resume.php
 
 # Public pages (keep this domain in step with SITE_URL in .env)
 Sitemap: https://vector-box.duckdns.org/sitemap.php
+Disallow: /pages/stats.php

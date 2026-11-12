@@ -54,6 +54,10 @@ if ($userId && !$isAdmin) {
                     <a href="pages/reader.php" class="menu-item" style="border-color: #00f3ff; color: #00f3ff;">// BOOK READER</a>
                 <?php endif; ?>
                 
+                <?php if ($isAdmin): ?>
+                    <a href="pages/stats.php" class="menu-item">// STATISTICHE</a>
+                <?php endif; ?>
+
                 <?php if ($isLoggedIn): ?>
                     <a href="pages/account.php" class="menu-item">// ACCOUNT_SETTINGS</a>
                     <a href="api/logout.php" class="menu-item" style="border-color: #ff3333; color: #ff3333;">// LOGOUT</a>

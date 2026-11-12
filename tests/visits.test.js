@@ -92,3 +92,26 @@ test.describe('visits', () => {
         assert.equal(logLines().at(-1).split('\t')[3], '/?');
     });
 });
+
+test.describe('visit statistics page', () => {
+    test('admin only; counts come from visits.log', async () => {
+        const fs = require('fs'), path = require('path');
+        const site = await startSite();
+        try {
+            await fetch(`${site.base}/index.php`);
+            const day = new Date().toISOString().slice(0, 10);
+            const line = (ip, user, page, back) => [`${day} 10:00:00`, ip, user, page, 'Firefox, Android', back ? 'returning' : 'first', '-'].join('\t');
+            fs.writeFileSync(path.join(site.root, 'data/visits.log'), [line('1.1.1.1', '-', '/pages/giochi.php', false),
+                line('1.1.1.2', 'mario', '/pages/spia.html', true), line('1.1.1.3', '-', '/pages/giochi.php', false)].join('\n') + '\n');
+            assert.equal((await fetch(`${site.base}/pages/stats.php`)).status, 403);
+            const user = new Client(site); await user.register('st_user');
+            assert.equal((await user.get('/pages/stats.php')).status, 403);
+            const admin = await makeAdmin(site, 'st_admin');
+            const html = (await admin.get('/pages/stats.php?days=7')).text;
+            assert.match(html, /<span class="big">3<\/span><span>visite oggi<\/span>/);
+            assert.match(html, /\/pages\/giochi\.php<\/span>.*?<span class="value">2 /s);
+            assert.match(html, />mario</);
+            assert.match((await admin.get('/index.php')).text, /\/\/ STATISTICHE/);
+        } finally { await site.stop(); }
+    });
+});
