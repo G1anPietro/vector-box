@@ -20,7 +20,7 @@ PROJECT_DIR="${PROJECT_DIR:-/var/www/vector-box}"
 PM2_APP="${PM2_APP:-vector-box-hub}"
 PM2_USER="${PM2_USER:-${SUDO_USER:-}}"
 WEB_USER="${WEB_USER:-www-data}"
-EXPECTED_SCHEMA=12
+EXPECTED_SCHEMA=13
 
 say()  { echo ">> $*"; }
 warn() { echo "!! $*" >&2; }

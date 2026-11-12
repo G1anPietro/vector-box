@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 12;
+const DB_SCHEMA_VERSION = 13;
 
 /**
  * Session bootstrap.
@@ -478,6 +478,40 @@ function migrateV12(PDO $db): void {
     )");
 }
 
+function migrateV13(PDO $db): void {
+    // Notifications: the in-site list (bell), Web Push subscriptions of each browser/phone,
+    // and which test reminders were already sent (2 days before, 1 day before, the evening before)
+    $db->exec("CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        class_id INTEGER,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        read_at INTEGER
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, id)');
+    $db->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        last_ok_at INTEGER,
+        failures INTEGER NOT NULL DEFAULT 0
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id)');
+    $db->exec("CREATE TABLE IF NOT EXISTS class_event_reminders (
+        event_id INTEGER NOT NULL,
+        slot TEXT NOT NULL,
+        sent_at INTEGER NOT NULL,
+        PRIMARY KEY (event_id, slot)
+    )");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -518,6 +552,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 12) {
             migrateV12($db);
+        }
+        if ($current < 13) {
+            migrateV13($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

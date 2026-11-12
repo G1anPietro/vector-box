@@ -1,0 +1,97 @@
+<?php
+// public/api/notifiche.php
+// The user's notifications (bell) and Web Push subscriptions. Logged-in users only.
+//
+// GET  ?action=list           -> latest notifications + unread count
+// GET  ?action=vapid          -> the public key the browser needs to subscribe
+// POST {action:"read", ids:[...]} | {action:"read_all"}
+//      {action:"subscribe", endpoint, keys:{p256dh, auth}} | {action:"unsubscribe", endpoint}
+//      {action:"test"}         -> sends a test push to my devices
+require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/rate_limiter.php';
+require_once __DIR__ . '/notifiche_lib.php';
+
+initSession();
+requireLogin();
+header('Cache-Control: no-store');
+$me = (int)$_SESSION['user_id'];
+
+function ntFail(string $code, string $msg, int $status = 400): void {
+    jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);
+}
+
+try {
+    $db = getDbConnection();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $action = (string)($_GET['action'] ?? '');
+        if ($action === 'list') {
+            $st = $db->prepare('SELECT id, class_id, kind, title, body, url, created_at, read_at FROM notifications WHERE user_id = :u ORDER BY id DESC LIMIT 30');
+            $st->execute([':u' => $me]);
+            $unread = $db->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :u AND read_at IS NULL');
+            $unread->execute([':u' => $me]);
+            $subs = $db->prepare('SELECT COUNT(*) FROM push_subscriptions WHERE user_id = :u');
+            $subs->execute([':u' => $me]);
+            jsonResponse(['success' => true, 'unread' => (int)$unread->fetchColumn(), 'devices' => (int)$subs->fetchColumn(),
+                'notifications' => array_map(fn($n) => [
+                    'id' => (int)$n['id'], 'class_id' => $n['class_id'] !== null ? (int)$n['class_id'] : null, 'kind' => $n['kind'],
+                    'title' => $n['title'], 'body' => $n['body'], 'url' => $n['url'],
+                    'created_at' => (int)$n['created_at'], 'read' => $n['read_at'] !== null,
+                ], $st->fetchAll())]);
+        }
+        if ($action === 'vapid') {
+            jsonResponse(['success' => true, 'public_key' => vapidKeys()['public']]);
+        }
+        ntFail('unknown_action', 'Unknown action');
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') ntFail('method', 'Method not allowed', 405);
+    requireCsrf();
+    $in = readJsonBody();
+    $action = (string)($in['action'] ?? '');
+
+    if ($action === 'read' || $action === 'read_all') {
+        if ($action === 'read_all') {
+            $db->prepare('UPDATE notifications SET read_at = :t WHERE user_id = :u AND read_at IS NULL')->execute([':t' => time(), ':u' => $me]);
+        } else {
+            $upd = $db->prepare('UPDATE notifications SET read_at = :t WHERE id = :id AND user_id = :u AND read_at IS NULL');
+            foreach (array_slice((array)($in['ids'] ?? []), 0, 100) as $id) $upd->execute([':t' => time(), ':id' => (int)$id, ':u' => $me]);
+        }
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'subscribe') {
+        if (!checkRateLimit('push_subscribe', 20, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many attempts', 429);
+        $endpoint = (string)($in['endpoint'] ?? '');
+        $p256dh = (string)($in['keys']['p256dh'] ?? '');
+        $auth = (string)($in['keys']['auth'] ?? '');
+        if (!webpushEndpointAllowed($endpoint)) ntFail('bad_endpoint', 'Unknown push service');
+        if (strlen(b64uDecode($p256dh)) !== 65 || strlen(b64uDecode($auth)) !== 16) ntFail('bad_keys', 'Invalid subscription keys');
+        // One device = one endpoint; it moves to whoever is logged in on it now
+        $db->prepare('INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at) VALUES (:u, :e, :p, :a, :t)
+                      ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, failures = 0')
+           ->execute([':u' => $me, ':e' => $endpoint, ':p' => $p256dh, ':a' => $auth, ':t' => time()]);
+        $st = $db->prepare('SELECT COUNT(*) FROM push_subscriptions WHERE user_id = :u');
+        $st->execute([':u' => $me]);
+        if ((int)$st->fetchColumn() > 10) {   // keep the 10 newest devices
+            $db->prepare('DELETE FROM push_subscriptions WHERE user_id = :u AND id NOT IN (SELECT id FROM push_subscriptions WHERE user_id = :u ORDER BY id DESC LIMIT 10)')
+               ->execute([':u' => $me]);
+        }
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'unsubscribe') {
+        $db->prepare('DELETE FROM push_subscriptions WHERE endpoint = :e AND user_id = :u')->execute([':e' => (string)($in['endpoint'] ?? ''), ':u' => $me]);
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'test') {
+        if (!checkRateLimit('push_test', 5, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many tests, try later', 429);
+        $n = notifyUsers($db, [$me], null, 'prova', 'Notifiche attive ✓', 'Così ti arriveranno i promemoria delle verifiche.', '/pages/appunti.php');
+        jsonResponse(['success' => true, 'delivered' => $n]);
+    }
+
+    ntFail('unknown_action', 'Unknown action');
+} catch (Throwable $e) {
+    failInternal('NOTIFY', $e);
+}

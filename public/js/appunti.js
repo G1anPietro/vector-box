@@ -819,9 +819,140 @@
         } catch (e) { status(e.message, 'err'); }
     });
 
+
+    /* ---------- notifications: bell and push ---------- */
+
+    const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    let notifs = [];
+    let devices = 0;
+
+    function b64uToBytes(s) {
+        const raw = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
+        return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    }
+
+    async function loadNotifs() {
+        try {
+            const r = await getJson('../api/notifiche.php?action=list');
+            notifs = r.notifications;
+            devices = r.devices;
+            const badge = $('#bell-count');
+            badge.hidden = r.unread === 0;
+            badge.textContent = r.unread > 9 ? '9+' : String(r.unread);
+            if (!$('#notif-panel').hidden) renderNotifs();
+        } catch (e) { /* offline: try later */ }
+    }
+
+    function renderNotifs() {
+        const when = (t) => new Date(t * 1000).toLocaleString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        $('#notif-list').replaceChildren(...(notifs.length ? notifs.map((n) => el('li', { class: n.read ? '' : 'unread', onclick: () => openNotif(n) },
+            el('b', { text: n.title }), el('br'), n.body ? el('span', { text: n.body }) : null, el('br'), el('span', { class: 'when', text: when(n.created_at) })))
+            : [el('li', { class: 'muted', text: 'Nessuna notifica. Qui arrivano i promemoria delle verifiche (2 giorni prima, il giorno prima e la sera prima).' })]));
+        renderPushBox();
+    }
+
+    function openNotif(n) {
+        $('#notif-panel').hidden = true;
+        const u = new URL(n.url || '/pages/appunti.php', location.origin);
+        if (u.origin !== location.origin) return;
+        if (u.pathname === location.pathname) applyParams(u.searchParams);
+        else location.href = u.href;
+    }
+
+    async function renderPushBox() {
+        const box = $('#push-box');
+        if (!pushSupported) {
+            box.replaceChildren(el('span', { text: isIos && !isStandalone
+                ? 'Per ricevere i promemoria sull\'iPhone: tocca Condividi → "Aggiungi alla schermata Home", poi apri gli Appunti da quell\'icona e attiva qui le notifiche.'
+                : 'Questo browser non supporta le notifiche push: i promemoria li trovi comunque qui, nella campanella.' }));
+            return;
+        }
+        let sub = null;
+        try { const reg = await navigator.serviceWorker.getRegistration('./'); sub = reg && await reg.pushManager.getSubscription(); } catch (e) { /* none */ }
+        if (Notification.permission === 'denied') {
+            box.replaceChildren(el('span', { text: 'Hai bloccato le notifiche per questo sito: riattivale dalle impostazioni del browser (lucchetto accanto all\'indirizzo).' }));
+            return;
+        }
+        box.replaceChildren(sub
+            ? el('div', {}, el('span', { text: `Notifiche attive su questo dispositivo${devices > 1 ? ` (e su altri ${devices - 1})` : ''}.` }),
+                el('div', { class: 'row' }, el('button', { class: 'ghost mini', text: 'Manda una prova', onclick: testPush }),
+                    el('button', { class: 'ghost mini', text: 'Disattiva qui', onclick: disablePush })))
+            : el('div', {}, el('span', { text: 'Ricevi i promemoria delle verifiche anche a sito chiuso.' }),
+                el('div', { class: 'row' }, el('button', { class: 'mini', text: 'Attiva le notifiche su questo dispositivo', onclick: enablePush }))));
+    }
+
+    async function enablePush() {
+        try {
+            if (await Notification.requestPermission() !== 'granted') { status('Senza il permesso del browser le notifiche non possono arrivare.', 'err'); renderPushBox(); return; }
+            const reg = await navigator.serviceWorker.register('appunti-sw.js', { scope: './' });
+            await navigator.serviceWorker.ready;
+            const { public_key: key } = await getJson('../api/notifiche.php?action=vapid');
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(key) });
+            const j = sub.toJSON();
+            await post('../api/notifiche.php', { action: 'subscribe', endpoint: j.endpoint, keys: j.keys });
+            status('Notifiche attivate.', 'ok');
+            await loadNotifs();
+            renderPushBox();
+        } catch (e) { status('Non sono riuscito ad attivare le notifiche: ' + e.message, 'err'); }
+    }
+
+    async function disablePush() {
+        try {
+            const reg = await navigator.serviceWorker.getRegistration('./');
+            const sub = reg && await reg.pushManager.getSubscription();
+            if (sub) {
+                await post('../api/notifiche.php', { action: 'unsubscribe', endpoint: sub.endpoint });
+                await sub.unsubscribe();
+            }
+            status('Notifiche disattivate su questo dispositivo.', 'ok');
+            await loadNotifs();
+            renderPushBox();
+        } catch (e) { status(e.message, 'err'); }
+    }
+
+    async function testPush() {
+        try {
+            const r = await post('../api/notifiche.php', { action: 'test' });
+            status(r.delivered ? 'Prova inviata: dovrebbe arrivare tra pochi secondi.' : 'La prova non è partita: riattiva le notifiche.', r.delivered ? 'ok' : 'err');
+            loadNotifs();
+        } catch (e) { status(e.message, 'err'); }
+    }
+
+    $('#bell').addEventListener('click', async () => {
+        const panel = $('#notif-panel');
+        panel.hidden = !panel.hidden;
+        $('#bell').setAttribute('aria-expanded', String(!panel.hidden));
+        if (panel.hidden) return;
+        renderNotifs();
+        if (notifs.some((n) => !n.read)) {
+            try { await post('../api/notifiche.php', { action: 'read_all' }); } catch (e) { /* ignore */ }
+            $('#bell-count').hidden = true;
+        }
+    });
+    $('#notif-close').addEventListener('click', () => { $('#notif-panel').hidden = true; loadNotifs(); });
+    setInterval(() => { if (document.visibilityState === 'visible') loadNotifs(); }, 60000);
+
+    /** ?class=ID&tab=study (links from notifications) */
+    async function applyParams(params) {
+        const cid = Number(params.get('class'));
+        const tab = params.get('tab');
+        if (cid && classes.some((c) => c.id === cid) && (!current || current.id !== cid)) {
+            $('#class-select').value = String(cid);
+            await openClass(cid);
+        }
+        if (tab && ['material', 'study', 'calendar', 'class'].includes(tab) && current) showTab(tab);
+    }
+
     /* ---------- start ---------- */
 
     $$('#tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
     $('#class-select').addEventListener('change', (ev) => { $('#upload-form').dataset.classId = ''; openClass(Number(ev.target.value)).catch((e) => status(e.message, 'err')); });
-    loadMine().catch((e) => status(e.message, 'err'));
+    const startParams = new URLSearchParams(location.search);
+    loadMine(Number(startParams.get('class')) || null)
+        .then(() => applyParams(startParams))
+        .catch((e) => status(e.message, 'err'));
+    loadNotifs();
 })();

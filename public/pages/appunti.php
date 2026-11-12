@@ -29,13 +29,24 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
     <meta name="robots" content="noindex">
     <title>Appunti di classe — vector-box</title>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
+    <link rel="manifest" href="../assets/appunti/manifest.json?v=1">
+    <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../assets/appunti/apple-touch-icon.png?v=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Appunti">
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
     <header class="top">
         <a class="home" href="../index.php">vector-box</a>
-        <span class="who"><?= $e($username) ?></span>
+        <span class="top-right">
+            <span class="who"><?= $e($username) ?></span>
+            <button id="bell" class="bell" type="button" aria-label="Notifiche" aria-expanded="false">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg>
+                <span id="bell-count" class="bell-count" hidden></span>
+            </button>
+        </span>
     </header>
 
     <main class="wrap">
@@ -47,6 +58,15 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
             </label>
         </div>
         <p id="status" class="status" role="status" aria-live="polite"></p>
+
+        <section id="notif-panel" class="card notif-panel" hidden>
+            <div class="notif-head">
+                <h2>Notifiche</h2>
+                <button id="notif-close" class="ghost mini" type="button">Chiudi</button>
+            </div>
+            <div id="push-box" class="push-box"></div>
+            <ul id="notif-list" class="plain notif-list"></ul>
+        </section>
 
         <!-- No class yet: join with a code or ask for a new class -->
         <section id="welcome" class="card" hidden>

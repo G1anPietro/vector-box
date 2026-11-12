@@ -1,12 +1,20 @@
 <?php
 // bin/appunti-ai.php — the class-notes AI worker. Run it every 5 minutes (systemd timer or cron) as the web user:
 //   sudo -u www-data php /var/www/vector-box/bin/appunti-ai.php
-// It transcribes new photos/PDFs and writes the lesson documents of the classes whose time has come.
+// It sends the test reminders (2 days, 1 day and the evening before), transcribes new photos/PDFs and writes the
+// study documents of the classes whose time has come.
 // Options: --models  lists the models the key can use (to pick GEMINI_MODEL_FAST / GEMINI_MODEL_SMART).
+//          --now=UNIX  pretend it is that moment (tests of the reminder times).
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 
 require_once __DIR__ . '/../public/api/database.php';
 require_once __DIR__ . '/../public/api/appunti_ai.php';
+require_once __DIR__ . '/../public/api/notifiche_lib.php';
+
+$now = time();
+foreach ($argv as $arg) {
+    if (preg_match('/^--now=(\d+)$/', $arg, $m)) $now = (int)$m[1];
+}
 
 if (in_array('--models', $argv, true)) {
     $key = (string)envValue('GEMINI_API_KEY', '');
@@ -22,14 +30,17 @@ if (in_array('--models', $argv, true)) {
     exit(isset($json['models']) ? 0 : 1);
 }
 
-if (!geminiConfigured()) { echo "GEMINI_API_KEY is not set: nothing to do\n"; exit(0); }
-
 // One worker at a time: a long run must not overlap the next timer tick
 $lock = fopen(dirname(__DIR__) . '/data/appunti-ai.lock', 'c');
 if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) { echo "another run is in progress\n"; exit(0); }
 
 try {
-    $stats = aiRun(getDbConnection(), time());
+    $db = getDbConnection();
+    // Test reminders first: they need no AI and must not wait behind a long AI run
+    $reminders = remindersRun($db, $now);
+    if ($reminders) aiLog("reminders sent: $reminders");
+    if (!geminiConfigured()) { echo "GEMINI_API_KEY is not set: nothing to do\n"; exit(0); }
+    $stats = aiRun($db, $now);
     if ($stats['transcribed'] || $stats['lessons'] || $stats['tests'] || $stats['classes']) {
         aiLog("transcribed {$stats['transcribed']}, lesson docs {$stats['lessons']}, test docs {$stats['tests']}, classes {$stats['classes']}");
     }
