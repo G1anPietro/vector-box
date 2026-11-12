@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-12 (schema del database **v13**, 150 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-12 (schema del database **v13**, 151 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -188,7 +188,10 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
   trascrive una volta sola le foto e i PDF nuovi (modello veloce), e all'ora di ogni classe scrive i documenti delle
   lezioni e delle verifiche, solo quelli il cui materiale è cambiato (il controllo è un hash del testo inviato all'AI).
   Le richieste a Gemini sono contate per modello e per giorno (`ai_usage`, giorno del Pacifico come Google) e restano al
-  90% dei limiti gratuiti; i file Word/PowerPoint/testo sono letti dal sito senza AI.
+  90% dei limiti gratuiti; i file Word/PowerPoint/testo sono letti dal sito senza AI. Se Google è sovraccarico
+  (503 "high demand") ogni richiesta viene ritentata due volte (`GEMINI_RETRY_WAITS`), poi si passa all'altro modello;
+  se sono occupati tutti, il giro si ferma senza contarlo come guasto e riprende 5 minuti dopo. La lettura dell'orario,
+  che il browser aspetta, si ferma entro 140 secondi (nginx ne concede 180) con il messaggio "Gemini è sovraccarico".
 - **Registro visite**: `includes/head.php` (pagine PHP) e `api/visit.php` (pagine statiche) chiamano `recordVisit()`;
   una visita è "nuova" dopo 30 minuti di assenza: una riga in `data/visits.log` e una notifica ntfy.
 
@@ -371,6 +374,7 @@ Si parte da `.env.example`, che spiega ogni voce.
 | `MC_DIR`, `WAKE_SCRIPT` | vecchio pannello Node (Minecraft, Wake-on-LAN) |
 | `GEMINI_API_KEY`, `GEMINI_AUTH` | chiave di Google AI Studio per gli Appunti; `bearer` per le chiavi nuove `AQ.` se Google rifiuta l'header |
 | `GEMINI_MODEL_FAST`, `GEMINI_FAST_RPM`, `GEMINI_FAST_RPD`, `GEMINI_MODEL_SMART`, `GEMINI_SMART_RPM`, `GEMINI_SMART_RPD` | modelli e limiti gratuiti (al minuto e al giorno); `php bin/appunti-ai.php --models` elenca i modelli della chiave |
+| `GEMINI_RETRY_WAITS` | secondi di attesa prima di ritentare quando Google è sovraccarico (predefinito `2,5`) |
 | `SITE_URL` | indirizzo del sito (anteprime dei link, contatto VAPID delle notifiche push) |
 | `WEBPUSH_EXTRA_HOSTS` | solo per i test: servizi push finti ammessi |
 
@@ -381,7 +385,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 150 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # 151 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 
@@ -430,3 +434,5 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - Appunti: con il livello gratuito di Gemini le richieste al giorno sono poche (circa 450 veloci e 18 del modello migliore):
   con molte classi i documenti possono arrivare il giorno dopo. Non c'è ancora la copia su Google Drive.
 - Le notifiche push su iPhone funzionano solo dall'icona aggiunta alla schermata Home (iOS 16.4 o successivo).
+- Biblioteca: le copertine passano da `api/books.php`, che nginx limita; la pagina le carica 3 alla volta e ritenta quelle
+  rifiutate.

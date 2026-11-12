@@ -22,7 +22,10 @@ const gemini = http.createServer((req, res) => {
         const body = raw ? JSON.parse(raw) : {};
         calls.push({ url: req.url, headers: req.headers, body });
         if (mode === 'quota') { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"quota"}}'); return; }
-        if (mode === 'down') { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"unavailable"}}'); return; }
+        if (mode === 'busy' || (mode === 'busy_smart' && req.url.includes('gemini-3.8-flash:'))) {
+            res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"high demand"}}'); return;
+        }
+        if (mode === 'down') { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"API key not valid"}}'); return; }
         const system = body.systemInstruction ? body.systemInstruction.parts[0].text : '';
         const user = body.contents ? body.contents[0].parts.filter((p) => p.text).map((p) => p.text).join(' ') : '';
         const quiz = { questions: [0, 1, 2, 3].map((i) => ({ topic: 'Napoleone', question: `Domanda ${i}?`, options: ['a', 'b', 'c', 'd'], answer: i, explanation: 'perché sì' })) };
@@ -77,7 +80,7 @@ test.before(async () => {
     envBase = {
         GEMINI_API_KEY: 'AQ.test-key-123',
         GEMINI_BASE_URL: `http://127.0.0.1:${gemini.address().port}/v1beta`,
-        GEMINI_FAST_RPM: 6000, GEMINI_SMART_RPM: 6000,
+        GEMINI_FAST_RPM: 6000, GEMINI_SMART_RPM: 6000, GEMINI_RETRY_WAITS: '0.05,0.05',
     };
     site = await startSite(envBase);
     admin = await makeAdmin(site, 'ai_admin');
@@ -250,6 +253,39 @@ test('the timetable is read from a photo and returned for review, not saved', as
     mode = 'ok';
     assert.equal(bad.status, 422);
     assert.equal(bad.json.code, 'ai_unreadable');
+});
+
+test('Gemini overloaded: retries, then the fast model; a busy Google is not a fault', async () => {
+    const send = async (c) => {
+        const fd = new FormData();
+        fd.set('action', 'read_timetable');
+        fd.set('id', String(classId));
+        fd.append('files[]', new Blob([PNG], { type: 'image/png' }), 'orario.png');
+        const r = await fetch(site.base + '/api/classi.php', { method: 'POST', body: fd, headers: { Cookie: c.cookieHeader(), 'X-CSRF-Token': c.csrf } });
+        return { status: r.status, json: await r.json() };
+    };
+    mode = 'busy_smart';
+    calls.length = 0;
+    const ok = await send(mario);
+    assert.equal(ok.status, 200, JSON.stringify(ok.json));
+    assert.deepEqual(calls.map((c) => /flash-lite/.test(c.url) ? 'fast' : 'smart'), ['smart', 'smart', 'smart', 'fast'],
+        'two retries on the smart model, then the fast one');
+
+    mode = 'busy';
+    const busy = await send(mario);
+    assert.equal(busy.status, 503);
+    assert.equal(busy.json.code, 'ai_busy');
+
+    // the worker: stops quietly and exits 0 (no alert), the file waits for the next run
+    await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-11-10' },
+        [{ name: 'occupato.png', content: PNG, type: 'image/png' }]);
+    calls.length = 0;
+    await worker();
+    assert.equal(calls.length, 3);
+    assert.equal(site.db("SELECT text_status FROM class_item_files WHERE original_name = 'occupato.png'")[0].text_status, 'pending');
+    mode = 'ok';
+    await worker();
+    assert.equal(site.db("SELECT text_status FROM class_item_files WHERE original_name = 'occupato.png'")[0].text_status, 'done');
 });
 
 test('the desktop menu links the notes page', async () => {

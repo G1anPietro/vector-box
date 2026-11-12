@@ -277,12 +277,13 @@ try {
             }
         }
         if (!$files || count($files) > 3) clFail('no_file', 'Upload one to three photos or PDFs');
-        set_time_limit(180);
+        set_time_limit(170);
         try {
             $result = timetableFromImages($db, $class, $files);
         } catch (GeminiError $e) {
             require_once __DIR__ . '/debug_logger.php';
             logSystemError('TIMETABLE_AI', $e->getMessage());
+            if ($e->busy) clFail('ai_busy', 'Gemini is busy right now, try again in a few minutes', 503);
             clFail($e->quota ? 'ai_quota' : 'ai_failed', $e->quota ? 'The AI has no requests left today' : 'The AI could not read the timetable', 502);
         }
         if (is_string($result)) clFail('ai_unreadable', $result, 422);

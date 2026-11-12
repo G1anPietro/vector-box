@@ -199,6 +199,31 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) { /* guests / offline: no progress */ }
     }
 
+    // Covers come from api/books.php, which nginx rate-limits (burst 10): load them a few at a time,
+    // and retry once or twice a cover that was refused, instead of asking for all of them at once.
+    const coverQueue = [];
+    let coversLoading = 0;
+    const COVER_PARALLEL = 3;
+    function pumpCovers() {
+        while (coversLoading < COVER_PARALLEL && coverQueue.length) {
+            const { img, src, tries } = coverQueue.shift();
+            if (!img.isConnected) continue;
+            coversLoading++;
+            const done = (ok) => {
+                coversLoading--;
+                if (!ok && tries < 2) setTimeout(() => { coverQueue.push({ img, src, tries: tries + 1 }); pumpCovers(); }, 1500 * (tries + 1));
+                pumpCovers();
+            };
+            img.addEventListener('load', () => done(true), { once: true });
+            img.addEventListener('error', () => done(false), { once: true });
+            img.src = src + (tries ? (src.includes('?') ? '&' : '?') + 'r=' + tries : '');
+        }
+    }
+    function queueCover(img, src) {
+        coverQueue.push({ img, src, tries: 0 });
+        setTimeout(pumpCovers, 0);   // after the card is in the page
+    }
+
     // One card, built with DOM methods (no innerHTML / inline handlers)
     function buildBookCard(book) {
         const card = document.createElement('div');
@@ -208,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cover.className = 'book-cover';
         if (book.cover_path) {
             const img = document.createElement('img');
-            img.src = book.cover_path;
+            queueCover(img, book.cover_path);
             img.alt = book.title || '';
             img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
             cover.appendChild(img);

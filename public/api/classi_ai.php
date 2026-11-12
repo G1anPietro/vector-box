@@ -6,6 +6,7 @@ require_once __DIR__ . '/classi_lib.php';
 require_once __DIR__ . '/gemini.php';
 
 const TIMETABLE_AI_MAX_BYTES = 15 * 1048576;
+const TIMETABLE_AI_SECONDS = 140;   // nginx gives PHP 180 s on the server
 const TIMETABLE_AI_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
 
 const TIMETABLE_AI_PROMPT = <<<'TXT'
@@ -55,8 +56,9 @@ function timetableFromImages(PDO $db, array $class, array $files): array|string 
     $known = array_column(classSubjects($db, (int)$class['id']), 'name');
     $parts = $files;
     $parts[] = ['text' => 'Materie già presenti nella classe: ' . ($known ? implode(', ', $known) : 'nessuna') . '.'];
-    $tier = geminiLeftToday($db, 'smart') > 0 ? 'smart' : 'fast';
-    $raw = geminiGenerate($db, $tier, TIMETABLE_AI_PROMPT, $parts, ['json' => true, 'max_tokens' => 16384]);
+    // The browser is waiting: finish (retries and fallback included) well before nginx's timeout
+    [$raw] = geminiGenerateAny($db, ['smart', 'fast'], TIMETABLE_AI_PROMPT, $parts,
+        ['json' => true, 'max_tokens' => 16384, 'deadline' => microtime(true) + TIMETABLE_AI_SECONDS]);
 
     $json = json_decode(trim(preg_replace('/^```(?:json)?|```$/m', '', trim($raw)) ?? ''), true);
     if (!is_array($json) || !is_array($json['slots'] ?? null) || !$json['slots']) {

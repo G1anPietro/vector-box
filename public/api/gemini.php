@@ -16,13 +16,15 @@ const GEMINI_DEFAULTS = [
 class GeminiError extends RuntimeException {
     public bool $quota;     // daily/minute quota used up: normal, try again later
     public bool $service;   // Gemini unreachable, key refused, model missing, server error: a real fault
-    public bool $stop;      // either way, stop this run instead of trying the next document
+    public bool $busy;      // Google overloaded ("high demand", 503/504) even after retries: not our fault, try later
+    public bool $stop;      // any of these: stop this run instead of trying the next document
     public static int $serviceFailures = 0;
-    public function __construct(string $message, bool $quota = false, bool $service = false) {
+    public function __construct(string $message, bool $quota = false, bool $service = false, bool $busy = false) {
         parent::__construct($message);
         $this->quota = $quota;
         $this->service = $service;
-        $this->stop = $quota || $service;
+        $this->busy = $busy;
+        $this->stop = $quota || $service || $busy;
         if ($service) self::$serviceFailures++;
     }
 }
@@ -65,8 +67,33 @@ function geminiCount(PDO $db, string $model): void {
 }
 
 /**
+ * Like geminiGenerate(), but when a tier is overloaded or out of quota it moves on to the next one
+ * (e.g. ['smart', 'fast']). Returns [text, model]; throws the last error when every tier failed.
+ */
+function geminiGenerateAny(PDO $db, array $tiers, string $system, array $parts, array $opts = []): array {
+    $last = null;
+    foreach ($tiers as $tier) {
+        if (isset($opts['deadline']) && microtime(true) > $opts['deadline'] - 5) break;
+        try {
+            return [geminiGenerate($db, $tier, $system, $parts, $opts), geminiTier($tier)['model']];
+        } catch (GeminiError $e) {
+            if (!$e->busy && !$e->quota) throw $e;
+            $last = $e;
+        }
+    }
+    throw $last ?? new GeminiError('no time left', false, false, true);
+}
+
+/** Seconds to wait before each retry of a 500/503/504 answer (GEMINI_RETRY_WAITS, default "2,5"). */
+function geminiRetryWaits(): array {
+    return array_map('floatval', array_filter(explode(',', (string)envValue('GEMINI_RETRY_WAITS', '2,5')), 'is_numeric'));
+}
+
+/**
  * One generateContent call. $parts: list of ['text' => ...] or ['mime' => ..., 'data' => raw bytes].
- * Returns the text of the answer. Throws GeminiError (->quota true when the daily/minute quota is used up).
+ * Returns the text of the answer. Throws GeminiError (->quota when the daily/minute quota is used up, ->busy when
+ * Google stays overloaded after the retries). $opts: json, max_tokens, deadline (microtime: give up before it,
+ * for requests a browser is waiting on).
  */
 function geminiGenerate(PDO $db, string $tier, string $system, array $parts, array $opts = []): string {
     static $lastCall = [];
@@ -100,28 +127,48 @@ function geminiGenerate(PDO $db, string $tier, string $system, array $parts, arr
         : 'x-goog-api-key: ' . $key;
 
     $base = rtrim((string)envValue('GEMINI_BASE_URL', GEMINI_DEFAULT_BASE), '/');
-    $ch = curl_init($base . '/models/' . rawurlencode($t['model']) . ':generateContent');
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($body),
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 15,
-        CURLOPT_TIMEOUT => 300,
-    ]);
-    $raw = curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    $err = curl_error($ch);
-    curl_close($ch);
-    geminiCount($db, $t['model']);   // a failed call may still count against Google's quota
+    $payload = json_encode($body);
+    $deadline = $opts['deadline'] ?? null;
+    $waits = geminiRetryWaits();
+    for ($attempt = 0; ; $attempt++) {
+        $timeout = 300;
+        if ($deadline !== null) {
+            $timeout = (int)floor($deadline - microtime(true));
+            if ($timeout < 5) throw new GeminiError('no time left for Gemini', false, false, true);
+        }
+        $ch = curl_init($base . '/models/' . rawurlencode($t['model']) . ':generateContent');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => $timeout,
+        ]);
+        $raw = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $errno = curl_errno($ch);
+        $err = curl_error($ch);
+        curl_close($ch);
+        geminiCount($db, $t['model']);   // a failed call may still count against Google's quota
 
+        // Overloaded or flaky Google: wait a little and try again (only if there is time)
+        $transient = in_array($code, [500, 502, 503, 504], true) || $errno === CURLE_OPERATION_TIMEDOUT;
+        if (!$transient || !isset($waits[$attempt])) break;
+        if ($deadline !== null && microtime(true) + $waits[$attempt] + 10 > $deadline) break;
+        usleep((int)($waits[$attempt] * 1e6));
+    }
+
+    if ($errno === CURLE_OPERATION_TIMEDOUT) throw new GeminiError('Gemini did not answer in time', false, false, true);
     if ($raw === false) throw new GeminiError('network error: ' . $err, false, true);
     $json = json_decode((string)$raw, true);
     if ($code === 429) throw new GeminiError('quota exceeded (429)', true);
     if ($code !== 200 || !is_array($json)) {
         $msg = is_array($json) ? (string)($json['error']['message'] ?? '') : '';
-        // 400 is about this request's content; 401/403 (key), 404 (model name) and 5xx are faults of the setup or of Google
-        throw new GeminiError("HTTP $code " . textCut($msg, 200), false, $code !== 400);
+        // 503/504: Google overloaded (busy, not a fault). 400: this request's content.
+        // 401/403 (key), 404 (model name), 500/502: faults of the setup or of Google.
+        $busy = in_array($code, [503, 504], true);
+        throw new GeminiError("HTTP $code " . textCut($msg, 200), false, !$busy && $code !== 400, $busy);
     }
     $cand = $json['candidates'][0] ?? null;
     $text = '';

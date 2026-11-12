@@ -708,7 +708,7 @@
         files.slice(0, 3).forEach((f) => fd.append('files[]', f, f.name));
         const btn = $('#tt-read');
         btn.disabled = true;
-        status('Leggo l\'orario… può volerci fino a un minuto.');
+        status('Leggo l\'orario… può volerci fino a due minuti.');
         try {
             const r = await post('../api/classi.php', fd);
             renderTimetable(r.periods, r.slots);
@@ -718,6 +718,8 @@
         } catch (e) {
             const msg = { ai_off: 'L\'AI non è attiva sul server.', ai_quota: 'L\'AI ha finito le richieste di oggi: riprova domani o compila a mano.',
                 ai_failed: 'L\'AI non è riuscita a leggere l\'orario: riprova tra poco.', bad_type: 'Usa una foto o un PDF.',
+                ai_busy: 'Gemini è sovraccarico in questo momento (succede, è un problema di Google): riprova tra qualche minuto.',
+                ai_unreadable: null,
                 slow_down: 'Troppi tentativi: riprova tra un\'ora.' };
             status((e.json && msg[e.json.code]) || e.message, 'err');
         } finally {
