@@ -18,7 +18,7 @@ $updated = '2026-11-11';
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#16141c">
     <title>Privacy — vector-box</title>
-    <link rel="stylesheet" href="../css/giochi.css?v=2">
+    <link rel="stylesheet" href="../css/giochi.css?v=3">
 </head>
 <body>
     <header class="top">

@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-12 (schema del database **v10**, 84 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-12 (schema del database **v11**, 101 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -74,6 +74,13 @@ Tutti i giochi sono nella pagina **Giochi** (MENU → GIOCHI), in italiano e ing
 - **Lupus** (4–20 giocatori): di notte gli assassini scelgono una vittima, di giorno il villaggio vota chi giustiziare.
   Ruoli della casa (puttana, joker, pescatore, giudice) e ruoli facoltativi (veggente, guardia, strega, cacciatore…).
 - **Non ho mai…** (2 o più): un telefono in mezzo al tavolo, una frase alla volta; chi l'ha fatto perde una vita.
+- **Cucù** (2–20, un telefono a testa): una carta a testa dal mazzo italiano. Il nuovo mazziere dice a voce le vite di
+  tutti (se ne sbaglia una perde una vita e passa il mazzo); le carte si guardano dopo che il mazziere **bussa due volte**;
+  a turno si tiene o si cambia col vicino, il **Re blocca** lo scambio («Cucù!»), il mazziere per ultimo può cambiare col
+  mazzo; la carta più bassa perde una vita (pari merito: si ripesca). **Le vite non si vedono**, si ricordano a memoria;
+  ogni vita persa o guadagnata compare su tutti i telefoni. Chi crea la stanza è il **capotavola**: conferma chi perde,
+  segnala chi parla con i morti (il vivo perde una vita, il morto ne guadagna una; il mazziere può parlarci). Poteri
+  facoltativi nelle impostazioni (Cavallo che salta, Re pescato dal mazzo) e un "potere dell'admin" dichiarato a tutti.
 - **Solitario**: Klondike. Si gioca toccando o trascinando le carte; doppio clic per mandarle sulle pile dei semi (doppio
   clic su una pila raccoglie tutto quello che può salire). Suggerimento, annulla/ripeti, punteggio, quattro tavoli
   (Classico, Neon, Legno, Notte). Sul computer ha menu e scorciatoie: Ctrl+Z, Ctrl+Y, H (suggerimento), D (distribuisci),
@@ -153,7 +160,7 @@ data/              (non in git) database, sessioni, libri, copertine, log
 
 ## 4. Database
 
-SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **10**): le modifiche sono funzioni
+SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **11**): le modifiche sono funzioni
 `migrateVN()` in `public/api/database.php`, eseguite una sola volta sotto lock.
 
 | Versione | Cosa aggiunge |
@@ -168,6 +175,7 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V8 | messaggi privati (`dm_messages`, `dm_blocks`) |
 | V9 | `visitors` (registro visite); riprova le copertine EPUB mancanti |
 | V10 | `accounts.can_view_resume` (curriculum privato) |
+| V11 | `cucu_games` (stato delle partite di Cucù in JSON) |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
 `runMigrations()` + `EXPECTED_SCHEMA` in `updatesite.sh`. Sul server il database non va aperto con `sqlite3` da un utente
@@ -233,7 +241,7 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 
 | Endpoint | Chi | Richiesta |
 |---|---|---|
-| `spia.php` | tutti (telefono identificato dall'intestazione `X-Spia-Device`) | GET `?action=state` (vista di questo telefono, ogni ~2 s); POST `{action}`: `create`, `join`, `leave`, `kick`, `host`, `take`, `player_add`, `player_remove`, `settings`, `start`, `seen`, `vote_call`, `vote`, `vote_close`, `guess`, `end`, `reset_scores` (e le azioni di Lupus per le stanze `game:"lupus"`) |
+| `spia.php` | tutti (telefono identificato dall'intestazione `X-Spia-Device`) | GET `?action=state` (vista di questo telefono, ogni ~2 s); POST `{action}`: `create`, `join`, `leave`, `kick`, `host`, `take`, `player_add`, `player_remove`, `settings`, `start`, `seen`, `vote_call`, `vote`, `vote_close`, `guess`, `end`, `reset_scores`; le azioni di Lupus per le stanze `game:"lupus"`; per `game:"cucu"`: `recite {ok}`, `knock`, `keep`, `swap`, `deck`, `confirm {player_id}`, `life {player_id, delta}`, `talk {player_id, dead_id}`, `admin_power {player_id}` (motore in `api/cucu_lib.php`) |
 | `poker.php` | utenti | GET `?action=state`; POST `?action=` `create_room`, `join`, `leave`, `deal`, `play` |
 | `poker_leaderboard.php` | tutti | classifica (`top`, e `me` se hai fatto l'accesso) |
 | `guestbook.php` | tutti / admin | GET: ultime frasi; POST `{action:"sign", message}` · admin `{action:"delete", id}` |
@@ -293,7 +301,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 84 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi…
+npm test                          # 101 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi…
 ```
 
 I test (`tests/*.test.js`) avviano ogni volta una **copia** del sito in una cartella temporanea con un database vuoto

@@ -18,7 +18,7 @@ $other = $it ? 'en' : 'it';
     <meta name="theme-color" content="#16141c">
     <title><?= $it ? 'Supporta vector-box' : 'Support vector-box' ?></title>
     <?= socialMeta($it ? 'Supporta vector-box' : 'Support vector-box', $it ? 'Cos’è vector-box, cosa lo tiene acceso e come dargli una mano.' : 'What vector-box is, what keeps it running and how to help.', '/pages/ads.php') ?>
-    <link rel="stylesheet" href="../css/giochi.css?v=2">
+    <link rel="stylesheet" href="../css/giochi.css?v=3">
     <?= adsScriptTag() ?>
 </head>
 <body>

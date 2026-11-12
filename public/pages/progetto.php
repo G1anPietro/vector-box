@@ -11,7 +11,7 @@ require_once __DIR__ . '/../includes/head.php';
     <meta name="theme-color" content="#16141c">
     <title>Il progetto vector-box</title>
     <?= socialMeta('Il progetto vector-box', 'Un sito e un server costruiti da zero da uno studente di informatica: architettura, sicurezza, giochi multigiocatore e i problemi veri risolti lungo la strada.', '/pages/progetto.php', '/assets/og/desktop.jpg') ?>
-    <link rel="stylesheet" href="../css/giochi.css?v=2">
+    <link rel="stylesheet" href="../css/giochi.css?v=3">
     <link rel="stylesheet" href="../css/progetto.css?v=1">
 </head>
 <body>
@@ -49,7 +49,7 @@ require_once __DIR__ . '/../includes/head.php';
             </div>
         </div>
         <p><strong>PHP</strong> è la "fonte di verità": salva ogni messaggio, controlla chi può fare cosa e fa girare i giochi.
-        Il database è <strong>SQLite</strong>, un unico file, con le modifiche alla struttura numerate (oggi siamo alla versione 10)
+        Il database è <strong>SQLite</strong>, un unico file, con le modifiche alla struttura numerate (oggi siamo alla versione 11)
         e applicate da sole a ogni aggiornamento. Per la chat in tempo reale c'è un piccolo server <strong>Node.js</strong>: invece di
         far chiedere a ogni browser "ci sono messaggi nuovi?" ogni pochi secondi, tiene aperta una sola connessione
         (<abbr title="Server-Sent Events">SSE</abbr>) e spinge i messaggi appena arrivano. Se Node si ferma, il sito torna da solo al
@@ -66,7 +66,7 @@ require_once __DIR__ . '/../includes/head.php';
             schede; i giochi si installano come app e il Solitario funziona anche offline.</li>
             <li><strong>Messaggi privati</strong> con blocco degli utenti, e i messaggi vecchi che si caricano da soli scorrendo.</li>
             <li><strong>Biblioteca</strong> con lettore EPUB e PDF, copertine, segnalibri e avanzamento salvato.</li>
-            <li><strong>Test automatici:</strong> 92 test che avviano ogni volta una copia del sito con un database vuoto e controllano
+            <li><strong>Test automatici:</strong> 101 test che avviano ogni volta una copia del sito con un database vuoto e controllano
             account, permessi, chat, giochi, sicurezza. Prima di ogni modifica pubblicata devono passare tutti.</li>
         </ul>
 
@@ -122,9 +122,9 @@ require_once __DIR__ . '/../includes/head.php';
         <div class="numbers">
             <div><b>~27.000</b><span>righe di codice e testo</span></div>
             <div><b>110+</b><span>modifiche registrate (commit)</span></div>
-            <div><b>92</b><span>test automatici</span></div>
+            <div><b>101</b><span>test automatici</span></div>
             <div><b>10</b><span>versioni della struttura del database</span></div>
-            <div><b>7</b><span>giochi</span></div>
+            <div><b>8</b><span>giochi</span></div>
             <div><b>5</b><span>lingue</span></div>
         </div>
 

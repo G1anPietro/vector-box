@@ -103,6 +103,8 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 .box.lupus .name { font-family: "Fraktur", Georgia, serif; font-weight: 700; font-size: 38px; }
 .box.nonhomai { --lid: #1f2b26; --edge: #111916; --ink: #efeee6; }
 .box.nonhomai .name { font-family: "Caveat", "Comic Sans MS", cursive; font-weight: 700; font-size: 40px; color: #f2d16b; }
+.box.cucu { --lid: #3b2216; --edge: #1f110a; --ink: #f4ead2; background: radial-gradient(ellipse at 50% 0%, rgba(255, 220, 160, 0.12), transparent 60%), var(--lid); }
+.box.cucu .name { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: 34px; color: #d8a94a; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }
 .box.poker .name { font-variant: small-caps; letter-spacing: 0.06em; color: #e3b448; font-weight: 800; }
 .box.poker .icon { color: #e3b448; }

@@ -35,6 +35,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono in mezzo al tavolo', 'en' => 'one phone in the middle of the table'],
     ],
     [
+        'group' => 'friends', 'look' => 'cucu', 'href' => 'cucu.html', 'icon' => '../assets/cucu/icon.svg',
+        'name' => ['it' => 'Cucù', 'en' => 'Cucù'],
+        'line' => ['it' => 'Una carta a testa: tieni o cambia col vicino, il Re blocca. Le vite si ricordano a memoria.',
+                   'en' => 'One card each: keep it or swap with your neighbour, the King blocks. Lives are kept in your head.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa', 'en' => 'one phone each'],
+    ],
+    [
         'group' => 'friends', 'look' => 'poker', 'href' => '../index.php', 'icon' => '♠',
         'name' => ['it' => 'Poker', 'en' => 'Poker'],
         'line' => ['it' => 'Texas Hold’em a fiches finte, nella finestra POKER del desktop.',
@@ -101,7 +109,7 @@ function gameBox(array $g, callable $T): void { ?>
         : 'Party games to play with your phone (Who’s the spy?, Lupus, Never have I ever…) and solo games, free in the browser.',
         '/pages/giochi.php') ?>
     <link rel="icon" href="../assets/solitario/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/giochi.css?v=2">
+    <link rel="stylesheet" href="../css/giochi.css?v=3">
     <?= adsScriptTag() ?>
 </head>
 <body class="shelf-page">
