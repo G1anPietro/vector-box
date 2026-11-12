@@ -1,11 +1,26 @@
 # vector-box
 
-Cyberpunk desktop-style personal site: windows, a terminal and a taskbar in the browser, with a chat (rooms and private
-messages), a private book reader, party games for phones (Who's the spy?, Lupus, Never have I ever…) and solo games
-(Solitaire, Node Breach, ARG Vault). PHP + SQLite, with an optional Node.js hub that delivers the chat in real time.
+A cyberpunk desktop in the browser: windows, a terminal and a taskbar, with a chat (rooms and private messages), a private
+book reader, party games for phones and solo games. Self-hosted on a small home server.
+PHP + SQLite, with an optional Node.js hub that delivers the chat in real time.
 
-**Full documentation (Italian): [`docs/DOCUMENTAZIONE.md`](docs/DOCUMENTAZIONE.md)** — architecture, database, API,
-security rules, configuration, deploy.
+![vector-box desktop](docs/img/desktop.png)
+
+**Full documentation (Italian): [`docs/DOCUMENTAZIONE.md`](docs/DOCUMENTAZIONE.md)** — user guide, terminal commands,
+architecture, database, every API endpoint, security rules, configuration, deploy.
+
+## What's inside
+
+| | |
+|---|---|
+| **Desktop** | Draggable windows (terminal, chat, poker, tools, vault, status, guestbook wall, private messages, reader); on phones one app at a time with a tab bar. |
+| **Terminal** | A fake filesystem, network toys, themes, chat commands and admin moderation (`help` lists everything). |
+| **Chat** | Rooms (announcement-only and admin-only ones too), @mentions, who's online, "is typing", real-time through the hub. |
+| **Private messages** | Between registered users, with blocking and older messages loading as you scroll; no admin access path. |
+| **Library** | EPUB and PDF reader for allowed accounts: covers, reading progress, bookmarks, multi-file upload. |
+| **Games** | *Who's the spy?* and *Lupus* (werewolf) with multi-phone rooms, *Never have I ever…*, *Solitaire* (Klondike), *Node Breach*, *ARG Vault*, poker. Five languages for the party games. |
+
+<img src="docs/img/giochi.png" alt="Games page" width="640">
 
 ## Quick start
 
@@ -14,13 +29,17 @@ cp .env.example .env          # fill it in: Node refuses to start without SESSIO
 npm install
 php -S 127.0.0.1:8080 -t public
 npm start                     # optional: the chat hub
-npm test                      # automated tests
+npm test                      # 84 automated tests, each run on a throwaway copy of the site
 ```
+
+Requirements: PHP 8 with `pdo_sqlite`, `curl`, `zip`, `xml` (`mbstring` recommended); Node.js 22.
 
 - Serve **only** `public/`; `data/` (SQLite, sessions, books, logs) lives outside it and is created automatically.
 - Behind a reverse proxy set `TRUSTED_PROXIES` (PHP) and `TRUST_PROXY` (Node).
 - Schema changes: a new `migrateVN()` in `public/api/database.php` plus `DB_SCHEMA_VERSION` (tracked with
-  `PRAGMA user_version`).
+  `PRAGMA user_version`, currently 10).
+- Deploy on the server with `sudo bash updatesite.sh` (see [`docs/DEPLOY.md`](docs/DEPLOY.md)); nightly backups:
+  [`docs/BACKUP.md`](docs/BACKUP.md).
 
 ## Chat delivery
 
@@ -30,7 +49,8 @@ the Node hub (`/internal/chat/publish`, loopback + secret only) and each browser
 retries after 1, 2, 4 and 8 seconds, then falls back to `api/uplink_stream.php` and tries the hub again every minute.
 Both streams resume from the last event id. Proxy only `/api/chat/stream` to Node, never `/internal/`.
 
-## Rooms
+## Security in short
 
-- `is_private = 1`: only admins can post (announcements)
-- `is_hidden = 1`: only admins can read
+CSRF tokens on every state-changing request, strict sessions, a Content-Security-Policy, SQLite-backed rate limits,
+user text always rendered with `textContent`, uploads checked by content and stored outside the web root. Details in
+section 6 of the documentation.
