@@ -396,6 +396,53 @@ function migrateV12(PDO $db): void {
         created_at INTEGER NOT NULL,
         UNIQUE (class_id, valid_from)
     )");
+    // Study material: notes, the teacher's slides, book pages, oral-exam questions, practice tests.
+    // Each item belongs to a subject and a day (the lesson it comes from, or the day it was handed out).
+    $db->exec("CREATE TABLE IF NOT EXISTS class_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        lesson_date TEXT NOT NULL,
+        period INTEGER,
+        title TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL DEFAULT '',
+        author_id INTEGER NOT NULL,
+        source TEXT NOT NULL DEFAULT 'site',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_items_lesson ON class_items(class_id, subject_id, lesson_date)');
+    // Files of an item, stored in data/appunti/<class>/. `text` is the transcription: extracted on upload
+    // for text/Office files, by the AI once for photos and PDFs (text_status 'pending' until then).
+    $db->exec("CREATE TABLE IF NOT EXISTS class_item_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL,
+        class_id INTEGER NOT NULL,
+        stored_name TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        mime TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        text TEXT,
+        text_status TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_item_files_item ON class_item_files(item_id)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_item_files_class ON class_item_files(class_id, text_status)');
+    // Class calendar: written tests, oral exams, other dates
+    $db->exec("CREATE TABLE IF NOT EXISTS class_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        event_date TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '',
+        topics TEXT NOT NULL DEFAULT '',
+        author_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_events_date ON class_events(class_id, event_date)');
 }
 
 /** Runs pending migrations once, under an exclusive lock. */

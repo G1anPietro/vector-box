@@ -99,7 +99,7 @@ function classNewInviteCode(PDO $db): string {
 function classDelete(PDO $db, int $id): void {
     $db->exec('BEGIN IMMEDIATE');
     try {
-        foreach (['class_members', 'class_subjects', 'class_timetables'] as $table) {
+        foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events'] as $table) {
             $db->prepare("DELETE FROM $table WHERE class_id = :id")->execute([':id' => $id]);
         }
         $db->prepare('DELETE FROM school_classes WHERE id = :id')->execute([':id' => $id]);
@@ -107,6 +107,12 @@ function classDelete(PDO $db, int $id): void {
     } catch (Throwable $e) {
         $db->exec('ROLLBACK');
         throw $e;
+    }
+    // Uploaded files live in data/appunti/<id>/
+    $dir = dirname(__DIR__, 2) . '/data/appunti/' . $id;
+    if (is_dir($dir)) {
+        foreach (glob($dir . '/*') ?: [] as $f) @unlink($f);
+        @rmdir($dir);
     }
 }
 
