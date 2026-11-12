@@ -18,6 +18,7 @@ architecture, database, every API endpoint, security rules, configuration, deplo
 | **Chat** | Rooms (announcement-only and admin-only ones too), @mentions, who's online, "is typing", real-time through the hub. |
 | **Private messages** | Between registered users, with blocking and older messages loading as you scroll; no admin access path. |
 | **Library** | EPUB and PDF reader for allowed accounts: covers, reading progress, bookmarks, multi-file upload. |
+| **Class notes** | Shared notes per school class (admin-approved classes, invite codes, per-day timetable read from a photo), a test calendar with reminders (in-site bell and Web Push), and study documents written by Google Gemini: merged lesson notes, a complete handout, summary, targeted preparation and a quiz for every test. |
 | **Games** | *Who's the spy?*, *Lupus* (werewolf) and *Cucù* (an Italian card game) with multi-phone rooms, *Never have I ever…*, *Solitaire* (Klondike), *Node Breach*, *ARG Vault*, poker. Five languages for the party games. |
 
 <img src="docs/img/giochi.png" alt="Games page" width="640">
@@ -52,5 +53,6 @@ Both streams resume from the last event id. Proxy only `/api/chat/stream` to Nod
 ## Security in short
 
 CSRF tokens on every state-changing request, strict sessions, a Content-Security-Policy, SQLite-backed rate limits,
-user text always rendered with `textContent`, uploads checked by content and stored outside the web root. Details in
+user text always rendered with `textContent` (AI-written Markdown too), uploads checked by content and stored outside the
+web root, one-use chat stream tokens kept out of URLs, Web Push only to the browsers' push services. Details in
 section 6 of the documentation.

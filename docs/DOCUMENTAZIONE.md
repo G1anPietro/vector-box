@@ -4,11 +4,12 @@
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
-da soli. Gira su un piccolo server di casa (Ubuntu, nginx, PHP-FPM, Node.js).
+da soli, e gli **Appunti di classe** (appunti condivisi per classe, riassunti e dispense scritti da un'AI, calendario
+delle verifiche con promemoria). Gira su un piccolo server di casa (Ubuntu, nginx, PHP-FPM, Node.js).
 
 ![Il desktop di vector-box](img/desktop.png)
 
-**Indice:** [Guida per chi usa il sito](#parte-1--guida-per-chi-usa-il-sito) ·
+**Indice:** [Guida per chi usa il sito](#parte-1--guida-per-chi-usa-il-sito) · [Appunti di classe](#appunti-di-classe) ·
 [Comandi del terminale](#comandi-del-terminale) ·
 [Documentazione tecnica](#parte-2--documentazione-tecnica) · [API](#5-api) · [Sicurezza](#6-sicurezza) ·
 [Configurazione](#7-configurazione-env) · [Sviluppo](#8-sviluppo-in-locale) · [Pubblicazione](#9-pubblicazione-sul-server)
@@ -91,6 +92,49 @@ Tutti i giochi sono nella pagina **Giochi** (MENU → GIOCHI), in italiano e ing
 
 <img src="img/spia-telefono.png" alt="Chi è la spia? sul telefono" width="300"> <img src="img/solitario.png" alt="Il solitario" width="480">
 
+## Appunti di classe
+
+Dal **MENU → APPUNTI DI CLASSE** (`/pages/appunti.php`, serve un account). Ogni classe ha i suoi appunti, separati da
+quelli delle altre classi e delle altre scuole.
+
+**Entrare in una classe.** Chiedi il **codice d'invito** al responsabile della classe e scrivilo nella pagina. Se la tua
+classe non c'è ancora, chiedila (classe, scuola, una nota): la approva l'amministratore, e chi l'ha chiesta ne diventa il
+**responsabile**. L'amministratore può chiudere le richieste nuove quando vuole.
+
+**Il responsabile** (scheda *Classe*): vede e rigenera il codice d'invito, toglie i compagni o passa il ruolo a un altro,
+sceglie l'ora del riassunto automatico (18:00 se non la cambia) e inserisce l'**orario**:
+- con **"Compila da foto o PDF"**: carica lo screenshot dell'orario e, se c'è, la foto degli orari della campanella;
+  l'AI riempie la tabella, lui la controlla e preme *Salva l'orario*;
+- oppure a mano: per ogni giorno gli orari della campanella (possono cambiare da un giorno all'altro) e la materia di ogni
+  ora. "Etichetta" distingue il laboratorio dalla teoria ("Lab TPSIT" e "TPSIT" sono la stessa materia). L'orario ha una
+  data d'inizio, così il passaggio dal provvisorio al definitivo non cambia gli appunti vecchi.
+
+**Caricare il materiale** (scheda *Materiale*): appunti, slide o materiale del prof, pagine del libro, domande fatte dal
+prof alle interrogazioni, verifiche di preparazione. Foto, PDF, Word, PowerPoint, LibreOffice o testo scritto lì. Il sito
+propone da solo la lezione giusta guardando l'ora della foto e l'orario (le ore di fila della stessa materia sono una
+lezione sola); si può sempre cambiare. Tutti i compagni vedono tutto il materiale, con il nome di chi l'ha caricato; chi
+l'ha caricato e il responsabile possono modificarlo o cancellarlo. Limiti: 40 MB per file e 5 GB per classe (li cambia
+l'amministratore).
+
+**Calendario:** verifiche scritte, interrogazioni e altre date, con gli argomenti detti dal prof. Le aggiungono tutti.
+
+**Studio** (i documenti scritti dall'AI, Google Gemini):
+- ogni giorno all'ora del riassunto, o subito con **"Genera ora"** (una volta l'ora per classe), per ogni **lezione**
+  gli appunti di tutti uniti in un documento completo, con le fonti numerate, i punti "⚠️ Da verificare" dove i compagni
+  dicono cose diverse e le **possibili domande all'interrogazione**;
+- per ogni **verifica o interrogazione** dei prossimi 30 giorni, con tutto il materiale dalla verifica precedente della
+  stessa materia: **Completo** (dispensa divisa per argomento, con l'elenco delle lezioni senza appunti), **Riassunto**,
+  **Preparazione mirata** (come interroga il prof, domande probabili con le risposte, verifica di prova svolta) e
+  **Quiz** a scelta multipla da fare nella pagina;
+- ogni documento si scarica o si stampa in PDF. L'AI può sbagliare: va sempre controllata.
+
+**Notifiche:** la campanella in alto raccoglie i promemoria di ogni verifica e interrogazione (2 giorni prima e il giorno
+prima alle 16:00, la sera prima alle 21:00). Con *Attiva le notifiche su questo dispositivo* arrivano anche sul telefono a
+sito chiuso; sull'iPhone prima bisogna aggiungere gli Appunti alla schermata Home (Condividi → Aggiungi alla schermata Home).
+
+**Privacy:** il materiale viene letto da Google Gemini (livello gratuito: Google può usarlo per migliorare i suoi
+prodotti). Niente dati personali, voti o documenti.
+
 ## Comandi del terminale
 
 Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
@@ -120,6 +164,7 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
 | **Lettore di libri** | `pages/reader.php`, `js/reader.js` (epub.js e pdf.js da CDN), `api/books.php`. |
 | **Giochi** | Pagine statiche (`pages/spia.html`, `lupus.html`, `nonhomai.html`, `solitario.html`) con motori lato server per le stanze (`api/spia_lib.php`, `api/lupus_lib.php`). |
 | **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Privacy, Credits. Curriculum (`resume.php`) privato. |
+| **Appunti di classe** | `pages/appunti.php`, `js/appunti.js`; API `api/classi.php`, `api/appunti.php`, `api/notifiche.php`; lavoratore AI `bin/appunti-ai.php` (Gemini, promemoria). |
 | **Hub Node** (`server.js`) | Facoltativo: chat in tempo reale con una sola connessione SSE per browser. |
 
 ## 2. Architettura
@@ -138,6 +183,12 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
   non esporre.
 - **Pagine statiche dei giochi**: funzionano anche offline nel browser e parlano con il server solo tramite `api/spia.php`.
 - `data/` sta **fuori** dalla cartella pubblicata: database, sessioni PHP, libri, copertine, log, registro visite.
+- **Appunti di classe:** le pagine non aspettano mai l'AI (tranne la lettura dell'orario da foto). Un timer systemd
+  lancia ogni 5 minuti `bin/appunti-ai.php` come utente di PHP: manda i promemoria delle verifiche (Web Push e campanella),
+  trascrive una volta sola le foto e i PDF nuovi (modello veloce), e all'ora di ogni classe scrive i documenti delle
+  lezioni e delle verifiche, solo quelli il cui materiale è cambiato (il controllo è un hash del testo inviato all'AI).
+  Le richieste a Gemini sono contate per modello e per giorno (`ai_usage`, giorno del Pacifico come Google) e restano al
+  90% dei limiti gratuiti; i file Word/PowerPoint/testo sono letti dal sito senza AI.
 - **Registro visite**: `includes/head.php` (pagine PHP) e `api/visit.php` (pagine statiche) chiamano `recordVisit()`;
   una visita è "nuova" dopo 30 minuti di assenza: una riga in `data/visits.log` e una notifica ntfy.
 
@@ -150,17 +201,18 @@ public/            radice del sito (l'unica cartella servita da nginx)
   api/             endpoint JSON e librerie condivise (helpers, database, rate limiter, motori dei giochi, visite)
   includes/        head.php (intestazioni di sicurezza, versione, registro visite), ads.php
   js/ css/ assets/ script, stili, icone, font self-hosted
+bin/appunti-ai.php lavoratore degli Appunti (promemoria, trascrizioni, documenti AI), da lanciare ogni 5 minuti
 lib/               codice condiviso con i test
 server.js          hub Node / pannello
 tests/             test automatici (node:test)
 tools/backup.sh    backup notturno
 updatesite.sh      aggiornamento del sito sul server
-data/              (non in git) database, sessioni, libri, copertine, log
+data/              (non in git) database, sessioni, libri, copertine, log, appunti/ (file delle classi), vapid.json
 ```
 
 ## 4. Database
 
-SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **11**): le modifiche sono funzioni
+SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **13**): le modifiche sono funzioni
 `migrateVN()` in `public/api/database.php`, eseguite una sola volta sotto lock.
 
 | Versione | Cosa aggiunge |
@@ -176,6 +228,8 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V9 | `visitors` (registro visite); riprova le copertine EPUB mancanti |
 | V10 | `accounts.can_view_resume` (curriculum privato) |
 | V11 | `cucu_games` (stato delle partite di Cucù in JSON) |
+| V12 | Appunti di classe: `app_settings`, `school_classes`, `class_members`, `class_subjects`, `class_timetables` (orario a versioni, JSON), `class_items` e `class_item_files` (materiale e trascrizioni), `class_events` (calendario), `class_docs` (documenti dell'AI), `ai_usage` |
+| V13 | notifiche: `notifications` (campanella), `push_subscriptions` (Web Push), `class_event_reminders` (promemoria già mandati) |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
 `runMigrations()` + `EXPECTED_SCHEMA` in `updatesite.sh`. Sul server il database non va aperto con `sqlite3` da un utente
@@ -194,7 +248,7 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 
 | Endpoint | Chi | Richiesta | Risposta |
 |---|---|---|---|
-| `check_session.php` | tutti | GET | `logged_in`, `username`, `user_id`, `is_admin`, `csrf_token`, `chat_stream` (`url`, `token` monouso da 60 s) |
+| `check_session.php` | tutti | GET | `logged_in`, `username`, `user_id`, `is_admin`, `csrf_token`, `chat_stream` (`url`, `token` monouso da 60 s, `cookie`: se l'hub è sullo stesso sito il token arriva nel cookie `vb_chat_ticket` e qui è `null`) |
 | `login.php` | tutti | POST `{username, password}`; registrazione `{action:"register", username, password}` | `username`, `is_admin`, `theme`, `csrf_token`. Limiti: 10 tentativi/5 min per IP, 5 per utente; 5 registrazioni/ora per IP |
 | `logout.php` | tutti | GET o POST (rifiutato se parte da un altro sito) | redirect a `pages/login.php`, o JSON con `Accept: application/json` |
 | `save_theme.php` | registrati | POST `{theme}` | `theme` |
@@ -247,6 +301,17 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | `guestbook.php` | tutti / admin | GET: ultime frasi; POST `{action:"sign", message}` · admin `{action:"delete", id}` |
 | `visit.php` | tutti | GET `?p=/pages/…` → 204 (registro visite delle pagine statiche) |
 
+### Appunti di classe (registrati)
+
+| Endpoint | Chi | Richiesta |
+|---|---|---|
+| `classi.php` | registrati / responsabile / admin | GET `?action=mine` (le mie classi e richieste), `class&id=` (membri e admin: orario, materie, membri, codice solo al responsabile), `requests` e `all` (admin). POST `{action}`: `request {name, school, note}`, `join {code}`, `leave`; responsabile: `regen_code`, `remove_member`, `set_manager`, `settings {summary_time, timezone}`, `save_timetable {valid_from, periods, slots}`, `read_timetable` (multipart con le foto, risponde con l'orario letto dall'AI senza salvarlo); admin: `decide {approve}`, `set_requests_open {open}`, `set_limits {file_mb, class_mb[, id]}`, `delete_class` |
+| `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`. POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
+| `notifiche.php` | registrati | GET `?action=list` (ultime 30, non lette, dispositivi), `vapid` (chiave pubblica). POST `read {ids}`, `read_all`, `subscribe {endpoint, keys}`, `unsubscribe {endpoint}`, `test` |
+
+Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `altro`. Tipi di data: `verifica`,
+`interrogazione`, `altro`. Tipi di documento: `lezione`, `completo`, `riassunto`, `preparazione`, `quiz` (JSON).
+
 ### Amministrazione e stato
 
 | Endpoint | Chi | Cosa fa |
@@ -257,7 +322,8 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | `telemetry.php` | tutti | percentuali di CPU e RAM |
 
 Le librerie (`helpers.php`, `database.php`, `rate_limiter.php`, `epub_meta.php`, `spia_lib.php`, `lupus_lib.php`,
-`visits.php`, `debug_logger.php`) non sono endpoint: se richieste direttamente definiscono solo funzioni.
+`visits.php`, `debug_logger.php`, `classi_lib.php`, `classi_ai.php`, `appunti_lib.php`, `appunti_ai.php`, `gemini.php`,
+`webpush.php`, `notifiche_lib.php`) non sono endpoint: se richieste direttamente definiscono solo funzioni.
 
 ## 6. Sicurezza
 
@@ -273,7 +339,17 @@ Le librerie (`helpers.php`, `database.php`, `rate_limiter.php`, `epub_meta.php`,
   (`VB_ADS_PAGE`) aprono solo i domini di Google necessari, e solo con `ADSENSE_CLIENT` impostato.
 - **Limiti di richieste** in SQLite (`checkRateLimit()`): login, registrazione, chat, messaggi privati, guestbook,
   modulo per l'admin, beacon delle visite, stanze dei giochi.
-- **Hub della chat:** token firmato (HMAC), valido 60 secondi e per **una sola** connessione.
+- **Hub della chat:** token firmato (HMAC), valido 60 secondi e per **una sola** connessione. Se l'hub è sullo stesso
+  sito (`CHAT_STREAM_URL` è un percorso come `/api/chat/stream`) il token viaggia in un cookie `HttpOnly`,
+  `SameSite=Strict`, limitato a quel percorso: non compare negli URL né nei log di nginx.
+- **Appunti di classe:** ogni richiesta controlla che l'utente sia nella classe (attiva); i codici d'invito (8 caratteri)
+  hanno limiti di tentativi per account e per IP; i file sono controllati per contenuto e salvati in `data/appunti/<id>/`
+  con un nome casuale; le immagini sono servite con `Content-Security-Policy: sandbox`. Il testo scritto dall'AI è
+  mostrato con un piccolo convertitore Markdown → DOM che usa solo `textContent`. Il materiale va all'AI dentro
+  `<materiale>…</materiale>` con l'istruzione di non seguire ordini scritti lì dentro.
+- **Web Push:** cifratura RFC 8291 e firma VAPID fatte con openssl; chiavi in `data/vapid.json`. Si accettano solo
+  endpoint `https` dei servizi push dei browser (Google, Mozilla, Apple, Microsoft): il server non fa richieste ad
+  indirizzi scelti dagli utenti.
 - **File caricati:** estensione e contenuto vero controllati, nome ripulito, salvati fuori dalla cartella pubblica.
 - **Biblioteca e curriculum privati:** solo per gli account con il permesso; `robots.txt` tiene fuori i motori di ricerca.
 
@@ -293,6 +369,10 @@ Si parte da `.env.example`, che spiega ogni voce.
 | `CONTACT_EMAIL` | contatto nella pagina privacy |
 | `VISIT_NTFY_URL`, `VISIT_NOTIFY`, `VISIT_GAP_MIN`, `VISIT_NOTIFY_MAX_PER_HOUR` | registro visite e notifiche |
 | `MC_DIR`, `WAKE_SCRIPT` | vecchio pannello Node (Minecraft, Wake-on-LAN) |
+| `GEMINI_API_KEY`, `GEMINI_AUTH` | chiave di Google AI Studio per gli Appunti; `bearer` per le chiavi nuove `AQ.` se Google rifiuta l'header |
+| `GEMINI_MODEL_FAST`, `GEMINI_FAST_RPM`, `GEMINI_FAST_RPD`, `GEMINI_MODEL_SMART`, `GEMINI_SMART_RPM`, `GEMINI_SMART_RPD` | modelli e limiti gratuiti (al minuto e al giorno); `php bin/appunti-ai.php --models` elenca i modelli della chiave |
+| `SITE_URL` | indirizzo del sito (anteprime dei link, contatto VAPID delle notifiche push) |
+| `WEBPUSH_EXTRA_HOSTS` | solo per i test: servizi push finti ammessi |
 
 ## 8. Sviluppo in locale
 
@@ -301,10 +381,12 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 101 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi…
+npm test                          # 150 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 
-I test (`tests/*.test.js`) avviano ogni volta una **copia** del sito in una cartella temporanea con un database vuoto
+I test degli Appunti usano un **finto Gemini** e un finto servizio push (nessuna richiesta vera; le notifiche vengono
+decifrate e la firma VAPID verificata). I test (`tests/*.test.js`) avviano ogni volta una **copia** del sito in una cartella temporanea con un database vuoto
 (`tests/helpers.js`: `startSite()`, `Client`, `makeAdmin()`). Prima di ogni commit: `npm test`, `php -l` sui file PHP
 toccati e `node --check` sui JS. Mai lavorare sul database vero.
 
@@ -316,7 +398,10 @@ toccati e `node --check` sui JS. Mai lavorare sul database vero.
 `sudo bash updatesite.sh` sul server: scarica `main`, mette da parte eventuali modifiche locali, aggiorna le dipendenze
 Node se cambiate, sistema i permessi di `data/`, esegue le migrazioni come utente di PHP, riavvia l'hub se gira sotto PM2,
 scrive la versione (`version.php`, usata per i `?v=` dei file) e controlla che lo schema sia quello atteso. Serve un `.env`
-già presente. Dettagli e configurazione nginx: `docs/DEPLOY.md`; backup: `docs/BACKUP.md`; annunci: `docs/ADSENSE.md`.
+già presente. Per gli Appunti servono anche: il timer systemd `vector-box-appunti-ai.timer` (ogni 5 minuti lancia
+`php bin/appunti-ai.php` come `www-data`; log con `journalctl -u vector-box-appunti-ai`; esce con 1 solo per guasti veri
+di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastcgi_read_timeout` di almeno 120 s in nginx
+(caricamenti grandi e lettura dell'orario). Dettagli e configurazione nginx: `docs/DEPLOY.md`; backup: `docs/BACKUP.md`; annunci: `docs/ADSENSE.md`.
 
 ## 10. Come si fa…
 
@@ -329,6 +414,11 @@ già presente. Dettagli e configurazione nginx: `docs/DEPLOY.md`; backup: `docs/
 - **Aggiungere un permesso per account** (come biblioteca e curriculum): colonna in una migrazione, controllo nella pagina,
   uno `scope` in `moderate_book_access.php`, comandi in `js/admin_commands.js` e `js/commands.js`.
 - **Aggiungere testi tradotti ai giochi:** chiavi in `public/js/spia/i18n.js` per tutte e 5 le lingue (it, en, es, fr, de).
+- **Cambiare cosa scrive l'AI negli Appunti:** i prompt sono costanti in `public/api/appunti_ai.php` (`AI_PROMPT_*`) e
+  `public/api/classi_ai.php` (orario); i modelli si cambiano nel `.env`. I test con il finto Gemini riconoscono i prompt da
+  alcune parole ("trascrittore", "DISPENSA COMPLETA", "RIASSUNTO", "PREPARAZIONE MIRATA", "quiz", "orario scolastico"):
+  se le cambi, aggiorna anche `tests/appunti-ai.test.js`.
+- **Cambiare gli orari dei promemoria:** `REMINDER_SLOTS` in `public/api/notifiche_lib.php`.
 - **Cambiare un file CSS/JS di una pagina statica:** alzare a mano il suo `?v=` (le pagine PHP lo fanno da sole).
 
 ## 11. Limiti noti
@@ -337,3 +427,6 @@ già presente. Dettagli e configurazione nginx: `docs/DEPLOY.md`; backup: `docs/
 - La pagina Doom non funziona.
 - Il poker è ancora una finestra del desktop: va rifatto come pagina della sezione Giochi.
 - Le cancellazioni dei messaggi arrivano in tempo reale solo con l'hub Node attivo.
+- Appunti: con il livello gratuito di Gemini le richieste al giorno sono poche (circa 450 veloci e 18 del modello migliore):
+  con molte classi i documenti possono arrivare il giorno dopo. Non c'è ancora la copia su Google Drive.
+- Le notifiche push su iPhone funzionano solo dall'icona aggiunta alla schermata Home (iOS 16.4 o successivo).

@@ -72,6 +72,14 @@ gitignored, so it was copied by hand).
 HSTS (`Strict-Transport-Security`) is intentionally NOT suggested yet: if anything is reached
 as `http://vector-box.duckdns.org:<port>` (e.g. the Node panel on :3000), HSTS would break it.
 
+Class notes (`pages/appunti.php`): uploads up to 40 MB (raised by the admin up to 95) and the
+timetable read from a photo, which waits for Gemini up to a minute:
+
+```nginx
+client_max_body_size 100M;
+fastcgi_read_timeout 120s;   # in the PHP location
+```
+
 Then: `sudo nginx -t && sudo systemctl reload nginx`.
 
 ## 4. Chat hub (Node from this repo)
@@ -126,6 +134,36 @@ Why it matters here: `pm.max_children = 20`, and every open chat tab on the PHP 
 one PHP-FPM worker. Around 20 open tabs would make the whole site stop answering. The hub
 holds connections in one Node process instead.
 
+## 4b. Class notes worker (every 5 minutes)
+
+`bin/appunti-ai.php` sends the test reminders (push + bell), transcribes photos/PDFs and writes the AI
+study documents. Run it as the PHP user with a systemd timer:
+
+```ini
+# /etc/systemd/system/vector-box-appunti-ai.service
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/php /var/www/vector-box/bin/appunti-ai.php
+Nice=10
+TimeoutStartSec=50min
+
+# /etc/systemd/system/vector-box-appunti-ai.timer
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+Persistent=true
+[Install]
+WantedBy=timers.target
+```
+
+`sudo systemctl daemon-reload && sudo systemctl enable --now vector-box-appunti-ai.timer`; log:
+`journalctl -u vector-box-appunti-ai -n 50`. Exit code 1 only for real Gemini faults (key refused,
+model name unknown, Google down); 0 for "nothing to do" and "daily quota reached".
+`.env`: `GEMINI_API_KEY`, `GEMINI_AUTH`, optionally `GEMINI_MODEL_FAST` / `GEMINI_MODEL_SMART`
+(`sudo -u www-data php bin/appunti-ai.php --models` lists what the key can use).
+
 ## 5. After deploying
 
 ```bash
@@ -135,7 +173,7 @@ sudo -u www-data php -r 'require "public/api/database.php"; echo getDbConnection
 ```
 
 The first web request also runs the migrations; doing it by hand just shows errors right away.
-Expected schema version: 11.
+Expected schema version: 13.
 
 Open each page with the browser console open and look for `Content-Security-Policy` report
 messages. When there are none, set `CSP_ENFORCE=true`.
