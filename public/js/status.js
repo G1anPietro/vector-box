@@ -64,6 +64,37 @@ document.addEventListener("DOMContentLoaded", () => {
         body.appendChild(foot);
     };
 
+    // Pi-hole numbers: admin only (api/pihole.php answers 403 to everyone else)
+    const section = (title) => {
+        const hdr = document.createElement('div');
+        hdr.className = 'term-muted';
+        hdr.style.cssText = 'margin-top:8px; font-size:0.75rem; letter-spacing:1px;';
+        hdr.textContent = title;
+        return hdr;
+    };
+    const renderPihole = async () => {
+        if (!(window.SESSION_STATE && window.SESSION_STATE.isAdmin)) return;
+        let p;
+        try {
+            const res = await fetch('api/pihole.php', { cache: 'no-store' });
+            if (res.status === 404 || res.status === 403) return;   // not configured / not admin
+            p = await res.json();
+        } catch (err) { p = null; }
+        const box = document.createElement('div');
+        box.appendChild(section('-- PI-HOLE (ADMIN) --'));
+        if (!p || !p.success) {
+            box.appendChild(row('DNS', 'NO ANSWER', '#ff3333'));
+        } else {
+            box.appendChild(row('QUERIES TODAY', p.queries.toLocaleString()));
+            box.appendChild(row('BLOCKED', `${p.blocked.toLocaleString()} (${p.percent}%)`, '#ff2e88'));
+            box.appendChild(row('BLOCKLIST', `${p.domains_blocked.toLocaleString()} domains`));
+            box.appendChild(row('CLIENTS', String(p.clients)));
+            (p.top_blocked || []).forEach((d, i) => box.appendChild(row(i === 0 ? 'TOP BLOCKED' : '', `${d.domain} (${d.count})`)));
+        }
+        const foot = body.lastElementChild;   // keep "sampled Ns ago" at the bottom
+        body.insertBefore(box, foot && foot.textContent.startsWith('sampled') ? foot : null);
+    };
+
     let lastRefresh = 0;
     const refresh = async () => {
         if (win.classList.contains('hidden')) return;
@@ -76,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const pingMs = Math.round(performance.now() - t0);
             const data = await res.json();
             render(data && data.success ? data : null, pingMs);
+            renderPihole();
         } catch (err) {
             render(null, null);
         }
