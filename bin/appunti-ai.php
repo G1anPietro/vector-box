@@ -33,6 +33,12 @@ try {
     if ($stats['transcribed'] || $stats['lessons'] || $stats['tests'] || $stats['classes']) {
         aiLog("transcribed {$stats['transcribed']}, lesson docs {$stats['lessons']}, test docs {$stats['tests']}, classes {$stats['classes']}");
     }
+    // Exit code for systemd and the ntfy check: 1 = a real fault (Gemini unreachable, key refused, wrong model name,
+    // database error); 0 = done, nothing to do, or only the daily quota reached (not a fault)
+    if (GeminiError::$serviceFailures > 0) {
+        fwrite(STDERR, 'error: Gemini failed ' . GeminiError::$serviceFailures . " time(s) in this run, see the lines above\n");
+        $exit = 1;
+    }
 } catch (Throwable $e) {
     require_once __DIR__ . '/../public/api/debug_logger.php';
     logSystemError('NOTES_AI', $e->getMessage());
@@ -41,3 +47,4 @@ try {
 } finally {
     flock($lock, LOCK_UN);
 }
+exit($exit ?? 0);

@@ -121,7 +121,7 @@ function aiTranscribePending(PDO $db, int $max): int {
             $save->execute([':t' => textCut(trim($text), NOTE_TEXT_MAX), ':s' => 'done', ':inc' => 1, ':id' => $f['id']]);
             $done++;
         } catch (GeminiError $e) {
-            if ($e->quota) { aiLog('transcription stopped: ' . $e->getMessage()); break; }
+            if ($e->stop) { aiLog('transcription stopped: ' . $e->getMessage()); break; }
             $failed = (int)$f['text_attempts'] + 1 >= AI_MAX_ATTEMPTS;
             $save->execute([':t' => null, ':s' => $failed ? 'failed' : 'pending', ':inc' => 1, ':id' => $f['id']]);
             aiLog("transcription of file {$f['id']} failed: " . $e->getMessage());
@@ -224,7 +224,7 @@ function aiLessonDocs(PDO $db, array $class): int {
             $written++;
         } catch (GeminiError $e) {
             aiLog("class $classId lesson $key failed: " . $e->getMessage());
-            if ($e->quota) break;
+            if ($e->stop) break;
             $doc += ['content' => '', 'status' => 'error', 'error' => textCut($e->getMessage(), 300)];
         }
         aiSaveDoc($db, $doc);
@@ -265,7 +265,7 @@ function aiEventDoc(PDO $db, array $base, string $kind, string $title, string $h
         [$doc['content'], $doc['model']] = $make();
         $doc['status'] = 'ok';
     } catch (GeminiError $e) {
-        if ($e->quota) throw $e;
+        if ($e->stop) throw $e;
         aiLog("doc $key failed: " . $e->getMessage());
         $doc += ['content' => '', 'model' => '', 'status' => 'error', 'error' => textCut($e->getMessage(), 300)];
     }

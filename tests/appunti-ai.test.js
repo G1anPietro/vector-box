@@ -22,6 +22,7 @@ const gemini = http.createServer((req, res) => {
         const body = raw ? JSON.parse(raw) : {};
         calls.push({ url: req.url, headers: req.headers, body });
         if (mode === 'quota') { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"quota"}}'); return; }
+        if (mode === 'down') { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"unavailable"}}'); return; }
         const system = body.systemInstruction ? body.systemInstruction.parts[0].text : '';
         const user = body.contents ? body.contents[0].parts.filter((p) => p.text).map((p) => p.text).join(' ') : '';
         const quiz = { questions: [0, 1, 2, 3].map((i) => ({ topic: 'Napoleone', question: `Domanda ${i}?`, options: ['a', 'b', 'c', 'd'], answer: i, explanation: 'perché sì' })) };
@@ -184,6 +185,27 @@ test('daily budget and Google quota errors stop the worker without losing work',
     site.db('DELETE FROM ai_usage');
     await worker();
     assert.equal(calls.length, 1, 'goes on when budget is back');
+});
+
+test('a real Gemini fault makes the worker exit with 1 (for the ntfy alert); the quota does not', async () => {
+    await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-11-10' },
+        [{ name: 'guasto.png', content: PNG, type: 'image/png' }]);
+    mode = 'down';
+    calls.length = 0;
+    await assert.rejects(worker(), (e) => e.code === 1 && /Gemini failed 1 time/.test(e.stderr));
+    assert.equal(calls.length, 1, 'stops at the first fault instead of trying every file');
+    assert.deepEqual(site.db("SELECT text_status, text_attempts FROM class_item_files WHERE original_name = 'guasto.png'")[0],
+        { text_status: 'pending', text_attempts: 0 }, 'not the file\'s fault');
+    mode = 'quota';
+    await worker();   // resolves: exit code 0
+    mode = 'ok';
+    await worker();
+    assert.equal(site.db("SELECT text_status FROM class_item_files WHERE original_name = 'guasto.png'")[0].text_status, 'done');
+});
+
+test('the desktop menu links the notes page', async () => {
+    const html = await (await fetch(`${site.base}/index.php`)).text();
+    assert.match(html, /href="pages\/appunti\.php"[^>]*>\/\/ APPUNTI DI CLASSE</);
 });
 
 test('new "AQ." keys can use the Bearer header; --models lists usable models', async () => {

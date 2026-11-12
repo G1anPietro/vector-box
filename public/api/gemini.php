@@ -14,10 +14,16 @@ const GEMINI_DEFAULTS = [
 ];
 
 class GeminiError extends RuntimeException {
-    public bool $quota;
-    public function __construct(string $message, bool $quota = false) {
+    public bool $quota;     // daily/minute quota used up: normal, try again later
+    public bool $service;   // Gemini unreachable, key refused, model missing, server error: a real fault
+    public bool $stop;      // either way, stop this run instead of trying the next document
+    public static int $serviceFailures = 0;
+    public function __construct(string $message, bool $quota = false, bool $service = false) {
         parent::__construct($message);
         $this->quota = $quota;
+        $this->service = $service;
+        $this->stop = $quota || $service;
+        if ($service) self::$serviceFailures++;
     }
 }
 
@@ -87,7 +93,7 @@ function geminiGenerate(PDO $db, string $tier, string $system, array $parts, arr
     if (!empty($opts['json'])) $body['generationConfig']['responseMimeType'] = 'application/json';
 
     $key = (string)envValue('GEMINI_API_KEY', '');
-    if ($key === '') throw new GeminiError('GEMINI_API_KEY is not set');
+    if ($key === '') throw new GeminiError('GEMINI_API_KEY is not set', false, true);
     $headers = ['Content-Type: application/json'];
     $headers[] = strtolower((string)envValue('GEMINI_AUTH', 'header')) === 'bearer'
         ? 'Authorization: Bearer ' . $key
@@ -109,12 +115,13 @@ function geminiGenerate(PDO $db, string $tier, string $system, array $parts, arr
     curl_close($ch);
     geminiCount($db, $t['model']);   // a failed call may still count against Google's quota
 
-    if ($raw === false) throw new GeminiError('network error: ' . $err);
+    if ($raw === false) throw new GeminiError('network error: ' . $err, false, true);
     $json = json_decode((string)$raw, true);
     if ($code === 429) throw new GeminiError('quota exceeded (429)', true);
     if ($code !== 200 || !is_array($json)) {
         $msg = is_array($json) ? (string)($json['error']['message'] ?? '') : '';
-        throw new GeminiError("HTTP $code " . textCut($msg, 200));
+        // 400 is about this request's content; 401/403 (key), 404 (model name) and 5xx are faults of the setup or of Google
+        throw new GeminiError("HTTP $code " . textCut($msg, 200), false, $code !== 400);
     }
     $cand = $json['candidates'][0] ?? null;
     $text = '';

@@ -48,6 +48,7 @@ if ($userId && !$isAdmin) {
                     <a href="pages/resume.php" class="menu-item btn-dossier">// VIEW DOSSIER</a>
                 <?php endif; ?>
                 <a href="pages/giochi.php" class="menu-item">// GIOCHI</a>
+                <a href="pages/appunti.php" class="menu-item">// APPUNTI DI CLASSE</a>
                 <a href="pages/ads.php" class="menu-item btn-adwall">// SUPPORTA</a>
                 <a href="pages/progetto.php" class="menu-item">// IL PROGETTO</a>
                 
