@@ -18,7 +18,7 @@ $updated = '2026-11-11';
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#16141c">
     <title>Privacy — vector-box</title>
-    <link rel="stylesheet" href="../css/giochi.css?v=1">
+    <link rel="stylesheet" href="../css/giochi.css?v=2">
 </head>
 <body>
     <header class="top">
@@ -52,6 +52,8 @@ $updated = '2026-11-11';
         </ul>
 
         <h2>Servizi esterni</h2>
+        <p>Il bottone "Offrimi un caffè", se presente, porta alla pagina di un servizio di donazioni esterno: il pagamento
+        avviene lì, e vector-box non vede né salva alcun dato di pagamento.</p>
         <p>Il lettore di libri (solo per gli account autorizzati) carica alcune librerie da cdnjs.cloudflare.com e cdn.jsdelivr.net, che vedono il tuo indirizzo IP come qualsiasi sito che visiti.</p>
 
         <h2>Quanto tempo</h2>
@@ -81,6 +83,8 @@ $updated = '2026-11-11';
         </ul>
 
         <h2>External services</h2>
+        <p>The "Buy me a coffee" button, when present, leads to an external donation service: payment happens there, and
+        vector-box never sees or stores any payment details.</p>
         <p>The book reader (authorised accounts only) loads some libraries from cdnjs.cloudflare.com and cdn.jsdelivr.net, which see your IP address like any site you visit.</p>
 
         <h2>How long</h2>

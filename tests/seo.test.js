@@ -34,3 +34,19 @@ test.describe('search engines and link previews', () => {
         }
     });
 });
+
+test.describe('donation button', () => {
+    test('hidden without DONATE_URL, shown with it, never with a bad link', async () => {
+        let site = await startSite();
+        assert.doesNotMatch(await (await fetch(`${site.base}/pages/ads.php?lang=it`)).text(), /Offrimi un caffè/);
+        await site.stop();
+        site = await startSite({ DONATE_URL: 'https://ko-fi.com/esempio' });
+        const it = await (await fetch(`${site.base}/pages/ads.php?lang=it`)).text();
+        assert.match(it, /href="https:\/\/ko-fi\.com\/esempio"[^>]*>☕ Offrimi un caffè/);
+        assert.match(await (await fetch(`${site.base}/pages/giochi.php?lang=en`)).text(), /Buy me a coffee/);
+        await site.stop();
+        site = await startSite({ DONATE_URL: 'javascript:alert(1)' });
+        assert.doesNotMatch(await (await fetch(`${site.base}/pages/ads.php?lang=it`)).text(), /Offrimi un caffè/);
+        await site.stop();
+    });
+});

@@ -279,6 +279,12 @@ function socialMeta(string $title, string $description, string $path, string $im
         . '    <meta name="twitter:card" content="summary_large_image">';
 }
 
+/** "Buy me a coffee" link (Ko-fi, Buy Me a Coffee, Liberapay…) from DONATE_URL, or '' when not set. */
+function donateUrl(): string {
+    $u = trim((string)envValue('DONATE_URL', ''));
+    return preg_match('#^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._~%/-]*)?$#', $u) ? $u : '';
+}
+
 /** AdSense publisher id from .env (ca-pub-…), or '' when ads are off. */
 function adsenseClient(): string {
     $c = trim((string)envValue('ADSENSE_CLIENT', ''));
