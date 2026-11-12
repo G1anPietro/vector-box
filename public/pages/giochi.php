@@ -96,9 +96,10 @@ function gameBox(array $g, callable $T): void { ?>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#16141c">
     <title><?= $lang === 'it' ? 'Giochi — vector-box' : 'Games — vector-box' ?></title>
-    <meta name="description" content="<?= $lang === 'it'
+    <?= socialMeta($lang === 'it' ? 'Giochi — vector-box' : 'Games — vector-box', $lang === 'it'
         ? 'Giochi da festa da fare con il telefono (Chi è la spia?, Lupus, Non ho mai…) e giochi da soli, gratis nel browser.'
-        : 'Party games to play with your phone (Who’s the spy?, Lupus, Never have I ever…) and solo games, free in the browser.' ?>">
+        : 'Party games to play with your phone (Who’s the spy?, Lupus, Never have I ever…) and solo games, free in the browser.',
+        '/pages/giochi.php') ?>
     <link rel="icon" href="../assets/solitario/icon.svg?v=1" type="image/svg+xml">
     <link rel="stylesheet" href="../css/giochi.css?v=1">
     <?= adsScriptTag() ?>

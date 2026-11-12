@@ -33,6 +33,7 @@ if ($userId && !$isAdmin) {
 <html lang="en">
 <head>
     <?php renderHead("Node // Vector-Box", false); ?>
+    <?= socialMeta('vector-box', 'Un desktop cyberpunk nel browser: terminale, chat, giochi da festa per il telefono e giochi da soli.', '/', '/assets/og/desktop.jpg') ?>
 </head>
 <body>
     <canvas id="canvas"></canvas>

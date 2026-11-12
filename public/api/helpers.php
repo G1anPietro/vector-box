@@ -259,6 +259,26 @@ function sendBaseSecurityHeaders(): void {
  * Report-only unless CSP_ENFORCE=true: violations show up in the browser console
  * without breaking anything, so the policy can be tuned before enforcing it.
  */
+/** Public address of the site (for link previews and the sitemap): SITE_URL in .env, no trailing slash. */
+function siteUrl(): string {
+    $u = rtrim(trim((string)envValue('SITE_URL', '')), '/');
+    return preg_match('#^https?://[A-Za-z0-9.-]+(:\d+)?$#', $u) ? $u : 'https://vector-box.duckdns.org';
+}
+
+/** Description + Open Graph tags (the preview shown when a link is shared on WhatsApp, Telegram…). */
+function socialMeta(string $title, string $description, string $path, string $image = '/assets/og/giochi.jpg'): string {
+    $e = fn($s) => htmlspecialchars($s, ENT_QUOTES);
+    $base = siteUrl();
+    return '<meta name="description" content="' . $e($description) . '">' . "\n"
+        . '    <meta property="og:type" content="website">' . "\n"
+        . '    <meta property="og:site_name" content="vector-box">' . "\n"
+        . '    <meta property="og:title" content="' . $e($title) . '">' . "\n"
+        . '    <meta property="og:description" content="' . $e($description) . '">' . "\n"
+        . '    <meta property="og:url" content="' . $e($base . $path) . '">' . "\n"
+        . '    <meta property="og:image" content="' . $e($base . $image) . '">' . "\n"
+        . '    <meta name="twitter:card" content="summary_large_image">';
+}
+
 /** AdSense publisher id from .env (ca-pub-…), or '' when ads are off. */
 function adsenseClient(): string {
     $c = trim((string)envValue('ADSENSE_CLIENT', ''));
