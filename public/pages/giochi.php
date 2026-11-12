@@ -130,6 +130,7 @@ function gameBox(array $g, callable $T): void { ?>
     <footer class="foot">
         <?php if (donateUrl()): ?><a href="<?= htmlspecialchars(donateUrl()) ?>" rel="noopener" target="_blank">☕ <?= $lang === 'it' ? 'Offrimi un caffè' : 'Buy me a coffee' ?></a><?php endif; ?>
         <a href="ads.php"><?= $lang === 'it' ? 'Supporta vector-box' : 'Support vector-box' ?></a>
+        <a href="progetto.php"><?= $lang === 'it' ? 'Il progetto' : 'About the project' ?></a>
         <a href="privacy.php">Privacy</a>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>
         <a href="../index.php"><?= $lang === 'it' ? 'Torna al sito' : 'Back to the site' ?></a>

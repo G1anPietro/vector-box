@@ -49,6 +49,7 @@ if ($userId && !$isAdmin) {
                 <?php endif; ?>
                 <a href="pages/giochi.php" class="menu-item">// GIOCHI</a>
                 <a href="pages/ads.php" class="menu-item btn-adwall">// SUPPORTA</a>
+                <a href="pages/progetto.php" class="menu-item">// IL PROGETTO</a>
                 
                 <?php if ($canReadBooks): ?>
                     <a href="pages/reader.php" class="menu-item" style="border-color: #00f3ff; color: #00f3ff;">// BOOK READER</a>

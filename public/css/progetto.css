@@ -1,0 +1,29 @@
+/* public/css/progetto.css — the project page (pages/progetto.php), on top of giochi.css (.doc layout). */
+.project .lead { font-size: 1.12em; color: var(--text); }
+.project figure { margin: 22px 0 6px; }
+.project figure img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--plank); display: block; }
+.project figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 20px 0 0; font-size: 15px; }
+.toc a { color: var(--muted); }
+
+/* architecture: boxes and arrows in plain HTML, stacked on narrow screens */
+.flow { display: flex; align-items: center; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+.flow .node { background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 6px; padding: 8px 12px; font-weight: 700;
+              display: flex; flex-direction: column; min-width: 110px; }
+.flow .node small { font-weight: 400; font-size: 13px; color: var(--muted); }
+.flow .arrow { font-size: 13px; color: var(--link); white-space: nowrap; }
+.flow .arrow::after { content: " →"; }
+.flow .split { display: flex; flex-direction: column; gap: 8px; }
+.flow .branch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+    .flow, .flow .branch { flex-direction: column; align-items: stretch; }
+    .flow .arrow { text-align: center; }
+    .flow .arrow::after { content: " ↓"; }
+}
+
+.problems dt { font-weight: 800; margin-top: 16px; }
+.problems dd { margin: 4px 0 0; }
+.numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.numbers div { background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; }
+.numbers b { font-size: 28px; line-height: 1.1; }
+.numbers span { font-size: 15px; color: var(--muted); }
