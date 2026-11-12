@@ -4,9 +4,14 @@ require_once __DIR__ . '/../api/database.php';
 
 initSession();
 
+// Where to go after logging in: only pages on this list (no open redirects)
+$next = (string)($_POST['next'] ?? $_GET['next'] ?? '');
+$next = in_array($next, ['appunti.php'], true) ? $next : '';
+$afterLogin = $next !== '' ? $next : 'account.php';
+
 // Redirect to desktop if already authenticated
 if (!empty($_SESSION['username']) && !str_starts_with($_SESSION['username'], 'guest_')) {
-    header("Location: ../index.php");
+    header('Location: ' . ($next !== '' ? $next : '../index.php'));
     exit();
 }
 
@@ -39,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt->execute([':u' => $username, ':p' => password_hash($password, PASSWORD_DEFAULT)]);
 
                         establishSession(['id' => $db->lastInsertId(), 'username' => $username, 'theme' => 'cyan', 'is_admin' => 0]);
-                        header("Location: account.php");
+                        header('Location: ' . $afterLogin);
                         exit();
                     } catch (PDOException $e) {
                         if ((string)$e->getCode() !== '23000') throw $e;
@@ -56,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if (verifyPasswordSafe($account, $password)) {
                         establishSession($account);
-                        header("Location: account.php");
+                        header('Location: ' . $afterLogin);
                         exit();
                     }
                     $errorMessage = "Invalid username or password.";
@@ -92,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form method="POST" action="login.php" style="display: flex; flex-direction: column; gap: 12px;">
+                <?php if ($next !== ''): ?><input type="hidden" name="next" value="<?php echo htmlspecialchars($next); ?>"><?php endif; ?>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">USERNAME:</label>
                     <input type="text" name="username" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px; outline: none;" required autocomplete="off">
