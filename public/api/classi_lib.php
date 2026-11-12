@@ -99,7 +99,7 @@ function classNewInviteCode(PDO $db): string {
 function classDelete(PDO $db, int $id): void {
     $db->exec('BEGIN IMMEDIATE');
     try {
-        foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events'] as $table) {
+        foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events', 'class_docs'] as $table) {
             $db->prepare("DELETE FROM $table WHERE class_id = :id")->execute([':id' => $id]);
         }
         $db->prepare('DELETE FROM school_classes WHERE id = :id')->execute([':id' => $id]);

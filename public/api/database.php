@@ -370,6 +370,9 @@ function migrateV12(PDO $db): void {
         summary_time TEXT NOT NULL DEFAULT '18:00',
         max_file_mb INTEGER,
         max_class_mb INTEGER,
+        ai_requested_at INTEGER,
+        ai_last_manual INTEGER,
+        ai_last_auto TEXT,
         created_at INTEGER NOT NULL,
         decided_at INTEGER
     )");
@@ -425,6 +428,7 @@ function migrateV12(PDO $db): void {
         size INTEGER NOT NULL,
         text TEXT,
         text_status TEXT NOT NULL,
+        text_attempts INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL
     )");
     $db->exec('CREATE INDEX IF NOT EXISTS idx_class_item_files_item ON class_item_files(item_id)');
@@ -443,6 +447,35 @@ function migrateV12(PDO $db): void {
         updated_at INTEGER NOT NULL
     )");
     $db->exec('CREATE INDEX IF NOT EXISTS idx_class_events_date ON class_events(class_id, event_date)');
+    // Documents written by the AI: one row per doc_key (e.g. "lezione:<subject>:<date>"), rewritten only when
+    // the material it comes from changes (input_hash). content is Markdown.
+    $db->exec("CREATE TABLE IF NOT EXISTS class_docs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        doc_key TEXT NOT NULL,
+        subject_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        lesson_date TEXT,
+        event_id INTEGER,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        sources TEXT NOT NULL DEFAULT '[]',
+        input_hash TEXT NOT NULL DEFAULT '',
+        model TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'ok',
+        error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE (class_id, doc_key)
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_docs_subject ON class_docs(class_id, subject_id, kind)');
+    // Requests sent to the AI per model and day (Google's free quota resets at midnight Pacific time)
+    $db->exec("CREATE TABLE IF NOT EXISTS ai_usage (
+        day TEXT NOT NULL,
+        model TEXT NOT NULL,
+        requests INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, model)
+    )");
 }
 
 /** Runs pending migrations once, under an exclusive lock. */

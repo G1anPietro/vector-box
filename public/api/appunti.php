@@ -8,13 +8,19 @@
 // GET  ?action=file&id=ID                              -> download one file
 // GET  ?action=events&class_id=ID[&from&to]            -> calendar
 // GET  ?action=usage&class_id=ID                       -> space used and limits
+// GET  ?action=docs&class_id=ID[&subject_id]           -> AI documents (without their text) + AI status
+// GET  ?action=doc&id=ID                               -> one AI document with its text and sources
 // POST multipart {action:"upload", class_id, subject_id, kind, lesson_date, period?, title?, body?, files[]}
 // POST JSON {action:"edit_item", id, subject_id, kind, lesson_date, period, title, body} | {action:"delete_item", id}
 //           {action:"add_event", class_id, subject_id, kind, date, title, topics}
 //           {action:"edit_event", id, ...same fields} | {action:"delete_event", id}
+//           {action:"generate", class_id}  -> asks the AI worker to run now (once an hour per class)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/appunti_lib.php';
+require_once __DIR__ . '/gemini.php';
+
+const AI_MANUAL_EVERY_SEC = 3600;   // "Genera ora": once an hour per class
 
 initSession();
 requireLogin();
@@ -116,6 +122,21 @@ try {
         }
 
         header('Cache-Control: no-store');
+
+        if ($action === 'doc') {
+            $st = $db->prepare('SELECT d.*, s.name AS subject FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id WHERE d.id = :id');
+            $st->execute([':id' => (int)($_GET['id'] ?? 0)]);
+            $doc = $st->fetch();
+            if (!$doc) apFail('not_found', 'Not found', 404);
+            apClass($db, (int)$doc['class_id'], $me, $isAdmin);
+            jsonResponse(['success' => true, 'doc' => [
+                'id' => (int)$doc['id'], 'kind' => $doc['kind'], 'subject_id' => (int)$doc['subject_id'], 'subject' => $doc['subject'],
+                'lesson_date' => $doc['lesson_date'], 'event_id' => $doc['event_id'] !== null ? (int)$doc['event_id'] : null,
+                'title' => $doc['title'], 'content' => $doc['content'], 'sources' => json_decode($doc['sources'], true) ?: [],
+                'status' => $doc['status'], 'updated_at' => (int)$doc['updated_at'],
+            ]]);
+        }
+
         [$class, $canManage] = apClass($db, (int)($_GET['class_id'] ?? 0), $me, $isAdmin);
         $classId = (int)$class['id'];
 
@@ -170,6 +191,33 @@ try {
             $st->execute([':c' => $classId, ':f' => $from, ':t' => $to]);
             jsonResponse(['success' => true, 'today' => $today, 'events' => array_map(
                 fn($e) => notesFormatEvent($e, $me, $canManage), $st->fetchAll())]);
+        }
+
+        if ($action === 'docs') {
+            $where = 'd.class_id = :c';
+            $params = [':c' => $classId];
+            if (!empty($_GET['subject_id'])) { $where .= ' AND d.subject_id = :s'; $params[':s'] = (int)$_GET['subject_id']; }
+            $st = $db->prepare("SELECT d.id, d.kind, d.subject_id, d.lesson_date, d.event_id, d.title, d.status, d.updated_at, s.name AS subject
+                                FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id
+                                WHERE $where ORDER BY COALESCE(d.lesson_date, '') DESC, d.id DESC LIMIT 300");
+            $st->execute($params);
+            $pending = $db->prepare("SELECT COUNT(*) FROM class_item_files WHERE class_id = :c AND text_status = 'pending'");
+            $pending->execute([':c' => $classId]);
+            $lastManual = (int)($class['ai_last_manual'] ?? 0);
+            jsonResponse(['success' => true,
+                'docs' => array_map(fn($d) => [
+                    'id' => (int)$d['id'], 'kind' => $d['kind'], 'subject_id' => (int)$d['subject_id'], 'subject' => $d['subject'],
+                    'lesson_date' => $d['lesson_date'], 'event_id' => $d['event_id'] !== null ? (int)$d['event_id'] : null,
+                    'title' => $d['title'], 'status' => $d['status'], 'updated_at' => (int)$d['updated_at'],
+                ], $st->fetchAll()),
+                'ai' => [
+                    'configured' => geminiConfigured(),
+                    'requested' => !empty($class['ai_requested_at']),
+                    'next_manual_at' => $lastManual ? $lastManual + AI_MANUAL_EVERY_SEC : 0,
+                    'pending_files' => (int)$pending->fetchColumn(),
+                    'summary_time' => $class['summary_time'],
+                ],
+            ]);
         }
 
         if ($action === 'usage') {
@@ -293,6 +341,21 @@ try {
            ->execute([':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['lesson_date'], ':p' => $f['period'],
                       ':t' => $f['title'], ':b' => $f['body'], ':now' => time(), ':id' => $item['id']]);
         jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'generate') {
+        [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        if (!geminiConfigured()) apFail('ai_off', 'The AI is not configured on this server', 503);
+        // Atomic: only one request per hour per class wins
+        $now = time();
+        $st = $db->prepare('UPDATE school_classes SET ai_requested_at = :now, ai_last_manual = :now
+                            WHERE id = :id AND (ai_last_manual IS NULL OR ai_last_manual <= :limit)');
+        $st->execute([':now' => $now, ':id' => $class['id'], ':limit' => $now - AI_MANUAL_EVERY_SEC]);
+        if ($st->rowCount() === 0) {
+            $next = (int)$class['ai_last_manual'] + AI_MANUAL_EVERY_SEC;
+            jsonResponse(['success' => false, 'code' => 'too_soon', 'error' => 'Already requested in the last hour', 'next_manual_at' => $next], 429);
+        }
+        jsonResponse(['success' => true, 'next_manual_at' => $now + AI_MANUAL_EVERY_SEC]);
     }
 
     if ($action === 'add_event') {

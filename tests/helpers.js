@@ -43,6 +43,7 @@ async function startSite(env = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vb-test-'));
     fs.cpSync(path.join(REPO, 'public'), path.join(root, 'public'), { recursive: true });
     fs.cpSync(path.join(REPO, 'lib'), path.join(root, 'lib'), { recursive: true });
+    fs.cpSync(path.join(REPO, 'bin'), path.join(root, 'bin'), { recursive: true });
     fs.mkdirSync(path.join(root, 'data'), { mode: 0o750 });
     fs.writeFileSync(path.join(root, '.env'),
         Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\n') + '\n');
