@@ -40,6 +40,7 @@ $other = $it ? 'en' : 'it';
             <li><strong>Giocate e fate giocare.</strong> Nella pagina dei giochi c’è qualche annuncio: ogni visita aiuta un pochino a coprire le spese. Non serve cliccare niente.</li>
             <li><strong>Passate parola.</strong> Chi è la spia?, Lupus e Non ho mai… sono fatti per le serate con gli amici: se vi sono piaciuti, mandate il link a qualcuno.</li>
             <li><strong>Segnalate problemi e idee</strong> con l’Uplink nella pagina principale: arrivano direttamente a chi gestisce il sito.</li>
+            <li><strong>Il codice è pubblico</strong> su <a href="https://github.com/G1anPietro/vector-box" rel="noopener">GitHub</a>: se sapete programmare, potete guardarlo e proporre modifiche.</li>
         </ul>
         <a class="cta" href="giochi.php">Vai ai giochi</a>
 <?php else: ?>
@@ -54,6 +55,7 @@ $other = $it ? 'en' : 'it';
             <li><strong>Play, and get others to play.</strong> The games page shows a few ads: every visit helps a little with the costs. There is nothing to click.</li>
             <li><strong>Spread the word.</strong> Who’s the spy?, Lupus and Never have I ever… are made for evenings with friends: if you liked them, send the link to someone.</li>
             <li><strong>Report problems and ideas</strong> through the Uplink on the main page: they go straight to whoever runs the site.</li>
+            <li><strong>The code is public</strong> on <a href="https://github.com/G1anPietro/vector-box" rel="noopener">GitHub</a>: if you can program, have a look and suggest changes.</li>
         </ul>
         <a class="cta" href="giochi.php">Go to the games</a>
 <?php endif; ?>
@@ -64,6 +66,7 @@ $other = $it ? 'en' : 'it';
     <footer class="foot">
         <a href="giochi.php"><?= $it ? 'Giochi' : 'Games' ?></a>
         <a href="privacy.php">Privacy</a>
+        <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>
         <a href="../index.php"><?= $it ? 'Torna al sito' : 'Back to the site' ?></a>
     </footer>
 </body>

@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> **Bozza** (2026-11-12). Le parti da completare sono segnate con **TODO**.
+> **Bozza** (2026-11-12). Le parti da completare sono segnate con **TODO**. Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -18,7 +18,7 @@ da soli. Gira su un piccolo server di casa (Ubuntu, nginx, PHP-FPM, Node.js).
 | **Messaggi privati** | Tra utenti registrati, con blocco; nessuna via di accesso per l'admin nelle API. |
 | **Lettore di libri** | EPUB e PDF, solo per gli account autorizzati: copertine, "continua a leggere", segnalibri, caricamento di più file. |
 | **Giochi** (`pages/giochi.php`) | Chi è la spia?, Lupus, Non ho mai…, Poker, Solitario, Node Breach, ARG Vault. |
-| **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Privacy, Curriculum (`resume.php`), Credits. |
+| **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Privacy, Credits. Il Curriculum (`resume.php`) è privato come la biblioteca (`/grantcv`). |
 | **Hub Node** (`server.js`) | Facoltativo: consegna la chat in tempo reale con una sola connessione SSE per browser. |
 
 ## 2. Architettura
@@ -58,7 +58,7 @@ data/              (non in git) database, sessioni, libri, log
 
 ## 4. Database
 
-SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **9**): le modifiche sono funzioni
+SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **10**): le modifiche sono funzioni
 `migrateVN()` in `public/api/database.php`, eseguite una sola volta sotto lock.
 
 | Versione | Cosa aggiunge |
@@ -72,6 +72,7 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V7 | stanze multi-gioco e `lupus_games` (stato della partita in JSON) |
 | V8 | messaggi privati (`dm_messages`, `dm_blocks`) |
 | V9 | `visitors` (registro visite); riprova le copertine EPUB mancanti |
+| V10 | `accounts.can_view_resume` (curriculum privato) |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
 `runMigrations()` + `EXPECTED_SCHEMA` in `updatesite.sh`. Sul server il database non va aperto con `sqlite3` da un
@@ -94,12 +95,12 @@ solo da `js/csrf.js`).
 | `dm.php` | registrati | messaggi privati, blocco |
 | `books.php` | autorizzati | catalogo, caricamento, lettura/scaricamento, copertine |
 | `progress.php`, `bookmarks.php` | autorizzati | avanzamento e segnalibri |
-| `moderate_user.php`, `moderate_book_access.php` | admin | moderazione e permessi della biblioteca |
+| `moderate_user.php`, `moderate_book_access.php` | admin | moderazione; permessi di biblioteca e curriculum (`scope`: `books` / `resume`) |
 | `spia.php` | tutti | stanze di Chi è la spia? e Lupus (token del dispositivo in `X-Spia-Device`) |
 | `poker.php`, `poker_stats.php`, `poker_leaderboard.php` | tutti / utenti | tavolo, statistiche, classifica |
 | `guestbook.php` | tutti | muro dei graffiti |
 | `status.php` | tutti | stato pubblico del server (finestra STATUS) |
-| `command.php` | tutti | modulo "lascia un messaggio all'admin" (notifica ntfy) |
+| `command.php` | tutti (con CSRF) | modulo "lascia un messaggio all'admin" (notifica ntfy) |
 | `get_log.php` | admin | log degli errori |
 | `visit.php` | tutti | beacon delle pagine statiche per il registro visite |
 
@@ -119,8 +120,10 @@ solo da `js/csrf.js`).
   annunci (`VB_ADS_PAGE`) aprono solo i domini di Google necessari.
 - **Limiti di richieste** salvati in SQLite (`checkRateLimit()`).
 - **Hub della chat:** token firmato (HMAC), valido 60 secondi e per **una sola** connessione.
-- **Biblioteca privata:** pagina, file e copertine solo per gli account con il permesso; `robots.txt` tiene fuori i motori
-  di ricerca.
+- **Biblioteca e curriculum privati:** pagina, file e copertine solo per gli account con il permesso (`/grantbook`,
+  `/grantcv`); `robots.txt` tiene fuori i motori di ricerca.
+- **Logout e modulo per l'admin** rifiutano le richieste che partono da altri siti; le sessioni accettano solo ID creati
+  dal server (`session.use_strict_mode`).
 
 ## 7. Configurazione (`.env`)
 
@@ -145,7 +148,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 79 test: account, CSRF, stanze, chat, hub, giochi, DM, visite…
+npm test                          # 83 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi…
 ```
 
 Prima di ogni commit: `php -l` sui file PHP toccati e `node --check` sui JS. Usare sempre una **copia** del database.
@@ -173,6 +176,4 @@ Estensioni PHP necessarie: `pdo_sqlite`, `curl`, `zip` e `xml` (per le copertine
 
 - Il pannello Node (Minecraft, Wake-on-LAN) è vecchio e non va esposto.
 - La pagina Doom non funziona.
-- Il `README.md` è in parte superato (parla di token della chat da 10 minuti e del ritorno all'hub dopo 5 minuti; oggi
-  sono 60 secondi monouso e 1 minuto). **TODO:** allinearlo o farlo puntare a questo documento.
 - **TODO:** schermate, guida per gli utenti (come si gioca, come si usa il terminale), elenco dei comandi del terminale.

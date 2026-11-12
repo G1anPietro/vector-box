@@ -1,26 +1,36 @@
 # vector-box
 
-Cyberpunk desktop-style site: PHP frontend/API (SQLite) + Node.js control panel (Minecraft, Wake-on-LAN, telemetry).
+Cyberpunk desktop-style personal site: windows, a terminal and a taskbar in the browser, with a chat (rooms and private
+messages), a private book reader, party games for phones (Who's the spy?, Lupus, Never have I ever…) and solo games
+(Solitaire, Node Breach, ARG Vault). PHP + SQLite, with an optional Node.js hub that delivers the chat in real time.
 
-## Setup
-1. `cp .env.example .env` and fill in **all** the values (the Node server refuses to start without the secrets).
-2. `npm install && npm start`
-3. PHP: serve `public/` with nginx/Apache + PHP-FPM. `data/` (SQLite, sessions, books) must live **outside** the web root; it is created automatically with `0750` permissions.
-4. Behind a reverse proxy set `TRUSTED_PROXIES` (PHP) and `TRUST_PROXY` (Node), otherwise client IPs are the proxy's.
+**Full documentation (Italian): [`docs/DOCUMENTAZIONE.md`](docs/DOCUMENTAZIONE.md)** — architecture, database, API,
+security rules, configuration, deploy.
 
-## Database
-Schema changes live in `public/api/database.php` (`migrateVx()` + `DB_SCHEMA_VERSION`). They run once per version, tracked with `PRAGMA user_version`.
+## Quick start
 
-## Chat rooms
-- `is_private = 1` → only admins can **post** (announcement channel)
-- `is_hidden  = 1` → only admins can **read** (e.g. `admin`)
+```bash
+cp .env.example .env          # fill it in: Node refuses to start without SESSION_SECRET, ADMIN_PASSWORD, GUEST_PASSWORD
+npm install
+php -S 127.0.0.1:8080 -t public
+npm start                     # optional: the chat hub
+npm test                      # automated tests
+```
 
-## Live chat delivery
-- PHP always stores messages (`api/uplink_send.php`).
-- **Chat hub (optional):** with `CHAT_HUB_SECRET` + `CHAT_STREAM_URL` set, PHP pushes each new/deleted
-  message to Node (`/internal/chat/publish`, loopback + secret only) and browsers hold one SSE connection to
-  Node's `/api/chat/stream` using a 10-minute token from `check_session.php`. Proxy only
-  `/api/chat/stream` to Node (see `.env.example`), never `/internal/`.
-- **Fallback:** without the hub, or when it fails 3 times in a row, the browser uses `api/uplink_stream.php`
-  and retries the hub every 5 minutes. Both streams resume from the last event id, so reconnects don't lose
-  messages. Deletions only propagate live through the hub.
+- Serve **only** `public/`; `data/` (SQLite, sessions, books, logs) lives outside it and is created automatically.
+- Behind a reverse proxy set `TRUSTED_PROXIES` (PHP) and `TRUST_PROXY` (Node).
+- Schema changes: a new `migrateVN()` in `public/api/database.php` plus `DB_SCHEMA_VERSION` (tracked with
+  `PRAGMA user_version`).
+
+## Chat delivery
+
+PHP always stores the messages. With `CHAT_HUB_SECRET` and `CHAT_STREAM_URL` set, PHP pushes new and deleted messages to
+the Node hub (`/internal/chat/publish`, loopback + secret only) and each browser keeps one SSE connection to
+`/api/chat/stream`, authenticated with a signed token valid for **60 seconds and one connection**. On failure the browser
+retries after 1, 2, 4 and 8 seconds, then falls back to `api/uplink_stream.php` and tries the hub again every minute.
+Both streams resume from the last event id. Proxy only `/api/chat/stream` to Node, never `/internal/`.
+
+## Rooms
+
+- `is_private = 1`: only admins can post (announcements)
+- `is_hidden = 1`: only admins can read
