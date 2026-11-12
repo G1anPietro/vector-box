@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 9;
+const DB_SCHEMA_VERSION = 10;
 
 /**
  * Session bootstrap.
@@ -336,6 +336,11 @@ function migrateV9(PDO $db): void {
     $db->exec("UPDATE books SET meta_checked = 0 WHERE format = 'epub' AND (cover_path IS NULL OR cover_path = '')");
 }
 
+function migrateV10(PDO $db): void {
+    // The CV page is private, like the library: only accounts the admin allows (/grantcv)
+    addColumnIfMissing($db, 'accounts', 'can_view_resume', 'INTEGER DEFAULT 0');
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -367,6 +372,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 9) {
             migrateV9($db);
+        }
+        if ($current < 10) {
+            migrateV10($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

@@ -69,6 +69,8 @@ const COMMAND_DESCRIPTIONS = {
     "/grantbook": "Grant book reader permissions to a user (Admin only). Usage: /grantbook <username>",
     "grantbook": "Grant book reader permissions to a user (Admin only). Usage: grantbook <username>",
     "/revokebook": "Revoke book reader permissions from a user (Admin only). Usage: /revokebook <username>",
+    "/grantcv": "Let a user see the CV page (Admin only). Usage: /grantcv <username>",
+    "/revokecv": "Hide the CV page from a user (Admin only). Usage: /revokecv <username>",
     "revokebook": "Revoke book reader permissions from a user (Admin only). Usage: revokebook <username>",
 };
 

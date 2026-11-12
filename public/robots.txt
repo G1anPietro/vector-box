@@ -5,3 +5,4 @@ Disallow: /pages/reader.php
 Disallow: /pages/account.php
 Disallow: /pages/login.php
 Disallow: /pages/dashboard.php
+Disallow: /pages/resume.php

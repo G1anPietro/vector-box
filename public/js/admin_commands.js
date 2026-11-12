@@ -25,7 +25,7 @@
     }
 
     // Helper for book permissions management
-    async function sendBookAccessCommand(action, targetUser) {
+    async function sendBookAccessCommand(action, targetUser, scope = 'books') {
         const csrfToken = window.SESSION_STATE?.csrfToken || '';
         try {
             const res = await fetch('api/moderate_book_access.php', {
@@ -35,7 +35,7 @@
                     'X-CSRF-Token': csrfToken
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ action, username: targetUser })
+                body: JSON.stringify({ action, username: targetUser, scope })
             });
             return await res.json();
         } catch (err) {
@@ -120,6 +120,22 @@
             printGuestLog(`>> ERROR: ${res.error}`, COLORS.ERROR);
         }
     };
+
+    // Private CV page (pages/resume.php)
+    const cvCommand = (action) => async function(args, printGuestLog) {
+        const target = args[0];
+        if (!target) {
+            printGuestLog(`>> USAGE: /${action === 'grant' ? 'grantcv' : 'revokecv'} <username>`, COLORS.ERROR);
+            return;
+        }
+        printGuestLog(`>> ${action === 'grant' ? 'Granting' : 'Revoking'} CV access for '${target}'...`, action === 'grant' ? COLORS.INFO : COLORS.WARNING);
+        const res = await sendBookAccessCommand(action, target, 'resume');
+        printGuestLog(res.success ? `>> SUCCESS: ${res.message}` : `>> ERROR: ${res.error}`, res.success ? COLORS.PRIMARY : COLORS.ERROR);
+    };
+    commandHandlers['/grantcv'] = cvCommand('grant');
+    commandHandlers['/revokecv'] = cvCommand('revoke');
+    commandHandlers['grantcv'] = commandHandlers['/grantcv'];
+    commandHandlers['revokecv'] = commandHandlers['/revokecv'];
 
     // Aliases without leading slashes
     commandHandlers['ban'] = commandHandlers['/ban'];

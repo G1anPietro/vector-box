@@ -2,8 +2,32 @@
 // public/pages/resume.php — CV, Italian and English (?lang=it|en), printable (Print / Save as PDF).
 // Only things that can be shown: everything listed here exists in this site or on its server.
 require_once __DIR__ . '/../includes/head.php';
+require_once __DIR__ . '/../api/database.php';
 
 $lang = pageLang();
+
+// Private page, like the library: admin, or accounts allowed with /grantcv
+initSession();
+$canView = !empty($_SESSION['is_admin']);
+if (!$canView && !empty($_SESSION['user_id'])) {
+    $stmt = getDbConnection()->prepare('SELECT can_view_resume FROM accounts WHERE id = :id');
+    $stmt->execute([':id' => (int)$_SESSION['user_id']]);
+    $canView = (int)$stmt->fetchColumn() === 1;
+}
+if (!$canView) {
+    http_response_code(403);
+    header('X-Robots-Tag: noindex');
+    $it = $lang === 'it';
+    echo '<!DOCTYPE html><html lang="' . $lang . '"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+       . '<meta name="robots" content="noindex"><title>' . ($it ? 'Pagina privata' : 'Private page') . '</title>'
+       . '<link rel="stylesheet" href="../css/giochi.css?v=1"></head><body><main class="doc">'
+       . '<h1>' . ($it ? 'Pagina privata' : 'Private page') . '</h1><p>'
+       . ($it ? 'Il curriculum è visibile solo agli account autorizzati. Se ti serve, chiedilo a chi gestisce il sito.'
+              : 'The CV is only visible to authorised accounts. If you need it, ask whoever runs the site.')
+       . '</p><a class="cta" href="' . (empty($_SESSION['user_id']) ? 'login.php' : '../index.php') . '">'
+       . (empty($_SESSION['user_id']) ? ($it ? 'Accedi' : 'Log in') : ($it ? 'Torna al sito' : 'Back to the site')) . '</a></main></body></html>';
+    exit();
+}
 $it = $lang === 'it';
 $other = $it ? 'en' : 'it';
 $L = fn(string $i, string $e) => $it ? $i : $e;
@@ -15,6 +39,7 @@ $L = fn(string $i, string $e) => $it ? $i : $e;
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#16141c">
     <title>Denys Khavruniak — <?= $L('Curriculum', 'Résumé') ?></title>
+    <meta name="robots" content="noindex">
     <meta name="description" content="<?= $L('Studente di informatica: Linux, reti, server e sviluppo web.', 'Computer science student: Linux, networking, servers and web development.') ?>">
     <link rel="stylesheet" href="../css/resume.css?v=4">
     <script src="../js/resume.js?v=1" defer></script>

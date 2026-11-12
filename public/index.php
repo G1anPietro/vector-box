@@ -12,14 +12,16 @@ $isAdmin = !empty($_SESSION['is_admin']);
 
 // Book Reader Permission Check (Admin automatically granted access)
 $canReadBooks = $isAdmin;
+$canViewResume = $isAdmin;   // the CV is private too: admin, or accounts allowed with /grantcv
 if ($userId && !$isAdmin) {
     try {
         $db = getDbConnection();
-        $stmt = $db->prepare("SELECT can_read_books FROM accounts WHERE id = :id");
+        $stmt = $db->prepare("SELECT can_read_books, can_view_resume FROM accounts WHERE id = :id");
         $stmt->execute([':id' => $userId]);
         $acc = $stmt->fetch();
         if ($acc) {
             $canReadBooks = (int)$acc['can_read_books'] === 1;
+            $canViewResume = (int)($acc['can_view_resume'] ?? 0) === 1;
         }
     } catch (Exception $e) {
         $canReadBooks = false;
@@ -41,7 +43,9 @@ if ($userId && !$isAdmin) {
             <button id="menu-toggle-btn" class="nav-btn" type="button">// MENU</button>
             
             <div id="dropdown-menu" class="cyber-panel menu-dropdown hidden">
-                <a href="pages/resume.php" class="menu-item btn-dossier">// VIEW DOSSIER</a>
+                <?php if ($canViewResume): ?>
+                    <a href="pages/resume.php" class="menu-item btn-dossier">// VIEW DOSSIER</a>
+                <?php endif; ?>
                 <a href="pages/giochi.php" class="menu-item">// GIOCHI</a>
                 <a href="pages/ads.php" class="menu-item btn-adwall">// SUPPORTA</a>
                 
