@@ -11,11 +11,13 @@
 // POST {action:"request", name, school, note}
 //      {action:"decide", id, approve}                 (admin)
 //      {action:"set_requests_open", open}             (admin)
+//      {action:"set_limits", file_mb, class_mb[, id]} (admin; with id: that class only, empty = site default)
 //      {action:"delete_class", id}                    (admin)
 //      {action:"join", code} | {action:"leave", id}
 //      {action:"regen_code", id} | {action:"remove_member", id, user_id} | {action:"set_manager", id, user_id}
 //      {action:"settings", id, summary_time, timezone}
-//      {action:"save_timetable", id, valid_from, periods:[{start,end}], slots:[{day,period,subject,label,room}]}
+//      {action:"save_timetable", id, valid_from, periods:{"1":[{start,end}],...,"6":[...]} (or one list for Mon-Fri),
+//                                slots:[{day,period,subject,label,room}]}
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/classi_lib.php';
@@ -96,10 +98,12 @@ try {
             jsonResponse([
                 'success' => true,
                 'requests_open' => classRequestsOpen($db),
+                'default_limits_mb' => classDefaultLimits($db),
                 'classes' => array_map(fn($c) => [
                     'id' => (int)$c['id'], 'name' => $c['name'], 'school' => $c['school'],
                     'status' => $c['status'], 'note' => $c['request_note'],
                     'manager' => $c['manager_name'], 'members' => (int)$c['members'],
+                    'limits_mb' => classLimits($db, $c),
                     'created_at' => (int)$c['created_at'],
                 ], $rows),
             ]);
@@ -133,7 +137,7 @@ try {
         $db->prepare("INSERT INTO school_classes (name, school, status, manager_id, request_note, periods, created_at)
                       VALUES (:n, :s, 'pending', :me, :note, :p, :t)")
            ->execute([':n' => $name, ':s' => $school, ':me' => $me, ':note' => $note,
-                      ':p' => json_encode(CLASS_DEFAULT_PERIODS), ':t' => time()]);
+                      ':p' => json_encode(classDefaultPeriods()), ':t' => time()]);
         jsonResponse(['success' => true, 'id' => (int)$db->lastInsertId(), 'status' => 'pending']);
     }
 
@@ -166,10 +170,27 @@ try {
     if ($action === 'set_requests_open') {
         requireAdmin();
         $open = !empty($in['open']);
-        $db->prepare('INSERT INTO app_settings (key, value) VALUES (:k, :v)
-                      ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-           ->execute([':k' => 'class_requests_open', ':v' => $open ? '1' : '0']);
+        appSettingSet($db, 'class_requests_open', $open ? '1' : '0');
         jsonResponse(['success' => true, 'requests_open' => $open]);
+    }
+
+    if ($action === 'set_limits') {
+        requireAdmin();
+        $file = classParseLimit($in['file_mb'] ?? null, CLASS_LIMIT_FILE_MB_MAX);
+        $class = classParseLimit($in['class_mb'] ?? null, CLASS_LIMIT_CLASS_MB_MAX);
+        if (is_string($file)) clFail('bad_limit', $file);
+        if (is_string($class)) clFail('bad_limit', $class);
+        if ($id > 0) {
+            $row = classLoad($db, $id);
+            if (!$row) clFail('not_found', 'Class not found', 404);
+            $db->prepare('UPDATE school_classes SET max_file_mb = :f, max_class_mb = :c WHERE id = :id')
+               ->execute([':f' => $file, ':c' => $class, ':id' => $id]);
+            jsonResponse(['success' => true, 'limits_mb' => classLimits($db, classLoad($db, $id))]);
+        }
+        if ($file === null || $class === null) clFail('bad_limit', 'Both site-wide limits are required');
+        appSettingSet($db, 'notes_max_file_mb', (string)$file);
+        appSettingSet($db, 'notes_max_class_mb', (string)$class);
+        jsonResponse(['success' => true, 'limits_mb' => classDefaultLimits($db)]);
     }
 
     if ($action === 'delete_class') {
@@ -239,7 +260,7 @@ try {
         $class = clManaged($db, $id, $me, $isAdmin);
         $periods = classParsePeriods($in['periods'] ?? null);
         if (is_string($periods)) clFail('bad_periods', $periods);
-        $slots = classParseSlots($in['slots'] ?? null, count($periods));
+        $slots = classParseSlots($in['slots'] ?? null, $periods);
         if (is_string($slots)) clFail('bad_slots', $slots);
         $validFrom = (string)($in['valid_from'] ?? '');
         if ($validFrom === '') $validFrom = classToday($class);

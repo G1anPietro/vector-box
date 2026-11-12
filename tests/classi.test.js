@@ -59,7 +59,8 @@ test('the admin approves: the requester becomes manager and gets an invite code'
     assert.equal(detail.is_manager, true);
     assert.match(detail.invite_code, /^[A-HJ-NP-Z2-9]{8}$/);
     assert.equal(detail.summary_time, '18:00');
-    assert.equal(detail.periods.length, 6);
+    assert.equal(detail.periods['1'].length, 6, 'default: six lessons Monday-Friday');
+    assert.equal(detail.periods['6'].length, 0, 'no lessons on Saturday by default');
     code = detail.invite_code;
 });
 
@@ -136,7 +137,32 @@ test('timetable: bell times, subjects and versions by date', async () => {
     assert.deepEqual(detail.timetable.slots.map((s) => s.subject), ['TPSIT', 'TPSIT', 'Storia']);
     assert.equal(detail.timetable.slots[0].label, 'Lab TPSIT');
     assert.deepEqual(detail.timetable_versions, ['2999-01-01', '2026-09-01']);
-    assert.equal(detail.periods.length, 3);
+    assert.equal(detail.periods['5'].length, 3, 'one list = same bell times Monday-Friday');
+    assert.equal(detail.periods['6'].length, 0);
+});
+
+test('bell times can differ by day (shorter hours on Monday and Thursday)', async () => {
+    // The owner's school: Mon/Thu seven ~50-minute lessons, Tue/Wed/Fri six longer ones; dots accepted
+    const short = [['08.10', '09.00'], ['09.00', '09.45'], ['09.45', '10.35'], ['10.35', '11.25'],
+        ['11.25', '12.15'], ['12.15', '13.00'], ['13.00', '13.50']].map(([start, end]) => ({ start, end }));
+    const long = [['08.10', '09.05'], ['09.05', '10.00'], ['10.00', '11.00'], ['11.00', '12.00'],
+        ['12.00', '12.55'], ['12.55', '13.50']].map(([start, end]) => ({ start, end }));
+    const periods = { 1: short, 2: long, 3: long, 4: short, 5: long };
+    const tooLate = await api(mario, {
+        action: 'save_timetable', id: classId, periods, valid_from: '2026-09-02',
+        slots: [{ day: 2, period: 7, subject: 'Matematica' }],
+    });
+    assert.equal(tooLate.json.code, 'bad_slots', 'Tuesday has no 7th hour');
+    const ok = await api(mario, {
+        action: 'save_timetable', id: classId, periods, valid_from: '2026-09-02',
+        slots: [{ day: 1, period: 7, subject: 'Matematica', room: 'C208 LIM' }],
+    });
+    assert.equal(ok.status, 200);
+    const p = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.periods;
+    assert.equal(p['1'].length, 7);
+    assert.deepEqual(p['1'][6], { start: '13:00', end: '13:50' });
+    assert.equal(p['2'].length, 6);
+    assert.equal(p['6'].length, 0);
 });
 
 test('manager: new code, transfer, remove; members can leave', async () => {
@@ -153,6 +179,24 @@ test('manager: new code, transfer, remove; members can leave', async () => {
     assert.equal((await api(luigi, { action: 'remove_member', id: classId, user_id: luigiId })).json.code, 'is_manager');
     assert.equal((await api(luigi, { action: 'remove_member', id: classId, user_id: marioId })).status, 200);
     assert.equal((await mario.get(`/api/classi.php?action=class&id=${classId}`)).status, 404);
+});
+
+test('upload limits: 40 MB / 5 GB by default, the admin changes them site-wide or per class', async () => {
+    const cid = site.db("SELECT id FROM school_classes WHERE status = 'active' LIMIT 1")[0].id;
+    const limits = async () => (await admin.get(`/api/classi.php?action=class&id=${cid}`)).json.class.limits_mb;
+    assert.deepEqual(await limits(), { file: 40, class: 5120 });
+
+    assert.equal((await api(luigi, { action: 'set_limits', file_mb: 10, class_mb: 100 })).status, 403);
+    assert.equal((await api(admin, { action: 'set_limits', file_mb: 0, class_mb: 100 })).json.code, 'bad_limit');
+    assert.equal((await api(admin, { action: 'set_limits', file_mb: 500, class_mb: 100 })).json.code, 'bad_limit');
+    assert.equal((await api(admin, { action: 'set_limits', file_mb: 30 })).json.code, 'bad_limit', 'site-wide needs both');
+
+    assert.equal((await api(admin, { action: 'set_limits', file_mb: 30, class_mb: 2048 })).status, 200);
+    assert.deepEqual(await limits(), { file: 30, class: 2048 });
+    assert.equal((await api(admin, { action: 'set_limits', id: cid, file_mb: 50, class_mb: '' })).status, 200);
+    assert.deepEqual(await limits(), { file: 50, class: 2048 }, 'class override + site default');
+    const all = (await admin.get('/api/classi.php?action=all')).json;
+    assert.deepEqual(all.default_limits_mb, { file: 30, class: 2048 });
 });
 
 test('joining is rate limited against code guessing', async () => {

@@ -368,6 +368,8 @@ function migrateV12(PDO $db): void {
         timezone TEXT NOT NULL DEFAULT 'Europe/Rome',
         periods TEXT NOT NULL DEFAULT '[]',
         summary_time TEXT NOT NULL DEFAULT '18:00',
+        max_file_mb INTEGER,
+        max_class_mb INTEGER,
         created_at INTEGER NOT NULL,
         decided_at INTEGER
     )");

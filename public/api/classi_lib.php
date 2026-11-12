@@ -13,12 +13,23 @@ const CLASS_SUBJECT_MAX = 60;
 const CLASS_LABEL_MAX = 30;
 const CLASS_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I
 const CLASS_CODE_LENGTH = 8;
-// Starting bell times for a new class (the manager changes them): six 60-minute lessons from 8:00
-const CLASS_DEFAULT_PERIODS = [
+// Upload limits: site-wide defaults the admin can change (app_settings), and per-class overrides
+const CLASS_DEFAULT_FILE_MB = 40;
+const CLASS_DEFAULT_CLASS_MB = 5 * 1024;
+const CLASS_LIMIT_FILE_MB_MAX = 95;          // stays under post_max_size in .user.ini (100M)
+const CLASS_LIMIT_CLASS_MB_MAX = 200 * 1024;
+// Starting bell times for a new class (the manager changes them): Monday-Friday, six 60-minute lessons from 8:00
+const CLASS_DEFAULT_DAY = [
     ['start' => '08:00', 'end' => '09:00'], ['start' => '09:00', 'end' => '10:00'],
     ['start' => '10:00', 'end' => '11:00'], ['start' => '11:00', 'end' => '12:00'],
     ['start' => '12:00', 'end' => '13:00'], ['start' => '13:00', 'end' => '14:00'],
 ];
+
+function classDefaultPeriods(): array {
+    $out = [];
+    for ($d = 1; $d <= CLASS_MAX_DAYS; $d++) $out[(string)$d] = $d <= 5 ? CLASS_DEFAULT_DAY : [];
+    return $out;
+}
 
 function classLoad(PDO $db, int $id): ?array {
     $st = $db->prepare('SELECT * FROM school_classes WHERE id = :id');
@@ -34,10 +45,43 @@ function classIsMember(PDO $db, int $classId, int $userId): bool {
 
 /** The admin can close new class requests; open by default. */
 function classRequestsOpen(PDO $db): bool {
+    return appSetting($db, 'class_requests_open', '1') === '1';
+}
+
+function appSetting(PDO $db, string $key, ?string $default = null): ?string {
     $st = $db->prepare('SELECT value FROM app_settings WHERE key = :k');
-    $st->execute([':k' => 'class_requests_open']);
+    $st->execute([':k' => $key]);
     $v = $st->fetchColumn();
-    return $v === false || $v === '1';
+    return $v === false ? $default : (string)$v;
+}
+
+function appSettingSet(PDO $db, string $key, string $value): void {
+    $db->prepare('INSERT INTO app_settings (key, value) VALUES (:k, :v) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+       ->execute([':k' => $key, ':v' => $value]);
+}
+
+/** Site-wide upload limits in MB: ['file' => .., 'class' => ..]. */
+function classDefaultLimits(PDO $db): array {
+    return [
+        'file' => (int)appSetting($db, 'notes_max_file_mb', (string)CLASS_DEFAULT_FILE_MB),
+        'class' => (int)appSetting($db, 'notes_max_class_mb', (string)CLASS_DEFAULT_CLASS_MB),
+    ];
+}
+
+/** Limits in force for one class (its override, else the site default), in MB. */
+function classLimits(PDO $db, array $class): array {
+    $d = classDefaultLimits($db);
+    return [
+        'file' => $class['max_file_mb'] !== null ? (int)$class['max_file_mb'] : $d['file'],
+        'class' => $class['max_class_mb'] !== null ? (int)$class['max_class_mb'] : $d['class'],
+    ];
+}
+
+/** Validates a limit in MB; null/'' means "use the default". Returns int|null, or an error string. */
+function classParseLimit($v, int $max) {
+    if ($v === null || $v === '') return null;
+    if (!is_numeric($v) || (int)$v < 1 || (int)$v > $max) return "Limit must be between 1 and $max MB";
+    return (int)$v;
 }
 
 function classNewInviteCode(PDO $db): string {
@@ -88,27 +132,54 @@ function classToday(array $class, ?int $now = null): string {
     return (new DateTimeImmutable('@' . ($now ?? time())))->setTimezone(classTimezone($class))->format('Y-m-d');
 }
 
-/** Bell times: a list of {start, end} in order, without overlaps. Returns the list or an error string. */
-function classParsePeriods($raw) {
-    if (!is_array($raw) || count($raw) < 1 || count($raw) > CLASS_MAX_PERIODS) {
-        return 'Between 1 and ' . CLASS_MAX_PERIODS . ' lessons a day';
-    }
+/** One day's bell times: {start, end} in order, without overlaps. Returns the list or an error string. */
+function classParseDayPeriods($raw, string $dayLabel) {
+    if (!is_array($raw) || count($raw) > CLASS_MAX_PERIODS) return "$dayLabel: at most " . CLASS_MAX_PERIODS . ' lessons';
     $out = [];
     $prevEnd = '00:00';
     foreach (array_values($raw) as $i => $p) {
-        $start = is_array($p) ? (string)($p['start'] ?? '') : '';
-        $end = is_array($p) ? (string)($p['end'] ?? '') : '';
-        if (!classValidTime($start) || !classValidTime($end)) return 'Lesson ' . ($i + 1) . ': times must be HH:MM';
-        if ($start >= $end) return 'Lesson ' . ($i + 1) . ' ends before it starts';
-        if ($start < $prevEnd) return 'Lesson ' . ($i + 1) . ' overlaps the one before';
+        $start = is_array($p) ? str_replace('.', ':', (string)($p['start'] ?? '')) : '';
+        $end = is_array($p) ? str_replace('.', ':', (string)($p['end'] ?? '')) : '';
+        $n = $i + 1;
+        if (!classValidTime($start) || !classValidTime($end)) return "$dayLabel, lesson $n: times must be HH:MM";
+        if ($start >= $end) return "$dayLabel, lesson $n ends before it starts";
+        if ($start < $prevEnd) return "$dayLabel, lesson $n overlaps the one before";
         $out[] = ['start' => $start, 'end' => $end];
         $prevEnd = $end;
     }
     return $out;
 }
 
-/** Timetable cells: {day 1-6, period, subject, label?, room?}, one per cell. Returns the list or an error string. */
-function classParseSlots($raw, int $periodCount) {
+/**
+ * Bell times per weekday, because schools often have shorter hours on some days.
+ * Accepts {"1": [...], ..., "6": [...]} (missing days = no lessons) or a single list used Monday-Friday.
+ * Returns ["1" => [...], ..., "6" => [...]] or an error string.
+ */
+function classParsePeriods($raw) {
+    if (!is_array($raw)) return 'Invalid bell times';
+    $isList = array_keys($raw) === range(0, count($raw) - 1);
+    $out = [];
+    $total = 0;
+    for ($d = 1; $d <= CLASS_MAX_DAYS; $d++) {
+        $dayRaw = $isList ? ($d <= 5 ? $raw : []) : ($raw[(string)$d] ?? $raw[$d] ?? []);
+        $day = classParseDayPeriods($dayRaw, "Day $d");
+        if (is_string($day)) return $day;
+        $out[(string)$d] = $day;
+        $total += count($day);
+    }
+    if ($total === 0) return 'Add at least one lesson';
+    return $out;
+}
+
+/** Bell times of a stored class, always as day => list. */
+function classPeriods(array $class): array {
+    $p = json_decode($class['periods'] ?? '', true);
+    $parsed = is_array($p) && $p ? classParsePeriods($p) : null;
+    return is_array($parsed) ? $parsed : classDefaultPeriods();
+}
+
+/** Timetable cells: {day 1-6, period, subject, label?, room?}, one per cell; period must exist that day. Returns the list or an error string. */
+function classParseSlots($raw, array $periods) {
     if (!is_array($raw) || count($raw) > CLASS_MAX_DAYS * CLASS_MAX_PERIODS) return 'Invalid timetable';
     $out = [];
     $seen = [];
@@ -117,7 +188,7 @@ function classParseSlots($raw, int $periodCount) {
         $day = (int)($s['day'] ?? 0);
         $period = (int)($s['period'] ?? 0);
         if ($day < 1 || $day > CLASS_MAX_DAYS) return 'Day must be 1 (Monday) to ' . CLASS_MAX_DAYS;
-        if ($period < 1 || $period > $periodCount) return 'Lesson number out of range';
+        if ($period < 1 || $period > count($periods[(string)$day] ?? [])) return 'Lesson number out of range for that day';
         $key = $day . ':' . $period;
         if (isset($seen[$key])) return 'Two subjects in the same hour';
         $seen[$key] = true;
@@ -200,10 +271,11 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'invite_code' => $canManage ? $class['invite_code'] : null,
         'timezone' => $class['timezone'],
         'summary_time' => $class['summary_time'],
-        'periods' => json_decode($class['periods'], true) ?: [],
+        'periods' => classPeriods($class),
         'subjects' => $subjects,
         'timetable' => $timetable,
         'timetable_versions' => $st->fetchAll(PDO::FETCH_COLUMN),
         'members' => $members,
+        'limits_mb' => classLimits($db, $class),
     ];
 }
