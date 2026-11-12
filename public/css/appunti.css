@@ -111,6 +111,8 @@ button.mini { min-height: 34px; padding: 4px 10px; font-size: 14px; }
 .code { font: 700 22px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.12em; background: #11131a; padding: 8px 12px; border-radius: 8px; display: inline-block; }
 .members li span.role { color: var(--accent); font-size: 13px; margin-left: 6px; }
 
+.ai-read { display: grid; gap: 8px; margin: 10px 0 14px; padding: 12px; border: 1px dashed var(--accent); border-radius: 10px; }
+.ai-read button { justify-self: start; }
 .tt-day { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px; }
 .tt-day h4 { display: flex; justify-content: space-between; align-items: center; font-size: 16px; margin-bottom: 6px; }
 .tt-row { display: grid; grid-template-columns: 22px 92px 92px 1fr 1fr 1fr 34px; gap: 6px; align-items: center; margin: 6px 0; }

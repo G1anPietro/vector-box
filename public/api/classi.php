@@ -16,6 +16,8 @@
 //      {action:"join", code} | {action:"leave", id}
 //      {action:"regen_code", id} | {action:"remove_member", id, user_id} | {action:"set_manager", id, user_id}
 //      {action:"settings", id, summary_time, timezone}
+//      multipart {action:"read_timetable", id, files[]}: the AI reads a photo/PDF of the timetable (and of the bell
+//                times) and returns {periods, slots} to review in the editor; nothing is saved
 //      {action:"save_timetable", id, valid_from, periods:{"1":[{start,end}],...,"6":[...]} (or one list for Mon-Fri),
 //                                slots:[{day,period,subject,label,room}]}
 require_once __DIR__ . '/database.php';
@@ -114,7 +116,7 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') clFail('method', 'Method not allowed', 405);
     requireCsrf();
-    $in = readJsonBody();
+    $in = str_starts_with((string)($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/') ? $_POST : readJsonBody();
     $action = (string)($in['action'] ?? '');
     $id = (int)($in['id'] ?? 0);
 
@@ -254,6 +256,37 @@ try {
         $db->prepare('UPDATE school_classes SET summary_time = :s, timezone = :z WHERE id = :id')
            ->execute([':s' => $time, ':z' => $tz, ':id' => $id]);
         jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'read_timetable') {
+        require_once __DIR__ . '/classi_ai.php';
+        $class = clManaged($db, $id, $me, $isAdmin);
+        if (!geminiConfigured()) clFail('ai_off', 'The AI is not configured on this server', 503);
+        if (!checkRateLimit('timetable_ai', 5, 3600, 'class:' . $id)) clFail('slow_down', 'Too many attempts, try again later', 429);
+        $files = [];
+        $raw = $_FILES['files'] ?? null;
+        if (is_array($raw) && isset($raw['name'])) {
+            foreach ((array)$raw['name'] as $i => $name) {
+                $err = (int)((array)$raw['error'])[$i];
+                if ($err === UPLOAD_ERR_NO_FILE) continue;
+                $tmp = (string)((array)$raw['tmp_name'])[$i];
+                if ($err !== UPLOAD_ERR_OK || !is_uploaded_file($tmp) || filesize($tmp) > TIMETABLE_AI_MAX_BYTES) clFail('bad_file', 'Upload a photo or PDF up to 15 MB');
+                $type = timetableFileType($tmp, (string)$name);
+                if (!$type) clFail('bad_type', 'Use a photo (JPG, PNG, WEBP, HEIC) or a PDF');
+                $files[] = ['mime' => $type, 'data' => (string)file_get_contents($tmp)];
+            }
+        }
+        if (!$files || count($files) > 3) clFail('no_file', 'Upload one to three photos or PDFs');
+        set_time_limit(180);
+        try {
+            $result = timetableFromImages($db, $class, $files);
+        } catch (GeminiError $e) {
+            require_once __DIR__ . '/debug_logger.php';
+            logSystemError('TIMETABLE_AI', $e->getMessage());
+            clFail($e->quota ? 'ai_quota' : 'ai_failed', $e->quota ? 'The AI has no requests left today' : 'The AI could not read the timetable', 502);
+        }
+        if (is_string($result)) clFail('ai_unreadable', $result, 422);
+        jsonResponse(['success' => true] + $result);
     }
 
     if ($action === 'save_timetable') {

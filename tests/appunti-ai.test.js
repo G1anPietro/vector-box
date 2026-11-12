@@ -27,7 +27,20 @@ const gemini = http.createServer((req, res) => {
         const user = body.contents ? body.contents[0].parts.filter((p) => p.text).map((p) => p.text).join(' ') : '';
         const quiz = { questions: [0, 1, 2, 3].map((i) => ({ topic: 'Napoleone', question: `Domanda ${i}?`, options: ['a', 'b', 'c', 'd'], answer: i, explanation: 'perché sì' })) };
         let text;
-        if (system.includes('trascrittore')) text = `TRASCRITTO ${user.replace('Trascrivi questo file: ', '')}`;
+        if (system.includes('orario scolastico')) {
+            text = mode === 'badjson' ? 'non lo so' : JSON.stringify({
+                periods: { 1: [['08.10', '09.00'], ['09.00', '09.45'], ['09.45', '10.35']].map(([start, end]) => ({ start, end })) },
+                slots: [
+                    { day: 1, period: 1, subject: 'TPSIT', label: 'Lab TPSIT', room: 'C239 INF2' },
+                    { day: 1, period: 2, subject: 'TPSIT', label: 'Lab TPSIT', room: 'C239 INF2' },
+                    { day: 1, period: 2, subject: 'Doppione', label: '', room: '' },
+                    { day: 1, period: 3, subject: 'Storia', label: 'Storia', room: 'D402' },
+                    { day: 5, period: 3, subject: 'Matematica', label: '', room: 'D402' },
+                    { day: 9, period: 1, subject: 'Inesistente' },
+                ],
+                notes: 'la quinta ora del venerdì non si legge bene',
+            });
+        } else if (system.includes('trascrittore')) text = `TRASCRITTO ${user.replace('Trascrivi questo file: ', '')}`;
         else if (system.includes('DISPENSA COMPLETA')) text = '## Argomenti\n- Napoleone\n## Napoleone\nTutto quanto [L1]';
         else if (system.includes('RIASSUNTO')) text = '## Napoleone\n- in breve';
         else if (system.includes('PREPARAZIONE MIRATA')) text = '## Domande probabili\n1. Chi era Napoleone?';
@@ -201,6 +214,42 @@ test('a real Gemini fault makes the worker exit with 1 (for the ntfy alert); the
     mode = 'ok';
     await worker();
     assert.equal(site.db("SELECT text_status FROM class_item_files WHERE original_name = 'guasto.png'")[0].text_status, 'done');
+});
+
+test('the timetable is read from a photo and returned for review, not saved', async () => {
+    const send = async (c, files) => {
+        const fd = new FormData();
+        fd.set('action', 'read_timetable');
+        fd.set('id', String(classId));
+        for (const f of files) fd.append('files[]', new Blob([f.content], { type: f.type }), f.name);
+        const r = await fetch(site.base + '/api/classi.php', { method: 'POST', body: fd, headers: { Cookie: c.cookieHeader(), 'X-CSRF-Token': c.csrf } });
+        return { status: r.status, json: await r.json() };
+    };
+    const photo = [{ name: 'orario.png', content: PNG, type: 'image/png' }];
+    assert.equal((await send(luigi, photo)).json.code, 'not_manager');
+    assert.equal((await send(mario, [{ name: 'orario.txt', content: Buffer.from('ciao'), type: 'text/plain' }])).json.code, 'bad_type');
+    const versions = site.db('SELECT COUNT(*) AS n FROM class_timetables')[0].n;
+
+    calls.length = 0;
+    const r = await send(mario, photo);
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.match(calls[0].url, /gemini-3\.8-flash:/, 'the smart model reads timetables');
+    assert.match(calls[0].body.contents[0].parts.at(-1).text, /Materie già presenti nella classe: Storia/);
+    assert.equal(r.json.bells_read, true);
+    assert.deepEqual(r.json.periods['1'], [{ start: '08:10', end: '09:00' }, { start: '09:00', end: '09:45' }, { start: '09:45', end: '10:35' }]);
+    assert.deepEqual(r.json.periods['5'], [{ start: '08:10', end: '09:05' }, { start: '09:05', end: '10:05' }, { start: '10:05', end: '11:05' }],
+        'Friday keeps the class bell times and gets enough hours for its 3rd one');
+    assert.deepEqual(r.json.slots.map((x) => [x.day, x.period, x.subject, x.label]), [
+        [1, 1, 'TPSIT', 'Lab TPSIT'], [1, 2, 'TPSIT', 'Lab TPSIT'], [1, 3, 'Storia', ''], [5, 3, 'Matematica', ''],
+    ], 'duplicates and impossible days dropped; a label equal to the subject is removed');
+    assert.equal(r.json.notes, 'la quinta ora del venerdì non si legge bene');
+    assert.equal(site.db('SELECT COUNT(*) AS n FROM class_timetables')[0].n, versions, 'nothing saved until the manager saves');
+
+    mode = 'badjson';
+    const bad = await send(mario, photo);
+    mode = 'ok';
+    assert.equal(bad.status, 422);
+    assert.equal(bad.json.code, 'ai_unreadable');
 });
 
 test('the desktop menu links the notes page', async () => {

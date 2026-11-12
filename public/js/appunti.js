@@ -659,14 +659,13 @@
     }
     function numberRows() { $$('.tt-day').forEach((d) => $$('.tt-row', d).forEach((r, i) => { $('.n', r).textContent = `${i + 1}ª`; })); }
 
-    function renderTimetable() {
+    function renderTimetable(periods = current.periods, slots = (current.timetable && current.timetable.slots) || []) {
         const box = $('#tt-days');
-        const slots = (current.timetable && current.timetable.slots) || [];
         const datalist = el('datalist', { id: 'tt-subjects' }, ...current.subjects.map((s) => el('option', { value: s.name })));
         const days = DAYS.map((name, i) => {
             const day = String(i + 1);
             const rowsBox = el('div', { class: 'rows' });
-            (current.periods[day] || []).forEach((p, k) => {
+            (periods[day] || []).forEach((p, k) => {
                 rowsBox.append(ttRow(p, slots.find((s) => s.day === i + 1 && s.period === k + 1) || {}));
             });
             return el('div', { class: 'tt-day', 'data-day': day },
@@ -697,6 +696,32 @@
         rows.slice(monday.length).forEach((r) => r.remove());
         numberRows();
     }
+
+    $('#tt-read').addEventListener('click', async () => {
+        const files = [...$('#tt-files').files];
+        if (!files.length) { status('Scegli prima la foto o il PDF dell\'orario.', 'err'); return; }
+        const fd = new FormData();
+        fd.set('action', 'read_timetable');
+        fd.set('id', current.id);
+        files.slice(0, 3).forEach((f) => fd.append('files[]', f, f.name));
+        const btn = $('#tt-read');
+        btn.disabled = true;
+        status('Leggo l\'orario… può volerci fino a un minuto.');
+        try {
+            const r = await post('../api/classi.php', fd);
+            renderTimetable(r.periods, r.slots);
+            status(`Letto: ${r.slots.length} ore${r.bells_read ? ' e gli orari della campanella' : ' (orari della campanella non trovati: controllali)'}. `
+                + 'Controlla la tabella e premi "Salva l\'orario".' + (r.notes ? ` Nota dell'AI: ${r.notes}` : ''), 'ok');
+            $('#tt-days').scrollIntoView({ behavior: 'smooth' });
+        } catch (e) {
+            const msg = { ai_off: 'L\'AI non è attiva sul server.', ai_quota: 'L\'AI ha finito le richieste di oggi: riprova domani o compila a mano.',
+                ai_failed: 'L\'AI non è riuscita a leggere l\'orario: riprova tra poco.', bad_type: 'Usa una foto o un PDF.',
+                slow_down: 'Troppi tentativi: riprova tra un\'ora.' };
+            status((e.json && msg[e.json.code]) || e.message, 'err');
+        } finally {
+            btn.disabled = false;
+        }
+    });
 
     $('#tt-save').addEventListener('click', async () => {
         const periods = {};

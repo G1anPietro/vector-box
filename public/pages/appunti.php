@@ -183,6 +183,13 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
                 <p class="muted small">Per ogni giorno: gli orari della campanella e la materia di ogni ora. Le ore di fila della
                     stessa materia diventano una lezione sola. "Etichetta" serve a distinguere, per esempio, il laboratorio
                     ("Lab TPSIT") dalla teoria ("TPSIT"): gli appunti finiscono comunque nella stessa materia.</p>
+                <div class="ai-read">
+                    <label>Compila da foto o PDF: l'orario della classe e, se ce l'hai, quello della campanella (fino a 3 file)
+                        <input type="file" id="tt-files" multiple accept="image/*,.pdf">
+                    </label>
+                    <button type="button" id="tt-read">Leggi l'orario</button>
+                    <p class="muted small">L'AI riempie la tabella qui sotto: controlla e poi premi "Salva l'orario".</p>
+                </div>
                 <label>Valido dal <input type="date" id="tt-from"></label>
                 <div id="tt-days"></div>
                 <button id="tt-save">Salva l'orario</button>
