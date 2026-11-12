@@ -174,6 +174,53 @@ try {
         exit();
     }
 
+    // COVER OF A PDF: the browser draws page 1 with pdf.js and sends it as a JPEG/PNG (the server has no PDF renderer).
+    // Only for uploaders, only PDFs, and only when the book has no cover yet (nobody can replace an existing one).
+    if ($method === 'POST' && ($_GET['action'] ?? '') === 'set_cover') {
+        requireCsrf();
+        if (!$canUpload) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'UPLOAD_PERMISSION_DENIED']);
+            exit();
+        }
+        $stmt = $db->prepare("SELECT id, format, cover_path FROM books WHERE id = :id");
+        $stmt->execute([':id' => (int)($_POST['book_id'] ?? 0)]);
+        $book = $stmt->fetch();
+        if (!$book || $book['format'] !== 'pdf') {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'NOT_FOUND']);
+            exit();
+        }
+        if (!empty($book['cover_path'])) {
+            echo json_encode(['success' => true, 'already' => true]);
+            exit();
+        }
+        $img = $_FILES['cover'] ?? null;
+        if (!$img || $img['error'] !== UPLOAD_ERR_OK || $img['size'] > 2 * 1048576 || !is_uploaded_file($img['tmp_name'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'BAD_IMAGE']);
+            exit();
+        }
+        $types = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($img['tmp_name']) ?: '';
+        $size = @getimagesize($img['tmp_name']);
+        if (!isset($types[$mime]) || !$size || $size[0] > 3000 || $size[1] > 3000) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'BAD_IMAGE']);
+            exit();
+        }
+        $coverDir = dirname(__DIR__, 2) . '/data/covers/';
+        if (!file_exists($coverDir)) mkdir($coverDir, 0750, true);
+        $name = 'pdf_' . (int)$book['id'] . '_' . bin2hex(random_bytes(4)) . '_cover.' . $types[$mime];
+        if (!move_uploaded_file($img['tmp_name'], $coverDir . $name)) throw new RuntimeException('cover move failed');
+        // Only if still empty (two tabs at once): the loser's file is removed
+        $upd = $db->prepare("UPDATE books SET cover_path = :c WHERE id = :id AND (cover_path IS NULL OR cover_path = '')");
+        $upd->execute([':c' => '../data/covers/' . $name, ':id' => $book['id']]);
+        if ($upd->rowCount() === 0) @unlink($coverDir . $name);
+        echo json_encode(['success' => true]);
+        exit();
+    }
+
     // UPLOAD BOOK
     if ($method === 'POST') {
         requireCsrf();

@@ -22,6 +22,7 @@ const gemini = http.createServer((req, res) => {
         const body = raw ? JSON.parse(raw) : {};
         calls.push({ url: req.url, headers: req.headers, body });
         if (mode === 'quota') { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"quota"}}'); return; }
+        if (mode === 'hang_smart' && req.url.includes('gemini-3.8-flash:')) return;   // never answers
         if (mode === 'busy' || (mode === 'busy_smart' && req.url.includes('gemini-3.8-flash:'))) {
             res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"error":{"message":"high demand"}}'); return;
         }
@@ -268,9 +269,22 @@ test('Gemini overloaded: retries, then the fast model; a busy Google is not a fa
     calls.length = 0;
     const ok = await send(mario);
     assert.equal(ok.status, 200, JSON.stringify(ok.json));
-    assert.deepEqual(calls.map((c) => /flash-lite/.test(c.url) ? 'fast' : 'smart'), ['smart', 'smart', 'smart', 'fast'],
-        'two retries on the smart model, then the fast one');
+    const tierOf = (c) => /flash-lite/.test(c.url) ? 'fast' : /3\.7-flash/.test(c.url) ? 'smart2' : 'smart';
+    assert.deepEqual(calls.map(tierOf), ['smart', 'smart', 'smart', 'smart2'],
+        'two retries on gemini-3.8-flash, then gemini-3.7-flash');
 
+    // a model that hangs must not use up all the time: the next one still answers
+    setEnv({ GEMINI_TEST_DEADLINE: 30 });
+    mode = 'hang_smart';
+    calls.length = 0;
+    const started = Date.now();
+    const hung = await send(mario);
+    assert.equal(hung.status, 200, JSON.stringify(hung.json));
+    assert.ok(Date.now() - started < 25000, 'answered well before the deadline');
+    assert.equal(tierOf(calls.at(-1)), 'smart2');
+    setEnv();
+
+    site.db("DELETE FROM rate_limits WHERE bucket LIKE 'timetable_ai:%'");   // 5 readings an hour per class
     mode = 'busy';
     const busy = await send(mario);
     assert.equal(busy.status, 503);
@@ -356,7 +370,9 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
 
     // smart budget used up: the handout falls back to the fast model; a broken quiz is marked as an error
     const pday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
-    site.db("INSERT INTO ai_usage (day, model, requests) VALUES (?, 'gemini-3.8-flash', 18) ON CONFLICT(day, model) DO UPDATE SET requests = 18", [pday]);
+    for (const m of ['gemini-3.8-flash', 'gemini-3.7-flash']) {
+        site.db("INSERT INTO ai_usage (day, model, requests) VALUES (?, ?, 18) ON CONFLICT(day, model) DO UPDATE SET requests = 18", [pday, m]);
+    }
     await ap(luigi, { action: 'edit_event', id, subject_id: storia, kind: 'verifica', date: day(5), title: 'Napoleone', topics: 'anche Waterloo' });
     site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
     mode = 'badquiz';

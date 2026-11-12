@@ -235,7 +235,7 @@ function aiLessonDocs(PDO $db, array $class): int {
 /** Calls the smart model, or the fast one when the smart one is out of quota or overloaded. Returns [text, model]. */
 function aiGenerateBest(PDO $db, bool $smart, string $system, array $parts, array $opts = []): array {
     // The smart model when possible; the fast one when it is out of quota or overloaded
-    return geminiGenerateAny($db, $smart ? ['smart', 'fast'] : ['fast'], $system, $parts, $opts);
+    return geminiGenerateAny($db, $smart ? GEMINI_SMART_CHAIN : ['fast'], $system, $parts, $opts);
 }
 
 /** Dates (YYYY-MM-DD) in [from, to] with a lesson of the subject in the timetable but no material uploaded. */

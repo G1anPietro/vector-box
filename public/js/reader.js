@@ -177,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadProgressMap();
                 renderCatalog(catalogBooks);
                 renderContinueShelf(query ? [] : catalogBooks);
+                if (data.can_upload) makeMissingPdfCovers(catalogBooks);
             } else {
                 const p = document.createElement('p');
                 p.style.cssText = 'grid-column: 1/-1; color: red;';
@@ -186,6 +187,43 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             catalogContainer.innerHTML = '<p style="grid-column: 1/-1; color: red;">Impossibile caricare i libri.</p>';
         }
+    }
+
+    // PDFs have no cover until someone who can upload opens the library: page 1 is drawn here with pdf.js
+    // and sent to the server, one book at a time, in the background.
+    let coversRunning = false;
+    async function makeMissingPdfCovers(books) {
+        if (coversRunning || typeof pdfjsLib === 'undefined') return;
+        const missing = books.filter((b) => b.format === 'pdf' && !b.cover_path);
+        if (!missing.length) return;
+        coversRunning = true;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        let made = 0;
+        for (const book of missing) {
+            try {
+                const pdf = await pdfjsLib.getDocument({ url: `../api/books.php?action=stream&id=${book.id}`, disableAutoFetch: true }).promise;
+                const page = await pdf.getPage(1);
+                const base = page.getViewport({ scale: 1 });
+                const viewport = page.getViewport({ scale: Math.min(2, 480 / base.width) });
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(viewport.width);
+                canvas.height = Math.round(viewport.height);
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                pdf.destroy();
+                const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.82));
+                if (!blob) continue;
+                const fd = new FormData();
+                fd.append('book_id', book.id);
+                fd.append('cover', blob, 'cover.jpg');
+                const res = await fetch('../api/books.php?action=set_cover', { method: 'POST', body: fd });
+                if (res.ok) made++;
+            } catch (e) { /* unreadable PDF: it keeps the "PDF" label */ }
+        }
+        coversRunning = false;
+        if (made) loadCatalog(searchInput && searchInput.value ? searchInput.value.trim() : '');
     }
 
     async function loadProgressMap() {

@@ -75,3 +75,35 @@ test('books: list hides server paths; covers served via action=cover (images onl
     const svg = list.find((b) => b.title === 'Svg');
     assert.equal((await reader.get(`/api/books.php?action=cover&id=${svg.id}`)).status, 404);
 });
+
+test('PDF covers made in the browser: uploaders only, PDFs only, real images only, never replacing one', async () => {
+    const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    site.db("INSERT INTO books (title, format, file_path) VALUES ('Senza copertina', 'pdf', '/nonexistent2.pdf')");
+    const pdfId = site.db("SELECT id FROM books WHERE title = 'Senza copertina'")[0].id;
+    site.db("INSERT INTO books (title, format, file_path) VALUES ('Un epub', 'epub', '/nonexistent.epub')");
+    const epubId = site.db("SELECT id FROM books WHERE title = 'Un epub'")[0].id;
+    site.db("UPDATE accounts SET can_upload_books = 1 WHERE username = 'rd_reader'");
+
+    const send = async (c, id, content, type = 'image/png') => {
+        const fd = new FormData();
+        fd.set('book_id', String(id));
+        fd.append('cover', new Blob([content], { type }), 'cover.png');
+        const r = await fetch(`${site.base}/api/books.php?action=set_cover`, { method: 'POST', body: fd, headers: { Cookie: c.cookieHeader(), 'X-CSRF-Token': c.csrf } });
+        return { status: r.status, json: await r.json() };
+    };
+    assert.equal((await send(other, pdfId, PNG)).status, 403, 'readers who cannot upload');
+    assert.equal((await send(reader, epubId, PNG)).status, 404, 'EPUBs have their own covers');
+    assert.equal((await send(reader, pdfId, Buffer.from('<svg onload="alert(1)"/>'), 'image/svg+xml')).json.error, 'BAD_IMAGE');
+    assert.equal((await send(reader, pdfId, PNG)).json.success, true);
+
+    const list = (await reader.get('/api/books.php?action=list')).json;
+    assert.equal(list.can_upload, true);
+    const book = list.books.find((b) => b.id === pdfId);
+    assert.equal(book.cover_path, `../api/books.php?action=cover&id=${pdfId}`);
+    const img = await fetch(`${site.base}/api/books.php?action=cover&id=${pdfId}`, { headers: { Cookie: reader.cookieHeader() } });
+    assert.equal(img.headers.get('content-type'), 'image/png');
+
+    const before = site.db('SELECT cover_path FROM books WHERE id = ?', [pdfId])[0].cover_path;
+    assert.equal((await send(reader, pdfId, PNG)).json.already, true);
+    assert.equal(site.db('SELECT cover_path FROM books WHERE id = ?', [pdfId])[0].cover_path, before, 'an existing cover is never replaced');
+});
