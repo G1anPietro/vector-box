@@ -103,3 +103,31 @@ test('banned users cannot send', async () => {
     assert.equal(r.json.code, 'restricted');
     site.db('UPDATE accounts SET is_banned = 0 WHERE username = ?', ['dm_carol']);
 });
+
+test('older pages: before + more, no duplicates, oldest first inside a page', async () => {
+    // accounts straight into the test DB (registration is limited to 5 per hour per IP)
+    const hash = site.db("SELECT password_hash FROM accounts WHERE username = 'dm_alice'")[0].password_hash;
+    for (const u of ['dm_page1', 'dm_page2']) site.db('INSERT INTO accounts (username, password_hash) VALUES (?, ?)', [u, hash]);
+    const p1 = new Client(site); await p1.login('dm_page1');
+    const a = site.db("SELECT id FROM accounts WHERE username = 'dm_page1'")[0].id;
+    const b = site.db("SELECT id FROM accounts WHERE username = 'dm_page2'")[0].id;
+    // 120 messages straight into the copy of the DB (the send API is rate limited)
+    for (let i = 1; i <= 120; i++) {
+        site.db('INSERT INTO dm_messages (sender_id, recipient_id, body) VALUES (?, ?, ?)', i % 2 ? [a, b, `m${i}`] : [b, a, `m${i}`]);
+    }
+    const page = async (before) => (await p1.get(`/api/dm.php?action=thread&with=${b}${before ? `&before=${before}` : ''}`)).json;
+    const first = await page();
+    assert.equal(first.messages.length, 50);
+    assert.equal(first.more, true);
+    assert.deepEqual(first.messages.map((m) => m.body).slice(0, 2), ['m71', 'm72']);   // chronological
+    const second = await page(first.messages[0].id);
+    assert.equal(second.messages.length, 50);
+    assert.equal(second.more, true);
+    const third = await page(second.messages[0].id);
+    assert.equal(third.messages.length, 20);
+    assert.equal(third.more, false);
+    const all = [...third.messages, ...second.messages, ...first.messages].map((m) => m.body);
+    assert.equal(new Set(all).size, 120);
+    assert.equal(all[0], 'm1');
+    assert.equal(all[119], 'm120');
+});

@@ -224,11 +224,15 @@
 .dm-head #dm-with { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dm-back { display: none; padding: 0 8px; }
 .dm-block { padding: 1px 8px; font-size: 0.72rem; }
-.dm-thread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; min-height: 0; }
+.dm-thread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; min-height: 0; overflow-anchor: none; /* dm.js keeps the view still when older pages arrive */ }
 .dm-msg { max-width: 80%; padding: 5px 8px; border: 1px solid var(--border-color); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; }
 .dm-msg.mine { align-self: flex-end; background: rgba(0, 243, 255, 0.10); }
 .dm-msg.theirs { align-self: flex-start; background: rgba(255, 255, 255, 0.04); }
 .dm-msg .dm-time { display: block; font-size: 0.68rem; opacity: 0.55; margin-top: 2px; }
+.dm-top { align-self: center; min-height: 1em; font-size: 0.7rem; opacity: 0.55; letter-spacing: 0.04em; }
+.dm-top.loading { animation: dm-blink 1s steps(2, start) infinite; }
+@keyframes dm-blink { to { opacity: 0.15; } }
+@media (prefers-reduced-motion: reduce) { .dm-top.loading { animation: none; } }
 .dm-note { font-size: 0.75rem; min-height: 1em; color: #ff6b6b; }
 .dm-form { display: flex; gap: 6px; align-items: stretch; }
 .dm-form.hidden, .dm-block.hidden { display: none; }

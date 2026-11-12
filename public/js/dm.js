@@ -18,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const results = $('dm-search-results');
 
     let current = null;   // { id, username }
+    // Older pages of the open conversation: loaded by themselves when scrolling up
+    let threadGen = 0;    // bumped on every openThread(): late answers for another conversation are dropped
+    let oldestId = 0;
+    let hasMore = false;
+    let loadingOlder = false;
+    let topEl = null;     // sentinel at the top of #dm-thread: "loading..." / "start of the conversation"
     let lastId = 0;       // newest message id seen
     let pollTimer = null;
     let searchTimer = null;
@@ -65,24 +71,80 @@ document.addEventListener('DOMContentLoaded', () => {
         try { renderConvs((await api('?action=conversations')).conversations); } catch (e) { say(e.message); }
     }
 
-    function addMessage(m) {
+    function messageEl(m) {
         const d = el('div', 'dm-msg ' + (m.mine ? 'mine' : 'theirs'), m.body);
         d.dataset.id = m.id;
         d.appendChild(el('span', 'dm-time', String(m.created_at || '').slice(5, 16).replace('T', ' ')));
-        threadEl.appendChild(d);
+        return d;
+    }
+
+    function addMessage(m) {
+        threadEl.appendChild(messageEl(m));
         lastId = Math.max(lastId, m.id);
     }
 
+    const knownIds = () => new Set([...threadEl.querySelectorAll('.dm-msg')].map((x) => +x.dataset.id));
+
+    function setTop(state) {
+        if (!topEl) return;
+        topEl.className = 'dm-top' + (state === 'loading' ? ' loading' : '');
+        topEl.textContent = state === 'loading' ? 'loading older messages…' : state === 'start' ? 'start of the conversation' : '';
+    }
+
+    /** Loads the 50 messages before the oldest one shown and puts them on top, keeping the view still. */
+    async function loadOlder() {
+        if (loadingOlder || !hasMore || !current || !oldestId) return;
+        loadingOlder = true;
+        const gen = threadGen;
+        setTop('loading');
+        try {
+            const r = await api(`?action=thread&with=${encodeURIComponent(current.id)}&before=${oldestId}`);
+            if (gen !== threadGen) return;            // another conversation was opened meanwhile
+            const known = knownIds();
+            const frag = document.createDocumentFragment();
+            r.messages.filter((m) => !known.has(m.id)).forEach((m) => frag.appendChild(messageEl(m)));
+            if (r.messages.length) oldestId = Math.min(oldestId, ...r.messages.map((m) => m.id));
+            const before = threadEl.scrollHeight;
+            topEl.after(frag);
+            threadEl.scrollTop += threadEl.scrollHeight - before;   // the message being read stays put
+            hasMore = !!r.more && r.messages.length > 0;
+            setTop(hasMore ? '' : 'start');
+        } catch (e) {
+            if (gen === threadGen) setTop('');          // try again on the next scroll, no retry loop
+        } finally {
+            if (gen === threadGen) loadingOlder = false;
+        }
+        if (gen === threadGen) fillIfShort();
+    }
+
+    // A page that doesn't fill the box can't be scrolled: keep loading until it can (or the start is reached)
+    function fillIfShort() {
+        if (hasMore && !loadingOlder && threadEl.scrollHeight <= threadEl.clientHeight + 4) loadOlder();
+    }
+
+    threadEl.addEventListener('scroll', () => {
+        if (threadEl.scrollTop < 200) loadOlder();
+    }, { passive: true });
+
     async function openThread(user) {
         current = user;
+        const gen = ++threadGen;
+        loadingOlder = false;
+        hasMore = false;
+        oldestId = 0;
         layout.classList.add('in-thread');
         withEl.textContent = user.username;
         withEl.className = '';
         say('');
         try {
             const t = await api(`?action=thread&with=${encodeURIComponent(user.id)}`);
-            threadEl.replaceChildren();
+            if (gen !== threadGen) return;
+            topEl = el('div', 'dm-top');
+            threadEl.replaceChildren(topEl);
             t.messages.forEach(addMessage);
+            oldestId = t.messages.length ? Math.min(...t.messages.map((m) => m.id)) : 0;
+            hasMore = !!t.more && t.messages.length > 0;
+            setTop(hasMore || !t.messages.length ? '' : 'start');
             threadEl.scrollTop = threadEl.scrollHeight;
             blockBtn.classList.remove('hidden');
             blockBtn.textContent = t.blocked ? 'UNBLOCK' : 'BLOCK';
@@ -91,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!t.can_send) say(t.blocked ? 'You blocked this user.' : 'You cannot write to this user.');
             else text.focus();
             loadConvs();
-        } catch (e) { say(e.message); }
+            requestAnimationFrame(fillIfShort);
+        } catch (e) { if (gen === threadGen) say(e.message); }
     }
 
     async function send() {
@@ -114,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const r = await api(`?action=since&after=${lastId}`);
                 if (r.messages.length) {
                     const forThread = r.messages.filter((m) => current && (m.from === current.id || m.to === current.id));
-                    const known = new Set([...threadEl.querySelectorAll('.dm-msg')].map((x) => +x.dataset.id));
+                    const known = knownIds();
                     forThread.filter((m) => !known.has(m.id)).forEach(addMessage);
                     r.messages.forEach((m) => { lastId = Math.max(lastId, m.id); });
                     if (forThread.length) {
