@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 11;
+const DB_SCHEMA_VERSION = 12;
 
 /**
  * Session bootstrap.
@@ -350,6 +350,52 @@ function migrateV11(PDO $db): void {
     )");
 }
 
+function migrateV12(PDO $db): void {
+    // Shared class notes: classes (one per school class, approved by the admin), members,
+    // subjects and timetables. Times are unix seconds; lesson times are local to the class timezone.
+    $db->exec("CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS school_classes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        school TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        manager_id INTEGER NOT NULL,
+        invite_code TEXT UNIQUE,
+        request_note TEXT NOT NULL DEFAULT '',
+        timezone TEXT NOT NULL DEFAULT 'Europe/Rome',
+        periods TEXT NOT NULL DEFAULT '[]',
+        summary_time TEXT NOT NULL DEFAULT '18:00',
+        created_at INTEGER NOT NULL,
+        decided_at INTEGER
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_school_classes_status ON school_classes(status)');
+    $db->exec("CREATE TABLE IF NOT EXISTS class_members (
+        class_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        joined_at INTEGER NOT NULL,
+        PRIMARY KEY (class_id, user_id)
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_members_user ON class_members(user_id)');
+    $db->exec("CREATE TABLE IF NOT EXISTS class_subjects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        UNIQUE (class_id, name)
+    )");
+    // One row per timetable version: slots is JSON [{day, period, subject_id, label, room}]
+    $db->exec("CREATE TABLE IF NOT EXISTS class_timetables (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        valid_from TEXT NOT NULL,
+        slots TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE (class_id, valid_from)
+    )");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -387,6 +433,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 11) {
             migrateV11($db);
+        }
+        if ($current < 12) {
+            migrateV12($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
