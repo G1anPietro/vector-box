@@ -136,6 +136,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
             <div class="filters row">
                 <select id="filter-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>
                 <select id="filter-kind" aria-label="Tipo"><option value="">Tutti i tipi</option></select>
+                <button id="ai-subject" class="ghost" type="button" hidden>↓ Materia per AI (.md)</button>
                 <button id="zip-subject" class="ghost" type="button" hidden>↓ Tutta la materia (.zip)</button>
             </div>
             <div id="items"></div>
@@ -149,8 +150,9 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
                 <div id="study-tests"></div>
                 <details class="card" id="doc-upload">
                     <summary>Carica un documento fatto con un'altra AI</summary>
-                    <p class="muted small">Scarica lo .zip di una lezione o di una verifica: dentro c'è tutto il materiale e un file
-                        PROMPT.txt con le istruzioni. Dallo a ChatGPT, Claude, Gemini o un'altra AI, poi incolla qui il risultato.</p>
+                    <p class="muted small">Scarica il file <b>"Per AI" (.md)</b> di una lezione o di una verifica: dentro ci sono i prompt e
+                        tutto il materiale già come testo. Allegalo a ChatGPT, Claude, Gemini o un'altra AI, manda il PROMPT 1, poi incolla
+                        qui il risultato. (Lo .zip contiene invece i file originali: molte AI non lo leggono.)</p>
                     <form id="doc-upload-form" class="stack">
                         <div class="grid2">
                             <label>Tipo

@@ -390,7 +390,7 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
 
     // smart budget used up: the handout falls back to the fast model; a broken quiz is marked as an error
     const pday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
-    for (const m of ['gemini-3.8-flash', 'gemini-3.7-flash']) {
+    for (const m of ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']) {
         site.db("INSERT INTO ai_usage (day, model, requests) VALUES (?, ?, 18) ON CONFLICT(day, model) DO UPDATE SET requests = 18", [pday, m]);
     }
     await ap(luigi, { action: 'edit_event', id, subject_id: storia, kind: 'verifica', date: day(5), title: 'Napoleone', topics: 'anche Waterloo' });

@@ -246,10 +246,10 @@
     /* ---------- material: list ---------- */
 
     /** Downloads a .zip of the material (and the AI documents, and PROMPT.txt) for a lesson day, a subject or a test. */
-    async function downloadZip(params, btn) {
-        const q = new URLSearchParams({ action: 'zip', class_id: current.id, ...params });
+    async function downloadZip(params, btn, action = 'zip') {
+        const q = new URLSearchParams({ action, class_id: current.id, ...params });
         if (btn) btn.disabled = true;
-        status('Preparo lo .zip…');
+        status(action === 'zip' ? 'Preparo lo .zip…' : 'Preparo il file per l\'AI…');
         try {
             const r = await fetch('../api/appunti.php?' + q, { credentials: 'same-origin' });
             if (!r.ok) {
@@ -258,13 +258,15 @@
             }
             const cd = r.headers.get('content-disposition') || '';
             const m = /filename\*=UTF-8''([^;]+)/.exec(cd);
-            const name = m ? decodeURIComponent(m[1]) : 'appunti.zip';
+            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : 'appunti-per-AI.md');
             const url = URL.createObjectURL(await r.blob());
             const a = el('a', { href: url, download: name });
             document.body.append(a);
             a.click();
             setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
-            status('Scaricato. Dentro c\'è anche PROMPT.txt per usarlo con un\'altra AI.', 'ok');
+            status(action === 'zip'
+                ? 'Scaricato. Dentro c\'è anche PROMPT.txt per usarlo con un\'altra AI.'
+                : 'Scaricato: allegalo a ChatGPT, Claude o Gemini e manda il PROMPT 1 che trovi all\'inizio del file.', 'ok');
         } catch (e) {
             status(e.message, 'err');
         } finally {
@@ -285,15 +287,22 @@
             const sid = $('#filter-subject').value;
             box.replaceChildren(...[...days].map(([d, list]) => el('section', { class: 'day' },
                 el('div', { class: 'day-head' }, el('h3', { text: dayFmt.format(parseDate(d)) }),
-                    el('button', { class: 'ghost mini', type: 'button', text: '↓ .zip', title: 'Scarica tutto il materiale di questo giorno',
-                        onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target) })),
+                    el('span', { class: 'row-actions' },
+                        el('button', { class: 'ghost mini', type: 'button', text: '↓ Per AI', title: 'Un file .md con tutto il testo e i prompt, da dare a un\'altra AI',
+                            onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target, 'ai_pack') }),
+                        el('button', { class: 'ghost mini', type: 'button', text: '↓ .zip', title: 'Scarica tutto il materiale originale di questo giorno',
+                            onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target) }))),
                 ...list.map(renderItem))));
         } catch (e) {
             box.replaceChildren(el('p', { class: 'empty', text: e.message }));
         }
     }
-    $('#filter-subject').addEventListener('change', () => { $('#zip-subject').hidden = !$('#filter-subject').value; loadItems(); });
+    $('#filter-subject').addEventListener('change', () => {
+        $('#zip-subject').hidden = $('#ai-subject').hidden = !$('#filter-subject').value;
+        loadItems();
+    });
     $('#zip-subject').addEventListener('click', (ev) => downloadZip({ scope: 'subject', subject_id: $('#filter-subject').value }, ev.target));
+    $('#ai-subject').addEventListener('click', (ev) => downloadZip({ scope: 'subject', subject_id: $('#filter-subject').value }, ev.target, 'ai_pack'));
     $('#filter-kind').addEventListener('change', loadItems);
 
     function renderItem(it) {
@@ -431,8 +440,11 @@
                     : el('p', { class: 'muted small', text: ai.configured
                         ? `I documenti arrivano con il prossimo riassunto (alle ${ai.summary_time}) o con "Genera ora", se c'è materiale caricato.`
                         : 'I documenti arriveranno quando l\'AI sarà attiva.' }),
-                el('div', { class: 'row' }, el('button', { class: 'ghost mini', type: 'button', text: '↓ Materiale + prompt per un\'altra AI (.zip)',
-                    onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) })));
+                el('div', { class: 'row' },
+                    el('button', { class: 'ghost mini', type: 'button', text: '↓ Per un\'altra AI (.md)',
+                        onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') }),
+                    el('button', { class: 'ghost mini', type: 'button', text: '↓ Tutto il materiale (.zip)',
+                        onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) })));
         }));
     }
 

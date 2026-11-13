@@ -132,7 +132,8 @@ l'amministratore).
 prima alle 16:00, la sera prima alle 21:00). Con *Attiva le notifiche su questo dispositivo* arrivano anche sul telefono a
 sito chiuso; sull'iPhone prima bisogna aggiungere gli Appunti alla schermata Home (Condividi → Aggiungi alla schermata Home).
 
-**Scaricare tutto e usare un'altra AI:** ogni giorno ha il pulsante *↓ .zip*, con il filtro di una materia c'è *Tutta la
+**Scaricare tutto e usare un'altra AI:** ogni giorno ha i pulsanti *↓ Per AI* (un solo file `.md` con i prompt e tutto il
+materiale già come testo, comprese le trascrizioni: lo legge qualsiasi AI) e *↓ .zip*, con il filtro di una materia c'è *Tutta la
 materia (.zip)*, e ogni verifica nella scheda Studio ha *Materiale + prompt per un'altra AI*. Lo zip contiene gli originali,
 i testi, le trascrizioni, i documenti dell'AI, `INDICE.txt` (chi ha scritto cosa) e `PROMPT.txt` con i prompt pronti per
 ChatGPT, Claude o Gemini. La risposta si ricarica in *Studio → Carica un documento fatto con un'altra AI*: compare
@@ -197,7 +198,7 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
   Le richieste a Gemini sono contate per modello e per giorno (`ai_usage`, giorno del Pacifico come Google) e restano al
   90% dei limiti gratuiti; i file Word/PowerPoint/testo sono letti dal sito senza AI. Se Google è sovraccarico
   (503 "high demand") ogni richiesta viene ritentata due volte (`GEMINI_RETRY_WAITS`), poi si passa al modello di
-  riserva (`gemini-3.8-flash` → `gemini-3.7-flash` → `gemini-3.5-flash-lite`; il tempo che il browser aspetta è diviso tra
+  riserva (`gemini-3.8-flash` → `gemini-3.7-flash` → `gemini-3.6-flash` → `gemini-3.5-flash-lite`; il tempo che il browser aspetta è diviso tra
   i modelli, così uno che non risponde non lo consuma tutto);
   se sono occupati tutti, il giro si ferma senza contarlo come guasto e riprende 5 minuti dopo. La lettura dell'orario,
   che il browser aspetta, si ferma entro 140 secondi (nginx ne concede 180) con il messaggio "Gemini è sovraccarico".
@@ -319,7 +320,7 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | Endpoint | Chi | Richiesta |
 |---|---|---|
 | `classi.php` | registrati / responsabile / admin | GET `?action=mine` (le mie classi e richieste), `class&id=` (membri e admin: orario, materie, membri, codice solo al responsabile), `requests` e `all` (admin). POST `{action}`: `request {name, school, note}`, `join {code}`, `leave`; responsabile: `regen_code`, `remove_member`, `set_manager`, `settings {summary_time, timezone}`, `save_timetable {valid_from, periods, slots}`, `read_timetable` (multipart con le foto, risponde con l'orario letto dall'AI senza salvarlo); admin: `decide {approve}`, `set_requests_open {open}`, `set_limits {file_mb, class_mb[, id]}`, `delete_class` |
-| `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`, `zip&scope=day&date=[&subject_id]` / `scope=subject&subject_id` / `scope=event&event_id` (materiale + INDICE.txt + PROMPT.txt, al massimo 300 MB). POST `upload_doc {kind, target:"lesson"|"event", subject_id+lesson_date | event_id, title, content o file}` e `delete_doc {id}` (solo documenti caricati a mano, autore o responsabile). POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
+| `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`, `zip&scope=day&date=[&subject_id]` / `scope=subject&subject_id` / `scope=event&event_id` (materiale + INDICE.txt + PROMPT.txt, al massimo 300 MB), `ai_pack` con gli stessi parametri (un file Markdown con prompt e tutto il testo). POST `upload_doc {kind, target:"lesson"|"event", subject_id+lesson_date | event_id, title, content o file}` e `delete_doc {id}` (solo documenti caricati a mano, autore o responsabile). POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
 | `notifiche.php` | registrati | GET `?action=list` (ultime 30, non lette, dispositivi), `vapid` (chiave pubblica). POST `read {ids}`, `read_all`, `subscribe {endpoint, keys}`, `unsubscribe {endpoint}`, `test` |
 
 Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `altro`. Tipi di data: `verifica`,
@@ -384,7 +385,7 @@ Si parte da `.env.example`, che spiega ogni voce.
 | `MC_DIR`, `WAKE_SCRIPT` | vecchio pannello Node (Minecraft, Wake-on-LAN) |
 | `GEMINI_API_KEY`, `GEMINI_AUTH` | chiave di Google AI Studio per gli Appunti; `bearer` per le chiavi nuove `AQ.` se Google rifiuta l'header |
 | `GEMINI_MODEL_FAST`, `GEMINI_FAST_RPM`, `GEMINI_FAST_RPD`, `GEMINI_MODEL_SMART`, `GEMINI_SMART_RPM`, `GEMINI_SMART_RPD` | modelli e limiti gratuiti (al minuto e al giorno); `php bin/appunti-ai.php --models` elenca i modelli della chiave |
-| `GEMINI_MODEL_SMART2`, `GEMINI_SMART2_RPM`, `GEMINI_SMART2_RPD` | modello di riserva quando quello principale è sovraccarico (`gemini-3.7-flash`) |
+| `GEMINI_MODEL_SMART2`, `GEMINI_SMART2_*`, `GEMINI_MODEL_SMART3`, `GEMINI_SMART3_*` | modelli di riserva quando quello principale è sovraccarico (`gemini-3.7-flash`, `gemini-3.6-flash`) |
 | `GEMINI_RETRY_WAITS` | secondi di attesa prima di ritentare quando Google è sovraccarico (predefinito `2,5`) |
 | `SITE_URL` | indirizzo del sito (anteprime dei link, contatto VAPID delle notifiche push) |
 | `WEBPUSH_EXTRA_HOSTS` | solo per i test: servizi push finti ammessi |

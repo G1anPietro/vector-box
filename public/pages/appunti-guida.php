@@ -79,8 +79,9 @@ $login = 'login.php?next=appunti.php';
                     classe, e propone la lezione (per esempio "3ª-4ª ora · Lab SISI"). Se sbaglia, cambiala.</li>
                 <li><strong>Tutti vedono tutto</strong>, con il nome di chi l'ha caricato. Puoi modificare o cancellare solo quello che hai
                     caricato tu (il responsabile può anche il resto).</li>
-                <li><strong>Scaricare:</strong> tocca una foto per aprirla intera; ogni giorno ha il pulsante <em>↓ .zip</em> con tutto il
-                    materiale, e con il filtro di una materia c'è <em>Tutta la materia (.zip)</em>.</li>
+                <li><strong>Scaricare:</strong> tocca una foto per aprirla intera; ogni giorno ha i pulsanti <em>↓ Per AI</em> (un file di
+                    testo con tutto, per ChatGPT, Claude o Gemini) e <em>↓ .zip</em> (i file originali); con il filtro di una materia
+                    ci sono gli stessi per tutta la materia.</li>
             </ul>
             <h3>Calendario</h3>
             <p>Segna verifiche scritte e interrogazioni, con gli argomenti che ha detto il prof. Le date le aggiungono tutti; i
@@ -126,11 +127,14 @@ $login = 'login.php?next=appunti.php';
         <section id="altra-ai" class="card">
             <h2>Usare un'altra AI (ChatGPT, Claude, Gemini…)</h2>
             <ol>
-                <li>Scarica lo <strong>.zip</strong> di un giorno, di una materia o di una verifica (nella scheda <em>Studio</em>, sotto ogni
-                    verifica: <em>Materiale + prompt per un'altra AI</em>).</li>
-                <li>Dentro ci sono il materiale (foto e file originali, testi, trascrizioni), <code>INDICE.txt</code> (chi ha scritto
-                    cosa) e <code>PROMPT.txt</code> con le istruzioni e i prompt pronti da incollare.</li>
-                <li>Allega i file all'AI che preferisci e incolla il prompt.</li>
+                <li>Scarica il file <strong>"Per AI" (.md)</strong> di un giorno, di una materia o di una verifica (nella scheda
+                    <em>Studio</em>, sotto ogni verifica: <em>Per un'altra AI</em>). Dentro ci sono i prompt pronti e tutto il materiale
+                    già come testo, foto e PDF compresi (trascritti).</li>
+                <li>Allegalo all'AI che preferisci (o incollane il contenuto) e manda il <strong>PROMPT 1</strong>; gli altri prompt
+                    mandali dopo, nella stessa chat.</li>
+                <li>Se all'AI servono le foto originali, c'è anche lo <strong>.zip</strong> con i file come li avete caricati, più
+                    <code>INDICE.txt</code> e <code>PROMPT.txt</code>; molte AI (per esempio l'app di Gemini) però non leggono gli zip:
+                    estrailo e allega i file.</li>
                 <li>Copia la risposta e caricala in <em>Studio → Carica un documento fatto con un'altra AI</em>, scegliendo il tipo
                     (il quiz va caricato così com'è, in JSON). Comparirà accanto agli altri, con il tuo nome.</li>
             </ol>

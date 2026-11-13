@@ -12,6 +12,7 @@
 // GET  ?action=doc&id=ID                               -> one AI document with its text and sources
 // GET  ?action=zip&class_id=ID&scope=day&date=D[&subject_id] | scope=subject&subject_id | scope=event&event_id
 //                                                      -> everything as a .zip with an index and a PROMPT.txt
+// GET  ?action=ai_pack&class_id=ID&scope=...           -> the same as ONE Markdown file (prompts + all text), for any AI
 // POST multipart {action:"upload", class_id, subject_id, kind, lesson_date, period?, title?, body?, files[]}
 // POST JSON {action:"edit_item", id, subject_id, kind, lesson_date, period, title, body} | {action:"delete_item", id}
 //           {action:"add_event", class_id, subject_id, kind, date, title, topics}
@@ -233,6 +234,25 @@ try {
                     'last_run' => json_decode((string)appSetting($db, 'ai_last_run:' . $classId, 'null'), true),
                 ],
             ]);
+        }
+
+        if ($action === 'ai_pack') {
+            require_once __DIR__ . '/appunti_zip.php';
+            if (!checkRateLimit('notes_zip', 20, 3600, 'user:' . $me)) apFail('slow_down', 'Too many downloads, try later', 429);
+            $type = (string)($_GET['scope'] ?? '');
+            $scope = ['type' => $type, 'subject_id' => (int)($_GET['subject_id'] ?? 0), 'date' => (string)($_GET['date'] ?? ''),
+                      'event_id' => (int)($_GET['event_id'] ?? 0)];
+            if (!in_array($type, ['day', 'subject', 'event'], true)) apFail('bad_scope', 'Unknown scope');
+            if ($type === 'day' && !classValidDate($scope['date'])) apFail('bad_date', 'Date must be YYYY-MM-DD');
+            if ($type === 'subject' && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
+            $built = packBuild($db, $class, $scope);
+            if (is_string($built)) apFail('nothing', $built, 404);
+            [$md, $name] = $built;
+            header('Content-Type: text/markdown; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . str_replace(['"', '\\'], '', $name) . '"; filename*=UTF-8\'\'' . rawurlencode($name));
+            header('X-Content-Type-Options: nosniff');
+            echo $md;
+            exit();
         }
 
         if ($action === 'zip') {

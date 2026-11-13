@@ -8,13 +8,15 @@ require_once __DIR__ . '/helpers.php';
 
 const GEMINI_DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 // Free-tier limits seen in AI Studio on 2026-11-12 (Gemini 3.5 Flash Lite: 15/min, 500/day; 3.8 Flash: 5/min, 20/day)
-// 'smart2' is the backup of 'smart' when Google says the newest Flash is overloaded
+// 'smart2' and 'smart3' are the backups of 'smart' when Google says the newest Flash is overloaded
 const GEMINI_DEFAULTS = [
     'fast' => ['model' => 'gemini-3.5-flash-lite', 'rpm' => 15, 'rpd' => 500],
     'smart' => ['model' => 'gemini-3.8-flash', 'rpm' => 5, 'rpd' => 20],
     'smart2' => ['model' => 'gemini-3.7-flash', 'rpm' => 5, 'rpd' => 20],
+    'smart3' => ['model' => 'gemini-3.6-flash', 'rpm' => 5, 'rpd' => 20],
 ];
-const GEMINI_SMART_CHAIN = ['smart', 'smart2', 'fast'];
+// Newest Flash first; older Flash models are often free when the newest are overloaded at peak hours
+const GEMINI_SMART_CHAIN = ['smart', 'smart2', 'smart3', 'fast'];
 
 class GeminiError extends RuntimeException {
     public bool $quota;     // daily/minute quota used up: normal, try again later

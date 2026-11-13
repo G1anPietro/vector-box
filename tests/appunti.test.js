@@ -287,6 +287,21 @@ test('zip: a day, a subject or a test period, with index, transcriptions and PRO
     const test = await zipOf(luigi, `scope=event&event_id=${ev}`);
     assert.match(test.files['PROMPT.txt'], /Verifica di Storia del 25\/11\/2026 \(Napoleone\)[\s\S]*Argomenti annunciati dal prof: Impero[\s\S]*PROMPT 1 — dispensa completa[\s\S]*PROMPT 4 — quiz/);
     ap.lastEvent = ev;
+
+    // the same as ONE text file any AI can read (zips are not read by every AI)
+    const pack = await fetch(`${site.base}/api/appunti.php?action=ai_pack&class_id=${classId}&scope=day&date=2026-11-09`, { headers: { Cookie: luigi.cookieHeader() } });
+    assert.equal(pack.status, 200);
+    assert.match(pack.headers.get('content-type'), /^text\/markdown/);
+    assert.match(pack.headers.get('content-disposition'), /filename\*=UTF-8''Per%20AI/);
+    const md = await pack.text();
+    assert.match(md, /^# Appunti di classe — 5B-I \(ITIS\) — TPSIT — 09\/11\/2026/);
+    assert.match(md, /## PROMPT 1 — appunti completi\n\n```text\n[\s\S]*sezione "Materiale" di questo file/);
+    assert.match(md, /### \[1\] Slide\/materiale del prof di ap_mario — TPSIT, 09\/11\/2026, 1ª ora/);
+    assert.match(md, /\*\*File: socket\.pptx\*\*\n\n--- Slide 1 ---\nSocket TCP/, 'transcriptions inside');
+    assert.match(md, /\*\*File: lavagna\.png\*\* — non ancora trascritto/);
+    const evPack = await (await fetch(`${site.base}/api/appunti.php?action=ai_pack&class_id=${classId}&scope=event&event_id=${ev}`, { headers: { Cookie: luigi.cookieHeader() } })).text();
+    assert.match(evPack, /Argomenti annunciati dal prof: Impero[\s\S]*PROMPT 1 — dispensa completa[\s\S]*PROMPT 2 — riassunto[\s\S]*PROMPT 3[\s\S]*PROMPT 4 — quiz/);
+    assert.equal((await fetch(`${site.base}/api/appunti.php?action=ai_pack&class_id=${classId}&scope=day&date=2026-11-09`, { headers: { Cookie: peach.cookieHeader() } })).status, 404);
 });
 
 test('documents made with another AI: upload, list with the author, delete', async () => {

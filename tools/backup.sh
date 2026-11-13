@@ -61,12 +61,13 @@ if [ -f "$PROJECT_DIR/.env" ]; then
 fi
 
 # ---------- 4. Files in data/ (books, covers, logs): mirror, only what changed ----------
-EXCLUDES=(--exclude 'sessions/' --exclude '*.sqlite' --exclude '*.sqlite-wal' --exclude '*.sqlite-shm' --exclude 'status_cache.json')
+# tmp/ holds zips being downloaded (up to 300 MB, deleted right after): never worth backing up
+EXCLUDES=(--exclude 'sessions/' --exclude 'tmp/' --exclude '*.sqlite' --exclude '*.sqlite-wal' --exclude '*.sqlite-shm' --exclude 'status_cache.json')
 if command -v rsync >/dev/null 2>&1; then
     rsync -a --delete "${EXCLUDES[@]}" "$PROJECT_DIR/data/" "$BACKUP_DIR/files/"
 else
     # no rsync: copy new/changed files (deleted files stay in the mirror)
-    (cd "$PROJECT_DIR/data" && find . -type f ! -path './sessions/*' ! -name '*.sqlite*' ! -name 'status_cache.json' -print0 |
+    (cd "$PROJECT_DIR/data" && find . -type f ! -path './sessions/*' ! -path './tmp/*' ! -name '*.sqlite*' ! -name 'status_cache.json' -print0 |
         while IFS= read -r -d '' f; do
             dst="$BACKUP_DIR/files/$f"
             if [ ! -f "$dst" ] || [ "$f" -nt "$dst" ]; then mkdir -p "$(dirname "$dst")"; cp -p "$f" "$dst"; fi
