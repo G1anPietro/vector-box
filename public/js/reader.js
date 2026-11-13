@@ -65,12 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let pdfRenderTask = null;
 
     let toastTimer = null;
-    function toast(msg) {
+    function toast(msg, ms = 2200) {
         if (!toastEl) return;
         toastEl.textContent = msg;
         toastEl.hidden = false;
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2200);
+        toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms);
     }
 
     const THEME_STYLES = {
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (closeViewerBtn) closeViewerBtn.addEventListener('click', closeViewer);
+    if (closeViewerBtn) closeViewerBtn.addEventListener('click', () => closeViewer());
     // Menus ("Aa", bookmarks): one open at a time; a transparent layer over the page closes them when you tap
     // anywhere else (taps inside the EPUB's own frame would never reach this page otherwise)
     const backdrop = document.getElementById('reader-backdrop');
@@ -188,20 +188,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bars: tap the middle of the page (or the button in "Aa") to hide/show them and read full screen
     const barsBtn = document.getElementById('bars-btn');
-    function toggleBars(force) {
+    const exitFullBtn = document.getElementById('exit-full-btn');
+    let exitFadeTimer = null;
+    /** In full screen the ✕ button is clear for a few seconds, then stays faint (still tappable). */
+    function wakeExitButton() {
+        if (!exitFullBtn || !viewerModal.classList.contains('bars-hidden')) return;
+        exitFullBtn.classList.remove('faint');
+        clearTimeout(exitFadeTimer);
+        exitFadeTimer = setTimeout(() => exitFullBtn.classList.add('faint'), 3000);
+    }
+    function toggleBars(force, fromHistory = false) {
         const hide = typeof force === 'boolean' ? force : !viewerModal.classList.contains('bars-hidden');
+        if (hide === viewerModal.classList.contains('bars-hidden')) return;
         viewerModal.classList.toggle('bars-hidden', hide);
         closePanels();
         requestAnimationFrame(() => {
             if (epubRendition) { try { epubRendition.resize(); } catch (e) { /* not ready */ } }
             if (currentFormat === 'pdf' && pdfDoc) renderPdfPage(pdfCurrentPage);
         });
-        if (hide && !pref('vector_reader_bars_hint', '')) {
-            toast('Schermo intero: tocca il centro della pagina per uscire');
-            setPref('vector_reader_bars_hint', '1');
+        if (hide) {
+            // the phone's back button leaves full screen first
+            history.pushState({ reader: 'full' }, '');
+            wakeExitButton();
+            toast('Schermo intero. Per uscire: ✕ in alto, un tocco al centro o il tasto indietro.', 4500);
+        } else if (!fromHistory && history.state && history.state.reader === 'full') {
+            ignorePop = true;
+            history.back();
         }
     }
     if (barsBtn) barsBtn.addEventListener('click', () => toggleBars(true));
+    if (exitFullBtn) exitFullBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleBars(false); });
+    ['pointermove', 'pointerdown', 'keydown'].forEach((t) => viewerModal.addEventListener(t, wakeExitButton));
+
+    // Phone back button: full screen -> menus -> reader -> (only then) leave the page
+    let ignorePop = false;
+    window.addEventListener('popstate', () => {
+        if (ignorePop) { ignorePop = false; return; }
+        if (viewerModal.classList.contains('bars-hidden')) { toggleBars(false, true); return; }
+        if (viewerModal.classList.contains('active')) closeViewer(true);
+    });
     function isMiddleTap(x, width) { return x > width * 0.3 && x < width * 0.7; }
 
     // The bottom bar in "Quando serve" mode floats over the page (no relayout of the text) and hides again by itself
@@ -560,6 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         viewerModal.classList.add('active');
         document.body.classList.add('reading');
+        history.pushState({ reader: 'book' }, '');
         viewerModal.classList.remove('zoomed', 'bars-hidden', 'footer-shown');
         updateProgressLine(0);
         closePanels();
@@ -580,8 +606,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function closeViewer() {
-        viewerModal.classList.remove('active');
+    function closeViewer(fromHistory = false) {
+        if (!viewerModal.classList.contains('active')) return;
+        // closing with the ← button: remove the history entries the reader added
+        if (!fromHistory && history.state && history.state.reader) {
+            const steps = history.state.reader === 'full' ? 2 : 1;
+            ignorePop = true;
+            history.go(-steps);
+        }
+        viewerModal.classList.remove('active', 'bars-hidden');
         document.body.classList.remove('reading');
         if (epubRendition) {
             try { epubRendition.destroy(); } catch (e) {}

@@ -155,6 +155,19 @@ if (!$canRead) {
                             <span class="set-hint">"Quando serve": tocca il centro della pagina per vederla.</span>
                         </div>
                         <button id="bars-btn" class="btn small-btn" type="button">Schermo intero</button>
+                        <span class="set-hint">Per uscire: il pulsante ✕ in alto a destra, un tocco al centro della pagina, il tasto
+                            indietro del telefono o Esc.</span>
+                        <details class="howto">
+                            <summary>Come si usa</summary>
+                            <ul>
+                                <li><b>Girare pagina:</b> tocca il bordo destro o sinistro, scorri con il dito, oppure ← → sulla tastiera.</li>
+                                <li><b>Barra in basso</b> (posizione e numero di pagina): tocca il centro della pagina.</li>
+                                <li><b>Schermo intero:</b> qui sopra; per uscire ✕ in alto, tocco al centro, indietro o Esc.</li>
+                                <li><b>Testo più grande o più piccolo:</b> A+ e A− (nei PDF è lo zoom; + e − sulla tastiera).</li>
+                                <li><b>Segnalibro:</b> l'icona in alto salva la pagina; "Segnalibri" li elenca.</li>
+                                <li><b>Chiudere un menu:</b> tocca in un punto qualsiasi fuori.</li>
+                            </ul>
+                        </details>
                         <a id="download-book-btn" class="btn small-btn" href="#" download>Scarica il file originale</a>
                     </div>
                 </div>
@@ -166,6 +179,7 @@ if (!$canRead) {
             <div id="epub-stage"></div>
             <div id="pdf-stage"></div>
             <div class="progress-line" aria-hidden="true"><span id="progress-line"></span></div>
+            <button id="exit-full-btn" class="exit-full" type="button" aria-label="Esci da schermo intero">✕ Esci</button>
             <button id="tap-prev" class="tap-zone tap-prev" aria-label="Pagina precedente" tabindex="-1"></button>
             <button id="tap-next" class="tap-zone tap-next" aria-label="Pagina successiva" tabindex="-1"></button>
         </div>

@@ -587,3 +587,14 @@ body.reading { overflow: hidden; }
 .viewer-modal:not(.footer-auto) .progress-line { display: none; }
 .set-hint { font-size: 0.78rem; color: var(--text-muted); }
 .small-btn { white-space: normal; }
+
+/* Full screen: a ✕ to leave it, clear at first, then faint but always there */
+.exit-full { display: none; position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: 10px; z-index: 46;
+    padding: 8px 14px; min-height: 40px; border-radius: 99px; border: 1px solid var(--border-color);
+    background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; font-size: 0.9rem; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); transition: opacity 0.4s; }
+.viewer-modal.bars-hidden .exit-full { display: block; }
+.exit-full.faint { opacity: 0.3; }
+.exit-full.faint:hover, .exit-full.faint:focus-visible { opacity: 1; }
+.howto summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+.howto ul { margin: 6px 0 0 18px; font-size: 0.85rem; display: grid; gap: 4px; }

@@ -68,7 +68,10 @@ del testo per gli EPUB (70–200%) e zoom per i PDF (50–300%, 100% = pagina in
 frecce, con i bordi della pagina, con lo scorrimento del dito o con i tasti ← → (+ e − per lo zoom). Un tocco al centro
 della pagina mostra o nasconde la **barra in basso**, che di base è nascosta mentre leggi ("Quando serve": compare sopra
 il testo e si nasconde da sola dopo 6 secondi; in fondo resta una linea sottile con la posizione); in **Aa** si può scegliere
-"Sempre". **Schermo intero** (in **Aa**) nasconde anche la barra in alto; Esc o un tocco al centro lo chiude. I menu si chiudono toccando in un punto qualsiasi fuori. In biblioteca la ricerca parte mentre scrivi e
+"Sempre". **Schermo intero** (in **Aa**) nasconde anche la barra in alto; si esce con il pulsante **✕ Esci** in alto a
+destra (chiaro per qualche secondo, poi semitrasparente), un tocco al centro, il **tasto indietro** del telefono o Esc.
+Il tasto indietro, nel lettore, esce prima dallo schermo intero e poi chiude il libro, senza lasciare la biblioteca.
+In **Aa → Come si usa** ci sono tutti i gesti. I menu si chiudono toccando in un punto qualsiasi fuori. In biblioteca la ricerca parte mentre scrivi e
 "+ Carica libri" carica appena scegli i file. Chi può caricare sceglie più file insieme o li trascina sul riquadro.
 
 ## Giochi
