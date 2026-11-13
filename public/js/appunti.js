@@ -583,55 +583,115 @@
         } catch (e) { status(e.message, 'err'); }
     });
 
-    function ttRow(p = {}, slot = {}) {
-        const row = el('div', { class: 'tt-row' },
-            el('span', { class: 'n' }),
-            el('input', { type: 'time', class: 'start', value: p.start || '', 'aria-label': 'Inizio', required: true }),
-            el('input', { type: 'time', class: 'end', value: p.end || '', 'aria-label': 'Fine', required: true }),
-            el('input', { class: 'subject', value: slot.subject || '', placeholder: 'Materia', 'aria-label': 'Materia', maxLength: 60, list: 'tt-subjects' }),
-            el('input', { class: 'label', value: slot.label || '', placeholder: 'Etichetta', 'aria-label': 'Etichetta', maxLength: 30 }),
-            el('input', { class: 'room', value: slot.room || '', placeholder: 'Aula', 'aria-label': 'Aula', maxLength: 30 }),
-            el('button', { type: 'button', class: 'ghost mini', text: '×', 'aria-label': 'Togli l\'ora', onclick: () => { row.remove(); numberRows(); } }));
-        return row;
+    /* Timetable editor: a grid like the printed timetable (days in columns, hours in rows); a cell opens a small editor */
+    let tt = {};   // day ("1".."6") -> [{start, end, subject, room}]
+
+    function ttFrom(periods, slots) {
+        tt = {};
+        for (let d = 1; d <= 6; d++) {
+            const day = String(d);
+            const bells = periods[day] || [];
+            if (!bells.length) continue;
+            tt[day] = bells.map((p, k) => {
+                const s = slots.find((x) => x.day === d && x.period === k + 1) || {};
+                return { start: p.start, end: p.end, subject: s.subject || '', room: s.room || '' };
+            });
+        }
     }
-    function numberRows() { $$('.tt-day').forEach((d) => $$('.tt-row', d).forEach((r, i) => { $('.n', r).textContent = `${i + 1}ª`; })); }
+
+    const addMinutes = (hhmm, min) => {
+        const [h, m] = (hhmm || '08:00').split(':').map(Number);
+        const t = Math.min(23 * 60 + 59, h * 60 + m + min);
+        return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    };
+    const subjectHue = (name) => { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 
     function renderTimetable(periods = current.periods, slots = (current.timetable && current.timetable.slots) || []) {
+        if (periods) ttFrom(periods, slots);
+        drawTimetable();
+    }
+
+    function drawTimetable() {
         const box = $('#tt-days');
-        const datalist = el('datalist', { id: 'tt-subjects' }, ...current.subjects.map((s) => el('option', { value: s.name })));
-        const days = DAYS.map((name, i) => {
-            const day = String(i + 1);
-            const rowsBox = el('div', { class: 'rows' });
-            (periods[day] || []).forEach((p, k) => {
-                rowsBox.append(ttRow(p, slots.find((s) => s.day === i + 1 && s.period === k + 1) || {}));
-            });
-            return el('div', { class: 'tt-day', 'data-day': day },
-                el('h4', {}, name, el('span', {},
-                    i > 0 ? el('button', { type: 'button', class: 'ghost mini', text: 'Orari come lunedì', onclick: () => copyBells(rowsBox) }) : null, ' ',
-                    el('button', { type: 'button', class: 'ghost mini', text: '+ ora', onclick: () => { addRow(rowsBox); } }))),
-                rowsBox);
-        });
-        box.replaceChildren(datalist, ...days);
-        numberRows();
+        const days = Object.keys(tt).sort();
+        const rows = Math.max(0, ...days.map((d) => tt[d].length));
+        const grid = el('div', { class: 'tt-grid', style: `grid-template-columns: 34px repeat(${days.length}, minmax(96px, 1fr))` });
+        grid.append(el('div', { class: 'tt-corner' }));
+        for (const d of days) {
+            grid.append(el('div', { class: 'tt-head' }, el('b', { text: DAYS[d - 1] }),
+                el('span', { class: 'tt-head-actions' },
+                    el('button', { type: 'button', class: 'ghost mini', text: '+ ora', title: 'Aggiungi un\'ora in fondo', onclick: () => {
+                        const last = tt[d][tt[d].length - 1];
+                        tt[d].push({ start: last ? last.end : '08:00', end: addMinutes(last ? last.end : '08:00', 60), subject: '', room: '' });
+                        drawTimetable();
+                    } }),
+                    el('button', { type: 'button', class: 'ghost mini', text: '✕', title: `Togli ${DAYS[d - 1]}`, 'aria-label': `Togli ${DAYS[d - 1]}`, onclick: () => {
+                        if (!confirm(`Togliere ${DAYS[d - 1]} dall'orario? (Le ore si cancellano quando premi "Salva l'orario".)`)) return;
+                        delete tt[d];
+                        drawTimetable();
+                    } }))));
+        }
+        for (let r = 0; r < rows; r++) {
+            grid.append(el('div', { class: 'tt-num', text: `${r + 1}ª` }));
+            for (const d of days) {
+                const h = tt[d][r];
+                if (!h) { grid.append(el('div', { class: 'tt-cell none' })); continue; }
+                const cell = el('button', { type: 'button', class: 'tt-cell' + (h.subject ? '' : ' empty'), onclick: () => editHour(d, r) },
+                    el('span', { class: 'tt-time', text: `${h.start}–${h.end}` }),
+                    el('b', { class: 'tt-subj', text: h.subject || '+ materia' }),
+                    h.room ? el('span', { class: 'tt-room', text: h.room }) : null);
+                if (h.subject) cell.style.setProperty('--h', subjectHue(h.subject));
+                grid.append(cell);
+            }
+        }
+        const missing = [1, 2, 3, 4, 5, 6].map(String).filter((d) => !tt[d]);
+        const add = missing.length ? el('div', { class: 'row tt-add' },
+            el('select', { 'aria-label': 'Giorno da aggiungere' }, ...missing.map((d) => el('option', { value: d, text: DAYS[d - 1] }))),
+            el('button', { type: 'button', class: 'ghost', text: '+ Aggiungi giorno', onclick: (ev) => {
+                const d = ev.target.previousElementSibling.value;
+                const copy = tt['1'] || tt[Object.keys(tt)[0]] || [{ start: '08:00', end: '09:00' }];
+                tt[d] = copy.map((h) => ({ start: h.start, end: h.end, subject: '', room: '' }));
+                drawTimetable();
+            } })) : null;
+        box.replaceChildren(
+            el('datalist', { id: 'tt-subjects' }, ...current.subjects.map((s) => el('option', { value: s.name }))),
+            days.length ? el('div', { class: 'tt-scroll' }, grid) : el('p', { class: 'empty', text: 'Nessun giorno: aggiungine uno.' }),
+            ...(add ? [add] : []));
     }
-    function addRow(rowsBox) {
-        const last = $$('.tt-row', rowsBox).pop();
-        const start = last ? $('.end', last).value : '08:00';
-        const [h, m] = (start || '08:00').split(':').map(Number);
-        const endMin = h * 60 + m + 60;
-        rowsBox.append(ttRow({ start, end: `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}` }));
-        numberRows();
-    }
-    function copyBells(rowsBox) {
-        const monday = $$('.tt-day[data-day="1"] .tt-row');
-        const rows = $$('.tt-row', rowsBox);
-        monday.forEach((mr, i) => {
-            const r = rows[i] || rowsBox.appendChild(ttRow());
-            $('.start', r).value = $('.start', mr).value;
-            $('.end', r).value = $('.end', mr).value;
+
+    /** The small editor of one hour: subject, room, times; or remove the hour. */
+    function editHour(day, idx) {
+        const h = tt[day][idx];
+        const dlg = el('dialog', { class: 'tt-dialog' });
+        const form = el('form', { method: 'dialog', class: 'stack' },
+            el('h3', { text: `${DAYS[day - 1]}, ${idx + 1}ª ora` }),
+            el('label', { text: 'Materia' }, el('input', { name: 'subject', value: h.subject, list: 'tt-subjects', maxLength: 60, placeholder: 'Vuoto = ora libera' })),
+            el('label', { text: 'Aula (facoltativa)' }, el('input', { name: 'room', value: h.room, maxLength: 30 })),
+            el('div', { class: 'grid2' },
+                el('label', { text: 'Inizio' }, el('input', { type: 'time', name: 'start', value: h.start, required: true })),
+                el('label', { text: 'Fine' }, el('input', { type: 'time', name: 'end', value: h.end, required: true }))),
+            el('label', { class: 'switch' }, el('input', { type: 'checkbox', name: 'all' }), `Stessi orari per la ${idx + 1}ª ora di tutti i giorni`),
+            el('div', { class: 'row' },
+                el('button', { value: 'save', text: 'Salva' }),
+                el('button', { type: 'button', class: 'ghost', text: 'Annulla', onclick: () => dlg.close() }),
+                el('button', { type: 'button', class: 'danger', text: 'Togli quest\'ora', onclick: () => {
+                    tt[day].splice(idx, 1);
+                    if (!tt[day].length) delete tt[day];
+                    dlg.close();
+                    drawTimetable();
+                } })));
+        form.addEventListener('submit', (ev) => {
+            if (!form.start.value || !form.end.value || form.start.value >= form.end.value) { ev.preventDefault(); status('L\'ora deve finire dopo l\'inizio.', 'err'); return; }
+            Object.assign(h, { subject: form.subject.value.trim(), room: form.room.value.trim(), start: form.start.value, end: form.end.value });
+            if (form.all.checked) Object.values(tt).forEach((list) => { if (list[idx]) Object.assign(list[idx], { start: h.start, end: h.end }); });
+            drawTimetable();
         });
-        rows.slice(monday.length).forEach((r) => r.remove());
-        numberRows();
+        dlg.append(form);
+        dlg.addEventListener('close', () => dlg.remove());
+        dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });   // tap outside closes
+        document.body.append(dlg);
+        dlg.showModal();
+        form.subject.focus();
     }
 
     $('#tt-read').addEventListener('click', async () => {
@@ -665,14 +725,10 @@
     $('#tt-save').addEventListener('click', async () => {
         const periods = {};
         const slots = [];
-        for (const d of $$('.tt-day')) {
-            const day = d.dataset.day;
-            periods[day] = [];
-            $$('.tt-row', d).forEach((r, i) => {
-                periods[day].push({ start: $('.start', r).value, end: $('.end', r).value });
-                const subject = $('.subject', r).value.trim();
-                if (subject) slots.push({ day: Number(day), period: i + 1, subject, label: $('.label', r).value.trim(), room: $('.room', r).value.trim() });
-            });
+        for (let d = 1; d <= 6; d++) {
+            const day = String(d);
+            periods[day] = (tt[day] || []).map((h) => ({ start: h.start, end: h.end }));
+            (tt[day] || []).forEach((h, i) => { if (h.subject) slots.push({ day: d, period: i + 1, subject: h.subject, label: '', room: h.room }); });
         }
         try {
             await classes_({ action: 'save_timetable', id: current.id, valid_from: $('#tt-from').value, periods, slots });

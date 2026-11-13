@@ -364,3 +364,44 @@ details[open] > summary.sc-box .sc-label::before { content: "▾ "; }
 .qa details { margin-top: 4px; }
 .qa details summary { margin: 0; font-size: 14px; }
 .qa-a { margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--line); }
+
+/* ---------- Timetable grid (like the printed timetable) ---------- */
+.tt-scroll { overflow-x: auto; margin: 10px 0; padding-bottom: 4px; scrollbar-color: var(--line) transparent; }
+.tt-grid { display: grid; gap: 4px; min-width: min-content; }
+.tt-corner { min-height: 1px; }
+.tt-head { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 2px; text-align: center; font-size: 14px; }
+.tt-head-actions { display: flex; gap: 4px; }
+.tt-head-actions .mini { min-height: 28px; padding: 2px 8px; font-size: 13px; }
+.tt-num { display: grid; place-items: center; color: var(--muted); font-size: 13px; font-weight: 700; }
+.tt-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 74px; padding: 6px 4px;
+    border-radius: 8px; border: 1px solid var(--line); text-align: center; font-weight: 500; color: var(--text);
+    background: hsl(var(--h, 220) 45% 22%); }
+.tt-cell.empty { background: transparent; border-style: dashed; color: var(--muted); }
+.tt-cell.none { background: transparent; border: 0; min-height: 0; }
+.tt-time { font-size: 11px; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.tt-subj { font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
+.tt-room { font-size: 11px; font-style: italic; opacity: 0.85; }
+.tt-add { margin-top: 6px; }
+.tt-add select { flex: 0 1 160px; }
+.tt-dialog { margin: auto; width: min(420px, calc(100vw - 24px)); border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); padding: 16px; }
+.tt-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.tt-dialog h3 { margin: 0; }
+
+/* ---------- Date picker (week from Monday or Sunday) ---------- */
+.dp-native { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0; pointer-events: none; padding: 0 !important; border: 0 !important; }
+label:has(> .dp-native) { position: relative; }
+.dp-btn { display: block; width: 100%; text-align: left; background: var(--bg); color: var(--text); border: 1px solid var(--line); font-weight: 500; margin-top: 4px; }
+.dp-btn.dp-empty { color: var(--muted); }
+.dp-dialog { margin: auto; width: min(340px, calc(100vw - 24px)); border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); padding: 12px; }
+.dp-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+.dp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; text-transform: capitalize; }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.dp-wd { text-align: center; font-size: 12px; color: var(--muted); padding: 2px 0; }
+.dp-day { min-height: 40px; padding: 0; background: transparent; color: var(--text); border: 1px solid transparent; font-weight: 500; }
+.dp-day.sun { color: var(--danger); }
+.dp-day.today { border-color: var(--accent); }
+.dp-day.sel { background: var(--accent); color: var(--accent-ink); }
+.dp-day:disabled { opacity: 0.3; }
+.dp-foot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.dp-week { margin: 0 0 0 auto; display: flex; gap: 4px; align-items: center; font-size: 13px; color: var(--muted); }
+.dp-week select { width: auto; padding: 4px 6px; margin: 0; }

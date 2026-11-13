@@ -273,6 +273,95 @@
     function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode */ } }
     function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 
+    /* ---------- Date picker: week from Monday (Italy) or Sunday, the viewer's choice ----------
+       Every <input type="date"> of the notes pages becomes a button that opens a month calendar. The input stays in the
+       page (hidden, same name/id) and keeps a YYYY-MM-DD value, so forms and scripts read and set .value as before. */
+    const WEEK_KEY = 'vb_week_start';
+    const weekStart = () => (stored(WEEK_KEY) === 'sun' ? 0 : 1);
+    const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+    const WD = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const shortFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const valueDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+
+    function enhanceDate(input) {
+        if (input.dataset.dp) return;
+        input.dataset.dp = '1';
+        input.type = 'text';
+        input.classList.add('dp-native');
+        input.tabIndex = -1;
+        input.setAttribute('aria-hidden', 'true');
+        const btn = el('button', { type: 'button', class: 'dp-btn' });
+        const label = () => {
+            const v = valueDesc.get.call(input);
+            btn.textContent = /^\d{4}-\d{2}-\d{2}$/.test(v) ? '📅 ' + shortFmt.format(parseDate(v)) : '📅 Scegli il giorno';
+            btn.classList.toggle('dp-empty', !v);
+        };
+        Object.defineProperty(input, 'value', { configurable: true, get() { return valueDesc.get.call(this); }, set(v) { valueDesc.set.call(this, v); label(); } });
+        if (input.form) input.form.addEventListener('reset', () => setTimeout(label, 0));
+        btn.addEventListener('click', () => openPicker(input));
+        input.after(btn);
+        label();
+    }
+
+    function openPicker(input) {
+        const cur = /^\d{4}-\d{2}-\d{2}$/.test(input.value) ? parseDate(input.value) : new Date();
+        let y = cur.getFullYear();
+        let m = cur.getMonth();
+        const dlg = el('dialog', { class: 'dp-dialog', 'aria-label': 'Scegli il giorno' });
+        const pick = (v) => {
+            input.value = v;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            dlg.close();
+        };
+        const draw = () => {
+            const ws = weekStart();
+            const first = new Date(y, m, 1);
+            const offset = (first.getDay() - ws + 7) % 7;
+            const days = new Date(y, m + 1, 0).getDate();
+            const today = iso(new Date());
+            const grid = el('div', { class: 'dp-grid' }, ...[0, 1, 2, 3, 4, 5, 6].map((i) => el('span', { class: 'dp-wd', text: WD[(i + ws) % 7] })));
+            for (let i = 0; i < offset; i++) grid.append(el('span'));
+            for (let d = 1; d <= days; d++) {
+                const date = new Date(y, m, d);
+                const v = iso(date);
+                const out = (input.min && v < input.min) || (input.max && v > input.max);
+                grid.append(el('button', { type: 'button', text: String(d), disabled: !!out,
+                    class: 'dp-day' + (v === input.value ? ' sel' : '') + (v === today ? ' today' : '') + (date.getDay() === 0 ? ' sun' : ''),
+                    onclick: () => pick(v) }));
+            }
+            dlg.replaceChildren(
+                el('div', { class: 'dp-head' },
+                    el('button', { type: 'button', class: 'ghost mini', text: '‹', 'aria-label': 'Mese prima', onclick: () => { if (--m < 0) { m = 11; y--; } draw(); } }),
+                    el('b', { text: `${MONTHS[m]} ${y}` }),
+                    el('button', { type: 'button', class: 'ghost mini', text: '›', 'aria-label': 'Mese dopo', onclick: () => { if (++m > 11) { m = 0; y++; } draw(); } })),
+                grid,
+                el('div', { class: 'dp-foot' },
+                    el('button', { type: 'button', class: 'ghost mini', text: 'Oggi', onclick: () => pick(today) }),
+                    input.required ? null : el('button', { type: 'button', class: 'ghost mini', text: 'Nessuna', onclick: () => pick('') }),
+                    el('label', { class: 'dp-week' }, 'Settimana da ',
+                        el('select', { 'aria-label': 'La settimana inizia', onchange: (ev) => { store(WEEK_KEY, ev.target.value); draw(); } },
+                            el('option', { value: 'mon', text: 'lunedì', selected: ws === 1 }),
+                            el('option', { value: 'sun', text: 'domenica', selected: ws === 0 })))));
+            const sel = dlg.querySelector('.dp-day.sel') || dlg.querySelector('.dp-day.today');
+            if (sel) sel.focus();
+        };
+        dlg.addEventListener('close', () => { dlg.remove(); input.nextElementSibling && input.nextElementSibling.focus(); });
+        dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });   // tap outside closes
+        document.body.append(dlg);
+        draw();
+        dlg.showModal();
+    }
+
+    function enhanceAll(root) {
+        if (root.matches && root.matches('input[type="date"]')) enhanceDate(root);
+        if (root.querySelectorAll) root.querySelectorAll('input[type="date"]').forEach(enhanceDate);
+    }
+    enhanceAll(document);
+    new MutationObserver((list) => list.forEach((r) => r.addedNodes.forEach((n) => { if (n.nodeType === 1) enhanceAll(n); })))
+        .observe(document.documentElement, { childList: true, subtree: true });
+
     window.AppuntiCommon = { el, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },

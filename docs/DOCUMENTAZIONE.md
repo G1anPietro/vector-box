@@ -149,6 +149,11 @@ con il percorso in alto.
   stessa materia: **Completo** (dispensa divisa per argomento, con l'elenco delle lezioni senza appunti), **Riassunto**,
   **Preparazione mirata** (come interroga il prof, domande probabili con le risposte, verifica di prova svolta) e
   **Quiz** a scelta multipla da fare nella pagina;
+- **Orario:** nella scheda Classe è una griglia come l'orario stampato (giorni in colonna, ore in riga, orari dentro
+  ogni casella); tocca una casella per materia, aula e orari ("stessi orari per tutti i giorni"), "✕" toglie un giorno,
+  "+ ora" aggiunge un'ora, "Aggiungi giorno" rimette un giorno tolto. Le modifiche valgono dopo "Salva l'orario".
+- **Date:** i campi data aprono un calendario che parte dal **lunedì**; nel calendario "Settimana da" passa a domenica
+  (scelta salvata nel browser).
 - **Schemi:** per ogni lezione e ogni verifica l'AI fa anche uno schema (mappa concettuale) in JSON di testo, non un'immagine
   (pochi KB, si apre subito): la pagina lo disegna come un albero con rami che si aprono e si chiudono. Si può caricare anche
   uno schema fatto con un'altra AI (l'ultimo PROMPT del file "Per AI").

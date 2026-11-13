@@ -163,6 +163,15 @@ test('bell times can differ by day (shorter hours on Monday and Thursday)', asyn
     assert.deepEqual(p['1'][6], { start: '13:00', end: '13:50' });
     assert.equal(p['2'].length, 6);
     assert.equal(p['6'].length, 0);
+
+    // a day added by mistake (Saturday) can be removed: saving it empty drops its hours and lessons
+    const sat = { ...periods, 6: long.slice(0, 2) };
+    await api(mario, { action: 'save_timetable', id: classId, periods: sat, valid_from: '2026-09-02', slots: [{ day: 6, period: 1, subject: 'Matematica' }] });
+    assert.equal((await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.periods['6'].length, 2);
+    await api(mario, { action: 'save_timetable', id: classId, periods: { ...periods, 6: [] }, valid_from: '2026-09-02', slots: [{ day: 1, period: 7, subject: 'Matematica' }] });
+    const c = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class;
+    assert.equal(c.periods['6'].length, 0);
+    assert.ok(!c.timetable.slots.some((x) => x.day === 6), 'no Saturday lessons left');
 });
 
 test('manager: new code, transfer, remove; members can leave', async () => {
