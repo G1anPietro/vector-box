@@ -146,7 +146,15 @@ if (!$canRead) {
                             <label class="set-label" for="blue-light-slider">Filtro luce blu</label>
                             <input type="range" id="blue-light-slider" min="0" max="60" value="0" step="5" class="slider-bar">
                         </div>
-                        <button id="bars-btn" class="btn small-btn" type="button">Nascondi le barre (tocca il centro della pagina per riaverle)</button>
+                        <div class="set-row">
+                            <span class="set-label">Barra in basso</span>
+                            <div class="segmented" role="group" aria-label="Barra in basso">
+                                <button class="btn" data-footer="auto">Quando serve</button>
+                                <button class="btn" data-footer="always">Sempre</button>
+                            </div>
+                            <span class="set-hint">"Quando serve": tocca il centro della pagina per vederla.</span>
+                        </div>
+                        <button id="bars-btn" class="btn small-btn" type="button">Schermo intero</button>
                         <a id="download-book-btn" class="btn small-btn" href="#" download>Scarica il file originale</a>
                     </div>
                 </div>
@@ -157,6 +165,7 @@ if (!$canRead) {
         <div class="viewer-content" id="viewer-stage-container">
             <div id="epub-stage"></div>
             <div id="pdf-stage"></div>
+            <div class="progress-line" aria-hidden="true"><span id="progress-line"></span></div>
             <button id="tap-prev" class="tap-zone tap-prev" aria-label="Pagina precedente" tabindex="-1"></button>
             <button id="tap-next" class="tap-zone tap-next" aria-label="Pagina successiva" tabindex="-1"></button>
         </div>

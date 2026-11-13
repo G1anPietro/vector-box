@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let fontPct = Math.min(200, Math.max(70, parseInt(pref('vector_reader_font', '100'), 10) || 100));
     let pdfZoom = Math.min(3, Math.max(0.5, parseFloat(pref('vector_reader_pdf_zoom', '1')) || 1));
     let spread = pref('vector_reader_spread', 'none') === 'auto' ? 'auto' : 'none';
+    // Bottom bar: 'auto' = hidden while reading, shown by a tap in the middle of the page; 'always' = fixed
+    let footerMode = pref('vector_reader_footer', 'auto') === 'always' ? 'always' : 'auto';
     let pdfRenderTask = null;
 
     let toastTimer = null;
@@ -195,16 +197,57 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentFormat === 'pdf' && pdfDoc) renderPdfPage(pdfCurrentPage);
         });
         if (hide && !pref('vector_reader_bars_hint', '')) {
-            toast('Tocca il centro della pagina per far tornare le barre');
+            toast('Schermo intero: tocca il centro della pagina per uscire');
             setPref('vector_reader_bars_hint', '1');
         }
     }
     if (barsBtn) barsBtn.addEventListener('click', () => toggleBars(true));
     function isMiddleTap(x, width) { return x > width * 0.3 && x < width * 0.7; }
+
+    // The bottom bar in "Quando serve" mode floats over the page (no relayout of the text) and hides again by itself
+    const footerEl = document.querySelector('.viewer-footer');
+    let footerTimer = null;
+    function showFooter(show) {
+        viewerModal.classList.toggle('footer-shown', show);
+        clearTimeout(footerTimer);
+        if (show) footerTimer = setTimeout(() => { if (!footerEl.matches(':hover') && !footerEl.contains(document.activeElement)) showFooter(false); }, 6000);
+    }
+    if (footerEl) {
+        ['pointerdown', 'input', 'focusin'].forEach((t) => footerEl.addEventListener(t, () => { if (viewerModal.classList.contains('footer-shown')) showFooter(true); }));
+    }
+    function applyFooterMode() {
+        viewerModal.classList.toggle('footer-auto', footerMode === 'auto');
+        document.querySelectorAll('[data-footer]').forEach((b) => b.classList.toggle('on', b.dataset.footer === footerMode));
+        showFooter(false);
+    }
+    document.querySelectorAll('[data-footer]').forEach((b) => b.addEventListener('click', () => {
+        footerMode = b.dataset.footer;
+        setPref('vector_reader_footer', footerMode);
+        applyFooterMode();
+        // a fixed bar takes space from the page: lay it out again
+        requestAnimationFrame(() => {
+            if (epubRendition) { try { epubRendition.resize(); } catch (e) { /* not ready */ } }
+            if (currentFormat === 'pdf' && pdfDoc) renderPdfPage(pdfCurrentPage);
+        });
+    }));
+    applyFooterMode();
+
+    /** A tap in the middle of the page: leave full screen, else show/hide the bottom bar (or both bars). */
+    function middleTap() {
+        if (viewerModal.classList.contains('bars-hidden')) { toggleBars(false); return; }
+        if (footerMode === 'auto') showFooter(!viewerModal.classList.contains('footer-shown'));
+        else toggleBars(true);
+    }
+
+    function updateProgressLine(pct) {
+        const line = document.getElementById('progress-line');
+        if (line) line.style.width = Math.max(0, Math.min(100, pct || 0)) + '%';
+    }
+
     if (pdfStage) pdfStage.addEventListener('click', (e) => {
         if (pdfZoom > 1) return;
         const r = pdfStage.getBoundingClientRect();
-        if (isMiddleTap(e.clientX - r.left, r.width)) toggleBars();
+        if (isMiddleTap(e.clientX - r.left, r.width)) middleTap();
     });
     if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoom(1));
     if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoom(-1));
@@ -517,7 +560,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         viewerModal.classList.add('active');
         document.body.classList.add('reading');
-        viewerModal.classList.remove('zoomed', 'bars-hidden');
+        viewerModal.classList.remove('zoomed', 'bars-hidden', 'footer-shown');
+        updateProgressLine(0);
         closePanels();
         updateReadingUI();
         applyTheme(currentTheme);
@@ -729,7 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // the frame is as wide as the whole chapter: subtract how far the pages are scrolled
                 const cont = epubStage.querySelector('.epub-container');
                 const x = e.clientX - (cont ? cont.scrollLeft : 0);
-                if (isMiddleTap(x, epubStage.clientWidth)) toggleBars();
+                if (isMiddleTap(x, epubStage.clientWidth)) middleTap();
             });
 
             // Content hook fallback for iframe section updates
@@ -771,6 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateEpubPageNumber(cfi);
                 currentLocation = cfi;
                 currentPct = percentage;
+                updateProgressLine(percentage);
                 saveProgress(currentBookId, cfi, percentage);
             });
 
@@ -849,6 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentLocation = pageNum.toString();
         currentPct = percentage;
+        updateProgressLine(percentage);
         saveProgress(currentBookId, pageNum.toString(), percentage);
     }
 

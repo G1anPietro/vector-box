@@ -576,3 +576,14 @@ body.reading { overflow: hidden; }
     .upload-row .upload-btn { flex: 1 1 100%; }
     .upload-row .upload-status { flex: 1 1 100%; font-size: 0.8rem; }
 }
+
+/* Bottom bar "Quando serve": floats over the page, hidden while reading, a thin line shows the position */
+.viewer-content { position: relative; }
+.viewer-modal.footer-auto .viewer-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 45;
+    transform: translateY(110%); transition: transform 0.2s ease, visibility 0.2s; visibility: hidden; }
+.viewer-modal.footer-auto.footer-shown .viewer-footer { transform: none; visibility: visible; box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.18); }
+.progress-line { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; z-index: 4; background: transparent; pointer-events: none; }
+.progress-line span { display: block; height: 100%; width: 0; background: var(--accent-color); opacity: 0.55; transition: width 0.3s; }
+.viewer-modal:not(.footer-auto) .progress-line { display: none; }
+.set-hint { font-size: 0.78rem; color: var(--text-muted); }
+.small-btn { white-space: normal; }
