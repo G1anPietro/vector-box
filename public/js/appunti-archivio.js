@@ -48,10 +48,15 @@
         const parts = [el('button', { type: 'button', class: 'crumb', text: 'Materie', onclick: () => { sel.subject = null; sel.folder = null; sel.entry = null; renderAll(); setLevel(0); } })];
         const subject = tree.find((s) => s.id === sel.subject);
         if (subject) parts.push(' › ', el('button', { type: 'button', class: 'crumb', text: subject.name, onclick: () => { sel.folder = null; sel.entry = null; renderAll(); setLevel(1); } }));
-        if (sel.folder) parts.push(' › ', el('button', { type: 'button', class: 'crumb', text: sel.folder === 'tests' ? 'Verifiche' : shortDay.format(C.parseDate(sel.folder)),
+        if (sel.folder) parts.push(' › ', el('button', { type: 'button', class: 'crumb', text: folderTitle(sel.folder),
             onclick: () => { sel.entry = null; renderPreview(null); setLevel(2); } }));
         if (sel.entry) parts.push(' › ', el('span', { class: 'crumb now', text: sel.entry.label }));
         $('#crumbs').replaceChildren(...parts);
+    }
+
+    function folderTitle(folder) {
+        if (folder.startsWith('cat:')) { const c = catOf(folder.slice(4)); return c ? c[2] : folder; }
+        return shortDay.format(C.parseDate(folder));
     }
 
     function row({ icon, label, meta, active, onclick, title }) {
@@ -71,24 +76,65 @@
         })));
     }
 
+    // Folders by type inside a subject: [key, icon, label, count from the tree]
+    const CATS = [
+        ['appunti', '📝', 'Appunti', (c) => c.appunti || 0],
+        ['foto', '🖼', 'Foto', (c) => c.foto || 0],
+        ['audio', '🎧', 'Audio', (c) => c.audio || 0],
+        ['domande', '❓', 'Domande del prof', (c) => c.domande || 0],
+        ['slide', '📊', 'Slide e materiale del prof', (c) => c.slide || 0],
+        ['libro', '📖', 'Libro', (c) => c.libro || 0],
+        ['prova', '📋', 'Verifiche di prova', (c) => c.prova || 0],
+        ['ai', '🤖', 'Appunti fatti dall\'AI', (c) => c.ai || 0],
+        ['schemi', '🧠', 'Schemi', (c) => c.schemi || 0],
+        ['tests', '📘', 'Verifiche (documenti di studio)', (c) => c.verifiche || 0],
+    ];
+    const catOf = (key) => CATS.find((c) => c[0] === key);
+
     function renderFolders() {
         const col = $('#col-folders');
         const subject = tree.find((s) => s.id === sel.subject);
         if (!subject) { col.replaceChildren(); return; }
-        const rows = [];
-        const testCount = docs.filter((d) => d.subject_id === subject.id && d.event_id).length;
-        if (testCount) rows.push(row({ icon: '📘', label: 'Verifiche', meta: `${testCount} documenti di studio`, active: sel.folder === 'tests',
-            onclick: () => openFolder('tests') }));
-        for (const d of subject.days) {
+        const cats = subject.cats || {};
+        const byType = CATS.filter(([, , , n]) => n(cats) > 0).map(([key, icon, label, n]) => row({
+            icon, label, meta: String(n(cats)), active: sel.folder === 'cat:' + key, onclick: () => openFolder('cat:' + key) }));
+        const byDay = subject.days.map((d) => {
             const bits = [];
             if (d.files) bits.push(`${d.files} file`);
             if (d.items > d.files) bits.push('testi');
             if (d.docs) bits.push('riassunto AI');
-            rows.push(row({ icon: '🗂', label: shortDay.format(C.parseDate(d.date)), meta: bits.join(' · '), active: sel.folder === d.date,
-                onclick: () => openFolder(d.date) }));
-        }
+            return row({ icon: '🗂', label: shortDay.format(C.parseDate(d.date)), meta: bits.join(' · '), active: sel.folder === d.date,
+                onclick: () => openFolder(d.date) });
+        });
         col.replaceChildren(el('h3', { class: 'col-h', text: subject.name }),
-            ...(rows.length ? rows : [el('p', { class: 'empty', text: 'Ancora niente per questa materia.' })]));
+            ...(byType.length ? [el('p', { class: 'agroup', text: 'Per tipo' }), ...byType] : []),
+            ...(byDay.length ? [el('p', { class: 'agroup', text: 'Per giorno' }), ...byDay] : []),
+            ...(!byType.length && !byDay.length ? [el('p', { class: 'empty', text: 'Ancora niente per questa materia.' })] : []));
+    }
+
+    const fileIcon = (f) => f.mime.startsWith('image/') ? '🖼' : f.mime.startsWith('audio/') ? '🎧' : f.mime === 'application/pdf' ? '📕'
+        : /word|opendocument\.text/.test(f.mime) ? '📄' : /presentation/.test(f.mime) ? '📊' : '📃';
+    const docEntry = (d, label) => ({ type: 'doc', id: d.id, kind: d.kind, icon: d.kind === 'schema' ? '🧠' : d.kind === 'quiz' ? '❓' : d.event_id ? '📘' : '📝',
+        label: label + (d.manual ? ` · di ${d.author || '?'}` : ''), meta: d.status === 'ok' ? (d.lesson_date ? shortDay.format(C.parseDate(d.lesson_date)) : '') : 'non riuscito',
+        disabled: d.status !== 'ok' });
+    /** Entries of one item: its text and its files (optionally only some files). */
+    function itemEntries(it, withDate, fileFilter = () => true, withText = true) {
+        const out = [];
+        const who = it.author || '?';
+        const kind = C.KINDS[it.kind] || it.kind;
+        const when = withDate ? ' · ' + shortDay.format(C.parseDate(it.lesson_date)) : '';
+        if (withText && it.body) out.push({ type: 'text', item: it, icon: '✍️', label: it.title || `${kind} scritti`, meta: `${who} · ${kind}${when}` });
+        for (const f of it.files.filter(fileFilter)) out.push({ type: 'file', file: f, item: it, icon: fileIcon(f), label: f.name, meta: `${who}${when} · ${C.sizeText(f.size)}` });
+        return out;
+    }
+
+    let subjectItems = { id: null, items: [] };
+    async function itemsOfSubject() {
+        if (subjectItems.id !== sel.subject) {
+            const q = new URLSearchParams({ action: 'items', class_id: classId, subject_id: sel.subject });
+            subjectItems = { id: sel.subject, items: (await getJson('../api/appunti.php?' + q)).items };
+        }
+        return subjectItems.items;
     }
 
     let entries = [];
@@ -102,37 +148,40 @@
         col.replaceChildren(el('p', { class: 'empty', text: 'Carico…' }));
         entries = [];
         try {
-            if (folder === 'tests') {
+            const cat = folder.startsWith('cat:') ? folder.slice(4) : null;
+            const subjDocs = docs.filter((x) => x.subject_id === sel.subject);
+            if (cat === 'tests') {
                 const byEvent = new Map();
-                for (const d of docs.filter((x) => x.subject_id === sel.subject && x.event_id)) {
+                for (const d of subjDocs.filter((x) => x.event_id && x.kind !== 'schema')) {
                     if (!byEvent.has(d.event_id)) byEvent.set(d.event_id, []);
                     byEvent.get(d.event_id).push(d);
                 }
                 for (const [eid, list] of byEvent) {
                     const ev = events.find((e) => e.id === eid);
-                    const head = ev ? `${ev.kind === 'interrogazione' ? 'Interrogazione' : 'Verifica'} del ${C.parseDate(ev.date).toLocaleDateString('it-IT')}${ev.title ? ' · ' + ev.title : ''}`
-                        : (list[0].title || 'Verifica');
-                    entries.push({ group: head });
-                    for (const d of list) entries.push({ type: 'doc', id: d.id, icon: d.kind === 'quiz' ? '❓' : '📘',
-                        label: C.DOC_KINDS[d.kind] + (d.manual ? ` · di ${d.author || '?'}` : ''), meta: d.status === 'ok' ? '' : 'non riuscito', disabled: d.status !== 'ok' });
+                    entries.push({ group: ev ? `${ev.kind === 'interrogazione' ? 'Interrogazione' : 'Verifica'} del ${C.parseDate(ev.date).toLocaleDateString('it-IT')}${ev.title ? ' · ' + ev.title : ''}`
+                        : (list[0].title || 'Verifica') });
+                    for (const d of list) entries.push(docEntry(d, C.DOC_KINDS[d.kind] || d.kind));
+                }
+            } else if (cat === 'ai') {
+                for (const d of subjDocs.filter((x) => x.kind === 'lezione')) entries.push(docEntry(d, 'Appunti della lezione'));
+            } else if (cat === 'schemi') {
+                for (const d of subjDocs.filter((x) => x.kind === 'schema')) {
+                    const ev = d.event_id ? events.find((e) => e.id === d.event_id) : null;
+                    entries.push(docEntry(d, ev ? `Schema per la ${ev.kind === 'interrogazione' ? 'interrogazione' : 'verifica'}${ev.title ? ' · ' + ev.title : ''}` : 'Schema della lezione'));
+                }
+            } else if (cat) {
+                const items = await itemsOfSubject();
+                for (const it of items) {
+                    if (cat === 'foto') entries.push(...itemEntries(it, true, (f) => f.mime.startsWith('image/'), false));
+                    else if (cat === 'audio') entries.push(...itemEntries(it, true, (f) => f.mime.startsWith('audio/'), false));
+                    else if (it.kind === cat) entries.push(...itemEntries(it, true));
                 }
             } else {
                 const q = new URLSearchParams({ action: 'items', class_id: classId, subject_id: sel.subject, from: folder, to: folder });
                 const { items } = await getJson('../api/appunti.php?' + q);
-                for (const d of docs.filter((x) => x.subject_id === sel.subject && x.kind === 'lezione' && x.lesson_date === folder)) {
-                    entries.push({ type: 'doc', id: d.id, icon: '📝', label: d.manual ? `Appunti della lezione · di ${d.author || '?'}` : 'Appunti della lezione (AI)',
-                        meta: d.status === 'ok' ? 'tutto unito' : 'non riuscito', disabled: d.status !== 'ok' });
-                }
-                for (const it of items.slice().reverse()) {
-                    const who = it.author || '?';
-                    const kind = C.KINDS[it.kind] || it.kind;
-                    if (it.body) entries.push({ type: 'text', item: it, icon: '✍️', label: it.title || `${kind} scritti`, meta: `${who} · ${kind}` });
-                    for (const f of it.files) {
-                        const icon = f.mime.startsWith('image/') ? '🖼' : f.mime === 'application/pdf' ? '📕' : /word|opendocument\.text/.test(f.mime) ? '📄'
-                            : /presentation/.test(f.mime) ? '📊' : '📃';
-                        entries.push({ type: 'file', file: f, item: it, icon, label: f.name, meta: `${who} · ${kind} · ${C.sizeText(f.size)}` });
-                    }
-                }
+                for (const d of subjDocs.filter((x) => x.kind === 'lezione' && x.lesson_date === folder)) entries.push(docEntry(d, d.manual ? 'Appunti della lezione' : 'Appunti della lezione (AI)'));
+                for (const d of subjDocs.filter((x) => x.kind === 'schema' && !x.event_id && x.lesson_date === folder)) entries.push(docEntry(d, 'Schema della lezione'));
+                for (const it of items.slice().reverse()) entries.push(...itemEntries(it, false));
             }
         } catch (e) { status(e.message, 'err'); }
         renderFiles();
@@ -141,7 +190,7 @@
     function renderFiles() {
         const col = $('#col-files');
         if (!sel.folder) { col.replaceChildren(); return; }
-        const title = sel.folder === 'tests' ? 'Verifiche' : shortDay.format(C.parseDate(sel.folder));
+        const title = folderTitle(sel.folder);
         col.replaceChildren(el('h3', { class: 'col-h', text: title }), ...(entries.length ? entries.map((en) => en.group
             ? el('p', { class: 'agroup', text: en.group })
             : row({ icon: en.icon, label: en.label, meta: en.meta, active: sel.entry === en, onclick: () => { if (!en.disabled) openEntry(en); } }))
@@ -169,6 +218,8 @@
                 const meta = el('p', { class: 'muted small', text: `${en.meta}${f.text_status === 'pending' ? ' · trascrizione in arrivo' : ''}` });
                 if (f.mime.startsWith('image/') && !/heic|heif/.test(f.mime)) {
                     pv.replaceChildren(head(f.name, open, dl), meta, el('img', { class: 'pv-img', src: fileUrl(f.id), alt: f.name }), await textBlock(f, true));
+                } else if (f.mime.startsWith('audio/')) {
+                    pv.replaceChildren(head(f.name, dl), meta, el('audio', { class: 'pv-audio', controls: true, preload: 'metadata', src: fileUrl(f.id) }), await textBlock(f, true));
                 } else if (f.mime === 'application/pdf') {
                     pv.replaceChildren(head(f.name, open, dl), meta, el('iframe', { class: 'pv-frame', src: fileUrl(f.id), title: f.name }));
                 } else {
@@ -180,7 +231,7 @@
                     C.looksLikeMarkdown(it.body) ? el('div', { class: 'md' }, md(it.body)) : el('div', { class: 'pv-text', text: it.body }));
             } else {
                 const { doc } = await getJson(`../api/appunti.php?action=doc&id=${en.id}`);
-                const body = doc.kind === 'quiz' ? quizList(doc.content) : el('div', { class: 'md' }, md(doc.content));
+                const body = doc.kind === 'quiz' ? quizList(doc.content) : doc.kind === 'schema' ? C.renderSchema(doc.content) : el('div', { class: 'md' }, md(doc.content));
                 pv.replaceChildren(head(doc.title, el('a', { class: 'ghost-link', href: `appunti.php?class=${classId}&tab=study`, text: 'Apri in Studio' })),
                     el('p', { class: 'muted small', text: doc.manual ? `Fatto con un'altra AI, caricato da ${doc.author || '?'}` : 'Scritto dall\'AI dal materiale della classe: può sbagliare, controlla.' }),
                     body);
@@ -197,7 +248,7 @@
         }
         const t = await getJson(`../api/appunti.php?action=file_text&id=${f.id}`);
         if (!t.text) return el('span');
-        const box = el('div', { class: 'pv-transcript' }, el('p', { class: 'muted small', text: isImage ? 'Trascrizione:' : '' }));
+        const box = el('div', { class: 'pv-transcript' }, el('p', { class: 'muted small', text: isImage ? (f.mime.startsWith('audio/') ? 'Trascrizione della registrazione:' : 'Trascrizione:') : '' }));
         box.append(C.looksLikeMarkdown(t.text) ? el('div', { class: 'md' }, md(t.text)) : el('div', { class: 'pv-text', text: t.text }));
         return box;
     }
@@ -219,6 +270,7 @@
         classId = id;
         C.store(C.CLASS_KEY, String(id));
         sel.subject = sel.folder = sel.entry = null;
+        subjectItems = { id: null, items: [] };
         status('');
         try {
             const [t, d, ev] = await Promise.all([

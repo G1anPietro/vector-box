@@ -241,7 +241,10 @@
         const files = it.files.map((f) => f.mime.startsWith('image/') && f.mime !== 'image/heic' && f.mime !== 'image/heif'
             ? el('a', { class: 'thumb', href: fileUrl(f), target: '_blank', rel: 'noopener', title: f.name },
                 el('img', { src: fileUrl(f), alt: f.name, loading: 'lazy' }))
-            : el('a', { href: fileUrl(f), target: '_blank', rel: 'noopener', text: `📄 ${f.name} · ${sizeText(f.size)}` }));
+            : f.mime.startsWith('audio/')
+                ? el('div', { class: 'audio-file' }, el('span', { class: 'muted small', text: `🎧 ${f.name} · ${sizeText(f.size)}` }),
+                    el('audio', { controls: true, preload: 'none', src: fileUrl(f) }))
+                : el('a', { href: fileUrl(f), target: '_blank', rel: 'noopener', text: `📄 ${f.name} · ${sizeText(f.size)}` }));
         const card = el('article', { class: 'item' },
             el('div', { class: 'meta' },
                 el('span', { class: 'subject', text: it.subject }),
@@ -294,8 +297,8 @@
 
     /* ---------- study: AI documents ---------- */
 
-    const DOC_KINDS = { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione' };
-    const DOC_ORDER = ['completo', 'riassunto', 'preparazione', 'quiz'];
+    const DOC_KINDS = { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema' };
+    const DOC_ORDER = ['completo', 'riassunto', 'preparazione', 'quiz', 'schema'];
     let studyDocs = [];
     let openDoc = null;
 
@@ -392,6 +395,8 @@
                 d.status !== 'ok' ? el('span', { class: 'err', text: ' (non riuscito, riprova più tardi)' }) : null),
             el('span', { class: 'row-actions' },
                 el('button', { class: 'ghost mini', text: 'Apri', disabled: d.status !== 'ok', onclick: () => showDoc(d.id) }),
+                ...studyDocs.filter((x) => x.kind === 'schema' && !x.event_id && x.status === 'ok' && x.subject_id === d.subject_id && x.lesson_date === d.lesson_date)
+                    .slice(0, 1).map((x) => el('button', { class: 'ghost mini', text: '🧠 Schema', onclick: () => showDoc(x.id) })),
                 d.can_delete ? el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteDoc(d) }) : null))));
     }
     $('#study-subject').addEventListener('change', renderStudyLessons);
@@ -415,10 +420,12 @@
                 let quiz = null;
                 try { quiz = JSON.parse(doc.content); } catch (e) { /* shown as text below */ }
                 body.replaceChildren(quiz ? renderQuiz(quiz) : el('p', { text: 'Quiz non leggibile.' }));
+            } else if (doc.kind === 'schema') {
+                body.replaceChildren(window.AppuntiCommon.renderSchema(doc.content));
             } else {
                 body.replaceChildren(md(doc.content));
             }
-            $('#doc-download').hidden = doc.kind === 'quiz';
+            $('#doc-download').hidden = doc.kind === 'quiz' || doc.kind === 'schema';
             $('#doc-sources').hidden = !doc.sources.length;
             const kinds = { appunti: 'appunti', slide: 'slide del prof', libro: 'libro', domande: 'domande del prof', prova: 'verifica di prova', altro: 'altro' };
             $('#doc-sources-list').replaceChildren(...doc.sources.map((s) => el('li', { value: s.n,

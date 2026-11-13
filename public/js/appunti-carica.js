@@ -81,7 +81,8 @@
         $('#queue-box').hidden = !queue.length || method === 'text';
         $('#queue').replaceChildren(...queue.map((f, i) => {
             const thumb = f.type.startsWith('image/') && !/heic|heif/.test(f.type)
-                ? el('img', { class: 'qthumb', alt: '', src: URL.createObjectURL(f) }) : el('span', { class: 'qthumb icon', text: f.type === 'application/pdf' ? '📕' : '📄' });
+                ? el('img', { class: 'qthumb', alt: '', src: URL.createObjectURL(f) })
+                : el('span', { class: 'qthumb icon', text: f.type.startsWith('audio/') ? '🎧' : f.type === 'application/pdf' ? '📕' : '📄' });
             return el('li', {}, thumb, el('span', { class: 'qname', text: `${f.name} · ${C.sizeText(f.size)}` }),
                 el('button', { type: 'button', class: 'ghost mini', text: '×', 'aria-label': 'Togli', onclick: () => { queue.splice(i, 1); renderQueue(); } }));
         }));
@@ -190,7 +191,7 @@
             f.title.value = ''; f.content.value = ''; f.file.value = '';
             status('Documento caricato: lo trovi in Studio e nell\'Archivio, con il tuo nome.', 'ok');
         } catch (e) {
-            const msg = { bad_quiz: 'Il quiz deve essere il JSON scritto dall\'AI (PROMPT 4).', empty: 'Incolla il testo o scegli un file.',
+            const msg = { bad_quiz: 'Il quiz deve essere il JSON scritto dall\'AI (PROMPT 4).', bad_schema: 'Lo schema deve essere il JSON scritto dall\'AI (l\'ultimo PROMPT del file "Per AI").', empty: 'Incolla il testo o scegli un file.',
                 bad_event: 'Scegli una verifica: aggiungila prima nel Calendario.', bad_file: 'Usa un file .md, .txt o .json (massimo 2 MB).' };
             status((e.json && msg[e.json.code]) || e.message, 'err');
         }

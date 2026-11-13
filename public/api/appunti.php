@@ -13,7 +13,7 @@
 // GET  ?action=zip&class_id=ID&scope=day&date=D[&subject_id] | scope=subject&subject_id | scope=event&event_id
 //                                                      -> everything as a .zip with an index and a PROMPT.txt
 // GET  ?action=ai_pack&class_id=ID&scope=...           -> the same as ONE Markdown file (prompts + all text), for any AI
-// GET  ?action=tree&class_id=ID                        -> subjects -> lesson days with counts (archive page)
+// GET  ?action=tree&class_id=ID                        -> subjects -> lesson days with counts, and counts by type (archive page)
 // GET  ?action=file_text&id=ID                         -> the text of a file (extracted or transcribed), for previews
 // POST multipart {action:"upload", class_id, subject_id, kind, lesson_date, period?, title?, body?, files[]}
 // POST JSON {action:"edit_item", id, subject_id, kind, lesson_date, period, title, body} | {action:"delete_item", id}
@@ -269,11 +269,26 @@ try {
             $st = $db->prepare("SELECT subject_id, COUNT(*) FROM class_docs WHERE class_id = :c AND status = 'ok' AND event_id IS NOT NULL GROUP BY subject_id");
             $st->execute([':c' => $classId]);
             $testDocs = array_map('intval', $st->fetchAll(PDO::FETCH_KEY_PAIR));
+            // Counts for the folders by type inside each subject
+            $cats = [];
+            $st = $db->prepare('SELECT subject_id, kind, COUNT(*) FROM class_items WHERE class_id = :c GROUP BY subject_id, kind');
+            $st->execute([':c' => $classId]);
+            foreach ($st->fetchAll(PDO::FETCH_NUM) as [$sid, $kind, $n]) $cats[(int)$sid][$kind] = (int)$n;
+            $st = $db->prepare("SELECT i.subject_id, CASE WHEN f.mime LIKE 'image/%' THEN 'foto' WHEN f.mime LIKE 'audio/%' THEN 'audio' ELSE 'file' END, COUNT(*)
+                                FROM class_item_files f JOIN class_items i ON i.id = f.item_id WHERE f.class_id = :c GROUP BY 1, 2");
+            $st->execute([':c' => $classId]);
+            foreach ($st->fetchAll(PDO::FETCH_NUM) as [$sid, $kind, $n]) $cats[(int)$sid][$kind] = (int)$n;
+            $st = $db->prepare("SELECT subject_id, CASE WHEN kind = 'schema' THEN 'schemi' WHEN event_id IS NOT NULL THEN 'verifiche' ELSE 'ai' END, COUNT(*)
+                                FROM class_docs WHERE class_id = :c AND status = 'ok' GROUP BY 1, 2");
+            $st->execute([':c' => $classId]);
+            foreach ($st->fetchAll(PDO::FETCH_NUM) as [$sid, $kind, $n]) $cats[(int)$sid][$kind] = (int)$n;
+
             $subjects = [];
             foreach (classSubjects($db, $classId) as $sub) {
                 $list = array_values($days[$sub['id']] ?? []);
                 usort($list, fn($a, $b) => strcmp($b['date'], $a['date']));
-                $subjects[] = ['id' => $sub['id'], 'name' => $sub['name'], 'days' => $list, 'test_docs' => $testDocs[$sub['id']] ?? 0];
+                $subjects[] = ['id' => $sub['id'], 'name' => $sub['name'], 'days' => $list, 'test_docs' => $testDocs[$sub['id']] ?? 0,
+                               'cats' => (object)($cats[$sub['id']] ?? [])];
             }
             jsonResponse(['success' => true, 'subjects' => $subjects]);
         }
@@ -462,7 +477,7 @@ try {
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         if (!checkRateLimit('notes_doc_upload', 30, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
         $kind = (string)($in['kind'] ?? '');
-        if (!in_array($kind, ['lezione', 'completo', 'riassunto', 'preparazione', 'quiz'], true)) apFail('bad_kind', 'Unknown type of document');
+        if (!in_array($kind, ['lezione', 'completo', 'riassunto', 'preparazione', 'quiz', 'schema'], true)) apFail('bad_kind', 'Unknown type of document');
         $content = (string)($in['content'] ?? '');
         $file = $_FILES['file'] ?? null;
         if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
@@ -476,6 +491,9 @@ try {
         if (textLength($content) > NOTE_TEXT_MAX) apFail('too_long', 'Document too long');
         if ($kind === 'quiz') {
             try { $content = aiCleanQuiz($content); } catch (GeminiError $e) { apFail('bad_quiz', 'The quiz must be the JSON written by the AI (PROMPT 4)'); }
+        }
+        if ($kind === 'schema') {
+            try { $content = aiCleanSchema($content); } catch (GeminiError $e) { apFail('bad_schema', 'The schema must be the JSON written by the AI (PROMPT 5)'); }
         }
         $eventId = null;
         if (($in['target'] ?? '') === 'event') {
@@ -491,7 +509,7 @@ try {
             if (!classValidDate($date)) apFail('bad_date', 'Date must be YYYY-MM-DD');
         }
         $subject = notesSubjectOf($db, (int)$class['id'], $subjectId)['name'];
-        $labels = ['lezione' => 'Lezione', 'completo' => 'Completo', 'riassunto' => 'Riassunto', 'preparazione' => 'Preparazione mirata', 'quiz' => 'Quiz'];
+        $labels = ['lezione' => 'Lezione', 'completo' => 'Completo', 'riassunto' => 'Riassunto', 'preparazione' => 'Preparazione mirata', 'quiz' => 'Quiz', 'schema' => 'Schema'];
         $title = apText($in['title'] ?? '', NOTE_TITLE_MAX);
         if ($title === '') $title = "$subject — {$labels[$kind]} del " . (new DateTimeImmutable($date))->format('d/m/Y');
         $now = time();

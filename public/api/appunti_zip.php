@@ -116,7 +116,7 @@ function zipWrite(PDO $db, array $class, array $scope, array $items, array $file
             if (is_file($src)) {
                 $zip->addFile($src, $dir . $name);
                 // photos and PDFs are already compressed
-                if (str_starts_with($f['mime'], 'image/') || $f['mime'] === 'application/pdf') $zip->setCompressionName($dir . $name, ZipArchive::CM_STORE);
+                if (str_starts_with($f['mime'], 'image/') || str_starts_with($f['mime'], 'audio/') || $f['mime'] === 'application/pdf') $zip->setCompressionName($dir . $name, ZipArchive::CM_STORE);
                 $contents[] = $name;
             }
             if ($f['text_status'] === 'done' && $f['text'] !== null && !preg_match('/\.(txt|md)$/i', $name)) {
@@ -165,13 +165,15 @@ function zipPromptText(array $class, string $what, ?array $event): string {
         . "Classe {$class['name']} ({$class['school']}). $what.\n"
         . ($event && $event['topics'] !== '' ? "Argomenti annunciati dal prof: {$event['topics']}\n" : '');
     if (!$event) {
-        return $intro . "\n===== PROMPT 1 — appunti completi =====\n\n" . zipPrompt(AI_PROMPT_LESSON) . "\n";
+        return $intro . "\n===== PROMPT 1 — appunti completi =====\n\n" . zipPrompt(AI_PROMPT_LESSON)
+            . "\n\n===== PROMPT 2 — schema (JSON) =====\n\n" . "Dagli appunti che hai appena scritto:\n" . AI_PROMPT_SCHEMA . "\n";
     }
     return $intro
         . "\n===== PROMPT 1 — dispensa completa =====\n\n" . zipPrompt(AI_PROMPT_COMPLETO)
         . "\n\n===== PROMPT 2 — riassunto =====\n\n" . "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_RIASSUNTO
         . "\n\n===== PROMPT 3 — preparazione mirata =====\n\n" . "Dalla dispensa che hai appena scritto e dai file di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE
-        . "\n\n===== PROMPT 4 — quiz (JSON) =====\n\n" . "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_QUIZ . "\n";
+        . "\n\n===== PROMPT 4 — quiz (JSON) =====\n\n" . "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_QUIZ
+        . "\n\n===== PROMPT 5 — schema (JSON) =====\n\n" . "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_SCHEMA . "\n";
 }
 
 /**
@@ -196,8 +198,10 @@ function packBuild(PDO $db, array $class, array $scope): array|string {
         ? ['PROMPT 1 — dispensa completa' => zipPackPrompt(AI_PROMPT_COMPLETO),
            'PROMPT 2 — riassunto' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_RIASSUNTO,
            'PROMPT 3 — preparazione mirata' => "Dalla dispensa che hai appena scritto e dalle fonti di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE,
-           'PROMPT 4 — quiz (JSON)' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_QUIZ]
-        : ['PROMPT 1 — appunti completi' => zipPackPrompt(AI_PROMPT_LESSON)];
+           'PROMPT 4 — quiz (JSON)' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_QUIZ,
+           'PROMPT 5 — schema (JSON)' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_SCHEMA]
+        : ['PROMPT 1 — appunti completi' => zipPackPrompt(AI_PROMPT_LESSON),
+           'PROMPT 2 — schema (JSON)' => "Dagli appunti che hai appena scritto:\n" . AI_PROMPT_SCHEMA];
     foreach ($prompts as $title => $text) {
         $out[] = '';
         $out[] = "## $title";

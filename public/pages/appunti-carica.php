@@ -43,7 +43,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
 
         <div class="methods" role="tablist" aria-label="Come vuoi caricare">
             <button type="button" class="method" data-method="camera" role="tab"><span>📷</span>Scatta una foto<small>dal telefono</small></button>
-            <button type="button" class="method" data-method="files" role="tab"><span>📁</span>Scegli file<small>foto, PDF, Word, PowerPoint…</small></button>
+            <button type="button" class="method" data-method="files" role="tab"><span>📁</span>Scegli file<small>foto, audio, PDF, Word, PowerPoint…</small></button>
             <button type="button" class="method" data-method="text" role="tab"><span>✍️</span>Scrivi o incolla<small>anche testo con **grassetto**</small></button>
             <button type="button" class="method" data-method="ai" role="tab"><span>🤖</span>Documento da un'altra AI<small>ChatGPT, Gemini, Claude…</small></button>
             <button type="button" class="method" data-method="timetable" role="tab" hidden><span>🗓</span>Orario da foto<small>solo il responsabile</small></button>
@@ -79,9 +79,9 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
         <section class="card panel" id="p-files" hidden>
             <h2>📁 Scegli file</h2>
             <label class="drop" id="drop">
-                <input type="file" id="files-input" multiple accept="image/*,.pdf,.txt,.md,.docx,.pptx,.odt,.odp">
+                <input type="file" id="files-input" multiple accept="image/*,audio/*,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac,.webm">
                 <b>Trascina qui i file</b><span>o tocca per sceglierli</span>
-                <small>Foto, PDF, Word, PowerPoint, LibreOffice, testo · fino a 20 alla volta</small>
+                <small>Foto, registrazioni audio, PDF, Word, PowerPoint, LibreOffice, testo · fino a 20 alla volta</small>
             </label>
         </section>
 
@@ -117,6 +117,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                             <option value="riassunto">Riassunto</option>
                             <option value="preparazione">Preparazione mirata</option>
                             <option value="quiz">Quiz (JSON)</option>
+                            <option value="schema">Schema (JSON)</option>
                             <option value="lezione">Appunti di una lezione</option>
                         </select>
                     </label>

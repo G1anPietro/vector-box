@@ -211,6 +211,35 @@
         return out;
     }
 
+    /**
+     * A schema (concept map) written by the AI as JSON {title, children:[{label, note, children}]}: drawn as a tree with
+     * branches that open and close. Text only (light, fast, readable without the picture).
+     */
+    function renderSchema(content) {
+        let data = null;
+        try { data = typeof content === 'string' ? JSON.parse(content) : content; } catch (e) { /* below */ }
+        if (!data || !Array.isArray(data.children)) return el('p', { class: 'empty', text: 'Schema non leggibile.' });
+        const node = (n, depth) => {
+            const label = el('span', { class: 'sc-label' }, inline(String(n.label || '')));
+            const note = n.note ? el('span', { class: 'sc-note' }, inline(String(n.note))) : null;
+            const kids = Array.isArray(n.children) && n.children.length
+                ? el('ul', {}, ...n.children.map((c) => node(c, depth + 1))) : null;
+            if (!kids) return el('li', { class: 'sc-leaf' }, el('div', { class: 'sc-box' }, label, note));
+            return el('li', {}, el('details', { open: depth < 2 },
+                el('summary', { class: 'sc-box' }, label, note), kids));
+        };
+        const tree = el('ul', { class: 'schema-tree' }, ...data.children.map((c) => node(c, 1)));
+        let opened = false;
+        const toggle = el('button', { type: 'button', class: 'ghost mini', text: 'Apri tutto', onclick: () => {
+            opened = !opened;
+            tree.querySelectorAll('details').forEach((d) => { d.open = opened; });
+            toggle.textContent = opened ? 'Chiudi tutto' : 'Apri tutto';
+        } });
+        return el('div', { class: 'schema' },
+            el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || 'Schema'))), toggle),
+            tree);
+    }
+
     /** True when a plain text looks like Markdown written by an AI or a person (so it is worth rendering). */
     function looksLikeMarkdown(s) {
         return /(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s|```)|\*\*\S|__\S|\|\s*-{3,}/.test(String(s || ''));
@@ -222,8 +251,8 @@
     function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode */ } }
     function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 
-    window.AppuntiCommon = { el, getJson, post, rawPost, toast, busy, md, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    window.AppuntiCommon = { el, getJson, post, rawPost, toast, busy, md, renderSchema, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
-        DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione' } };
+        DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema' } };
 })();

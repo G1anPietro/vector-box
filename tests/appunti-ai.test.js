@@ -31,7 +31,9 @@ const gemini = http.createServer((req, res) => {
         const user = body.contents ? body.contents[0].parts.filter((p) => p.text).map((p) => p.text).join(' ') : '';
         const quiz = { questions: [0, 1, 2, 3].map((i) => ({ topic: 'Napoleone', question: `Domanda ${i}?`, options: ['a', 'b', 'c', 'd'], answer: i, explanation: 'perché sì' })) };
         let text;
-        if (system.includes('orario scolastico')) {
+        if (system.includes('SCHEMA (mappa concettuale)')) {
+            text = JSON.stringify({ title: 'Napoleone', children: [{ label: 'Vita', note: 'nasce nel 1769', children: [{ label: 'Corsica' }] }, { label: 'Campagne' }] });
+        } else if (system.includes('orario scolastico')) {
             text = mode === 'badjson' ? 'non lo so' : JSON.stringify({
                 periods: { 1: [['08.10', '09.00'], ['09.00', '09.45'], ['09.45', '10.35']].map(([start, end]) => ({ start, end })) },
                 slots: [
@@ -138,13 +140,14 @@ test('"Genera ora": once an hour per class, members only', async () => {
 test('the worker writes one document per lesson, with numbered sources', async () => {
     calls.length = 0;
     await worker();
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2, 'the lesson document, then its schema');
     const prompt = calls[0].body.contents[0].parts[0].text;
     assert.match(calls[0].body.systemInstruction.parts[0].text, /APPUNTI COMPLETI/);
     assert.match(prompt, /<materiale>[\s\S]*\[1\] Appunti di ai_luigi[\s\S]*Napoleone nasce nel 1769[\s\S]*TRASCRITTO lavagna\.png[\s\S]*\[2\] Slide\/materiale del prof di ai_mario[\s\S]*Campagna d'Italia[\s\S]*<\/materiale>/);
 
     const list = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json;
     assert.equal(list.ai.requested, false, 'the request was served');
+    list.docs = list.docs.filter((d) => d.kind === 'lezione');
     assert.equal(list.docs.length, 1);
     assert.equal(list.docs[0].kind, 'lezione');
     assert.match(list.docs[0].title, /^Storia — lezione del /);
@@ -163,7 +166,7 @@ test('an old lesson uploaded today is summarised too; the Study tab tells what t
     assert.equal(site.db("SELECT COUNT(*) AS n FROM class_docs WHERE doc_key = ?", [`lezione:${storia}:2026-10-08`])[0].n, 1);
     const ai = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.ai;
     assert.equal(ai.last_run.manual, true);
-    assert.equal(ai.last_run.lessons, 1);
+    assert.equal(ai.last_run.lessons, 2, 'the old lesson and its schema');
     assert.equal(ai.last_run.stop, '');
 
     // nothing new: the last run says 0 documents
@@ -183,7 +186,7 @@ test('a document is rewritten only when its material changes', async () => {
     await ap(luigi, { action: 'edit_item', id: item.id, subject_id: storia, kind: 'appunti', lesson_date: item.lesson_date, title: '', body: 'Napoleone nasce ad Ajaccio nel 1769' });
     site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
     await worker();
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 1, 'the lesson is rewritten; its schema only if the lesson text changed (the fake answers the same)');
     assert.match(calls[0].body.contents[0].parts[0].text, /Ajaccio/);
 });
 
@@ -372,12 +375,16 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
     assert.match(bySystem('quiz')[0].url, /flash-lite/);
 
     const docs = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.docs.filter((d) => d.event_id === id);
-    assert.deepEqual(docs.map((d) => d.kind).sort(), ['completo', 'preparazione', 'quiz', 'riassunto']);
+    assert.deepEqual(docs.map((d) => d.kind).sort(), ['completo', 'preparazione', 'quiz', 'riassunto', 'schema']);
     const get = async (kind) => (await luigi.get(`/api/appunti.php?action=doc&id=${docs.find((d) => d.kind === kind).id}`)).json.doc;
     const c = await get('completo');
     assert.match(c.content, /^> Materiale dal .* lezioni riordinate/);
     assert.match(c.content, /## Napoleone/);
     assert.match(c.title, /^Storia — Verifica del .* — Completo$/);
+    const schema = JSON.parse((await get('schema')).content);
+    assert.equal(schema.title, 'Napoleone');
+    assert.deepEqual(schema.children[0], { label: 'Vita', note: 'nasce nel 1769', children: [{ label: 'Corsica' }] });
+    assert.ok(site.db("SELECT COUNT(*) AS n FROM class_docs WHERE kind = 'schema' AND event_id IS NULL")[0].n >= 1, 'lesson schemas too');
     const quiz = JSON.parse((await get('quiz')).content);
     assert.equal(quiz.questions.length, 4);
     assert.deepEqual(quiz.questions[2].options, ['a', 'b', 'c', 'd']);
@@ -401,7 +408,7 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
     mode = 'ok';
     assert.match(bySystem('DISPENSA COMPLETA')[0].url, /flash-lite/);
     const status = Object.fromEntries(site.db('SELECT kind, status FROM class_docs WHERE event_id = ?', [id]).map((r) => [r.kind, r.status]));
-    assert.deepEqual(status, { completo: 'ok', riassunto: 'ok', preparazione: 'ok', quiz: 'error' });
+    assert.deepEqual(status, { completo: 'ok', riassunto: 'ok', preparazione: 'ok', quiz: 'error', schema: 'ok' });
     site.db('DELETE FROM ai_usage');
 
     // deleting the test deletes its documents

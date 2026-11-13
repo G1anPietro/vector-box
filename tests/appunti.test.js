@@ -349,6 +349,41 @@ test('archive API: subjects -> days with counts, and the text of a file for prev
     assert.equal((await peach.get(`/api/appunti.php?action=file_text&id=${pptx}`)).status, 404);
 });
 
+test('audio recordings are accepted (to be transcribed) and the archive counts folders by type', async () => {
+    // a tiny valid WAV (44-byte header + silence)
+    const data = Buffer.alloc(800);
+    const wav = Buffer.alloc(44);
+    wav.write('RIFF', 0); wav.writeUInt32LE(36 + data.length, 4); wav.write('WAVE', 8); wav.write('fmt ', 12);
+    wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22); wav.writeUInt32LE(8000, 24);
+    wav.writeUInt32LE(16000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(data.length, 40);
+    const r = await upload(luigi, { class_id: classId, subject_id: subj.Storia, kind: 'appunti', lesson_date: '2026-11-10' },
+        [{ name: 'lezione.wav', content: Buffer.concat([wav, data]), type: 'audio/wav' }]);
+    assert.equal(r.status, 200, r.text);
+    const f = site.db("SELECT mime, text_status FROM class_item_files WHERE original_name = 'lezione.wav'")[0];
+    assert.deepEqual(f, { mime: 'audio/wav', text_status: 'pending' }, 'waits for the AI transcription');
+
+    const t = (await luigi.get(`/api/appunti.php?action=tree&class_id=${classId}`)).json;
+    const storia = t.subjects.find((x) => x.name === 'Storia');
+    assert.equal(storia.cats.audio, 1);
+    assert.ok(storia.cats.appunti >= 1);
+    const tp = t.subjects.find((x) => x.name === 'TPSIT');
+    assert.equal(tp.cats.foto, 1, 'lavagna.png');
+    assert.equal(tp.cats.slide, 1);
+});
+
+test('schemas made with another AI: JSON checked, tree kept', async () => {
+    const up = (body) => ap(luigi, { action: 'upload_doc', class_id: classId, kind: 'schema', subject_id: subj.Storia, lesson_date: '2026-11-10', ...body });
+    assert.equal((await up({ content: 'una mappa' })).json.code, 'bad_schema');
+    const good = { title: 'Napoleone', children: [{ label: 'Ascesa', note: '1799 console', children: [{ label: 'Impero', children: [] }] }, { label: '', note: 'senza etichetta' }] };
+    const r = await up({ content: '```json\n' + JSON.stringify(good) + '\n```' });
+    assert.equal(r.status, 200, r.text);
+    const doc = (await luigi.get(`/api/appunti.php?action=doc&id=${r.json.id}`)).json.doc;
+    assert.equal(doc.kind, 'schema');
+    assert.deepEqual(JSON.parse(doc.content), { title: 'Napoleone', children: [{ label: 'Ascesa', note: '1799 console', children: [{ label: 'Impero' }] }] },
+        'empty labels dropped, empty children removed');
+    await ap(luigi, { action: 'delete_doc', id: r.json.id });
+});
+
 test('archive and upload pages: members only, no inline scripts', async () => {
     for (const page of ['appunti-archivio.php', 'appunti-carica.php']) {
         const guest = await fetch(`${site.base}/pages/${page}`, { redirect: 'manual' });

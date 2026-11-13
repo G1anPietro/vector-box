@@ -333,3 +333,23 @@ button.ghost.is-busy::after, button.danger.is-busy::after { color: var(--text); 
 .cta-card > div:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 260px; }
 .btn-link { display: inline-block; background: var(--accent); color: var(--accent-ink); font-weight: 800; text-decoration: none; padding: 10px 18px; border-radius: 10px; }
 .mini-link { font-size: 14px; padding: 6px 10px; }
+
+/* ---------- Schemi (concept maps written by the AI as JSON, drawn as a tree) ---------- */
+.schema { margin-top: 10px; }
+.schema-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.schema-title { font-size: 18px; color: var(--accent); }
+.schema-tree, .schema-tree ul { list-style: none; margin: 0; padding: 0; }
+.schema-tree ul { margin-left: 14px; padding-left: 14px; border-left: 2px solid var(--line); }
+.schema-tree li { position: relative; margin: 6px 0; }
+.schema-tree ul > li::before { content: ""; position: absolute; left: -14px; top: 20px; width: 12px; border-top: 2px solid var(--line); }
+.sc-box { display: inline-flex; flex-direction: column; gap: 2px; max-width: 100%; background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 7px 11px; }
+.schema-tree > li > details > .sc-box, .schema-tree > li > .sc-box { border-color: var(--accent); }
+summary.sc-box { cursor: pointer; list-style: none; }
+summary.sc-box::-webkit-details-marker { display: none; }
+summary.sc-box .sc-label::before { content: "▸ "; color: var(--accent); }
+details[open] > summary.sc-box .sc-label::before { content: "▾ "; }
+.sc-label { font-weight: 700; overflow-wrap: anywhere; }
+.sc-note { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.audio-file { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.audio-file audio, .pv-audio { width: 100%; max-width: 520px; margin-top: 6px; }
