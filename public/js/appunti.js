@@ -245,6 +245,33 @@
 
     /* ---------- material: list ---------- */
 
+    /** Downloads a .zip of the material (and the AI documents, and PROMPT.txt) for a lesson day, a subject or a test. */
+    async function downloadZip(params, btn) {
+        const q = new URLSearchParams({ action: 'zip', class_id: current.id, ...params });
+        if (btn) btn.disabled = true;
+        status('Preparo lo .zip…');
+        try {
+            const r = await fetch('../api/appunti.php?' + q, { credentials: 'same-origin' });
+            if (!r.ok) {
+                const j = await r.json().catch(() => null);
+                throw new Error(j && j.code === 'nothing' ? j.error : errText(j, 'Download non riuscito.'));
+            }
+            const cd = r.headers.get('content-disposition') || '';
+            const m = /filename\*=UTF-8''([^;]+)/.exec(cd);
+            const name = m ? decodeURIComponent(m[1]) : 'appunti.zip';
+            const url = URL.createObjectURL(await r.blob());
+            const a = el('a', { href: url, download: name });
+            document.body.append(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+            status('Scaricato. Dentro c\'è anche PROMPT.txt per usarlo con un\'altra AI.', 'ok');
+        } catch (e) {
+            status(e.message, 'err');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
     async function loadItems() {
         const q = new URLSearchParams({ action: 'items', class_id: current.id });
         if ($('#filter-subject').value) q.set('subject_id', $('#filter-subject').value);
@@ -255,13 +282,18 @@
             if (!items.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Ancora niente qui. Carica i primi appunti!' })); return; }
             const days = new Map();
             for (const it of items) { if (!days.has(it.lesson_date)) days.set(it.lesson_date, []); days.get(it.lesson_date).push(it); }
-            box.replaceChildren(...[...days].map(([d, list]) =>
-                el('section', { class: 'day' }, el('h3', { text: dayFmt.format(parseDate(d)) }), ...list.map(renderItem))));
+            const sid = $('#filter-subject').value;
+            box.replaceChildren(...[...days].map(([d, list]) => el('section', { class: 'day' },
+                el('div', { class: 'day-head' }, el('h3', { text: dayFmt.format(parseDate(d)) }),
+                    el('button', { class: 'ghost mini', type: 'button', text: '↓ .zip', title: 'Scarica tutto il materiale di questo giorno',
+                        onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target) })),
+                ...list.map(renderItem))));
         } catch (e) {
             box.replaceChildren(el('p', { class: 'empty', text: e.message }));
         }
     }
-    $('#filter-subject').addEventListener('change', loadItems);
+    $('#filter-subject').addEventListener('change', () => { $('#zip-subject').hidden = !$('#filter-subject').value; loadItems(); });
+    $('#zip-subject').addEventListener('click', (ev) => downloadZip({ scope: 'subject', subject_id: $('#filter-subject').value }, ev.target));
     $('#filter-kind').addEventListener('change', loadItems);
 
     function renderItem(it) {
@@ -334,6 +366,8 @@
                 getJson(`../api/appunti.php?action=events&class_id=${current.id}`),
             ]);
             studyDocs = d.docs;
+            studyEvents = ev.events.filter((e) => e.kind !== 'altro').sort((a, b) => (a.date < b.date ? 1 : -1));
+            fillDocUploadForm();
             renderAiBar(d.ai);
             renderStudyTests(ev.events.filter((e) => e.date >= ev.today && e.kind !== 'altro'), d.ai);
             renderStudyLessons();
@@ -369,18 +403,22 @@
         const box = $('#study-tests');
         if (!events.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Nessuna verifica in calendario. Aggiungile nella scheda Calendario: i documenti per studiare si preparano da soli.' })); return; }
         box.replaceChildren(...events.map((e) => {
-            const docs = DOC_ORDER.map((k) => studyDocs.find((d) => d.event_id === e.id && d.kind === k)).filter(Boolean);
+            const docs = DOC_ORDER.map((k) => studyDocs.find((d) => d.event_id === e.id && d.kind === k && !d.manual)).filter(Boolean)
+                .concat(studyDocs.filter((d) => d.event_id === e.id && d.manual));
             const d = parseDate(e.date);
             return el('div', { class: 'test-card' },
                 el('div', { class: 'what' }, el('span', { class: 'badge ' + e.kind, text: EVENT_KINDS[e.kind] }), el('b', { text: e.subject }),
                     ` · ${dayFmt.format(d)}`, e.title ? ` · ${e.title}` : ''),
                 docs.length
                     ? el('div', { class: 'docs' }, ...docs.map((doc) => el('button', {
-                        class: doc.status === 'ok' ? '' : 'ghost', text: DOC_KINDS[doc.kind] + (doc.status === 'ok' ? '' : ' (errore)'),
+                        class: doc.status !== 'ok' ? 'ghost' : doc.manual ? 'manual' : '',
+                        text: DOC_KINDS[doc.kind] + (doc.manual ? ` · di ${doc.author || '?'}` : '') + (doc.status === 'ok' ? '' : ' (errore)'),
                         disabled: doc.status !== 'ok', onclick: () => showDoc(doc.id) })))
                     : el('p', { class: 'muted small', text: ai.configured
                         ? `I documenti arrivano con il prossimo riassunto (alle ${ai.summary_time}) o con "Genera ora", se c'è materiale caricato.`
-                        : 'I documenti arriveranno quando l\'AI sarà attiva.' }));
+                        : 'I documenti arriveranno quando l\'AI sarà attiva.' }),
+                el('div', { class: 'row' }, el('button', { class: 'ghost mini', type: 'button', text: '↓ Materiale + prompt per un\'altra AI (.zip)',
+                    onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) })));
         }));
     }
 
@@ -391,10 +429,60 @@
         if (!list.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Ancora nessun riassunto delle lezioni.' })); return; }
         box.replaceChildren(...list.map((d) => el('div', { class: 'doc-row' },
             el('span', {}, el('b', { text: d.subject }), ' · ', d.lesson_date ? dayFmt.format(parseDate(d.lesson_date)) : '',
+                d.manual ? el('span', { class: 'muted small', text: ` · caricato da ${d.author || '?'}` }) : null,
                 d.status !== 'ok' ? el('span', { class: 'err', text: ' (non riuscito, riprova più tardi)' }) : null),
-            el('button', { class: 'ghost mini', text: 'Apri', disabled: d.status !== 'ok', onclick: () => showDoc(d.id) }))));
+            el('span', { class: 'row-actions' },
+                el('button', { class: 'ghost mini', text: 'Apri', disabled: d.status !== 'ok', onclick: () => showDoc(d.id) }),
+                d.can_delete ? el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteDoc(d) }) : null))));
     }
     $('#study-subject').addEventListener('change', renderStudyLessons);
+
+    async function deleteDoc(d) {
+        if (!confirm('Eliminare questo documento caricato a mano?')) return;
+        try { await notes_({ action: 'delete_doc', id: d.id }); loadStudy(); } catch (e) { status(e.message, 'err'); }
+    }
+
+    // "Carica un documento fatto con un'altra AI"
+    let studyEvents = [];
+    function fillDocUploadForm() {
+        const f = $('#doc-upload-form');
+        f.subject_id.replaceChildren(...current.subjects.map((s) => el('option', { value: s.id, text: s.name })));
+        f.event_id.replaceChildren(...(studyEvents.length
+            ? studyEvents.map((e) => el('option', { value: e.id, text: `${EVENT_KINDS[e.kind]} di ${e.subject} · ${dayFmt.format(parseDate(e.date))}` }))
+            : [el('option', { value: '', text: 'Nessuna verifica in calendario' })]));
+        if (!f.lesson_date.value) f.lesson_date.value = todayStr();
+        toggleDocTarget();
+    }
+    function toggleDocTarget() {
+        const lesson = $('#doc-upload-form').kind.value === 'lezione';
+        $$('#doc-upload-form .for-lesson').forEach((x) => { x.hidden = !lesson; });
+        $$('#doc-upload-form .for-event').forEach((x) => { x.hidden = lesson; });
+    }
+    $('#doc-upload-form [name="kind"]').addEventListener('change', toggleDocTarget);
+    $('#doc-upload-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const f = ev.target;
+        const lesson = f.kind.value === 'lezione';
+        const fd = new FormData();
+        fd.set('action', 'upload_doc');
+        fd.set('class_id', current.id);
+        fd.set('kind', f.kind.value);
+        fd.set('target', lesson ? 'lesson' : 'event');
+        if (lesson) { fd.set('subject_id', f.subject_id.value); fd.set('lesson_date', f.lesson_date.value); } else fd.set('event_id', f.event_id.value);
+        fd.set('title', f.title.value);
+        fd.set('content', f.content.value);
+        if (f.file.files[0]) fd.append('file', f.file.files[0], f.file.files[0].name);
+        try {
+            await post('../api/appunti.php', fd);
+            f.title.value = ''; f.content.value = ''; f.file.value = '';
+            status('Documento caricato: lo trovi qui sotto con il tuo nome.', 'ok');
+            loadStudy();
+        } catch (e) {
+            const msg = { bad_quiz: 'Il quiz deve essere il JSON scritto dall\'AI (PROMPT 4 dello zip).', empty: 'Incolla il testo o scegli un file.',
+                bad_event: 'Scegli una verifica: aggiungila prima nel Calendario.', bad_file: 'Usa un file .md, .txt o .json (massimo 2 MB).' };
+            status((e.json && msg[e.json.code]) || e.message, 'err');
+        }
+    });
 
     async function showDoc(id) {
         try {
@@ -403,7 +491,8 @@
             $('#study-list').hidden = true;
             $('#doc-view').hidden = false;
             $('#doc-title').textContent = doc.title;
-            $('#doc-meta').textContent = `Aggiornato il ${new Date(doc.updated_at * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`;
+            $('#doc-meta').textContent = (doc.manual ? `Fatto con un'altra AI e caricato da ${doc.author || '?'} · ` : '')
+                + `Aggiornato il ${new Date(doc.updated_at * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`;
             const body = $('#doc-body');
             if (doc.kind === 'quiz') {
                 let quiz = null;

@@ -10,11 +10,16 @@
 // GET  ?action=usage&class_id=ID                       -> space used and limits
 // GET  ?action=docs&class_id=ID[&subject_id]           -> AI documents (without their text) + AI status
 // GET  ?action=doc&id=ID                               -> one AI document with its text and sources
+// GET  ?action=zip&class_id=ID&scope=day&date=D[&subject_id] | scope=subject&subject_id | scope=event&event_id
+//                                                      -> everything as a .zip with an index and a PROMPT.txt
 // POST multipart {action:"upload", class_id, subject_id, kind, lesson_date, period?, title?, body?, files[]}
 // POST JSON {action:"edit_item", id, subject_id, kind, lesson_date, period, title, body} | {action:"delete_item", id}
 //           {action:"add_event", class_id, subject_id, kind, date, title, topics}
 //           {action:"edit_event", id, ...same fields} | {action:"delete_event", id}
 //           {action:"generate", class_id}  -> asks the AI worker to run now (once an hour per class)
+// POST multipart/JSON {action:"upload_doc", class_id, kind, target:"lesson"|"event", subject_id, lesson_date | event_id,
+//                      title, content (or file .md/.txt)} -> a study document made with another AI
+//      {action:"delete_doc", id}  -> only documents uploaded by hand (author or manager)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/appunti_lib.php';
@@ -129,8 +134,14 @@ try {
             $doc = $st->fetch();
             if (!$doc) apFail('not_found', 'Not found', 404);
             apClass($db, (int)$doc['class_id'], $me, $isAdmin);
+            $by = null;
+            if ($doc['author_id'] !== null) {
+                $a = $db->prepare('SELECT username FROM accounts WHERE id = :id');
+                $a->execute([':id' => $doc['author_id']]);
+                $by = $a->fetchColumn() ?: '?';
+            }
             jsonResponse(['success' => true, 'doc' => [
-                'id' => (int)$doc['id'], 'kind' => $doc['kind'], 'subject_id' => (int)$doc['subject_id'], 'subject' => $doc['subject'],
+                'id' => (int)$doc['id'], 'kind' => $doc['kind'], 'author' => $by, 'manual' => $doc['author_id'] !== null, 'subject_id' => (int)$doc['subject_id'], 'subject' => $doc['subject'],
                 'lesson_date' => $doc['lesson_date'], 'event_id' => $doc['event_id'] !== null ? (int)$doc['event_id'] : null,
                 'title' => $doc['title'], 'content' => $doc['content'], 'sources' => json_decode($doc['sources'], true) ?: [],
                 'status' => $doc['status'], 'updated_at' => (int)$doc['updated_at'],
@@ -197,8 +208,9 @@ try {
             $where = 'd.class_id = :c';
             $params = [':c' => $classId];
             if (!empty($_GET['subject_id'])) { $where .= ' AND d.subject_id = :s'; $params[':s'] = (int)$_GET['subject_id']; }
-            $st = $db->prepare("SELECT d.id, d.kind, d.subject_id, d.lesson_date, d.event_id, d.title, d.status, d.updated_at, s.name AS subject
-                                FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id
+            $st = $db->prepare("SELECT d.id, d.kind, d.subject_id, d.lesson_date, d.event_id, d.title, d.status, d.updated_at, d.author_id,
+                                       s.name AS subject, a.username AS author
+                                FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id LEFT JOIN accounts a ON a.id = d.author_id
                                 WHERE $where ORDER BY COALESCE(d.lesson_date, '') DESC, d.id DESC LIMIT 300");
             $st->execute($params);
             $pending = $db->prepare("SELECT COUNT(*) FROM class_item_files WHERE class_id = :c AND text_status = 'pending'");
@@ -209,6 +221,8 @@ try {
                     'id' => (int)$d['id'], 'kind' => $d['kind'], 'subject_id' => (int)$d['subject_id'], 'subject' => $d['subject'],
                     'lesson_date' => $d['lesson_date'], 'event_id' => $d['event_id'] !== null ? (int)$d['event_id'] : null,
                     'title' => $d['title'], 'status' => $d['status'], 'updated_at' => (int)$d['updated_at'],
+                    'manual' => $d['author_id'] !== null, 'author' => $d['author'],
+                    'can_delete' => $d['author_id'] !== null && ($canManage || (int)$d['author_id'] === $me),
                 ], $st->fetchAll()),
                 'ai' => [
                     'configured' => geminiConfigured(),
@@ -218,6 +232,28 @@ try {
                     'summary_time' => $class['summary_time'],
                 ],
             ]);
+        }
+
+        if ($action === 'zip') {
+            require_once __DIR__ . '/appunti_zip.php';
+            if (!checkRateLimit('notes_zip', 20, 3600, 'user:' . $me)) apFail('slow_down', 'Too many downloads, try later', 429);
+            $type = (string)($_GET['scope'] ?? '');
+            $scope = ['type' => $type, 'subject_id' => (int)($_GET['subject_id'] ?? 0), 'date' => (string)($_GET['date'] ?? ''),
+                      'event_id' => (int)($_GET['event_id'] ?? 0)];
+            if ($type === 'day' && !classValidDate($scope['date'])) apFail('bad_date', 'Date must be YYYY-MM-DD');
+            if ($type === 'subject' && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
+            if (!in_array($type, ['day', 'subject', 'event'], true)) apFail('bad_scope', 'Unknown scope');
+            set_time_limit(120);
+            $built = zipBuild($db, $class, $scope);
+            if (is_string($built)) apFail('nothing', $built, 404);
+            [$path, $name] = $built;
+            header('Content-Type: application/zip');
+            header('Content-Length: ' . filesize($path));
+            header('Content-Disposition: attachment; filename="' . str_replace(['"', '\\'], '', $name) . '"; filename*=UTF-8\'\'' . rawurlencode($name));
+            header('X-Content-Type-Options: nosniff');
+            readfile($path);
+            @unlink($path);
+            exit();
         }
 
         if ($action === 'usage') {
@@ -356,6 +392,63 @@ try {
             jsonResponse(['success' => false, 'code' => 'too_soon', 'error' => 'Already requested in the last hour', 'next_manual_at' => $next], 429);
         }
         jsonResponse(['success' => true, 'next_manual_at' => $now + AI_MANUAL_EVERY_SEC]);
+    }
+
+    if ($action === 'upload_doc') {
+        require_once __DIR__ . '/appunti_ai.php';
+        [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        if (!checkRateLimit('notes_doc_upload', 30, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
+        $kind = (string)($in['kind'] ?? '');
+        if (!in_array($kind, ['lezione', 'completo', 'riassunto', 'preparazione', 'quiz'], true)) apFail('bad_kind', 'Unknown type of document');
+        $content = (string)($in['content'] ?? '');
+        $file = $_FILES['file'] ?? null;
+        if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > 2 * 1048576 || !is_uploaded_file($file['tmp_name'])
+                || !preg_match('/\.(md|txt|json)$/i', (string)$file['name'])) apFail('bad_file', 'Upload a .md, .txt or .json file up to 2 MB');
+            $content = (string)file_get_contents($file['tmp_name']);
+        }
+        if (!preg_match('//u', $content)) apFail('bad_file', 'The file must be UTF-8 text');
+        $content = trim(str_replace("\r\n", "\n", $content));
+        if ($content === '') apFail('empty', 'Paste the text or choose a file');
+        if (textLength($content) > NOTE_TEXT_MAX) apFail('too_long', 'Document too long');
+        if ($kind === 'quiz') {
+            try { $content = aiCleanQuiz($content); } catch (GeminiError $e) { apFail('bad_quiz', 'The quiz must be the JSON written by the AI (PROMPT 4)'); }
+        }
+        $eventId = null;
+        if (($in['target'] ?? '') === 'event') {
+            $st = $db->prepare("SELECT * FROM class_events WHERE id = :id AND class_id = :c AND kind IN ('verifica', 'interrogazione')");
+            $st->execute([':id' => (int)($in['event_id'] ?? 0), ':c' => $class['id']]);
+            $ev = $st->fetch();
+            if (!$ev) apFail('bad_event', 'Choose a test of this class');
+            [$subjectId, $date, $eventId] = [(int)$ev['subject_id'], $ev['event_date'], (int)$ev['id']];
+        } else {
+            $subjectId = (int)($in['subject_id'] ?? 0);
+            $date = (string)($in['lesson_date'] ?? '');
+            if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) apFail('bad_subject', 'Choose a subject of this class');
+            if (!classValidDate($date)) apFail('bad_date', 'Date must be YYYY-MM-DD');
+        }
+        $subject = notesSubjectOf($db, (int)$class['id'], $subjectId)['name'];
+        $labels = ['lezione' => 'Lezione', 'completo' => 'Completo', 'riassunto' => 'Riassunto', 'preparazione' => 'Preparazione mirata', 'quiz' => 'Quiz'];
+        $title = apText($in['title'] ?? '', NOTE_TITLE_MAX);
+        if ($title === '') $title = "$subject — {$labels[$kind]} del " . (new DateTimeImmutable($date))->format('d/m/Y');
+        $now = time();
+        $db->prepare("INSERT INTO class_docs (class_id, doc_key, subject_id, kind, lesson_date, event_id, title, content, sources, input_hash, model, status, author_id, created_at, updated_at)
+                      VALUES (:c, :k, :s, :kind, :d, :e, :t, :content, '[]', '', 'manuale', 'ok', :a, :now, :now)")
+           ->execute([':c' => $class['id'], ':k' => 'manuale:' . bin2hex(random_bytes(8)), ':s' => $subjectId, ':kind' => $kind,
+                      ':d' => $date, ':e' => $eventId, ':t' => $title, ':content' => $content, ':a' => $me, ':now' => $now]);
+        jsonResponse(['success' => true, 'id' => (int)$db->lastInsertId()]);
+    }
+
+    if ($action === 'delete_doc') {
+        $st = $db->prepare('SELECT * FROM class_docs WHERE id = :id');
+        $st->execute([':id' => (int)($in['id'] ?? 0)]);
+        $doc = $st->fetch();
+        if (!$doc) apFail('not_found', 'Not found', 404);
+        [, $canManage] = apClass($db, (int)$doc['class_id'], $me, $isAdmin);
+        if ($doc['author_id'] === null) apFail('forbidden', 'Documents written by the site\'s AI cannot be deleted', 403);
+        if (!$canManage && (int)$doc['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can delete this', 403);
+        $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $doc['id']]);
+        jsonResponse(['success' => true]);
     }
 
     if ($action === 'add_event') {

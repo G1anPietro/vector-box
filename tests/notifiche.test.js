@@ -93,7 +93,7 @@ test.before(async () => {
 test.after(async () => { await site.stop(); pushServer.close(); });
 
 test('migration V13 created the tables', () => {
-    assert.equal(site.db('PRAGMA user_version')[0].user_version, 13);
+    assert.ok(site.db('PRAGMA user_version')[0].user_version >= 13);
     assert.equal(site.db(`SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN ('notifications','push_subscriptions','class_event_reminders')`)[0].n, 3);
 });
 

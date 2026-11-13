@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-12 (schema del database **v13**, 152 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-12 (schema del database **v14**, 155 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -132,6 +132,13 @@ l'amministratore).
 prima alle 16:00, la sera prima alle 21:00). Con *Attiva le notifiche su questo dispositivo* arrivano anche sul telefono a
 sito chiuso; sull'iPhone prima bisogna aggiungere gli Appunti alla schermata Home (Condividi → Aggiungi alla schermata Home).
 
+**Scaricare tutto e usare un'altra AI:** ogni giorno ha il pulsante *↓ .zip*, con il filtro di una materia c'è *Tutta la
+materia (.zip)*, e ogni verifica nella scheda Studio ha *Materiale + prompt per un'altra AI*. Lo zip contiene gli originali,
+i testi, le trascrizioni, i documenti dell'AI, `INDICE.txt` (chi ha scritto cosa) e `PROMPT.txt` con i prompt pronti per
+ChatGPT, Claude o Gemini. La risposta si ricarica in *Studio → Carica un documento fatto con un'altra AI*: compare
+accanto agli altri, con il nome di chi l'ha caricato. Guida completa per tutti, anche per chi non ha l'account:
+`/pages/appunti-guida.php` (gli ospiti che aprono gli Appunti arrivano lì).
+
 **Privacy:** il materiale viene letto da Google Gemini (livello gratuito: Google può usarlo per migliorare i suoi
 prodotti). Niente dati personali, voti o documenti.
 
@@ -217,7 +224,7 @@ data/              (non in git) database, sessioni, libri, copertine, log, appun
 
 ## 4. Database
 
-SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **13**): le modifiche sono funzioni
+SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **14**): le modifiche sono funzioni
 `migrateVN()` in `public/api/database.php`, eseguite una sola volta sotto lock.
 
 | Versione | Cosa aggiunge |
@@ -235,6 +242,7 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V11 | `cucu_games` (stato delle partite di Cucù in JSON) |
 | V12 | Appunti di classe: `app_settings`, `school_classes`, `class_members`, `class_subjects`, `class_timetables` (orario a versioni, JSON), `class_items` e `class_item_files` (materiale e trascrizioni), `class_events` (calendario), `class_docs` (documenti dell'AI), `ai_usage` |
 | V13 | notifiche: `notifications` (campanella), `push_subscriptions` (Web Push), `class_event_reminders` (promemoria già mandati) |
+| V14 | `class_docs.author_id`: documenti fatti con un'altra AI e caricati a mano (NULL = scritti dall'AI del sito) |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
 `runMigrations()` + `EXPECTED_SCHEMA` in `updatesite.sh`. Sul server il database non va aperto con `sqlite3` da un utente
@@ -311,7 +319,7 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | Endpoint | Chi | Richiesta |
 |---|---|---|
 | `classi.php` | registrati / responsabile / admin | GET `?action=mine` (le mie classi e richieste), `class&id=` (membri e admin: orario, materie, membri, codice solo al responsabile), `requests` e `all` (admin). POST `{action}`: `request {name, school, note}`, `join {code}`, `leave`; responsabile: `regen_code`, `remove_member`, `set_manager`, `settings {summary_time, timezone}`, `save_timetable {valid_from, periods, slots}`, `read_timetable` (multipart con le foto, risponde con l'orario letto dall'AI senza salvarlo); admin: `decide {approve}`, `set_requests_open {open}`, `set_limits {file_mb, class_mb[, id]}`, `delete_class` |
-| `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`. POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
+| `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`, `zip&scope=day&date=[&subject_id]` / `scope=subject&subject_id` / `scope=event&event_id` (materiale + INDICE.txt + PROMPT.txt, al massimo 300 MB). POST `upload_doc {kind, target:"lesson"|"event", subject_id+lesson_date | event_id, title, content o file}` e `delete_doc {id}` (solo documenti caricati a mano, autore o responsabile). POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
 | `notifiche.php` | registrati | GET `?action=list` (ultime 30, non lette, dispositivi), `vapid` (chiave pubblica). POST `read {ids}`, `read_all`, `subscribe {endpoint, keys}`, `unsubscribe {endpoint}`, `test` |
 
 Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `altro`. Tipi di data: `verifica`,
@@ -388,7 +396,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 152 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # 155 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 

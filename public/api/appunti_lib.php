@@ -11,6 +11,7 @@ const NOTE_BODY_MAX = 50000;
 const NOTE_MAX_FILES = 20;
 const NOTE_TEXT_MAX = 400000;          // characters kept from one extracted file
 const EVENT_TOPICS_MAX = 2000;
+const AI_PERIOD_MAX_DAYS = 120;            // first test of a subject: material of at most this many days before
 
 // Accepted uploads: extension => mime types finfo may report for it
 const NOTE_FILE_TYPES = [
@@ -88,6 +89,21 @@ function notesSuggest(PDO $db, array $class, int $ts): array {
         if ($lesson['start'] <= $time) $pick = $lesson;
     }
     return ['date' => $date, 'lesson' => $pick];
+}
+
+/**
+ * The study period of a test or oral exam: from the day after the previous test of the same subject
+ * (or AI_PERIOD_MAX_DAYS before) to the test day. Returns [from, to] as YYYY-MM-DD.
+ */
+function notesEventPeriod(PDO $db, array $ev): array {
+    $prev = $db->prepare("SELECT MAX(event_date) FROM class_events WHERE class_id = :c AND subject_id = :s
+                          AND kind IN ('verifica', 'interrogazione') AND event_date < :d");
+    $prev->execute([':c' => $ev['class_id'], ':s' => $ev['subject_id'], ':d' => $ev['event_date']]);
+    $prevDate = $prev->fetchColumn() ?: null;
+    $from = $prevDate
+        ? (new DateTimeImmutable($prevDate))->modify('+1 day')->format('Y-m-d')
+        : (new DateTimeImmutable($ev['event_date']))->modify('-' . AI_PERIOD_MAX_DAYS . ' days')->format('Y-m-d');
+    return [$from, $ev['event_date']];
 }
 
 function notesSubjectOf(PDO $db, int $classId, int $subjectId): ?array {

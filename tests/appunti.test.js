@@ -12,6 +12,7 @@ let classId;
 const subj = {};
 const cl = (c, body) => c.post('/api/classi.php', body);
 const ap = (c, body) => c.post('/api/appunti.php', body);
+const subj_Storia = () => subj.Storia;
 
 /** Multipart upload like the page does (FormData + CSRF header). */
 async function upload(c, fields, files = []) {
@@ -225,12 +226,94 @@ test('calendar: everyone adds, author or manager change', async () => {
     assert.equal((await ap(mario, { action: 'delete_event', id })).status, 200);
 });
 
+test('guests see the guide (with the login link) instead of the notes; the guide is public and in the sitemap', async () => {
+    const guest = await new Client(site).init();
+    const r = await fetch(`${site.base}/pages/appunti.php`, { headers: { Cookie: guest.cookieHeader() }, redirect: 'manual' });
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get('location'), 'appunti-guida.php');
+    const g = await fetch(`${site.base}/pages/appunti-guida.php`);
+    const html = await g.text();
+    assert.equal(g.status, 200);
+    assert.match(html, /href="login\.php\?next=appunti\.php">Accedi o crea un account</);
+    assert.doesNotMatch(html, /id="admin"/, 'the admin section only for the admin');
+    assert.equal(html.match(/<script(?![^>]*\bsrc=)[^>]*>/g), null);
+    const member = await (await fetch(`${site.base}/pages/appunti-guida.php`, { headers: { Cookie: luigi.cookieHeader() } })).text();
+    assert.match(member, /href="appunti\.php">Apri i tuoi appunti</);
+    assert.match(await (await fetch(`${site.base}/sitemap.php`)).text(), /\/pages\/appunti-guida\.php/);
+});
+
 test('the notes page has no inline scripts (the CSP allows only files from the site)', async () => {
     const r = await fetch(`${site.base}/pages/appunti.php`, { headers: { Cookie: luigi.cookieHeader() } });
     const html = await r.text();
     assert.equal(r.status, 200);
     assert.match(html, /<script src="\.\.\/js\/appunti\.js/);
     assert.equal(html.match(/<script(?![^>]*\bsrc=)[^>]*>/g), null);
+});
+
+test('zip: a day, a subject or a test period, with index, transcriptions and PROMPT.txt', async () => {
+    const zipOf = async (c, q) => {
+        const r = await fetch(`${site.base}/api/appunti.php?action=zip&class_id=${classId}&${q}`, { headers: { Cookie: c.cookieHeader() } });
+        const buf = Buffer.from(await r.arrayBuffer());
+        if (r.status !== 200) return { status: r.status, json: JSON.parse(buf.toString()) };
+        const file = path.join(site.root, `t-${Date.now()}.zip`);
+        fs.writeFileSync(file, buf);
+        const script = '$z = new ZipArchive(); $z->open($argv[1]); $o = [];'
+            + ' for ($i = 0; $i < $z->numFiles; $i++) { $n = $z->getNameIndex($i); $o[$n] = preg_match("/\\.(txt|md|json)$/", $n) && $z->statIndex($i)["size"] < 100000 ? $z->getFromIndex($i) : $z->statIndex($i)["size"]; }'
+            + ' echo json_encode($o);';
+        return { status: 200, type: r.headers.get('content-type'), name: r.headers.get('content-disposition'),
+            files: JSON.parse(execFileSync('php', ['-r', script, file], { maxBuffer: 64 * 1048576 }).toString()) };
+    };
+    assert.equal((await zipOf(peach, 'scope=day&date=2026-11-09')).status, 404, 'members only');
+    assert.equal((await zipOf(luigi, 'scope=day&date=2026-08-01')).json.code, 'nothing');
+
+    const day = await zipOf(luigi, 'scope=day&date=2026-11-09');
+    assert.equal(day.type, 'application/zip');
+    assert.match(day.name, /attachment; filename="Appunti 5B-I - .*2026\.zip"/);
+    const names = Object.keys(day.files);
+    assert.ok(names.includes('INDICE.txt') && names.includes('PROMPT.txt'));
+    const slide = names.find((n) => /^materiale\/2026-11-09 TPSIT\/01 ap_mario - Slide/.test(n) && n.endsWith('socket.pptx'));
+    assert.ok(slide, 'original files keep their names, in a folder per lesson and per author');
+    assert.ok(names.some((n) => n.endsWith('trascrizione - socket.pptx.txt')), 'text extracted from slides included');
+    assert.ok(!names.some((n) => n.endsWith('trascrizione - appunti.txt.txt')), 'no copy of plain text files');
+    assert.match(day.files['INDICE.txt'], /\[1\] Slide\/materiale del prof di ap_mario — TPSIT, 2026-11-09, 1ª ora\n/);
+    assert.match(day.files['PROMPT.txt'], /COME USARLO[\s\S]*PROMPT 1 — appunti completi[\s\S]*nei file allegati/);
+    assert.doesNotMatch(day.files['PROMPT.txt'], /<materiale>/);
+
+    const subj = await zipOf(luigi, `scope=subject&subject_id=${subj_Storia()}`);
+    assert.ok(Object.keys(subj.files).some((n) => n.startsWith('materiale/2026-11-10 Storia/') && n.endsWith('testo.txt')));
+
+    // a test period: PROMPT with the 4 prompts and the announced topics
+    const ev = (await ap(luigi, { action: 'add_event', class_id: classId, subject_id: subj_Storia(), kind: 'verifica', date: '2026-11-25', title: 'Napoleone', topics: 'Impero' })).json.id;
+    const test = await zipOf(luigi, `scope=event&event_id=${ev}`);
+    assert.match(test.files['PROMPT.txt'], /Verifica di Storia del 25\/11\/2026 \(Napoleone\)[\s\S]*Argomenti annunciati dal prof: Impero[\s\S]*PROMPT 1 — dispensa completa[\s\S]*PROMPT 4 — quiz/);
+    ap.lastEvent = ev;
+});
+
+test('documents made with another AI: upload, list with the author, delete', async () => {
+    const up = (c, body) => ap(c, { action: 'upload_doc', class_id: classId, ...body });
+    assert.equal((await up(peach, { kind: 'lezione', subject_id: subj_Storia(), lesson_date: '2026-11-10', content: 'x' })).status, 404);
+    assert.equal((await up(luigi, { kind: 'boh', subject_id: subj_Storia(), lesson_date: '2026-11-10', content: 'x' })).json.code, 'bad_kind');
+    assert.equal((await up(luigi, { kind: 'lezione', subject_id: subj_Storia(), lesson_date: '2026-11-10', content: '  ' })).json.code, 'empty');
+    assert.equal((await up(luigi, { kind: 'quiz', target: 'event', event_id: ap.lastEvent, content: 'non è json' })).json.code, 'bad_quiz');
+
+    const lesson = await up(luigi, { kind: 'lezione', subject_id: subj_Storia(), lesson_date: '2026-11-10', content: '## Napoleone\nfatto con ChatGPT' });
+    assert.equal(lesson.status, 200, lesson.text);
+    const quiz = { questions: [0, 1, 2].map((i) => ({ topic: 't', question: `q${i}`, options: ['a', 'b', 'c', 'd'], answer: i, explanation: '' })) };
+    assert.equal((await up(toad, { kind: 'quiz', target: 'event', event_id: ap.lastEvent, content: '```json\n' + JSON.stringify(quiz) + '\n```' })).status, 200);
+
+    const docs = (await mario.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.docs;
+    const l = docs.find((d) => d.id === lesson.json.id);
+    assert.deepEqual([l.kind, l.manual, l.author, l.can_delete], ['lezione', true, 'ap_luigi', true], 'the manager can delete it');
+    assert.match(l.title, /^Storia — Lezione del 10\/11\/2026$/);
+    const q = docs.find((d) => d.kind === 'quiz');
+    assert.equal(q.event_id, ap.lastEvent);
+    assert.equal(JSON.parse((await luigi.get(`/api/appunti.php?action=doc&id=${q.id}`)).json.doc.content).questions.length, 3);
+
+    assert.equal((await ap(toad, { action: 'delete_doc', id: l.id })).status, 403, 'not the author nor the manager');
+    assert.equal((await ap(luigi, { action: 'delete_doc', id: l.id })).status, 200);
+    site.db("INSERT INTO class_docs (class_id, doc_key, subject_id, kind, title, content, created_at, updated_at) VALUES (?, 'lezione:x', ?, 'lezione', 'AI', 'testo', 1, 1)", [classId, subj_Storia()]);
+    const aiDoc = site.db("SELECT id FROM class_docs WHERE doc_key = 'lezione:x'")[0].id;
+    assert.equal((await ap(mario, { action: 'delete_doc', id: aiDoc })).status, 403, 'documents of the site AI are not deleted by hand');
 });
 
 test('deleting the class removes its material from disk', async () => {

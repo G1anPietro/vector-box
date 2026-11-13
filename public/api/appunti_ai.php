@@ -11,7 +11,6 @@ const AI_MAX_INLINE_BYTES = 18 * 1048576;  // Gemini inline data limit is ~20 MB
 const AI_MAX_ATTEMPTS = 3;
 const AI_LESSON_DAYS = 21;                 // lessons older than this are not rewritten
 const AI_EVENT_AHEAD = 30;                 // test documents for tests up to this many days ahead
-const AI_PERIOD_MAX_DAYS = 120;            // first test of a subject: material of at most this many days before
 const AI_TRANSCRIBE_PER_RUN = 40;
 const AI_EVENT_LABELS = ['verifica' => 'Verifica', 'interrogazione' => 'Interrogazione'];
 
@@ -195,7 +194,7 @@ function aiLessonDocs(PDO $db, array $class): int {
 
     // A lesson whose material was all deleted loses its document
     $keep = array_map(fn($g) => "lezione:{$g[0]['subject_id']}:{$g[0]['lesson_date']}", $groups);
-    $old = $db->prepare("SELECT id, doc_key FROM class_docs WHERE class_id = :c AND kind = 'lezione' AND lesson_date >= :since");
+    $old = $db->prepare("SELECT id, doc_key FROM class_docs WHERE class_id = :c AND kind = 'lezione' AND author_id IS NULL AND lesson_date >= :since");
     $old->execute([':c' => $classId, ':since' => $since]);
     foreach ($old->fetchAll() as $d) {
         if (!in_array($d['doc_key'], $keep, true)) $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $d['id']]);
@@ -304,18 +303,11 @@ function aiEventDocs(PDO $db, array $class): int {
     $written = 0;
     foreach ($st->fetchAll() as $ev) {
         $sid = (int)$ev['subject_id'];
-        $prev = $db->prepare("SELECT MAX(event_date) FROM class_events WHERE class_id = :c AND subject_id = :s
-                              AND kind IN ('verifica', 'interrogazione') AND event_date < :d");
-        $prev->execute([':c' => $classId, ':s' => $sid, ':d' => $ev['event_date']]);
-        $prevDate = $prev->fetchColumn() ?: null;
-        $from = $prevDate
-            ? (new DateTimeImmutable($prevDate))->modify('+1 day')->format('Y-m-d')
-            : (new DateTimeImmutable($ev['event_date']))->modify('-' . AI_PERIOD_MAX_DAYS . ' days')->format('Y-m-d');
-        $to = $ev['event_date'];
+        [$from, $to] = notesEventPeriod($db, $ev);
 
         // Lesson documents of the period; raw material for lessons that have no document yet
         $docs = $db->prepare("SELECT lesson_date, content FROM class_docs WHERE class_id = :c AND subject_id = :s AND kind = 'lezione'
-                              AND status = 'ok' AND lesson_date BETWEEN :f AND :t ORDER BY lesson_date");
+                              AND status = 'ok' AND author_id IS NULL AND lesson_date BETWEEN :f AND :t ORDER BY lesson_date");
         $docs->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
         $lessonDocs = $docs->fetchAll(PDO::FETCH_KEY_PAIR);
         $items = $db->prepare('SELECT i.*, a.username AS author FROM class_items i LEFT JOIN accounts a ON a.id = i.author_id

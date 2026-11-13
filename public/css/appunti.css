@@ -91,7 +91,8 @@ button.mini { min-height: 34px; padding: 4px 10px; font-size: 14px; }
 
 .filters { margin: 16px 0 6px; }
 .day { margin-top: 20px; }
-.day > h3 { font-size: 15px; color: var(--muted); text-transform: capitalize; margin: 0 0 6px; }
+.day-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.day-head h3 { font-size: 15px; color: var(--muted); text-transform: capitalize; margin: 0; }
 .item { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--sub, var(--accent)); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
 .item .meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 14px; color: var(--muted); }
 .item .subject { color: var(--text); font-weight: 700; }
@@ -136,6 +137,8 @@ button.mini { min-height: 34px; padding: 4px 10px; font-size: 14px; }
 .test-card .docs button { min-height: 38px; }
 .doc-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .doc-row button { flex: none; }
+.doc-row .row-actions { display: flex; gap: 6px; flex: none; }
+.test-card .docs button.manual { background: #2a2f3a; color: var(--text); border: 1px solid var(--accent); }
 .doc-row .err { color: var(--danger); font-size: 13px; }
 
 .doc-view { margin-top: 12px; }
@@ -179,6 +182,30 @@ button.mini { min-height: 34px; padding: 4px 10px; font-size: 14px; }
     .md th, .md td { border-color: #999; }
     .ai-note { color: #555; }
 }
+
+.ghost-link { color: var(--text); text-decoration: none; border: 1px solid var(--line); border-radius: 9px; padding: 7px 12px; font-size: 14px; }
+.guide h1 { font-size: clamp(30px, 7vw, 46px); line-height: 1.1; max-width: 22ch; }
+.guide .hero { padding: 28px 0 10px; }
+.guide .hero.end { text-align: center; padding: 30px 0; }
+.guide .kicker { color: var(--accent); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px; margin-bottom: 8px; }
+.guide .lead { color: var(--muted); font-size: 18px; max-width: 62ch; margin-top: 14px; }
+.guide .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 20px; }
+.guide .hero.end .cta { justify-content: center; }
+.guide .btn { display: inline-block; background: var(--accent); color: var(--accent-ink); font-weight: 800; text-decoration: none; padding: 12px 20px; border-radius: 10px; }
+.guide .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 22px 0; }
+.guide .step { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.guide .step b { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); margin-bottom: 8px; }
+.guide .step h3 { margin: 0 0 4px; }
+.guide .step p { color: var(--muted); font-size: 15px; }
+.guide .toc { line-height: 2; font-size: 15px; }
+.guide .card h3 { margin-top: 14px; }
+.guide .card ul, .guide .card ol { margin: 8px 0 4px 22px; }
+.guide .card li { margin: 6px 0; }
+.guide .card p { margin: 8px 0; }
+.guide details { border-top: 1px solid var(--line); padding: 8px 0; }
+.guide details summary { margin: 0; color: var(--text); font-weight: 600; }
+.guide code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; background: #11131a; padding: 1px 5px; border-radius: 5px; }
+@media (max-width: 640px) { .guide .steps { grid-template-columns: 1fr; } }
 
 .foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 14px; }
 

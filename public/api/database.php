@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 13;
+const DB_SCHEMA_VERSION = 14;
 
 /**
  * Session bootstrap.
@@ -512,6 +512,11 @@ function migrateV13(PDO $db): void {
     )");
 }
 
+function migrateV14(PDO $db): void {
+    // Study documents made with another AI and uploaded by hand: who uploaded them (NULL = written by the site's AI)
+    addColumnIfMissing($db, 'class_docs', 'author_id', 'INTEGER');
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -555,6 +560,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 13) {
             migrateV13($db);
+        }
+        if ($current < 14) {
+            migrateV14($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

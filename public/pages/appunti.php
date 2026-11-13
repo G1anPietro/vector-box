@@ -7,8 +7,9 @@ require_once __DIR__ . '/../api/database.php';
 
 initSession(true);
 if (empty($_SESSION['user_id'])) {
+    // Guests first see what the notes are (with the login button)
     session_write_close();
-    header('Location: login.php?next=appunti.php');
+    header('Location: appunti-guida.php');
     exit();
 }
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -41,6 +42,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
     <header class="top">
         <a class="home" href="../index.php">vector-box</a>
         <span class="top-right">
+            <a class="ghost-link" href="appunti-guida.php">Guida</a>
             <span class="who"><?= $e($username) ?></span>
             <button id="bell" class="bell" type="button" aria-label="Notifiche" aria-expanded="false">
                 <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg>
@@ -134,6 +136,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
             <div class="filters row">
                 <select id="filter-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>
                 <select id="filter-kind" aria-label="Tipo"><option value="">Tutti i tipi</option></select>
+                <button id="zip-subject" class="ghost" type="button" hidden>↓ Tutta la materia (.zip)</button>
             </div>
             <div id="items"></div>
         </section>
@@ -144,6 +147,31 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
                 <div class="card ai-bar" id="ai-bar"></div>
                 <h2 class="section-title">Verifiche e interrogazioni in arrivo</h2>
                 <div id="study-tests"></div>
+                <details class="card" id="doc-upload">
+                    <summary>Carica un documento fatto con un'altra AI</summary>
+                    <p class="muted small">Scarica lo .zip di una lezione o di una verifica: dentro c'è tutto il materiale e un file
+                        PROMPT.txt con le istruzioni. Dallo a ChatGPT, Claude, Gemini o un'altra AI, poi incolla qui il risultato.</p>
+                    <form id="doc-upload-form" class="stack">
+                        <div class="grid2">
+                            <label>Tipo
+                                <select name="kind">
+                                    <option value="completo">Completo (dispensa)</option>
+                                    <option value="riassunto">Riassunto</option>
+                                    <option value="preparazione">Preparazione mirata</option>
+                                    <option value="quiz">Quiz (JSON)</option>
+                                    <option value="lezione">Appunti di una lezione</option>
+                                </select>
+                            </label>
+                            <label class="for-event">Verifica o interrogazione <select name="event_id"></select></label>
+                            <label class="for-lesson" hidden>Materia <select name="subject_id"></select></label>
+                        </div>
+                        <label class="for-lesson" hidden>Giorno della lezione <input type="date" name="lesson_date"></label>
+                        <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
+                        <label>Testo <textarea name="content" rows="6" placeholder="Incolla qui la risposta dell'AI"></textarea></label>
+                        <label>…oppure un file .md, .txt o .json <input type="file" name="file" accept=".md,.txt,.json,text/plain,text/markdown,application/json"></label>
+                        <button>Carica il documento</button>
+                    </form>
+                </details>
                 <h2 class="section-title">Appunti delle lezioni</h2>
                 <div class="filters row">
                     <select id="study-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>
