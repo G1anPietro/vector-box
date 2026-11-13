@@ -81,7 +81,8 @@ fi
 if command -v npm >/dev/null 2>&1; then
     if [ ! -d node_modules ] || ! git diff --quiet "$OLD_REV" HEAD -- package.json package-lock.json 2>/dev/null; then
         say "Installing Node dependencies (npm ci --omit=dev)..."
-        npm ci --omit=dev --no-audit --no-fund --loglevel=error || warn "npm ci failed: the Node chat hub may not start."
+        # --ignore-scripts: no package code runs as root during the install (none of our deps needs a build step)
+        npm ci --omit=dev --ignore-scripts --no-audit --no-fund --loglevel=error || warn "npm ci failed: the Node chat hub may not start."
         # node_modules must stay readable by whoever runs Node, not owned by root only
         if [ "$IS_ROOT" -eq 1 ] && [ -n "$PM2_USER" ] && id "$PM2_USER" >/dev/null 2>&1; then
             chown -R "$PM2_USER":"$PM2_USER" node_modules
@@ -104,7 +105,7 @@ say "Checking the database schema..."
 SCHEMA=$(as_web_user php -r 'require "public/api/database.php"; echo getDbConnection()->query("PRAGMA user_version")->fetchColumn();' 2>&1) \
     || { warn "Migration failed:"; warn "$SCHEMA"; exit 1; }
 # The expected version comes from the code just checked out (bash keeps running the old copy of this script)
-EXPECTED_SCHEMA=$(php -r 'require "public/api/database.php"; echo DB_SCHEMA_VERSION;' 2>/dev/null || echo '?')
+EXPECTED_SCHEMA=$(as_web_user php -r 'require "public/api/database.php"; echo DB_SCHEMA_VERSION;' 2>/dev/null || echo '?')
 if [ "$SCHEMA" = "$EXPECTED_SCHEMA" ]; then
     say "Database schema: version $SCHEMA"
 else
