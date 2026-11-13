@@ -44,6 +44,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookmarksToggleBtn = document.getElementById('bookmarks-toggle-btn');
     const bookmarksPanel = document.getElementById('bookmarks-panel');
 
+    // Reading settings ("Aa" panel): text size / PDF zoom, one or two pages
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const zoomLabel = document.getElementById('zoom-label');
+    const zoomFitBtn = document.getElementById('zoom-fit-btn');
+    const spreadRow = document.getElementById('spread-row');
+    const spreadBtns = [...document.querySelectorAll('[data-spread]')];
+    const pageRange = document.getElementById('page-range');
+    const toastEl = document.getElementById('reader-toast');
+    const pref = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
+    const setPref = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* private mode */ } };
+    let fontPct = Math.min(200, Math.max(70, parseInt(pref('vector_reader_font', '100'), 10) || 100));
+    let pdfZoom = Math.min(3, Math.max(0.5, parseFloat(pref('vector_reader_pdf_zoom', '1')) || 1));
+    let spread = pref('vector_reader_spread', 'none') === 'auto' ? 'auto' : 'none';
+    let pdfRenderTask = null;
+
+    let toastTimer = null;
+    function toast(msg) {
+        if (!toastEl) return;
+        toastEl.textContent = msg;
+        toastEl.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2200);
+    }
+
     const THEME_STYLES = {
         light: { bg: '#ffffff', color: '#212529' },
         sepia: { bg: '#f4ecd8', color: '#5b4636' },
@@ -127,6 +154,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (closeViewerBtn) closeViewerBtn.addEventListener('click', closeViewer);
+    if (settingsBtn && settingsPanel) {
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsPanel.hidden = !settingsPanel.hidden;
+            settingsBtn.setAttribute('aria-expanded', String(!settingsPanel.hidden));
+            if (bookmarksPanel) bookmarksPanel.style.display = 'none';
+        });
+        settingsPanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => { settingsPanel.hidden = true; settingsBtn.setAttribute('aria-expanded', 'false'); });
+    }
+    if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoom(1));
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoom(-1));
+    if (zoomFitBtn) zoomFitBtn.addEventListener('click', () => zoom(0));
+    spreadBtns.forEach((b) => b.addEventListener('click', () => setSpread(b.dataset.spread)));
+    document.getElementById('tap-prev')?.addEventListener('click', () => turnPage(-1));
+    document.getElementById('tap-next')?.addEventListener('click', () => turnPage(1));
+    if (pageRange) {
+        pageRange.addEventListener('input', () => { pageJumpInput.value = pageRange.value; });
+        pageRange.addEventListener('change', () => jumpToPage(parseInt(pageRange.value, 10)));
+    }
+    if (pdfStage) addSwipe(pdfStage);
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => { if (currentFormat === 'pdf' && pdfDoc) renderPdfPage(pdfCurrentPage); }, 200);
+    });
     if (prevPageBtn) prevPageBtn.addEventListener('click', () => turnPage(-1));
     if (nextPageBtn) nextPageBtn.addEventListener('click', () => turnPage(1));
 
@@ -158,8 +211,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('keydown', (e) => {
         if (!viewerModal.classList.contains('active')) return;
-        if (e.key === 'ArrowLeft') turnPage(-1);
-        if (e.key === 'ArrowRight') turnPage(1);
+        if (e.target && e.target.tagName === 'INPUT') return;
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') turnPage(-1);
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); turnPage(1); }
+        if (e.key === '+' || e.key === '=') zoom(1);
+        if (e.key === '-') zoom(-1);
         if (e.key === 'Escape') closeViewer();
     });
 
@@ -416,6 +472,10 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfStage.innerHTML = '';
 
         viewerModal.classList.add('active');
+        document.body.classList.add('reading');
+        viewerModal.classList.remove('zoomed');
+        if (settingsPanel) settingsPanel.hidden = true;
+        updateReadingUI();
         applyTheme(currentTheme);
         currentLocation = null;
         currentPct = 0;
@@ -434,6 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeViewer() {
         viewerModal.classList.remove('active');
+        document.body.classList.remove('reading');
         if (epubRendition) {
             try { epubRendition.destroy(); } catch (e) {}
             epubRendition = null;
@@ -492,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderBookmarks() {
-        if (bookmarksToggleBtn) bookmarksToggleBtn.textContent = `Segnalibri (${bookmarks.length}) \u25BE`;
+        if (bookmarksToggleBtn) bookmarksToggleBtn.textContent = bookmarks.length ? `Segnalibri (${bookmarks.length})` : 'Segnalibri';
         if (!bookmarksPanel) return;
         bookmarksPanel.replaceChildren();
         if (!bookmarks.length) {
@@ -523,8 +584,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    let addingBookmark = false;
     async function addBookmark() {
-        if (!currentBookId || !currentLocation) return;
+        if (!currentBookId || !currentLocation) { toast('Aspetta che la pagina sia caricata.'); return; }
+        if (addingBookmark) return;
+        addingBookmark = true;
+        if (addBookmarkBtn) addBookmarkBtn.disabled = true;
         const label = currentFormat === 'pdf'
             ? `Pagina ${currentLocation} (${currentPct}%)`
             : `Pagina ${epubCurrentPage} (${currentPct}%)`;
@@ -537,14 +602,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data.success) {
                 await loadBookmarks();
-                if (addBookmarkBtn) {
-                    addBookmarkBtn.textContent = '\u2713 Salvato';
-                    setTimeout(() => { addBookmarkBtn.textContent = '+ Segnalibro'; }, 1500);
-                }
+                toast(`Segnalibro salvato: ${label}`);
             } else {
-                alert(data.error || 'Impossibile salvare il segnalibro.');
+                toast(data.error || 'Impossibile salvare il segnalibro.');
             }
-        } catch (err) {}
+        } catch (err) {
+            toast('Connessione assente: segnalibro non salvato.');
+        } finally {
+            addingBookmark = false;
+            if (addBookmarkBtn) addBookmarkBtn.disabled = false;
+        }
     }
 
     if (addBookmarkBtn) addBookmarkBtn.addEventListener('click', addBookmark);
@@ -610,13 +677,17 @@ document.addEventListener('DOMContentLoaded', () => {
             epubRendition = epubBook.renderTo('epub-stage', {
                 width: '100%',
                 height: '100%',
-                flow: 'paginated'
+                flow: 'paginated',
+                // one page at a time unless the reader asked for two (never on a phone)
+                spread: window.innerWidth > 800 ? spread : 'none',
             });
+            epubRendition.themes.fontSize(fontPct + '%');
 
             // Content hook fallback for iframe section updates
             epubRendition.hooks.content.register((contents) => {
                 if (contents && contents.document) {
                     applyEpubThemeToDoc(contents.document, currentTheme);
+                    addSwipe(contents.document);
                 }
             });
 
@@ -628,6 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 epubTotalPages = epubBook.locations.total || 1;
                 pageTotalLabel.textContent = `/ ${epubTotalPages}`;
                 pageJumpInput.max = epubTotalPages;
+                if (pageRange) pageRange.max = epubTotalPages;
 
                 const currentLocation = epubRendition.currentLocation();
                 if (currentLocation && currentLocation.start) {
@@ -664,6 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loc !== undefined && loc !== -1) {
                 epubCurrentPage = loc + 1;
                 pageJumpInput.value = epubCurrentPage;
+                if (pageRange) { pageRange.max = epubTotalPages; pageRange.value = epubCurrentPage; }
             }
         }
     }
@@ -693,24 +766,97 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfCurrentPage = pageNum;
 
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 1.2 });
+        // Zoom 100% = the whole page fits the screen (one page at a time); more = bigger, moved with the finger
+        const base = page.getViewport({ scale: 1 });
+        const boxW = Math.max(200, pdfStage.clientWidth - 16);
+        const boxH = Math.max(200, pdfStage.clientHeight - 16);
+        const fit = Math.min(boxW / base.width, boxH / base.height);
+        const scale = fit * pdfZoom;
+        const viewport = page.getViewport({ scale });
+        const dpr = Math.min(window.devicePixelRatio || 1, 3);
 
         const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+        canvas.style.width = Math.floor(viewport.width) + 'px';
+        canvas.style.height = Math.floor(viewport.height) + 'px';
         const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
 
-        pdfStage.innerHTML = '';
-        pdfStage.appendChild(canvas);
-
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        if (pdfRenderTask) { try { pdfRenderTask.cancel(); } catch (e) { /* already done */ } }
+        pdfRenderTask = page.render({ canvasContext: context, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null });
+        try {
+            await pdfRenderTask.promise;
+        } catch (e) {
+            return;   // cancelled by a newer page turn
+        }
+        if (pdfCurrentPage !== pageNum) return;
+        pdfStage.replaceChildren(canvas);
+        pdfStage.scrollTop = 0;
+        viewerModal.classList.toggle('zoomed', pdfZoom > 1);
 
         const percentage = Math.round((pageNum / pdfTotalPages) * 100);
         pageJumpInput.value = pageNum;
+        if (pageRange) { pageRange.max = pdfTotalPages; pageRange.value = pageNum; }
 
         currentLocation = pageNum.toString();
         currentPct = percentage;
         saveProgress(currentBookId, pageNum.toString(), percentage);
+    }
+
+    // ---- Text size / zoom, one or two pages ---------------------------------------
+    function updateReadingUI() {
+        const isPdf = currentFormat === 'pdf';
+        if (zoomLabel) zoomLabel.textContent = isPdf ? `${Math.round(pdfZoom * 100)}%` : `${fontPct}%`;
+        if (zoomFitBtn) zoomFitBtn.hidden = !isPdf || pdfZoom === 1;
+        if (spreadRow) spreadRow.hidden = isPdf;
+        viewerModal.classList.toggle('two-pages', !isPdf && spread === 'auto' && window.innerWidth > 800);
+        spreadBtns.forEach((b) => b.classList.toggle('on', b.dataset.spread === spread));
+        if (zoomOutBtn) zoomOutBtn.textContent = isPdf ? '\u2212' : 'A\u2212';
+        if (zoomInBtn) zoomInBtn.textContent = isPdf ? '+' : 'A+';
+    }
+
+    function zoom(step) {
+        if (currentFormat === 'pdf') {
+            pdfZoom = step === 0 ? 1 : Math.min(3, Math.max(0.5, Math.round((pdfZoom + step * 0.25) * 100) / 100));
+            setPref('vector_reader_pdf_zoom', pdfZoom);
+            renderPdfPage(pdfCurrentPage);
+        } else {
+            fontPct = step === 0 ? 100 : Math.min(200, Math.max(70, fontPct + step * 10));
+            setPref('vector_reader_font', fontPct);
+            if (epubRendition) epubRendition.themes.fontSize(fontPct + '%');
+        }
+        updateReadingUI();
+    }
+
+    function setSpread(value) {
+        spread = value;
+        setPref('vector_reader_spread', value);
+        updateReadingUI();   // the column width changes first
+        if (epubRendition) {
+            epubRendition.spread(window.innerWidth > 800 ? value : 'none');
+            requestAnimationFrame(() => {
+                try { epubRendition.resize(); } catch (e) { /* not ready */ }
+                if (currentLocation) epubRendition.display(currentLocation);
+            });
+        }
+    }
+
+    // Swipe left/right to turn the page (also inside the EPUB's own frame)
+    function addSwipe(target) {
+        let x0 = null;
+        let y0 = null;
+        target.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) { x0 = null; return; }
+            x0 = e.touches[0].clientX;
+            y0 = e.touches[0].clientY;
+        }, { passive: true });
+        target.addEventListener('touchend', (e) => {
+            if (x0 === null || (currentFormat === 'pdf' && pdfZoom > 1)) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            const dy = e.changedTouches[0].clientY - y0;
+            x0 = null;
+            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) turnPage(dx < 0 ? 1 : -1);
+        }, { passive: true });
     }
 
     function applyTheme(theme) {

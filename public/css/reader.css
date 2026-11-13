@@ -464,3 +464,71 @@ input[type="file"]::file-selector-button:hover {
 .upload-status.ok { color: #2e9d57; opacity: 1; }
 .upload-status.err { color: #d0473a; opacity: 1; }
 .drop-target { outline: 2px dashed #0d6efd; outline-offset: 4px; }
+
+/* ---------- Reader (redesign): top bar, page, bottom bar, "Aa" panel ---------- */
+.viewer-modal { height: 100vh; height: 100dvh; }
+.viewer-header { flex-wrap: nowrap; min-height: 52px; padding: 6px 8px; gap: 8px; padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
+.viewer-title { flex: 1; min-width: 0; font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewer-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.icon-btn { min-width: 40px; min-height: 40px; display: inline-grid; place-items: center; padding: 0 8px; font-size: 1.05rem; }
+.aa-btn { font-weight: 700; font-family: Georgia, serif; }
+.pop-wrap { position: relative; }
+.popover { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; min-width: 260px; max-width: calc(100vw - 16px);
+    max-height: 70vh; overflow-y: auto; background: var(--bg-secondary); color: var(--text-primary);
+    border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); }
+.settings-panel { width: 300px; display: flex; flex-direction: column; gap: 12px; }
+.settings-panel[hidden] { display: none; }
+.set-row { display: flex; flex-direction: column; gap: 6px; }
+.set-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper .btn { min-width: 52px; min-height: 40px; font-weight: 700; }
+.zoom-label { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
+.segmented { display: flex; gap: 0; }
+.segmented .btn { flex: 1; border-radius: 0; min-height: 38px; }
+.segmented .btn:first-child { border-radius: 8px 0 0 8px; }
+.segmented .btn:last-child { border-radius: 0 8px 8px 0; }
+.segmented .btn.on { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+.small-btn { font-size: 0.85rem; text-align: center; }
+.settings-panel .slider-bar { width: 100%; }
+
+.viewer-content { height: auto; min-height: 0; }
+#pdf-stage { overflow: auto; text-align: center; -webkit-overflow-scrolling: touch; }
+#pdf-stage canvas { display: block; margin: 8px auto; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18); background: #fff; }
+.tap-zone { position: absolute; top: 0; bottom: 0; width: 14%; max-width: 110px; background: transparent; border: 0; z-index: 5; cursor: pointer; padding: 0; }
+.tap-prev { left: 0; }
+.tap-next { right: 0; }
+.tap-zone:hover { background: linear-gradient(90deg, rgba(127, 127, 127, 0.08), transparent); }
+.tap-next:hover { background: linear-gradient(270deg, rgba(127, 127, 127, 0.08), transparent); }
+.viewer-modal.zoomed .tap-zone { display: none; }   /* a zoomed PDF page is moved with the finger */
+
+.viewer-footer { display: flex; align-items: center; gap: 10px; padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-secondary); border-top: 1px solid var(--border-color); }
+.nav-btn { min-width: 48px; min-height: 44px; font-size: 1.6rem; line-height: 1; }
+.position { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+#page-range { flex: 1; min-width: 0; accent-color: var(--accent-color); }
+.page-jump-wrapper { flex: none; font-size: 0.85rem; color: var(--text-muted); }
+.page-input { width: 56px; min-height: 32px; font-size: 0.9rem; }
+
+.reader-toast { position: absolute; left: 50%; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 80;
+    background: #222; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 0.9rem; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+
+@media (max-width: 600px) {
+    .viewer-header { padding: 4px 6px; gap: 6px; padding-top: calc(4px + env(safe-area-inset-top, 0px)); }
+    #viewer-title { max-width: none; }
+    #bookmarks-toggle-btn { padding: 0 8px; min-height: 40px; font-size: 0.85rem; }
+    .settings-panel { width: min(300px, calc(100vw - 16px)); }
+    #spread-row { display: none; }   /* phones always show one page */
+    .tap-zone { width: 18%; }
+}
+
+/* hidden controls stay hidden even when .btn sets a display */
+.settings-panel [hidden] { display: none !important; }
+/* one page at a time on a wide screen: a book-width column, not lines across the whole monitor */
+#epub-stage { max-width: 760px; margin: 0 auto; }
+.viewer-modal.two-pages #epub-stage { max-width: none; }
+body.reading { overflow: hidden; }
+@media (max-width: 600px) {
+    .viewer-header .btn { padding-left: 6px; padding-right: 6px; }
+    .icon-btn { min-width: 38px; }
+    #bookmarks-toggle-btn { font-size: 0.8rem; }
+}

@@ -100,53 +100,53 @@ if (!$canRead) {
         </main>
     </div>
 
-    <!-- Reader Modal -->
+    <!-- Reader: top bar (back, title, bookmarks, "Aa"), the page, bottom bar (page turn and position) -->
     <div id="viewer-modal" class="viewer-modal" data-theme="light">
         <div class="viewer-header">
-            <div style="display: flex; align-items: center; gap: 0.75rem; overflow: hidden;">
-                <button id="close-viewer-btn" class="btn" style="padding: 0.2rem 0.6rem;">&larr; Biblioteca</button>
-                <span id="viewer-title" style="font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Titolo Libro</span>
-            </div>
-
-            <div class="reader-controls">
-                <!-- Theme Selector duplicated inside book viewer header -->
-                <div class="theme-selector" title="Seleziona Tema">
-                    <button class="theme-btn theme-light active" data-theme="light" title="Chiaro"></button>
-                    <button class="theme-btn theme-sepia" data-theme="sepia" title="Sepia"></button>
-                    <button class="theme-btn theme-dark" data-theme="dark" title="Scuro"></button>
-                    <button class="theme-btn theme-black" data-theme="black" title="OLED Nero"></button>
+            <button id="close-viewer-btn" class="btn icon-btn" title="Torna alla biblioteca" aria-label="Torna alla biblioteca">&larr;</button>
+            <span id="viewer-title" class="viewer-title">Titolo Libro</span>
+            <div class="viewer-actions">
+                <button id="add-bookmark-btn" class="btn icon-btn" title="Aggiungi un segnalibro qui" aria-label="Aggiungi un segnalibro qui">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>
+                </button>
+                <div class="pop-wrap">
+                    <button id="bookmarks-toggle-btn" class="btn" title="Segnalibri">Segnalibri</button>
+                    <div id="bookmarks-panel" class="popover" style="display: none;"></div>
                 </div>
-
-                <div class="filter-control" title="Filtro Luce Blu">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-                    </svg>
-                    <input type="range" id="blue-light-slider" min="0" max="60" value="0" step="5" class="slider-bar">
-                </div>
-
-                <div style="position: relative; display: flex; gap: 0.35rem;">
-                    <button id="add-bookmark-btn" class="btn" title="Aggiungi segnalibro alla posizione attuale">+ Segnalibro</button>
-                    <button id="bookmarks-toggle-btn" class="btn" title="Mostra segnalibri">Segnalibri &#9662;</button>
-                    <div id="bookmarks-panel" style="display: none; position: absolute; top: 110%; right: 0; z-index: 50; min-width: 260px; max-height: 320px; overflow-y: auto; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem; box-shadow: var(--shadow-md);"></div>
-                </div>
-
-                <a id="download-book-btn" class="btn" href="#" download title="Scarica file originale">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    <span>Scarica</span>
-                </a>
-
-                <div class="nav-controls">
-                    <button id="prev-page-btn" class="btn" title="Pagina precedente">&larr;</button>
-                    <div class="page-jump-wrapper">
-                        <input type="number" id="page-jump-input" min="1" value="1" class="page-input">
-                        <span id="page-total-label" style="font-size: 0.8rem; color: var(--text-muted);">/ 100%</span>
+                <div class="pop-wrap">
+                    <button id="settings-btn" class="btn icon-btn aa-btn" title="Testo, pagine e colori" aria-label="Testo, pagine e colori" aria-expanded="false">Aa</button>
+                    <div id="settings-panel" class="popover settings-panel" hidden>
+                        <div class="set-row">
+                            <span class="set-label" id="size-label-title">Dimensione del testo</span>
+                            <div class="stepper" role="group" aria-labelledby="size-label-title">
+                                <button id="zoom-out-btn" class="btn" aria-label="Più piccolo">A&minus;</button>
+                                <span id="zoom-label" class="zoom-label">100%</span>
+                                <button id="zoom-in-btn" class="btn" aria-label="Più grande">A+</button>
+                            </div>
+                            <button id="zoom-fit-btn" class="btn small-btn" hidden>Adatta alla larghezza</button>
+                        </div>
+                        <div class="set-row" id="spread-row">
+                            <span class="set-label">Pagine</span>
+                            <div class="segmented" role="group" aria-label="Pagine">
+                                <button id="spread-one-btn" class="btn" data-spread="none">Una alla volta</button>
+                                <button id="spread-two-btn" class="btn" data-spread="auto">Due affiancate</button>
+                            </div>
+                        </div>
+                        <div class="set-row">
+                            <span class="set-label">Colori</span>
+                            <div class="theme-selector" title="Seleziona Tema">
+                                <button class="theme-btn theme-light active" data-theme="light" title="Chiaro"></button>
+                                <button class="theme-btn theme-sepia" data-theme="sepia" title="Seppia"></button>
+                                <button class="theme-btn theme-dark" data-theme="dark" title="Scuro"></button>
+                                <button class="theme-btn theme-black" data-theme="black" title="Nero (OLED)"></button>
+                            </div>
+                        </div>
+                        <div class="set-row">
+                            <label class="set-label" for="blue-light-slider">Filtro luce blu</label>
+                            <input type="range" id="blue-light-slider" min="0" max="60" value="0" step="5" class="slider-bar">
+                        </div>
+                        <a id="download-book-btn" class="btn small-btn" href="#" download>Scarica il file originale</a>
                     </div>
-                    <button id="next-page-btn" class="btn" title="Pagina successiva">&rarr;</button>
                 </div>
             </div>
         </div>
@@ -154,7 +154,22 @@ if (!$canRead) {
         <div class="viewer-content" id="viewer-stage-container">
             <div id="epub-stage"></div>
             <div id="pdf-stage"></div>
+            <button id="tap-prev" class="tap-zone tap-prev" aria-label="Pagina precedente" tabindex="-1"></button>
+            <button id="tap-next" class="tap-zone tap-next" aria-label="Pagina successiva" tabindex="-1"></button>
         </div>
+
+        <div class="viewer-footer">
+            <button id="prev-page-btn" class="btn nav-btn" title="Pagina precedente (←)" aria-label="Pagina precedente">&lsaquo;</button>
+            <div class="position">
+                <input type="range" id="page-range" min="1" max="1" value="1" aria-label="Posizione nel libro">
+                <div class="page-jump-wrapper">
+                    <input type="number" id="page-jump-input" min="1" value="1" class="page-input" aria-label="Vai alla pagina">
+                    <span id="page-total-label">/ 1</span>
+                </div>
+            </div>
+            <button id="next-page-btn" class="btn nav-btn" title="Pagina successiva (→)" aria-label="Pagina successiva">&rsaquo;</button>
+        </div>
+        <div id="reader-toast" class="reader-toast" role="status" aria-live="polite" hidden></div>
     </div>
 
 </body>

@@ -61,7 +61,11 @@ dell'account) e ai temi grafici.
 ## Biblioteca
 
 Per chi ha il permesso: libri **EPUB** e **PDF** con copertina, scaffale "Continua a leggere", avanzamento salvato,
-segnalibri, quattro colori di pagina e luminosità. Chi può caricare sceglie più file insieme o li trascina sul riquadro.
+segnalibri, quattro colori di pagina e filtro luce blu. Nel lettore: barra in alto (indietro, segnalibro, elenco segnalibri,
+**Aa**) e in basso (pagina precedente/successiva, cursore della posizione, numero di pagina). Nel pannello **Aa**: dimensione
+del testo per gli EPUB (70–200%) e zoom per i PDF (50–300%, 100% = pagina intera sullo schermo, "Adatta" per tornarci),
+**una pagina alla volta** o due affiancate (solo su schermi larghi), colori, filtro luce blu, scarica. Si gira pagina con le
+frecce, con i bordi della pagina, con lo scorrimento del dito o con i tasti ← → (+ e − per lo zoom). Chi può caricare sceglie più file insieme o li trascina sul riquadro.
 
 ## Giochi
 
