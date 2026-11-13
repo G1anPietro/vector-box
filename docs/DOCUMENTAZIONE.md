@@ -297,7 +297,7 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V14 | `class_docs.author_id`: documenti fatti con un'altra AI e caricati a mano (NULL = scritti dall'AI del sito) |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
-`runMigrations()` + `EXPECTED_SCHEMA` in `updatesite.sh`. Sul server il database non va aperto con `sqlite3` da un utente
+`runMigrations()` (`updatesite.sh` legge la versione attesa da `database.php`). Sul server il database non va aperto con `sqlite3` da un utente
 diverso da quello di PHP (in WAL crea file `-shm`/`-wal` che poi PHP non può aprire): usare una copia.
 
 ## 5. API

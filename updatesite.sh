@@ -20,7 +20,6 @@ PROJECT_DIR="${PROJECT_DIR:-/var/www/vector-box}"
 PM2_APP="${PM2_APP:-vector-box-hub}"
 PM2_USER="${PM2_USER:-${SUDO_USER:-}}"
 WEB_USER="${WEB_USER:-www-data}"
-EXPECTED_SCHEMA=15
 
 say()  { echo ">> $*"; }
 warn() { echo "!! $*" >&2; }
@@ -104,6 +103,8 @@ fi
 say "Checking the database schema..."
 SCHEMA=$(as_web_user php -r 'require "public/api/database.php"; echo getDbConnection()->query("PRAGMA user_version")->fetchColumn();' 2>&1) \
     || { warn "Migration failed:"; warn "$SCHEMA"; exit 1; }
+# The expected version comes from the code just checked out (bash keeps running the old copy of this script)
+EXPECTED_SCHEMA=$(php -r 'require "public/api/database.php"; echo DB_SCHEMA_VERSION;' 2>/dev/null || echo '?')
 if [ "$SCHEMA" = "$EXPECTED_SCHEMA" ]; then
     say "Database schema: version $SCHEMA"
 else
