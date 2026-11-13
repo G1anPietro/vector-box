@@ -51,10 +51,39 @@ try {
         $contentType = ($book['format'] === 'pdf') ? 'application/pdf' : 'application/epub+zip';
         $disposition = $isDownload ? 'attachment' : 'inline';
 
+        $size = filesize($book['file_path']);
         header("Content-Type: {$contentType}");
-        header("Content-Length: " . filesize($book['file_path']));
         header("Content-Disposition: {$disposition}; filename=\"" . rawurlencode(basename($book['file_path'])) . "\"");
         header('X-Content-Type-Options: nosniff');
+        header('Accept-Ranges: bytes');
+
+        // One byte range (pdf.js asks for pieces of big PDFs instead of the whole file)
+        $range = (string)($_SERVER['HTTP_RANGE'] ?? '');
+        if (preg_match('/^bytes=(\d*)-(\d*)$/', $range, $m) && ($m[1] !== '' || $m[2] !== '')) {
+            if ($m[1] === '') { $start = max(0, $size - (int)$m[2]); $end = $size - 1; }
+            else { $start = (int)$m[1]; $end = $m[2] === '' ? $size - 1 : min((int)$m[2], $size - 1); }
+            if ($start > $end || $start >= $size) {
+                http_response_code(416);
+                header("Content-Range: bytes */{$size}");
+                exit();
+            }
+            http_response_code(206);
+            header("Content-Range: bytes {$start}-{$end}/{$size}");
+            header('Content-Length: ' . ($end - $start + 1));
+            $fh = fopen($book['file_path'], 'rb');
+            fseek($fh, $start);
+            $left = $end - $start + 1;
+            while ($left > 0 && !feof($fh)) {
+                $chunk = fread($fh, min(1048576, $left));
+                if ($chunk === false || $chunk === '') break;
+                echo $chunk;
+                $left -= strlen($chunk);
+            }
+            fclose($fh);
+            exit();
+        }
+
+        header("Content-Length: " . $size);
         readfile($book['file_path']);
         exit();
     }
@@ -171,6 +200,22 @@ try {
             'can_upload' => $canUpload,
             'books' => $books
         ]);
+        exit();
+    }
+
+    // The browser could not draw a PDF's cover (encrypted, damaged, too big...): log why, for the admin
+    if ($method === 'POST' && ($_GET['action'] ?? '') === 'cover_failed') {
+        requireCsrf();
+        require_once __DIR__ . '/rate_limiter.php';
+        if (!$canUpload || !checkRateLimit('pdf_cover_failed', 20, 3600, 'user:' . $userId)) {
+            http_response_code($canUpload ? 429 : 403);
+            echo json_encode(['success' => false]);
+            exit();
+        }
+        $reason = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string)($_POST['reason'] ?? '')) ?? '');
+        require_once __DIR__ . '/debug_logger.php';
+        logSystemError('PDF_COVER', 'book ' . (int)($_POST['book_id'] ?? 0) . ': ' . textCut($reason, 200));
+        echo json_encode(['success' => true]);
         exit();
     }
 

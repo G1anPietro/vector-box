@@ -185,10 +185,14 @@ function aiDocHash(PDO $db, int $classId, string $key): ?string {
 function aiLessonDocs(PDO $db, array $class): int {
     $classId = (int)$class['id'];
     $since = (new DateTimeImmutable(classToday($class)))->modify('-' . AI_LESSON_DAYS . ' days')->format('Y-m-d');
+    // Recent lessons, and older lessons whose material was uploaded or changed recently (notes caught up late)
     $st = $db->prepare('SELECT i.*, a.username AS author, s.name AS subject FROM class_items i
                         LEFT JOIN accounts a ON a.id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
-                        WHERE i.class_id = :c AND i.lesson_date >= :since ORDER BY i.subject_id, i.lesson_date, i.id');
-    $st->execute([':c' => $classId, ':since' => $since]);
+                        WHERE i.class_id = :c AND EXISTS (SELECT 1 FROM class_items j WHERE j.class_id = i.class_id
+                              AND j.subject_id = i.subject_id AND j.lesson_date = i.lesson_date
+                              AND (j.lesson_date >= :since OR j.updated_at >= :recent))
+                        ORDER BY i.subject_id, i.lesson_date, i.id');
+    $st->execute([':c' => $classId, ':since' => $since, ':recent' => time() - AI_LESSON_DAYS * 86400]);
     $groups = [];
     foreach ($st->fetchAll() as $it) $groups[$it['subject_id'] . '|' . $it['lesson_date']][] = $it;
 
@@ -415,9 +419,19 @@ function aiRun(PDO $db, int $now): array {
     foreach ($classes as $class) {
         if (!aiClassDue($class, $now)) continue;
         $manual = !empty($class['ai_requested_at']);
-        $stats['lessons'] += aiLessonDocs($db, $class);
-        $stats['tests'] += aiEventDocs($db, $class);
+        GeminiError::$lastStop = '';
+        $lessons = aiLessonDocs($db, $class);
+        $tests = aiEventDocs($db, $class);
+        $stats['lessons'] += $lessons;
+        $stats['tests'] += $tests;
         $stats['classes']++;
+        // What happened, for the Study tab ("Ultimo giro: ...")
+        $pending = $db->prepare("SELECT COUNT(*) FROM class_item_files WHERE class_id = :c AND text_status = 'pending'");
+        $pending->execute([':c' => $class['id']]);
+        appSettingSet($db, 'ai_last_run:' . $class['id'], json_encode([
+            'at' => $now, 'manual' => $manual, 'lessons' => $lessons, 'tests' => $tests,
+            'pending' => (int)$pending->fetchColumn(), 'stop' => GeminiError::$lastStop,
+        ]));
         $sets = ['ai_requested_at = NULL'];
         if (!$manual) $sets[] = 'ai_last_auto = :today';
         $params = [':id' => $class['id']] + ($manual ? [] : [':today' => classToday($class, $now)]);

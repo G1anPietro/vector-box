@@ -22,8 +22,10 @@ class GeminiError extends RuntimeException {
     public bool $busy;      // Google overloaded ("high demand", 503/504) even after retries: not our fault, try later
     public bool $stop;      // any of these: stop this run instead of trying the next document
     public static int $serviceFailures = 0;
+    public static string $lastStop = '';   // 'quota' | 'busy' | 'fault': why the last run stopped early
     public function __construct(string $message, bool $quota = false, bool $service = false, bool $busy = false) {
         parent::__construct($message);
+        if ($quota || $service || $busy) self::$lastStop = $quota ? 'quota' : ($busy ? 'busy' : 'fault');
         $this->quota = $quota;
         $this->service = $service;
         $this->busy = $busy;

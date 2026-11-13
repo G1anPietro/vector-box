@@ -286,6 +286,8 @@ try {
             if ($e->busy) clFail('ai_busy', 'Gemini is busy right now, try again in a few minutes', 503);
             clFail($e->quota ? 'ai_quota' : 'ai_failed', $e->quota ? 'The AI has no requests left today' : 'The AI could not read the timetable', 502);
         }
+        require_once __DIR__ . '/debug_logger.php';
+        logSystemError('TIMETABLE_AI', 'class ' . $id . ': ' . (is_string($result) ? 'unreadable' : 'read') . ' with ' . ($result['model'] ?? 'the AI'));
         if (is_string($result)) clFail('ai_unreadable', $result, 422);
         jsonResponse(['success' => true] + $result);
     }

@@ -57,7 +57,7 @@ function timetableFromImages(PDO $db, array $class, array $files): array|string 
     $parts = $files;
     $parts[] = ['text' => 'Materie già presenti nella classe: ' . ($known ? implode(', ', $known) : 'nessuna') . '.'];
     // The browser is waiting: finish (retries and fallback included) well before nginx's timeout
-    [$raw] = geminiGenerateAny($db, GEMINI_SMART_CHAIN, TIMETABLE_AI_PROMPT, $parts,
+    [$raw, $model] = geminiGenerateAny($db, GEMINI_SMART_CHAIN, TIMETABLE_AI_PROMPT, $parts,
         ['json' => true, 'max_tokens' => 16384, 'deadline' => microtime(true) + (int)envValue('GEMINI_TEST_DEADLINE', (string)TIMETABLE_AI_SECONDS)]);
 
     $json = json_decode(trim(preg_replace('/^```(?:json)?|```$/m', '', trim($raw)) ?? ''), true);
@@ -102,5 +102,6 @@ function timetableFromImages(PDO $db, array $class, array $files): array|string 
         'slots' => $checkedSlots,
         'notes' => textCut(trim((string)($json['notes'] ?? '')), 500),
         'bells_read' => $readBells,
+        'model' => $model,
     ];
 }

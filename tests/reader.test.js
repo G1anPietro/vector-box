@@ -107,3 +107,39 @@ test('PDF covers made in the browser: uploaders only, PDFs only, real images onl
     assert.equal((await send(reader, pdfId, PNG)).json.already, true);
     assert.equal(site.db('SELECT cover_path FROM books WHERE id = ?', [pdfId])[0].cover_path, before, 'an existing cover is never replaced');
 });
+
+test('PDF stream: byte ranges for pdf.js; a failed browser cover is logged', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const file = path.join(site.root, 'data', 'range.pdf');
+    const body = Buffer.from('%PDF-1.4\n' + '0123456789'.repeat(100));
+    fs.writeFileSync(file, body);
+    site.db("INSERT INTO books (title, format, file_path) VALUES ('Range', 'pdf', ?)", [file]);
+    const id = site.db("SELECT id FROM books WHERE title = 'Range'")[0].id;
+    const get = (range) => fetch(`${site.base}/api/books.php?action=stream&id=${id}`, { headers: { Cookie: reader.cookieHeader(), ...(range ? { Range: range } : {}) } });
+
+    const full = await get();
+    assert.equal(full.status, 200);
+    assert.equal(full.headers.get('accept-ranges'), 'bytes');
+    assert.equal(Buffer.from(await full.arrayBuffer()).length, body.length);
+    const part = await get('bytes=0-8');
+    assert.equal(part.status, 206);
+    assert.equal(part.headers.get('content-range'), `bytes 0-8/${body.length}`);
+    assert.equal(Buffer.from(await part.arrayBuffer()).toString(), '%PDF-1.4\n');
+    const tail = await get('bytes=-10');
+    assert.equal(Buffer.from(await tail.arrayBuffer()).toString(), '0123456789');
+    assert.equal((await get(`bytes=${body.length + 5}-`)).status, 416);
+
+    const fail = async (c, csrf = true) => {
+        const fd = new FormData();
+        fd.set('book_id', String(id));
+        fd.set('reason', 'PasswordException: No password given\nsecond line');
+        return (await fetch(`${site.base}/api/books.php?action=cover_failed`, { method: 'POST', body: fd,
+            headers: { Cookie: c.cookieHeader(), ...(csrf ? { 'X-CSRF-Token': c.csrf } : {}) } })).status;
+    };
+    assert.equal(await fail(reader, false), 403);
+    assert.equal(await fail(other), 403, 'only uploaders');
+    assert.equal(await fail(reader), 200);
+    const log = fs.readFileSync(path.join(site.root, 'data', 'system_errors.log'), 'utf8');
+    assert.match(log, new RegExp(`PDF_COVER[\\s\\S]*book ${id}: PasswordException: No password given second line`));
+});

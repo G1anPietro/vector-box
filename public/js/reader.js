@@ -220,7 +220,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 fd.append('cover', blob, 'cover.jpg');
                 const res = await fetch('../api/books.php?action=set_cover', { method: 'POST', body: fd });
                 if (res.ok) made++;
-            } catch (e) { /* unreadable PDF: it keeps the "PDF" label */ }
+            } catch (e) {
+                // It keeps the "PDF" label; tell the server why, so the admin can see it in the log
+                try {
+                    const fd = new FormData();
+                    fd.append('book_id', book.id);
+                    fd.append('reason', `${(e && e.name) || 'Error'}: ${(e && e.message) || e}`.slice(0, 200));
+                    await fetch('../api/books.php?action=cover_failed', { method: 'POST', body: fd });
+                } catch (e2) { /* offline */ }
+            }
         }
         coversRunning = false;
         if (made) loadCatalog(searchInput && searchInput.value ? searchInput.value.trim() : '');

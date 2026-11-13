@@ -154,6 +154,25 @@ test('the worker writes one document per lesson, with numbered sources', async (
     assert.equal((await peach.get(`/api/appunti.php?action=doc&id=${doc.id}`)).status, 404);
 });
 
+test('an old lesson uploaded today is summarised too; the Study tab tells what the last run did', async () => {
+    await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-10-08', body: 'Recuperati gli appunti di ottobre' });
+    site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
+    calls.length = 0;
+    await worker();
+    assert.equal(calls.filter((c) => /APPUNTI COMPLETI/.test(c.body.systemInstruction.parts[0].text)).length, 1);
+    assert.equal(site.db("SELECT COUNT(*) AS n FROM class_docs WHERE doc_key = ?", [`lezione:${storia}:2026-10-08`])[0].n, 1);
+    const ai = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.ai;
+    assert.equal(ai.last_run.manual, true);
+    assert.equal(ai.last_run.lessons, 1);
+    assert.equal(ai.last_run.stop, '');
+
+    // nothing new: the last run says 0 documents
+    site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
+    await worker();
+    const again = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.ai.last_run;
+    assert.equal(again.lessons + again.tests, 0);
+});
+
 test('a document is rewritten only when its material changes', async () => {
     site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
     calls.length = 0;
@@ -247,6 +266,7 @@ test('the timetable is read from a photo and returned for review, not saved', as
         [1, 1, 'TPSIT', 'Lab TPSIT'], [1, 2, 'TPSIT', 'Lab TPSIT'], [1, 3, 'Storia', ''], [5, 3, 'Matematica', ''],
     ], 'duplicates and impossible days dropped; a label equal to the subject is removed');
     assert.equal(r.json.notes, 'la quinta ora del venerdì non si legge bene');
+    assert.equal(r.json.model, 'gemini-3.8-flash', 'the answer says which model read it');
     assert.equal(site.db('SELECT COUNT(*) AS n FROM class_timetables')[0].n, versions, 'nothing saved until the manager saves');
 
     mode = 'badjson';

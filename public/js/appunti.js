@@ -381,11 +381,25 @@
         const wait = ai.next_manual_at > now;
         const at = new Date(ai.next_manual_at * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
         const btn = el('button', { text: ai.requested ? 'In coda…' : 'Genera ora', disabled: ai.requested || wait, onclick: generateNow });
+        const lr = ai.last_run;
+        let last = null;
+        if (lr && lr.at) {
+            const when = new Date(lr.at * 1000).toLocaleString('it-IT', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+            const made = lr.lessons + lr.tests;
+            const why = lr.stop === 'busy' ? 'Google era sovraccarico: riprovo da solo tra qualche minuto.'
+                : lr.stop === 'quota' ? 'finite le richieste gratuite di oggi: il resto arriva domani.'
+                : lr.stop === 'fault' ? 'c\'è stato un problema con l\'AI (l\'amministratore è stato avvisato).'
+                : lr.pending ? `aspetto la trascrizione di ${lr.pending} file.`
+                : made ? '' : 'nessun materiale nuovo da riassumere (i documenti si rifanno solo quando arriva materiale nuovo o modificato).';
+            last = el('span', { class: 'muted small', text: `Ultimo giro (${lr.manual ? '"Genera ora"' : 'automatico'}, ${when}): `
+                + (made ? `${made} document${made === 1 ? 'o' : 'i'} nuov${made === 1 ? 'o' : 'i'}${why ? '; ' + why : '.'}` : why) });
+        }
         bar.replaceChildren(
             el('p', {}, el('b', { text: `Riassunto automatico ogni giorno alle ${ai.summary_time}.` }),
                 el('br'), el('span', { class: 'muted small', text:
                     (ai.pending_files ? `${ai.pending_files} file da trascrivere. ` : '')
-                    + (ai.requested ? 'Richiesta in coda: ci vuole qualche minuto.' : wait ? `"Genera ora" di nuovo alle ${at}.` : 'Puoi chiedere di farlo subito (una volta l\'ora).') })),
+                    + (ai.requested ? 'Richiesta in coda: ci vuole qualche minuto.' : wait ? `"Genera ora" di nuovo alle ${at}.` : 'Puoi chiedere di farlo subito (una volta l\'ora).') }),
+                last ? el('br') : null, last),
             btn);
     }
 
@@ -801,7 +815,7 @@
         try {
             const r = await post('../api/classi.php', fd);
             renderTimetable(r.periods, r.slots);
-            status(`Letto: ${r.slots.length} ore${r.bells_read ? ' e gli orari della campanella' : ' (orari della campanella non trovati: controllali)'}. `
+            status(`Letto${r.model ? ` con ${r.model}` : ''}: ${r.slots.length} ore${r.bells_read ? ' e gli orari della campanella' : ' (orari della campanella non trovati: controllali)'}. `
                 + 'Controlla la tabella e premi "Salva l\'orario".' + (r.notes ? ` Nota dell'AI: ${r.notes}` : ''), 'ok');
             $('#tt-days').scrollIntoView({ behavior: 'smooth' });
         } catch (e) {
