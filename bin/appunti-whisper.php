@@ -32,7 +32,14 @@ if (!is_file($path)) { $save->execute([':t' => null, ':s' => 'failed', ':id' => 
 $timeout = max(60, (int)envValue('WHISPER_TIMEOUT', '10800'));
 $started = time();
 echo date('Y-m-d H:i:s') . " transcribing file {$f['id']} ({$f['original_name']}, " . round(filesize($path) / 1048576, 1) . " MB)\n";
-$proc = proc_open($cmd . ' ' . escapeshellarg($path), [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+// The settings in .env reach the script as environment variables (they are not exported by PHP otherwise)
+$env = getenv();
+foreach (['WHISPER_MODEL', 'WHISPER_LANGUAGE', 'WHISPER_THREADS', 'WHISPER_MODELS_DIR'] as $k) {
+    $v = trim((string)envValue($k, ''));
+    if ($v !== '') $env[$k] = $v;
+}
+if (!empty($env['WHISPER_MODELS_DIR'])) $env['HF_HOME'] = $env['WHISPER_MODELS_DIR'];   // the download cache too
+$proc = proc_open($cmd . ' ' . escapeshellarg($path), [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
 if (!is_resource($proc)) { fwrite(STDERR, "cannot start WHISPER_CMD\n"); exit(1); }
 stream_set_blocking($pipes[1], false);
 stream_set_blocking($pipes[2], false);

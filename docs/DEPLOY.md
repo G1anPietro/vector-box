@@ -168,17 +168,32 @@ model name unknown, Google down); 0 for "nothing to do" and "daily quota reached
 
 Transcribes lesson recordings on the server, any length, without Gemini:
 
+Whisper gets its own environment in `/opt/vector-box-whisper`, separate from the system Python and from the site,
+with its own Python version: faster-whisper (ctranslate2) may not have wheels for a very new system Python (3.14),
+so the venv uses Python 3.12 through `uv`:
+
 ```bash
-sudo apt install ffmpeg python3-venv
-sudo python3 -m venv /opt/vector-box-whisper
-sudo /opt/vector-box-whisper/bin/pip install faster-whisper
-# model files are downloaded at the first run into the web user's cache (or WHISPER_MODELS_DIR)
+sudo apt install ffmpeg                       # if missing
+curl -LsSf https://astral.sh/uv/install.sh | sudo env UV_INSTALL_DIR=/usr/local/bin sh   # or: pipx install uv
+sudo UV_PYTHON_INSTALL_DIR=/opt/vector-box-whisper/python uv venv --python 3.12 /opt/vector-box-whisper/venv
+sudo uv pip install --python /opt/vector-box-whisper/venv/bin/python faster-whisper
+sudo mkdir -p /opt/vector-box-whisper/models && sudo chown www-data: /opt/vector-box-whisper/models
 ```
 
-`.env`: `WHISPER_CMD=/opt/vector-box-whisper/bin/python /var/www/vector-box/tools/whisper-transcribe.py`,
+`.env`: `WHISPER_CMD=/opt/vector-box-whisper/venv/bin/python /var/www/vector-box/tools/whisper-transcribe.py`,
+`WHISPER_MODELS_DIR=/opt/vector-box-whisper/models` (the model is downloaded there at the first run).
+
 `WHISPER_MODEL=small`. A separate timer (one file per run, its own lock):
 `vector-box-appunti-whisper.service` (`User=www-data`, `ExecStart=/usr/bin/php /var/www/vector-box/bin/appunti-whisper.php`,
 `TimeoutStartSec=4h`, `Nice=15`) and `.timer` (`OnUnitActiveSec=5min`). Exit code 1 when a transcription fails.
+
+## 4d. Next-lesson pushes on time (optional)
+
+`bin/appunti-ai.php` sends the "next lesson" pushes (5 minutes before the end of each hour, for members who turn them
+on) at the start of every run, before the AI lock. With the 5-minute timer they can arrive up to 5 minutes late, and
+not at all while a long AI run keeps the service busy. For punctual ones add a second timer every minute:
+`vector-box-appunti-bells.service` (`User=www-data`, `ExecStart=/usr/bin/php /var/www/vector-box/bin/appunti-ai.php --bells-only`)
+and `.timer` (`OnCalendar=*-*-* *:*:30`, `AccuracySec=5s`). Each push is sent once per lesson (table `class_bell_sent`).
 
 ## 5. After deploying
 

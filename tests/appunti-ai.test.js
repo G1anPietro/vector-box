@@ -337,10 +337,10 @@ test('Gemini overloaded: retries, then the fast model; a busy Google is not a fa
 
 test('Whisper on the server transcribes recordings of any size, Gemini does not get them', async () => {
     const fake = path.join(site.root, 'fake-whisper.sh');
-    fs.writeFileSync(fake, '#!/bin/sh\nif [ -n "$FAIL_WHISPER" ]; then echo "boom" >&2; exit 3; fi\necho "Prof: oggi Napoleone. File $(basename "$1")"\n');
+    fs.writeFileSync(fake, '#!/bin/sh\nif [ -n "$FAIL_WHISPER" ]; then echo "boom" >&2; exit 3; fi\necho "Prof: oggi Napoleone. File $(basename "$1") $WHISPER_MODEL"\n');
     const wav = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WAVEfmt '), Buffer.from([16, 0, 0, 0, 1, 0, 1, 0, 0x40, 0x1f, 0, 0, 0x80, 0x3e, 0, 0, 2, 0, 16, 0]),
         Buffer.from('data'), Buffer.alloc(4), Buffer.alloc(400)]);
-    setEnv({ WHISPER_CMD: `sh ${fake}` });
+    setEnv({ WHISPER_CMD: `sh ${fake}`, WHISPER_MODEL: 'base' });
     await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-11-10' }, [{ name: 'lezione.wav', content: wav, type: 'audio/wav' }]);
     calls.length = 0;
     await worker();
@@ -348,8 +348,8 @@ test('Whisper on the server transcribes recordings of any size, Gemini does not 
     const whisper = () => run('php', [path.join(site.root, 'bin/appunti-whisper.php')], { env: { ...process.env, FAIL_WHISPER: process.env.FAIL_WHISPER || '' } });
     await whisper();
     const f = site.db("SELECT text, text_status FROM class_item_files WHERE original_name = 'lezione.wav'")[0];
-    assert.deepEqual(f, { text: 'Prof: oggi Napoleone. File ' + f.text.split('File ')[1], text_status: 'done' });
-    assert.match(f.text, /\.wav$/);
+    assert.equal(f.text_status, 'done');
+    assert.match(f.text, /^Prof: oggi Napoleone\. File .+\.wav base$/, 'the model chosen in .env reaches the script');
 
     // a failure is retried (three times at most) and makes the run exit with 1
     await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-11-10' }, [{ name: 'rotto.wav', content: wav, type: 'audio/wav' }]);
@@ -450,6 +450,47 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
     // deleting the test deletes its documents
     await ap(luigi, { action: 'delete_event', id });
     assert.equal(site.db('SELECT COUNT(*) AS n FROM class_docs WHERE event_id = ?', [id])[0].n, 0);
+});
+
+test('"Genera ora" on chosen days rewrites the lessons of those days, even old ones', async () => {
+    const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    await upload(mario, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: day(-60), body: 'Il Congresso di Vienna, 1815' });
+    site.db("UPDATE class_items SET updated_at = 1000 WHERE lesson_date = ?", [day(-60)]);
+    const gen = (body) => { site.db('UPDATE school_classes SET ai_last_manual = NULL WHERE id = ?', [classId]); return ap(luigi, { action: 'generate', class_id: classId, ...body }); };
+    assert.equal((await gen({ from: day(-1), to: day(1) })).json.code, 'bad_range', 'no future days');
+    assert.equal((await gen({ from: day(-5), to: day(-10) })).json.code, 'bad_range');
+    assert.equal((await gen({ from: day(-300), to: day(0) })).json.code, 'bad_range', 'at most 120 days');
+    const has = () => site.db("SELECT COUNT(*) AS n FROM class_docs WHERE kind = 'lezione' AND lesson_date = ?", [day(-60)])[0].n;
+    site.db('UPDATE school_classes SET ai_requested_at = 1, ai_range_from = NULL WHERE id = ?', [classId]);
+    await worker();
+    assert.equal(has(), 0, 'normally old lessons are left alone');
+    assert.equal((await gen({ from: day(-65), to: day(-55) })).status, 200);
+    calls.length = 0;
+    await worker();
+    assert.equal(has(), 1);
+    assert.ok(calls.every((c) => !/Lezione del/.test(c.body.contents[0].parts[0].text) || c.body.contents[0].parts[0].text.includes('Vienna')), 'only the chosen days');
+    assert.equal(site.db('SELECT ai_range_from FROM school_classes WHERE id = ?', [classId])[0].ai_range_from, null, 'the range is used once');
+});
+
+test('a test can say which lessons to study (a topic started before the previous test)', async () => {
+    const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    const add = (extra) => ap(luigi, { action: 'add_event', class_id: classId, subject_id: storia, kind: 'verifica', date: day(10), title: 'Vienna', ...extra });
+    assert.equal((await add({ period_from: day(-5), period_to: day(12) })).json.code, 'bad_period', 'not after the test');
+    assert.equal((await add({ period_from: day(-5), period_to: day(-9) })).json.code, 'bad_period');
+    assert.equal((await add({ period_to: day(-9) })).json.code, 'bad_period');
+    const id = (await add({ period_from: day(-62), period_to: day(-50) })).json.id;
+    const ev = (await luigi.get(`/api/appunti.php?action=events&class_id=${classId}&from=${day(-1)}&to=${day(30)}`)).json.events.find((e) => e.id === id);
+    assert.deepEqual([ev.period_from, ev.period_to, ev.period], [day(-62), day(-50), [day(-62), day(-50)]]);
+    site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
+    calls.length = 0;
+    await worker();
+    const handout = calls.find((c) => c.body.systemInstruction.parts[0].text.includes('DISPENSA COMPLETA'));
+    assert.match(handout.body.contents[0].parts[0].text, /Vienna/, 'the chosen old lesson is used');
+    // back to automatic: emptied fields
+    await ap(luigi, { action: 'edit_event', id, subject_id: storia, kind: 'verifica', date: day(10), title: 'Vienna', period_from: '', period_to: '' });
+    const ev2 = (await luigi.get(`/api/appunti.php?action=events&class_id=${classId}&from=${day(-1)}&to=${day(30)}`)).json.events.find((e) => e.id === id);
+    assert.equal(ev2.period_from, null);
+    await ap(luigi, { action: 'delete_event', id });
 });
 
 test('the worker cannot be run from the web', async () => {
