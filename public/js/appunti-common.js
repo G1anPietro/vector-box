@@ -240,6 +240,28 @@
             tree);
     }
 
+    /**
+     * The questions of a lesson (JSON {domande:[{domanda, risposta, origine: 'prof'|'ai', fonte}]}): the teacher's first,
+     * each answer hidden until you open it (to test yourself).
+     */
+    function renderQuestions(content) {
+        let data = null;
+        try { data = typeof content === 'string' ? JSON.parse(content) : content; } catch (e) { /* below */ }
+        const list = data && Array.isArray(data.domande) ? data.domande : null;
+        if (!list) return el('p', { class: 'empty', text: 'Domande non leggibili.' });
+        const prof = list.filter((q) => q.origine === 'prof');
+        const ai = list.filter((q) => q.origine !== 'prof');
+        const item = (q) => el('li', { class: 'qa' },
+            el('div', { class: 'qa-q' }, el('span', { class: 'qa-badge ' + (q.origine === 'prof' ? 'prof' : 'ai'), text: q.origine === 'prof' ? 'Fatta dal prof' : 'Probabile' }),
+                inline(String(q.domanda || '')), q.fonte ? el('span', { class: 'cite', text: ' ' + q.fonte }) : null),
+            q.risposta ? el('details', {}, el('summary', { text: 'Risposta' }), el('div', { class: 'qa-a md' }, md(String(q.risposta)))) : null);
+        return el('div', { class: 'questions' },
+            prof.length ? el('h3', { text: `Domande del prof (${prof.length})` }) : el('p', { class: 'muted small', text: 'Nel materiale non ci sono domande fatte dal prof: queste sono quelle probabili.' }),
+            prof.length ? el('ol', { class: 'qa-list' }, ...prof.map(item)) : null,
+            ai.length ? el('h3', { text: prof.length ? `Altre domande probabili (${ai.length})` : `Domande probabili (${ai.length})` }) : null,
+            ai.length ? el('ol', { class: 'qa-list' }, ...ai.map(item)) : null);
+    }
+
     /** True when a plain text looks like Markdown written by an AI or a person (so it is worth rendering). */
     function looksLikeMarkdown(s) {
         return /(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s|```)|\*\*\S|__\S|\|\s*-{3,}/.test(String(s || ''));
@@ -251,8 +273,8 @@
     function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode */ } }
     function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 
-    window.AppuntiCommon = { el, getJson, post, rawPost, toast, busy, md, renderSchema, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    window.AppuntiCommon = { el, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
-        DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema' } };
+        DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };
 })();

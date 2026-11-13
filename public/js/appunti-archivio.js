@@ -81,7 +81,7 @@
         ['appunti', '📝', 'Appunti', (c) => c.appunti || 0],
         ['foto', '🖼', 'Foto', (c) => c.foto || 0],
         ['audio', '🎧', 'Audio', (c) => c.audio || 0],
-        ['domande', '❓', 'Domande del prof', (c) => c.domande || 0],
+        ['domande', '❓', 'Domande', (c) => (c.domande || 0) + (c.domande_ai || 0)],
         ['slide', '📊', 'Slide e materiale del prof', (c) => c.slide || 0],
         ['libro', '📖', 'Libro', (c) => c.libro || 0],
         ['prova', '📋', 'Verifiche di prova', (c) => c.prova || 0],
@@ -114,7 +114,7 @@
 
     const fileIcon = (f) => f.mime.startsWith('image/') ? '🖼' : f.mime.startsWith('audio/') ? '🎧' : f.mime === 'application/pdf' ? '📕'
         : /word|opendocument\.text/.test(f.mime) ? '📄' : /presentation/.test(f.mime) ? '📊' : '📃';
-    const docEntry = (d, label) => ({ type: 'doc', id: d.id, kind: d.kind, icon: d.kind === 'schema' ? '🧠' : d.kind === 'quiz' ? '❓' : d.event_id ? '📘' : '📝',
+    const docEntry = (d, label) => ({ type: 'doc', id: d.id, kind: d.kind, icon: d.kind === 'schema' ? '🧠' : d.kind === 'quiz' || d.kind === 'domande' ? '❓' : d.event_id ? '📘' : '📝',
         label: label + (d.manual ? ` · di ${d.author || '?'}` : ''), meta: d.status === 'ok' ? (d.lesson_date ? shortDay.format(C.parseDate(d.lesson_date)) : '') : 'non riuscito',
         disabled: d.status !== 'ok' });
     /** Entries of one item: its text and its files (optionally only some files). */
@@ -169,6 +169,10 @@
                     const ev = d.event_id ? events.find((e) => e.id === d.event_id) : null;
                     entries.push(docEntry(d, ev ? `Schema per la ${ev.kind === 'interrogazione' ? 'interrogazione' : 'verifica'}${ev.title ? ' · ' + ev.title : ''}` : 'Schema della lezione'));
                 }
+            } else if (cat === 'domande') {
+                // the lesson questions written by the AI (teacher's questions first), then those uploaded by classmates
+                for (const d of subjDocs.filter((x) => x.kind === 'domande')) entries.push(docEntry(d, 'Domande della lezione'));
+                for (const it of await itemsOfSubject()) if (it.kind === 'domande') entries.push(...itemEntries(it, true));
             } else if (cat) {
                 const items = await itemsOfSubject();
                 for (const it of items) {
@@ -181,6 +185,7 @@
                 const { items } = await getJson('../api/appunti.php?' + q);
                 for (const d of subjDocs.filter((x) => x.kind === 'lezione' && x.lesson_date === folder)) entries.push(docEntry(d, d.manual ? 'Appunti della lezione' : 'Appunti della lezione (AI)'));
                 for (const d of subjDocs.filter((x) => x.kind === 'schema' && !x.event_id && x.lesson_date === folder)) entries.push(docEntry(d, 'Schema della lezione'));
+                for (const d of subjDocs.filter((x) => x.kind === 'domande' && x.lesson_date === folder)) entries.push(docEntry(d, 'Domande della lezione'));
                 for (const it of items.slice().reverse()) entries.push(...itemEntries(it, false));
             }
         } catch (e) { status(e.message, 'err'); }
@@ -231,7 +236,8 @@
                     C.looksLikeMarkdown(it.body) ? el('div', { class: 'md' }, md(it.body)) : el('div', { class: 'pv-text', text: it.body }));
             } else {
                 const { doc } = await getJson(`../api/appunti.php?action=doc&id=${en.id}`);
-                const body = doc.kind === 'quiz' ? quizList(doc.content) : doc.kind === 'schema' ? C.renderSchema(doc.content) : el('div', { class: 'md' }, md(doc.content));
+                const body = doc.kind === 'quiz' ? quizList(doc.content) : doc.kind === 'schema' ? C.renderSchema(doc.content)
+                    : doc.kind === 'domande' ? C.renderQuestions(doc.content) : el('div', { class: 'md' }, md(doc.content));
                 pv.replaceChildren(head(doc.title, el('a', { class: 'ghost-link', href: `appunti.php?class=${classId}&tab=study`, text: 'Apri in Studio' })),
                     el('p', { class: 'muted small', text: doc.manual ? `Fatto con un'altra AI, caricato da ${doc.author || '?'}` : 'Scritto dall\'AI dal materiale della classe: può sbagliare, controlla.' }),
                     body);

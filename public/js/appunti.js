@@ -297,7 +297,7 @@
 
     /* ---------- study: AI documents ---------- */
 
-    const DOC_KINDS = { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema' };
+    const DOC_KINDS = { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' };
     const DOC_ORDER = ['completo', 'riassunto', 'preparazione', 'quiz', 'schema'];
     let studyDocs = [];
     let openDoc = null;
@@ -397,6 +397,8 @@
                 el('button', { class: 'ghost mini', text: 'Apri', disabled: d.status !== 'ok', onclick: () => showDoc(d.id) }),
                 ...studyDocs.filter((x) => x.kind === 'schema' && !x.event_id && x.status === 'ok' && x.subject_id === d.subject_id && x.lesson_date === d.lesson_date)
                     .slice(0, 1).map((x) => el('button', { class: 'ghost mini', text: '🧠 Schema', onclick: () => showDoc(x.id) })),
+                ...studyDocs.filter((x) => x.kind === 'domande' && x.status === 'ok' && x.subject_id === d.subject_id && x.lesson_date === d.lesson_date)
+                    .slice(0, 1).map((x) => el('button', { class: 'ghost mini', text: '❓ Domande', onclick: () => showDoc(x.id) })),
                 d.can_delete ? el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteDoc(d) }) : null))));
     }
     $('#study-subject').addEventListener('change', renderStudyLessons);
@@ -422,10 +424,12 @@
                 body.replaceChildren(quiz ? renderQuiz(quiz) : el('p', { text: 'Quiz non leggibile.' }));
             } else if (doc.kind === 'schema') {
                 body.replaceChildren(window.AppuntiCommon.renderSchema(doc.content));
+            } else if (doc.kind === 'domande') {
+                body.replaceChildren(window.AppuntiCommon.renderQuestions(doc.content));
             } else {
                 body.replaceChildren(md(doc.content));
             }
-            $('#doc-download').hidden = doc.kind === 'quiz' || doc.kind === 'schema';
+            $('#doc-download').hidden = ['quiz', 'schema', 'domande'].includes(doc.kind);
             $('#doc-sources').hidden = !doc.sources.length;
             const kinds = { appunti: 'appunti', slide: 'slide del prof', libro: 'libro', domande: 'domande del prof', prova: 'verifica di prova', altro: 'altro' };
             $('#doc-sources-list').replaceChildren(...doc.sources.map((s) => el('li', { value: s.n,
@@ -467,7 +471,7 @@
                 score.textContent = `${right} / ${qs.length}` + (answered === qs.length ? ` · ${Math.round(100 * right / qs.length)}%` : '');
             } })));
             box.append(el('div', { class: 'quiz-q' },
-                q.topic ? el('div', { class: 'topic', text: q.topic }) : null,
+                q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
                 el('div', {}, el('b', { text: `${n + 1}. ` }), q.question), opts, why));
         });
         box.append(el('button', { class: 'ghost', text: 'Ricomincia', onclick: () => $('#doc-body').replaceChildren(renderQuiz(quiz)) }));

@@ -31,7 +31,10 @@ const gemini = http.createServer((req, res) => {
         const user = body.contents ? body.contents[0].parts.filter((p) => p.text).map((p) => p.text).join(' ') : '';
         const quiz = { questions: [0, 1, 2, 3].map((i) => ({ topic: 'Napoleone', question: `Domanda ${i}?`, options: ['a', 'b', 'c', 'd'], answer: i, explanation: 'perché sì' })) };
         let text;
-        if (system.includes('SCHEMA (mappa concettuale)')) {
+        if (system.includes('estrai le DOMANDE')) {
+            text = JSON.stringify({ domande: [{ domanda: 'Dove nasce Napoleone?', risposta: 'Ad Ajaccio', origine: 'prof', fonte: '[1]' },
+                { domanda: 'Che cosa fu il Consolato?', risposta: '', origine: 'ai' }] });
+        } else if (system.includes('SCHEMA (mappa concettuale)')) {
             text = JSON.stringify({ title: 'Napoleone', children: [{ label: 'Vita', note: 'nasce nel 1769', children: [{ label: 'Corsica' }] }, { label: 'Campagne' }] });
         } else if (system.includes('orario scolastico')) {
             text = mode === 'badjson' ? 'non lo so' : JSON.stringify({
@@ -140,13 +143,20 @@ test('"Genera ora": once an hour per class, members only', async () => {
 test('the worker writes one document per lesson, with numbered sources', async () => {
     calls.length = 0;
     await worker();
-    assert.equal(calls.length, 2, 'the lesson document, then its schema');
-    const prompt = calls[0].body.contents[0].parts[0].text;
-    assert.match(calls[0].body.systemInstruction.parts[0].text, /APPUNTI COMPLETI/);
+    assert.equal(calls.length, 3, 'the questions, the lesson document, then its schema');
+    const lessonCall = calls.find((c) => /APPUNTI COMPLETI/.test(c.body.systemInstruction.parts[0].text));
+    assert.match(lessonCall.body.systemInstruction.parts[0].text, /NON mettere domande/);
+    const prompt = lessonCall.body.contents[0].parts[0].text;
     assert.match(prompt, /<materiale>[\s\S]*\[1\] Appunti di ai_luigi[\s\S]*Napoleone nasce nel 1769[\s\S]*TRASCRITTO lavagna\.png[\s\S]*\[2\] Slide\/materiale del prof di ai_mario[\s\S]*Campagna d'Italia[\s\S]*<\/materiale>/);
 
     const list = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json;
     assert.equal(list.ai.requested, false, 'the request was served');
+    const qDoc = list.docs.find((d) => d.kind === 'domande');
+    assert.ok(qDoc, 'the questions have their own document');
+    const qs = JSON.parse((await luigi.get(`/api/appunti.php?action=doc&id=${qDoc.id}`)).json.doc.content).domande;
+    assert.deepEqual(qs.map((q) => q.origine), ['prof', 'ai'], 'the teacher\'s questions first');
+    const t = (await luigi.get(`/api/appunti.php?action=tree&class_id=${classId}`)).json;
+    assert.equal(t.subjects[0].cats.domande_ai, 1, 'counted in the archive\'s Domande folder');
     list.docs = list.docs.filter((d) => d.kind === 'lezione');
     assert.equal(list.docs.length, 1);
     assert.equal(list.docs[0].kind, 'lezione');
@@ -166,7 +176,7 @@ test('an old lesson uploaded today is summarised too; the Study tab tells what t
     assert.equal(site.db("SELECT COUNT(*) AS n FROM class_docs WHERE doc_key = ?", [`lezione:${storia}:2026-10-08`])[0].n, 1);
     const ai = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.ai;
     assert.equal(ai.last_run.manual, true);
-    assert.equal(ai.last_run.lessons, 2, 'the old lesson and its schema');
+    assert.equal(ai.last_run.lessons, 3, 'the old lesson, its questions and its schema');
     assert.equal(ai.last_run.stop, '');
 
     // nothing new: the last run says 0 documents
@@ -186,7 +196,7 @@ test('a document is rewritten only when its material changes', async () => {
     await ap(luigi, { action: 'edit_item', id: item.id, subject_id: storia, kind: 'appunti', lesson_date: item.lesson_date, title: '', body: 'Napoleone nasce ad Ajaccio nel 1769' });
     site.db('UPDATE school_classes SET ai_requested_at = 1 WHERE id = ?', [classId]);
     await worker();
-    assert.equal(calls.length, 1, 'the lesson is rewritten; its schema only if the lesson text changed (the fake answers the same)');
+    assert.equal(calls.length, 2, 'questions and lesson rewritten; the schema only if the lesson text changed (the fake answers the same)');
     assert.match(calls[0].body.contents[0].parts[0].text, /Ajaccio/);
 });
 
@@ -196,12 +206,12 @@ test('the daily run happens once, at the class time', async () => {
     site.db("UPDATE school_classes SET summary_time = '00:00', ai_last_auto = NULL WHERE id = ?", [classId]);
     calls.length = 0;
     await worker();
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     const last = site.db('SELECT ai_last_auto FROM school_classes WHERE id = ?', [classId])[0].ai_last_auto;
     assert.match(last, /^\d{4}-\d{2}-\d{2}$/);
     await ap(luigi, { action: 'edit_item', id: item.id, subject_id: storia, kind: 'appunti', lesson_date: item.lesson_date, title: '', body: 'ancora' });
     await worker();
-    assert.equal(calls.length, 1, 'already done today');
+    assert.equal(calls.length, 2, 'already done today');
 });
 
 test('daily budget and Google quota errors stop the worker without losing work', async () => {
@@ -373,6 +383,7 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
     assert.match(bySystem('PREPARAZIONE MIRATA')[0].body.contents[0].parts[0].text, /date delle battaglie/);
     assert.equal(bySystem('RIASSUNTO').length, 1);
     assert.match(bySystem('quiz')[0].url, /flash-lite/);
+    assert.match(bySystem('quiz')[0].body.contents[0].parts[0].text, /DOMANDE DEL PROF:\n- Dove nasce Napoleone\? → Ad Ajaccio/, 'the quiz starts from the teacher\'s questions');
 
     const docs = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.docs.filter((d) => d.event_id === id);
     assert.deepEqual(docs.map((d) => d.kind).sort(), ['completo', 'preparazione', 'quiz', 'riassunto', 'schema']);

@@ -353,3 +353,14 @@ details[open] > summary.sc-box .sc-label::before { content: "▾ "; }
 .sc-note { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .audio-file { display: flex; flex-direction: column; gap: 4px; width: 100%; }
 .audio-file audio, .pv-audio { width: 100%; max-width: 520px; margin-top: 6px; }
+
+/* ---------- Questions of a lesson ---------- */
+.questions h3 { margin: 16px 0 6px; }
+.qa-list { margin-left: 22px; display: grid; gap: 10px; }
+.qa-q { font-weight: 600; overflow-wrap: anywhere; }
+.qa-badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; margin-right: 6px; vertical-align: 2px; }
+.qa-badge.prof { background: var(--accent); color: var(--accent-ink); }
+.qa-badge.ai { background: var(--line); color: var(--text); }
+.qa details { margin-top: 4px; }
+.qa details summary { margin: 0; font-size: 14px; }
+.qa-a { margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--line); }

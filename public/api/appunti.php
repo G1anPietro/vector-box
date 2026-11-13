@@ -278,7 +278,7 @@ try {
                                 FROM class_item_files f JOIN class_items i ON i.id = f.item_id WHERE f.class_id = :c GROUP BY 1, 2");
             $st->execute([':c' => $classId]);
             foreach ($st->fetchAll(PDO::FETCH_NUM) as [$sid, $kind, $n]) $cats[(int)$sid][$kind] = (int)$n;
-            $st = $db->prepare("SELECT subject_id, CASE WHEN kind = 'schema' THEN 'schemi' WHEN event_id IS NOT NULL THEN 'verifiche' ELSE 'ai' END, COUNT(*)
+            $st = $db->prepare("SELECT subject_id, CASE WHEN kind = 'schema' THEN 'schemi' WHEN kind = 'domande' THEN 'domande_ai' WHEN event_id IS NOT NULL THEN 'verifiche' ELSE 'ai' END, COUNT(*)
                                 FROM class_docs WHERE class_id = :c AND status = 'ok' GROUP BY 1, 2");
             $st->execute([':c' => $classId]);
             foreach ($st->fetchAll(PDO::FETCH_NUM) as [$sid, $kind, $n]) $cats[(int)$sid][$kind] = (int)$n;
