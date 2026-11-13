@@ -164,6 +164,22 @@ model name unknown, Google down); 0 for "nothing to do" and "daily quota reached
 `.env`: `GEMINI_API_KEY`, `GEMINI_AUTH`, optionally `GEMINI_MODEL_FAST` / `GEMINI_MODEL_SMART`
 (`sudo -u www-data php bin/appunti-ai.php --models` lists what the key can use).
 
+## 4c. Whisper for audio recordings (optional)
+
+Transcribes lesson recordings on the server, any length, without Gemini:
+
+```bash
+sudo apt install ffmpeg python3-venv
+sudo python3 -m venv /opt/vector-box-whisper
+sudo /opt/vector-box-whisper/bin/pip install faster-whisper
+# model files are downloaded at the first run into the web user's cache (or WHISPER_MODELS_DIR)
+```
+
+`.env`: `WHISPER_CMD=/opt/vector-box-whisper/bin/python /var/www/vector-box/tools/whisper-transcribe.py`,
+`WHISPER_MODEL=small`. A separate timer (one file per run, its own lock):
+`vector-box-appunti-whisper.service` (`User=www-data`, `ExecStart=/usr/bin/php /var/www/vector-box/bin/appunti-whisper.php`,
+`TimeoutStartSec=4h`, `Nice=15`) and `.timer` (`OnUnitActiveSec=5min`). Exit code 1 when a transcription fails.
+
 ## 5. After deploying
 
 ```bash

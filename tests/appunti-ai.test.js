@@ -335,6 +335,31 @@ test('Gemini overloaded: retries, then the fast model; a busy Google is not a fa
     assert.equal(site.db("SELECT text_status FROM class_item_files WHERE original_name = 'occupato.png'")[0].text_status, 'done');
 });
 
+test('Whisper on the server transcribes recordings of any size, Gemini does not get them', async () => {
+    const fake = path.join(site.root, 'fake-whisper.sh');
+    fs.writeFileSync(fake, '#!/bin/sh\nif [ -n "$FAIL_WHISPER" ]; then echo "boom" >&2; exit 3; fi\necho "Prof: oggi Napoleone. File $(basename "$1")"\n');
+    const wav = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WAVEfmt '), Buffer.from([16, 0, 0, 0, 1, 0, 1, 0, 0x40, 0x1f, 0, 0, 0x80, 0x3e, 0, 0, 2, 0, 16, 0]),
+        Buffer.from('data'), Buffer.alloc(4), Buffer.alloc(400)]);
+    setEnv({ WHISPER_CMD: `sh ${fake}` });
+    await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-11-10' }, [{ name: 'lezione.wav', content: wav, type: 'audio/wav' }]);
+    calls.length = 0;
+    await worker();
+    assert.equal(calls.filter((c) => /trascrittore/.test(c.body.systemInstruction.parts[0].text)).length, 0, 'not sent to Gemini');
+    const whisper = () => run('php', [path.join(site.root, 'bin/appunti-whisper.php')], { env: { ...process.env, FAIL_WHISPER: process.env.FAIL_WHISPER || '' } });
+    await whisper();
+    const f = site.db("SELECT text, text_status FROM class_item_files WHERE original_name = 'lezione.wav'")[0];
+    assert.deepEqual(f, { text: 'Prof: oggi Napoleone. File ' + f.text.split('File ')[1], text_status: 'done' });
+    assert.match(f.text, /\.wav$/);
+
+    // a failure is retried (three times at most) and makes the run exit with 1
+    await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-11-10' }, [{ name: 'rotto.wav', content: wav, type: 'audio/wav' }]);
+    await assert.rejects(run('php', [path.join(site.root, 'bin/appunti-whisper.php')], { env: { ...process.env, FAIL_WHISPER: '1' } }), (e) => e.code === 1 && /boom/.test(e.stderr));
+    assert.deepEqual(site.db("SELECT text_status, text_attempts FROM class_item_files WHERE original_name = 'rotto.wav'")[0], { text_status: 'pending', text_attempts: 1 });
+    await whisper();
+    assert.equal(site.db("SELECT text_status FROM class_item_files WHERE original_name = 'rotto.wav'")[0].text_status, 'done');
+    setEnv();
+});
+
 test('the desktop menu links the notes page', async () => {
     const html = await (await fetch(`${site.base}/index.php`)).text();
     assert.match(html, /href="pages\/appunti\.php"[^>]*>\/\/ APPUNTI DI CLASSE</);

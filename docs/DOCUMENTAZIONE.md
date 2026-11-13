@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-12 (schema del database **v14**, 161 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-12 (schema del database **v14**, 162 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -152,8 +152,13 @@ con il percorso in alto.
 - **Schemi:** per ogni lezione e ogni verifica l'AI fa anche uno schema (mappa concettuale) in JSON di testo, non un'immagine
   (pochi KB, si apre subito): la pagina lo disegna come un albero con rami che si aprono e si chiudono. Si può caricare anche
   uno schema fatto con un'altra AI (l'ultimo PROMPT del file "Per AI").
-- **Audio:** si possono caricare registrazioni delle lezioni (mp3, m4a, aac, wav, ogg, opus, flac, webm); l'AI le trascrive
-  come le foto (fino a circa 18 MB per file, oltre restano solo da ascoltare) e la trascrizione entra negli appunti.
+- **Audio:** si possono caricare registrazioni delle lezioni (mp3, m4a, aac, wav, ogg, opus, flac, webm). Con **Whisper** sul
+  server (`WHISPER_CMD`, `bin/appunti-whisper.php` con il suo timer) vengono trascritte lì, di qualsiasi lunghezza e senza
+  Gemini; senza Whisper le trascrive Gemini fino a circa 18 MB. La trascrizione entra negli appunti.
+- **Domande:** per ogni lezione l'AI scrive anche un documento con le **domande**, separate dagli appunti: prima quelle che
+  il prof ha fatto davvero (dalle registrazioni, dalle domande caricate, dagli appunti), con la risposta; quelle probabili solo
+  se sono poche. Stanno nella cartella **Domande** dell'Archivio e accanto a ogni lezione in Studio; la risposta si apre con
+  un tocco. Il **quiz** di una verifica parte da queste domande (prima quelle del prof) e ne crea di nuove solo se mancano.
 - ogni documento si scarica o si stampa in PDF. L'AI può sbagliare: va sempre controllata.
 
 **Notifiche:** la campanella in alto raccoglie i promemoria di ogni verifica e interrogazione (2 giorni prima e il giorno
@@ -352,7 +357,8 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | `notifiche.php` | registrati | GET `?action=list` (ultime 30, non lette, dispositivi), `vapid` (chiave pubblica). POST `read {ids}`, `read_all`, `subscribe {endpoint, keys}`, `unsubscribe {endpoint}`, `test` |
 
 Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `altro`. Tipi di data: `verifica`,
-`interrogazione`, `altro`. Tipi di documento: `lezione`, `completo`, `riassunto`, `preparazione`, `quiz` (JSON), `schema` (JSON:
+`interrogazione`, `altro`. Tipi di documento: `lezione`, `domande` (JSON: `{domande:[{domanda, risposta, origine: prof|ai, fonte}]}`), `completo`,
+`riassunto`, `preparazione`, `quiz` (JSON), `schema` (JSON:
 `{title, children:[{label, note, children}]}`).
 
 ### Amministrazione e stato
@@ -428,7 +434,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 161 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # 162 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 

@@ -131,7 +131,10 @@ function aiLog(string $msg): void {
 /** Transcribes pending photos/PDFs, oldest first. Returns how many were done; stops when the quota is used up. */
 function aiTranscribePending(PDO $db, int $max): int {
     $st = $db->prepare("SELECT f.* FROM class_item_files f JOIN school_classes c ON c.id = f.class_id AND c.status = 'active'
-                        WHERE f.text_status = 'pending' AND f.text_attempts < :a ORDER BY f.id LIMIT :n");
+                        WHERE f.text_status = 'pending' AND f.text_attempts < :a"
+                        // with Whisper on the server, recordings are transcribed there (bin/appunti-whisper.php)
+                        . (trim((string)envValue('WHISPER_CMD', '')) !== '' ? " AND f.mime NOT LIKE 'audio/%'" : '')
+                        . " ORDER BY f.id LIMIT :n");
     $st->bindValue(':a', AI_MAX_ATTEMPTS, PDO::PARAM_INT);
     $st->bindValue(':n', $max, PDO::PARAM_INT);
     $st->execute();
