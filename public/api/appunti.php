@@ -13,6 +13,8 @@
 // GET  ?action=zip&class_id=ID&scope=day&date=D[&subject_id] | scope=subject&subject_id | scope=event&event_id
 //                                                      -> everything as a .zip with an index and a PROMPT.txt
 // GET  ?action=ai_pack&class_id=ID&scope=...           -> the same as ONE Markdown file (prompts + all text), for any AI
+// GET  ?action=tree&class_id=ID                        -> subjects -> lesson days with counts (archive page)
+// GET  ?action=file_text&id=ID                         -> the text of a file (extracted or transcribed), for previews
 // POST multipart {action:"upload", class_id, subject_id, kind, lesson_date, period?, title?, body?, files[]}
 // POST JSON {action:"edit_item", id, subject_id, kind, lesson_date, period, title, body} | {action:"delete_item", id}
 //           {action:"add_event", class_id, subject_id, kind, date, title, topics}
@@ -129,6 +131,16 @@ try {
 
         header('Cache-Control: no-store');
 
+        if ($action === 'file_text') {
+            $st = $db->prepare('SELECT id, class_id, original_name, mime, text, text_status FROM class_item_files WHERE id = :id');
+            $st->execute([':id' => (int)($_GET['id'] ?? 0)]);
+            $f = $st->fetch();
+            if (!$f) apFail('not_found', 'File not found', 404);
+            apClass($db, (int)$f['class_id'], $me, $isAdmin);
+            jsonResponse(['success' => true, 'name' => $f['original_name'], 'mime' => $f['mime'],
+                'status' => $f['text_status'], 'text' => $f['text_status'] === 'done' ? $f['text'] : null]);
+        }
+
         if ($action === 'doc') {
             $st = $db->prepare('SELECT d.*, s.name AS subject FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id WHERE d.id = :id');
             $st->execute([':id' => (int)($_GET['id'] ?? 0)]);
@@ -234,6 +246,36 @@ try {
                     'last_run' => json_decode((string)appSetting($db, 'ai_last_run:' . $classId, 'null'), true),
                 ],
             ]);
+        }
+
+        if ($action === 'tree') {
+            $st = $db->prepare("SELECT i.subject_id, i.lesson_date, COUNT(DISTINCT i.id) AS items, COUNT(f.id) AS files
+                                FROM class_items i LEFT JOIN class_item_files f ON f.item_id = i.id
+                                WHERE i.class_id = :c GROUP BY i.subject_id, i.lesson_date");
+            $st->execute([':c' => $classId]);
+            $days = [];
+            foreach ($st->fetchAll() as $r) {
+                $days[(int)$r['subject_id']][$r['lesson_date']] = ['date' => $r['lesson_date'], 'items' => (int)$r['items'], 'files' => (int)$r['files'], 'docs' => 0];
+            }
+            $st = $db->prepare("SELECT subject_id, lesson_date, COUNT(*) AS n FROM class_docs
+                                WHERE class_id = :c AND status = 'ok' AND kind = 'lezione' AND lesson_date IS NOT NULL GROUP BY subject_id, lesson_date");
+            $st->execute([':c' => $classId]);
+            foreach ($st->fetchAll() as $r) {
+                $d = &$days[(int)$r['subject_id']][$r['lesson_date']];
+                $d = ($d ?? ['date' => $r['lesson_date'], 'items' => 0, 'files' => 0, 'docs' => 0]);
+                $d['docs'] = (int)$r['n'];
+                unset($d);
+            }
+            $st = $db->prepare("SELECT subject_id, COUNT(*) FROM class_docs WHERE class_id = :c AND status = 'ok' AND event_id IS NOT NULL GROUP BY subject_id");
+            $st->execute([':c' => $classId]);
+            $testDocs = array_map('intval', $st->fetchAll(PDO::FETCH_KEY_PAIR));
+            $subjects = [];
+            foreach (classSubjects($db, $classId) as $sub) {
+                $list = array_values($days[$sub['id']] ?? []);
+                usort($list, fn($a, $b) => strcmp($b['date'], $a['date']));
+                $subjects[] = ['id' => $sub['id'], 'name' => $sub['name'], 'days' => $list, 'test_docs' => $testDocs[$sub['id']] ?? 0];
+            }
+            jsonResponse(['success' => true, 'subjects' => $subjects]);
         }
 
         if ($action === 'ai_pack') {

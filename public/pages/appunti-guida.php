@@ -77,6 +77,11 @@ $login = 'login.php?next=appunti.php';
                     i documenti sono completi.</li>
                 <li><strong>La lezione giusta:</strong> scegliendo le foto, il sito guarda l'ora in cui le hai scattate e l'orario della
                     classe, e propone la lezione (per esempio "3ª-4ª ora · Lab SISI"). Se sbaglia, cambiala.</li>
+                <li><strong>Pagina Carica</strong> (in alto, <em>+ Carica</em>): tutti i modi per caricare in un posto solo, cioè fotocamera,
+                    file (anche trascinandoli), testo scritto o copiato da un'AI (il <b>**grassetto**</b> di ChatGPT e Gemini viene mostrato
+                    formattato) e documenti fatti con un'altra AI, con la barra di avanzamento.</li>
+                <li><strong>Archivio</strong> (in alto): tutto il materiale a cartelle, Materia → Giorno → file, con l'anteprima accanto
+                    (foto, PDF, testi, trascrizioni, documenti dell'AI) senza dover scorrere la pagina.</li>
                 <li><strong>Tutti vedono tutto</strong>, con il nome di chi l'ha caricato. Puoi modificare o cancellare solo quello che hai
                     caricato tu (il responsabile può anche il resto).</li>
                 <li><strong>Scaricare:</strong> tocca una foto per aprirla intera; ogni giorno ha i pulsanti <em>↓ Per AI</em> (un file di

@@ -318,7 +318,9 @@
                 it.period ? el('span', { text: `${it.period}ª ora` }) : null,
                 el('span', { text: `da ${it.author || '?'}` })),
             it.title ? el('div', { class: 'title', text: it.title }) : null,
-            it.body ? el('div', { class: 'body', text: it.body }) : null,
+            it.body ? (window.AppuntiCommon.looksLikeMarkdown(it.body)
+                ? el('div', { class: 'body md' }, md(it.body))
+                : el('div', { class: 'body', text: it.body })) : null,
             files.length ? el('div', { class: 'files' }, files) : null,
             it.can_edit ? el('div', { class: 'actions' },
                 el('button', { class: 'ghost mini', text: 'Modifica', onclick: () => editItem(it, card) }),
@@ -546,90 +548,8 @@
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     });
 
-    // Safe Markdown: builds DOM nodes, text always goes in as text (never as HTML)
-    function inline(text) {
-        const frag = document.createDocumentFragment();
-        const re = /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*\s][^*]*\*|\[L?\d+\])/g;
-        let last = 0;
-        for (const m of text.matchAll(re)) {
-            if (m.index > last) frag.append(text.slice(last, m.index));
-            const t = m[0];
-            if (t.startsWith('`')) frag.append(el('code', { text: t.slice(1, -1) }));
-            else if (t.startsWith('**') || t.startsWith('__')) frag.append(el('strong', {}, inline(t.slice(2, -2))));
-            else if (t.startsWith('[')) frag.append(el('span', { class: 'cite', text: t }));
-            else frag.append(el('em', {}, inline(t.slice(1, -1))));
-            last = m.index + t.length;
-        }
-        if (last < text.length) frag.append(text.slice(last));
-        return frag;
-    }
-
-    function md(src) {
-        const out = document.createDocumentFragment();
-        const lines = String(src || '').replace(/\r/g, '').split('\n');
-        let i = 0;
-        const isTableSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
-        const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
-        while (i < lines.length) {
-            const line = lines[i];
-            if (!line.trim()) { i++; continue; }
-            if (/^\s*```/.test(line)) {
-                const buf = [];
-                i++;
-                while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(lines[i++]);
-                i++;
-                out.append(el('pre', {}, el('code', { text: buf.join('\n') })));
-                continue;
-            }
-            const h = /^(#{1,4})\s+(.*)$/.exec(line);
-            if (h) { out.append(el('h' + Math.min(5, h[1].length + 1), {}, inline(h[2]))); i++; continue; }
-            if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { out.append(el('hr')); i++; continue; }
-            if (/^\s*>/.test(line)) {
-                const buf = [];
-                while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ''));
-                out.append(el('blockquote', {}, md(buf.join('\n'))));
-                continue;
-            }
-            if (line.includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1])) {
-                const head = cells(line);
-                i += 2;
-                const rows = [];
-                while (i < lines.length && lines[i].includes('|') && lines[i].trim()) rows.push(cells(lines[i++]));
-                out.append(el('div', { class: 'table-wrap' }, el('table', {},
-                    el('thead', {}, el('tr', {}, ...head.map((c) => el('th', {}, inline(c))))),
-                    el('tbody', {}, ...rows.map((r) => el('tr', {}, ...r.map((c) => el('td', {}, inline(c)))))))));
-                continue;
-            }
-            const li = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(line);
-            if (li) {
-                const ordered = /\d/.test(li[2]);
-                const list = el(ordered ? 'ol' : 'ul');
-                while (i < lines.length) {
-                    const m = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(lines[i]);
-                    if (m && m[1].length >= 2 && list.lastChild) {
-                        // indented item: a sub-list inside the previous item
-                        const subOrdered = /\d/.test(m[2]);
-                        let sub = list.lastChild.lastElementChild;
-                        if (!sub || sub.tagName !== (subOrdered ? 'OL' : 'UL')) { sub = el(subOrdered ? 'ol' : 'ul'); list.lastChild.append(sub); }
-                        sub.append(el('li', {}, inline(m[3])));
-                        i++;
-                        continue;
-                    }
-                    if (m) { list.append(el('li', {}, inline(m[3]))); i++; continue; }
-                    if (lines[i].trim() && /^\s{2,}/.test(lines[i]) && list.lastChild) { list.lastChild.append(' ', inline(lines[i].trim())); i++; continue; }
-                    break;
-                }
-                out.append(list);
-                continue;
-            }
-            const buf = [];
-            while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*```|\s*>|\s*([-*+]|\d+[.)])\s)/.test(lines[i])
-                && !(lines[i].includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1]))) buf.push(lines[i++].trim());
-            if (!buf.length) { buf.push(lines[i++].trim()); }
-            out.append(el('p', {}, inline(buf.join(' '))));
-        }
-        return out;
-    }
+    // Markdown of AI documents and notes: the shared safe renderer (js/appunti-common.js)
+    const md = (text) => window.AppuntiCommon.md(text);
 
     function renderQuiz(quiz) {
         const qs = quiz.questions || [];

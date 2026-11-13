@@ -19,7 +19,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
 session_write_close();
 
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
+$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -36,13 +36,16 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Appunti">
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
+    <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
     <header class="top">
         <a class="home" href="../index.php">vector-box</a>
         <span class="top-right">
-            <a class="ghost-link" href="appunti-guida.php">Guida</a>
+            <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
+            <a class="ghost-link" href="appunti-carica.php">+ Carica</a>
+            <a class="ghost-link hide-phone" href="appunti-guida.php">Guida</a>
             <span class="who"><?= $e($username) ?></span>
             <button id="bell" class="bell" type="button" aria-label="Notifiche" aria-expanded="false">
                 <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg>
@@ -103,6 +106,8 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../c
         <section id="tab-material" class="tab" hidden>
             <details class="card upload" open>
                 <summary>Carica materiale</summary>
+                <p class="muted small">Qui il caricamento veloce. Fotocamera, trascinamento dei file e testo copiato da un'AI:
+                    <a href="appunti-carica.php">pagina Carica</a>. Tutto il materiale a cartelle: <a href="appunti-archivio.php">Archivio</a>.</p>
                 <form id="upload-form" class="stack">
                     <div class="grid2">
                         <label>Tipo

@@ -331,6 +331,37 @@ test('documents made with another AI: upload, list with the author, delete', asy
     assert.equal((await ap(mario, { action: 'delete_doc', id: aiDoc })).status, 403, 'documents of the site AI are not deleted by hand');
 });
 
+test('archive API: subjects -> days with counts, and the text of a file for previews', async () => {
+    const t = (await luigi.get(`/api/appunti.php?action=tree&class_id=${classId}`)).json;
+    const tp = t.subjects.find((x) => x.name === 'TPSIT');
+    assert.ok(tp.days.some((d) => d.date === '2026-11-09' && d.files === 4 && d.items === 1));
+    const st = t.subjects.find((x) => x.name === 'Storia');
+    assert.ok(st.days.length >= 1);
+    assert.ok(st.days[0].date >= st.days.at(-1).date, 'newest day first');
+    assert.equal((await peach.get(`/api/appunti.php?action=tree&class_id=${classId}`)).status, 404);
+
+    const pptx = site.db("SELECT id FROM class_item_files WHERE original_name = 'socket.pptx'")[0].id;
+    const ft = (await luigi.get(`/api/appunti.php?action=file_text&id=${pptx}`)).json;
+    assert.equal(ft.status, 'done');
+    assert.match(ft.text, /Socket TCP/);
+    const png = site.db("SELECT id FROM class_item_files WHERE original_name = 'lavagna.png'")[0].id;
+    assert.equal((await luigi.get(`/api/appunti.php?action=file_text&id=${png}`)).json.text, null, 'not transcribed yet');
+    assert.equal((await peach.get(`/api/appunti.php?action=file_text&id=${pptx}`)).status, 404);
+});
+
+test('archive and upload pages: members only, no inline scripts', async () => {
+    for (const page of ['appunti-archivio.php', 'appunti-carica.php']) {
+        const guest = await fetch(`${site.base}/pages/${page}`, { redirect: 'manual' });
+        assert.equal(guest.status, 302, page);
+        assert.equal(guest.headers.get('location'), 'appunti-guida.php');
+        const r = await fetch(`${site.base}/pages/${page}`, { headers: { Cookie: luigi.cookieHeader() } });
+        const html = await r.text();
+        assert.equal(r.status, 200, page);
+        assert.match(html, /js\/appunti-common\.js/);
+        assert.equal(html.match(/<script(?![^>]*\bsrc=)[^>]*>/g), null, page);
+    }
+});
+
 test('deleting the class removes its material from disk', async () => {
     const dir = path.join(site.root, 'data/appunti', String(classId));
     assert.ok(fs.existsSync(dir));

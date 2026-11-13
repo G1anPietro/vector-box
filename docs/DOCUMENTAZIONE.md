@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-12 (schema del database **v14**, 157 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-12 (schema del database **v14**, 159 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -115,6 +115,16 @@ propone da solo la lezione giusta guardando l'ora della foto e l'orario (le ore 
 lezione sola); si può sempre cambiare. Tutti i compagni vedono tutto il materiale, con il nome di chi l'ha caricato; chi
 l'ha caricato e il responsabile possono modificarlo o cancellarlo. Limiti: 40 MB per file e 5 GB per classe (li cambia
 l'amministratore).
+
+**Pagina Carica** (`/pages/appunti-carica.php`, *+ Carica* in alto): tutti i modi per caricare in un posto solo, cioè
+fotocamera del telefono, file scelti o trascinati (con anteprima e barra di avanzamento), testo scritto o incollato (anche da
+ChatGPT/Gemini: grassetto, corsivo, elenchi e titoli in Markdown vengono mostrati formattati) e documenti fatti con un'altra
+AI; il responsabile trova anche il rimando all'orario da foto.
+
+**Archivio** (`/pages/appunti-archivio.php`): il materiale come cartelle, Materia → Giorno (più "Verifiche" con i
+documenti di studio) → file, con l'anteprima accanto: foto con la trascrizione, PDF, testi, documenti dell'AI e quiz. Sul
+computer le colonne scorrono ciascuna per conto suo e la pagina resta ferma; sul telefono si apre una cartella alla volta,
+con il percorso in alto.
 
 **Calendario:** verifiche scritte, interrogazioni e altre date, con gli argomenti detti dal prof. Le aggiungono tutti.
 
@@ -320,7 +330,7 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | Endpoint | Chi | Richiesta |
 |---|---|---|
 | `classi.php` | registrati / responsabile / admin | GET `?action=mine` (le mie classi e richieste), `class&id=` (membri e admin: orario, materie, membri, codice solo al responsabile), `requests` e `all` (admin). POST `{action}`: `request {name, school, note}`, `join {code}`, `leave`; responsabile: `regen_code`, `remove_member`, `set_manager`, `settings {summary_time, timezone}`, `save_timetable {valid_from, periods, slots}`, `read_timetable` (multipart con le foto, risponde con l'orario letto dall'AI senza salvarlo); admin: `decide {approve}`, `set_requests_open {open}`, `set_limits {file_mb, class_mb[, id]}`, `delete_class` |
-| `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`, `zip&scope=day&date=[&subject_id]` / `scope=subject&subject_id` / `scope=event&event_id` (materiale + INDICE.txt + PROMPT.txt, al massimo 300 MB), `ai_pack` con gli stessi parametri (un file Markdown con prompt e tutto il testo). POST `upload_doc {kind, target:"lesson"|"event", subject_id+lesson_date | event_id, title, content o file}` e `delete_doc {id}` (solo documenti caricati a mano, autore o responsabile). POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
+| `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `tree` (materie → giorni con i conteggi, per l'Archivio), `file_text&id=` (testo estratto o trascritto di un file), `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`, `zip&scope=day&date=[&subject_id]` / `scope=subject&subject_id` / `scope=event&event_id` (materiale + INDICE.txt + PROMPT.txt, al massimo 300 MB), `ai_pack` con gli stessi parametri (un file Markdown con prompt e tutto il testo). POST `upload_doc {kind, target:"lesson"|"event", subject_id+lesson_date | event_id, title, content o file}` e `delete_doc {id}` (solo documenti caricati a mano, autore o responsabile). POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
 | `notifiche.php` | registrati | GET `?action=list` (ultime 30, non lette, dispositivi), `vapid` (chiave pubblica). POST `read {ids}`, `read_all`, `subscribe {endpoint, keys}`, `unsubscribe {endpoint}`, `test` |
 
 Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `altro`. Tipi di data: `verifica`,
@@ -359,7 +369,9 @@ Le librerie (`helpers.php`, `database.php`, `rate_limiter.php`, `epub_meta.php`,
 - **Appunti di classe:** ogni richiesta controlla che l'utente sia nella classe (attiva); i codici d'invito (8 caratteri)
   hanno limiti di tentativi per account e per IP; i file sono controllati per contenuto e salvati in `data/appunti/<id>/`
   con un nome casuale; le immagini sono servite con `Content-Security-Policy: sandbox`. Il testo scritto dall'AI è
-  mostrato con un piccolo convertitore Markdown → DOM che usa solo `textContent`. Il materiale va all'AI dentro
+  mostrato con un piccolo convertitore Markdown → DOM (`js/appunti-common.js`, condiviso dalle tre pagine) che usa solo
+  `textContent`; capisce il Markdown di ChatGPT/Gemini/Claude (grassetto, corsivo, elenchi con righe vuote tra i punti,
+  elenchi annidati, tabelle, titoli). Il materiale va all'AI dentro
   `<materiale>…</materiale>` con l'istruzione di non seguire ordini scritti lì dentro.
 - **Web Push:** cifratura RFC 8291 e firma VAPID fatte con openssl; chiavi in `data/vapid.json`. Si accettano solo
   endpoint `https` dei servizi push dei browser (Google, Mozilla, Apple, Microsoft): il server non fa richieste ad
@@ -397,7 +409,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 157 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # 159 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 
