@@ -69,33 +69,34 @@ if (!$canRead) {
                 <button class="theme-btn theme-dark" data-theme="dark" title="Scuro"></button>
                 <button class="theme-btn theme-black" data-theme="black" title="OLED Nero"></button>
             </div>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Utente: <strong><?php echo htmlspecialchars($username); ?></strong></span>
-            <a href="../index.php" class="btn">Esci</a>
+            <span class="who">Utente: <strong><?php echo htmlspecialchars($username); ?></strong></span>
+            <a href="../index.php" class="btn">&larr; Sito</a>
         </div>
     </header>
 
     <div class="reader-container">
         <section class="toolbar-section">
-            <form id="book-search-form" class="search-box">
-                <input type="text" id="book-search-input" class="input-text" placeholder="Cerca libro per titolo o autore..." autocomplete="off">
+            <form id="book-search-form" class="search-box" role="search">
+                <input type="search" id="book-search-input" class="input-text search-input" placeholder="Cerca per titolo o autore" autocomplete="off" aria-label="Cerca un libro">
                 <button type="submit" class="btn btn-primary">Cerca</button>
             </form>
 
             <?php if ($canUpload): ?>
-                <form id="book-upload-form" style="display: flex; gap: 0.5rem; align-items: center;" enctype="multipart/form-data">
-                    <input type="file" id="book-upload-input" accept=".epub,.pdf" class="input-text" style="padding: 0.35rem;" multiple required>
-                    <button type="submit" class="btn btn-primary">Carica libri</button>
+                <form id="book-upload-form" class="upload-row" enctype="multipart/form-data">
+                    <label class="btn upload-btn">+ Carica libri
+                        <input type="file" id="book-upload-input" accept=".epub,.pdf" multiple>
+                    </label>
+                    <p id="book-upload-status" class="upload-status" aria-live="polite">EPUB o PDF, anche più di uno insieme (sul computer anche trascinandoli qui).</p>
                 </form>
-                <p id="book-upload-status" class="upload-status" aria-live="polite">Puoi scegliere più file insieme, o trascinarli qui.</p>
             <?php endif; ?>
         </section>
 
         <main>
-            <section id="continue-section" style="display: none; margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-secondary);">Continua a leggere</h2>
-                <div id="continue-shelf" class="book-grid"></div>
+            <section id="continue-section" style="display: none;" class="shelf-section">
+                <h2 class="shelf-title">Continua a leggere</h2>
+                <div id="continue-shelf" class="book-grid continue-row"></div>
             </section>
-            <h2 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--text-secondary);">La tua Libreria</h2>
+            <h2 class="shelf-title">La tua libreria</h2>
             <div id="book-catalog" class="book-grid"></div>
         </main>
     </div>
@@ -145,12 +146,14 @@ if (!$canRead) {
                             <label class="set-label" for="blue-light-slider">Filtro luce blu</label>
                             <input type="range" id="blue-light-slider" min="0" max="60" value="0" step="5" class="slider-bar">
                         </div>
+                        <button id="bars-btn" class="btn small-btn" type="button">Nascondi le barre (tocca il centro della pagina per riaverle)</button>
                         <a id="download-book-btn" class="btn small-btn" href="#" download>Scarica il file originale</a>
                     </div>
                 </div>
             </div>
         </div>
 
+        <div id="reader-backdrop" class="reader-backdrop" hidden></div>
         <div class="viewer-content" id="viewer-stage-container">
             <div id="epub-stage"></div>
             <div id="pdf-stage"></div>
@@ -169,8 +172,8 @@ if (!$canRead) {
             </div>
             <button id="next-page-btn" class="btn nav-btn" title="Pagina successiva (→)" aria-label="Pagina successiva">&rsaquo;</button>
         </div>
-        <div id="reader-toast" class="reader-toast" role="status" aria-live="polite" hidden></div>
     </div>
+    <div id="reader-toast" class="reader-toast" role="status" aria-live="polite" hidden></div>
 
 </body>
 </html>

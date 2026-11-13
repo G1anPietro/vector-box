@@ -65,7 +65,10 @@ segnalibri, quattro colori di pagina e filtro luce blu. Nel lettore: barra in al
 **Aa**) e in basso (pagina precedente/successiva, cursore della posizione, numero di pagina). Nel pannello **Aa**: dimensione
 del testo per gli EPUB (70–200%) e zoom per i PDF (50–300%, 100% = pagina intera sullo schermo, "Adatta" per tornarci),
 **una pagina alla volta** o due affiancate (solo su schermi larghi), colori, filtro luce blu, scarica. Si gira pagina con le
-frecce, con i bordi della pagina, con lo scorrimento del dito o con i tasti ← → (+ e − per lo zoom). Chi può caricare sceglie più file insieme o li trascina sul riquadro.
+frecce, con i bordi della pagina, con lo scorrimento del dito o con i tasti ← → (+ e − per lo zoom). Un tocco al centro
+della pagina (o "Nascondi le barre" in **Aa**) nasconde le barre per leggere a schermo intero; Esc o un altro tocco al centro
+le riporta. I menu si chiudono toccando in un punto qualsiasi fuori. In biblioteca la ricerca parte mentre scrivi e
+"+ Carica libri" carica appena scegli i file. Chi può caricare sceglie più file insieme o li trascina sul riquadro.
 
 ## Giochi
 

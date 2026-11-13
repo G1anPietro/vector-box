@@ -86,11 +86,16 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             loadCatalog(searchInput.value.trim());
         });
+        let searchTimer = null;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => loadCatalog(searchInput.value.trim()), 350);
+        });
     }
 
     if (uploadForm && uploadInput) {
         const uploadStatus = document.getElementById('book-upload-status');
-        const uploadButton = uploadForm.querySelector('button[type="submit"]');
+        const uploadButton = uploadForm.querySelector('.upload-btn');
         const say = (text, cls = '') => {
             if (!uploadStatus) return;
             uploadStatus.textContent = text;
@@ -107,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             uploading = true;
-            if (uploadButton) uploadButton.disabled = true;
+            uploadInput.disabled = true;
             const failed = [];
             let done = 0;
             for (const [i, file] of list.entries()) {
@@ -125,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             uploading = false;
-            if (uploadButton) uploadButton.disabled = false;
+            uploadInput.disabled = false;
             uploadInput.value = '';
             say(`${done === 1 ? '1 libro caricato' : done + ' libri caricati'}` + (failed.length ? `. Non caricati: ${failed.join(', ')}` : '.'), failed.length ? 'err' : 'ok');
             if (done) loadCatalog();
@@ -135,6 +140,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             uploadFiles(uploadInput.files);
         });
+        // Choosing the files is enough: no second button to press
+        uploadInput.addEventListener('change', () => { uploadFiles(uploadInput.files); uploadInput.value = ''; });
         // Drag the files onto the upload box
         const dropZone = uploadForm.parentElement;
         ['dragenter', 'dragover'].forEach((t) => dropZone.addEventListener(t, (e) => {
@@ -154,16 +161,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (closeViewerBtn) closeViewerBtn.addEventListener('click', closeViewer);
-    if (settingsBtn && settingsPanel) {
-        settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            settingsPanel.hidden = !settingsPanel.hidden;
-            settingsBtn.setAttribute('aria-expanded', String(!settingsPanel.hidden));
-            if (bookmarksPanel) bookmarksPanel.style.display = 'none';
-        });
-        settingsPanel.addEventListener('click', (e) => e.stopPropagation());
-        document.addEventListener('click', () => { settingsPanel.hidden = true; settingsBtn.setAttribute('aria-expanded', 'false'); });
+    // Menus ("Aa", bookmarks): one open at a time; a transparent layer over the page closes them when you tap
+    // anywhere else (taps inside the EPUB's own frame would never reach this page otherwise)
+    const backdrop = document.getElementById('reader-backdrop');
+    function closePanels() {
+        if (settingsPanel) settingsPanel.hidden = true;
+        if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
+        if (backdrop) backdrop.hidden = true;
     }
+    function openPanel(which) {
+        const wasOpen = which === 'settings' ? !settingsPanel.hidden : bookmarksPanel.style.display !== 'none';
+        closePanels();
+        if (wasOpen) return;
+        if (which === 'settings') { settingsPanel.hidden = false; settingsBtn.setAttribute('aria-expanded', 'true'); }
+        else bookmarksPanel.style.display = 'block';
+        if (backdrop) backdrop.hidden = false;
+    }
+    if (backdrop) backdrop.addEventListener('click', closePanels);
+    if (settingsBtn && settingsPanel) {
+        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); openPanel('settings'); });
+        settingsPanel.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    // Bars: tap the middle of the page (or the button in "Aa") to hide/show them and read full screen
+    const barsBtn = document.getElementById('bars-btn');
+    function toggleBars(force) {
+        const hide = typeof force === 'boolean' ? force : !viewerModal.classList.contains('bars-hidden');
+        viewerModal.classList.toggle('bars-hidden', hide);
+        closePanels();
+        requestAnimationFrame(() => {
+            if (epubRendition) { try { epubRendition.resize(); } catch (e) { /* not ready */ } }
+            if (currentFormat === 'pdf' && pdfDoc) renderPdfPage(pdfCurrentPage);
+        });
+        if (hide && !pref('vector_reader_bars_hint', '')) {
+            toast('Tocca il centro della pagina per far tornare le barre');
+            setPref('vector_reader_bars_hint', '1');
+        }
+    }
+    if (barsBtn) barsBtn.addEventListener('click', () => toggleBars(true));
+    function isMiddleTap(x, width) { return x > width * 0.3 && x < width * 0.7; }
+    if (pdfStage) pdfStage.addEventListener('click', (e) => {
+        if (pdfZoom > 1) return;
+        const r = pdfStage.getBoundingClientRect();
+        if (isMiddleTap(e.clientX - r.left, r.width)) toggleBars();
+    });
     if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoom(1));
     if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoom(-1));
     if (zoomFitBtn) zoomFitBtn.addEventListener('click', () => zoom(0));
@@ -199,15 +241,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Attach listeners across all theme-btn buttons on page and modal header
-    document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.theme-btn');
-        if (btn && btn.dataset.theme) {
-            const theme = btn.dataset.theme;
-            applyTheme(theme);
-            saveUserTheme(theme);
-        }
-    });
+    // Colour buttons (library header and "Aa" panel): direct listeners, because the panel stops clicks
+    // from reaching the document (so that clicking inside it does not close it)
+    document.querySelectorAll('.theme-btn').forEach((btn) => btn.addEventListener('click', () => {
+        if (!btn.dataset.theme) return;
+        applyTheme(btn.dataset.theme);
+        saveUserTheme(btn.dataset.theme);
+    }));
 
     document.addEventListener('keydown', (e) => {
         if (!viewerModal.classList.contains('active')) return;
@@ -216,7 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); turnPage(1); }
         if (e.key === '+' || e.key === '=') zoom(1);
         if (e.key === '-') zoom(-1);
-        if (e.key === 'Escape') closeViewer();
+        if (e.key === 'Escape') {
+            if ((settingsPanel && !settingsPanel.hidden) || (bookmarksPanel && bookmarksPanel.style.display !== 'none')) closePanels();
+            else if (viewerModal.classList.contains('bars-hidden')) toggleBars(false);
+            else closeViewer();
+        }
     });
 
     async function loadCatalog(query = '') {
@@ -473,8 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         viewerModal.classList.add('active');
         document.body.classList.add('reading');
-        viewerModal.classList.remove('zoomed');
-        if (settingsPanel) settingsPanel.hidden = true;
+        viewerModal.classList.remove('zoomed', 'bars-hidden');
+        closePanels();
         updateReadingUI();
         applyTheme(currentTheme);
         currentLocation = null;
@@ -535,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const page = parseInt(bm.location, 10);
             if (page >= 1 && page <= pdfTotalPages) renderPdfPage(page);
         }
-        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
+        closePanels();
     }
 
     async function deleteBookmark(id) {
@@ -616,12 +660,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (addBookmarkBtn) addBookmarkBtn.addEventListener('click', addBookmark);
     if (bookmarksToggleBtn && bookmarksPanel) {
-        bookmarksToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            bookmarksPanel.style.display = bookmarksPanel.style.display === 'none' ? 'block' : 'none';
-        });
+        bookmarksToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); openPanel('bookmarks'); });
         bookmarksPanel.addEventListener('click', (e) => e.stopPropagation());
-        document.addEventListener('click', () => { bookmarksPanel.style.display = 'none'; });
     }
 
     function turnPage(direction) {
@@ -682,6 +722,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 spread: window.innerWidth > 800 ? spread : 'none',
             });
             epubRendition.themes.fontSize(fontPct + '%');
+            // a tap in the middle of the text hides/shows the bars (not when selecting text)
+            epubRendition.on('click', (e) => {
+                const sel = e.view && e.view.getSelection ? String(e.view.getSelection()) : '';
+                if (sel) return;
+                // the frame is as wide as the whole chapter: subtract how far the pages are scrolled
+                const cont = epubStage.querySelector('.epub-container');
+                const x = e.clientX - (cont ? cont.scrollLeft : 0);
+                if (isMiddleTap(x, epubStage.clientWidth)) toggleBars();
+            });
 
             // Content hook fallback for iframe section updates
             epubRendition.hooks.content.register((contents) => {
@@ -823,7 +872,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             fontPct = step === 0 ? 100 : Math.min(200, Math.max(70, fontPct + step * 10));
             setPref('vector_reader_font', fontPct);
-            if (epubRendition) epubRendition.themes.fontSize(fontPct + '%');
+            if (epubRendition) {
+                const here = currentLocation;
+                epubRendition.themes.fontSize(fontPct + '%');
+                // the pages are laid out again: go back to the same place, or a blank/cut page would show
+                setTimeout(() => {
+                    try { epubRendition.resize(); } catch (e) { /* not ready */ }
+                    if (here) epubRendition.display(here);
+                }, 60);
+            }
         }
         updateReadingUI();
     }
