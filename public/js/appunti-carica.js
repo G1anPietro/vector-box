@@ -15,7 +15,8 @@
     let queue = [];          // File objects waiting to be sent
     let csrf = '';
 
-    function status(msg, kind = '') { const s = $('#status'); s.textContent = msg || ''; s.className = 'status' + (kind ? ' ' + kind : ''); }
+    // Messages in a toast at the bottom of the screen (the buttons are far from the top of the page)
+    function status(msg, kind = '') { if (msg) C.toast(msg, kind); }
     const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
     const subjectName = (id) => (current.subjects.find((s) => s.id === id) || {}).name || '?';
 
@@ -23,6 +24,7 @@
 
     function choose(m) {
         method = m;
+        $('#send-btn').textContent = 'Carica';
         $$('.method').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.method === m)));
         $$('.panel').forEach((p) => { p.hidden = p.id !== 'p-' + m; });
         const material = ['camera', 'files', 'text'].includes(m);
@@ -127,6 +129,7 @@
             try { j = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
             if (xhr.status === 200 && j && j.success) {
                 status(`Caricato in ${subjectName(Number(subjectId))}. Grazie! Lo trovi nell'Archivio.`, 'ok');
+                $('#send-btn').textContent = 'Carica altro';
                 queue = []; renderQueue();
                 $('#text-input').value = ''; $('#text-preview').replaceChildren(); $('#w-title').value = ''; $('#w-hint').textContent = '';
                 updateLimits();
@@ -135,6 +138,7 @@
                 status((j && (msg[j.code] || j.error)) || 'Caricamento non riuscito: riprova.', 'err');
             }
         };
+        xhr.onerror = () => status('Connessione persa durante il caricamento: riprova.', 'err');
         xhr.open('POST', '../api/appunti.php');
         xhr.setRequestHeader('X-CSRF-Token', csrf);
         xhr.send(fd);
@@ -201,7 +205,7 @@
         $('#tt-link').href = `appunti.php?class=${id}&tab=class`;
         $('#w-date').value = todayStr();
         await suggest(Date.now() / 1000, false);
-        fillAiForm();
+        await fillAiForm();
         updateLimits();
     }
 
@@ -221,6 +225,9 @@
             select.addEventListener('change', () => openClass(Number(select.value)).catch((e) => status(e.message, 'err')));
             await openClass(pick.id);
             choose(['camera', 'files', 'text', 'ai'].includes(params.get('m')) ? params.get('m') : 'files');
+            // Coming from a test in the Study tab: that test is already selected
+            const ev = params.get('event');
+            if (ev && [...$('#ai-form').event_id.options].some((o) => o.value === ev)) $('#ai-form').event_id.value = ev;
         } catch (e) { status(e.message, 'err'); }
     })();
 })();

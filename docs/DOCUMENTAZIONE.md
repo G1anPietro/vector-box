@@ -116,7 +116,8 @@ lezione sola); si può sempre cambiare. Tutti i compagni vedono tutto il materia
 l'ha caricato e il responsabile possono modificarlo o cancellarlo. Limiti: 40 MB per file e 5 GB per classe (li cambia
 l'amministratore).
 
-**Pagina Carica** (`/pages/appunti-carica.php`, *+ Carica* in alto): tutti i modi per caricare in un posto solo, cioè
+**Pagina Carica** (`/pages/appunti-carica.php`, *+ Carica* in alto): **l'unico posto** dove si carica (la scheda Materiale e
+la scheda Studio hanno solo i pulsanti che ci portano, già impostati sulla lezione o sulla verifica): tutti i modi in un posto solo, cioè
 fotocamera del telefono, file scelti o trascinati (con anteprima e barra di avanzamento), testo scritto o incollato (anche da
 ChatGPT/Gemini: grassetto, corsivo, elenchi e titoli in Markdown vengono mostrati formattati) e documenti fatti con un'altra
 AI; il responsabile trova anche il rimando all'orario da foto.
@@ -146,7 +147,7 @@ sito chiuso; sull'iPhone prima bisogna aggiungere gli Appunti alla schermata Hom
 materiale già come testo, comprese le trascrizioni: lo legge qualsiasi AI) e *↓ .zip*, con il filtro di una materia c'è *Tutta la
 materia (.zip)*, e ogni verifica nella scheda Studio ha *Materiale + prompt per un'altra AI*. Lo zip contiene gli originali,
 i testi, le trascrizioni, i documenti dell'AI, `INDICE.txt` (chi ha scritto cosa) e `PROMPT.txt` con i prompt pronti per
-ChatGPT, Claude o Gemini. La risposta si ricarica in *Studio → Carica un documento fatto con un'altra AI*: compare
+ChatGPT, Claude o Gemini. La risposta si ricarica dalla pagina *+ Carica → Documento da un'altra AI*: compare
 accanto agli altri, con il nome di chi l'ha caricato. Guida completa per tutti, anche per chi non ha l'account:
 `/pages/appunti-guida.php` (gli ospiti che aprono gli Appunti arrivano lì).
 
@@ -458,6 +459,8 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - Appunti: con il livello gratuito di Gemini le richieste al giorno sono poche (circa 450 veloci e 18 del modello migliore):
   con molte classi i documenti possono arrivare il giorno dopo. Non c'è ancora la copia su Google Drive.
 - Le notifiche push su iPhone funzionano solo dall'icona aggiunta alla schermata Home (iOS 16.4 o successivo).
+- Avvisi: nelle pagine degli Appunti i messaggi compaiono in un riquadro fisso in basso (visibile anche a pagina scrollata) e il
+  pulsante premuto resta bloccato con "…" finché la richiesta non finisce, così un secondo tocco non la manda due volte.
 - Biblioteca: le copertine passano da `api/books.php`, che nginx limita; la pagina le carica 3 alla volta e ritenta quelle
   rifiutate.
 - Biblioteca: i PDF non hanno una copertina finché qualcuno che può caricare libri non apre la biblioteca: allora il browser

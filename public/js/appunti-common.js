@@ -24,6 +24,58 @@
         return n;
     }
 
+    /* ---------- feedback: toasts and busy buttons ---------- */
+
+    // A message in a fixed box at the bottom of the screen: visible wherever the page is scrolled.
+    let toastBox = null;
+    function toast(msg, kind = '', ms) {
+        if (!msg) return;
+        if (!toastBox) {
+            toastBox = el('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
+            document.body.append(toastBox);
+        }
+        const t = el('div', { class: 'toast' + (kind ? ' ' + kind : '') }, el('span', { text: msg }),
+            el('button', { type: 'button', class: 'toast-x', 'aria-label': 'Chiudi', text: '×', onclick: () => t.remove() }));
+        toastBox.append(t);
+        while (toastBox.children.length > 3) toastBox.firstElementChild.remove();
+        setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms || (kind === 'err' ? 7000 : 3500));
+        return t;
+    }
+
+    /**
+     * Runs fn() while `btn` is disabled and shows "…": a second press does nothing until the first one is done
+     * (people press again when nothing seems to happen). Without btn, uses the button that has focus.
+     */
+    // Safari does not focus a button when it is tapped: remember the last pressed one
+    let lastPressed = null;
+    let lastPressedAt = 0;
+    document.addEventListener('click', (ev) => {
+        const b = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+        if (b) { lastPressed = b; lastPressedAt = Date.now(); }
+    }, true);
+    document.addEventListener('submit', (ev) => {
+        const b = ev.submitter || (ev.target && ev.target.querySelector('button:not([type="button"])'));
+        if (b) { lastPressed = b; lastPressedAt = Date.now(); }
+    }, true);
+
+    function pressedButton() {
+        const a = document.activeElement;
+        if (a && a.tagName === 'BUTTON') return a;
+        if (lastPressed && Date.now() - lastPressedAt < 1500 && lastPressed.isConnected) return lastPressed;
+        return null;
+    }
+
+    async function busy(btn, fn) {
+        const b = btn || pressedButton();
+        if (b && b.dataset.busy) return undefined;
+        if (b) { b.dataset.busy = '1'; b.disabled = true; b.classList.add('is-busy'); }
+        try {
+            return await fn();
+        } finally {
+            if (b) { delete b.dataset.busy; b.disabled = false; b.classList.remove('is-busy'); }
+        }
+    }
+
     async function getJson(url) {
         const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
         const j = await r.json().catch(() => null);
@@ -31,7 +83,9 @@
         return j;
     }
 
-    async function post(url, body) {
+    function post(url, body) { return busy(null, () => rawPost(url, body)); }
+
+    async function rawPost(url, body) {
         const isForm = body instanceof FormData;
         const r = await fetch(url, {
             method: 'POST', credentials: 'same-origin',
@@ -168,7 +222,7 @@
     function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode */ } }
     function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 
-    window.AppuntiCommon = { el, getJson, post, md, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    window.AppuntiCommon = { el, getJson, post, rawPost, toast, busy, md, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione' } };

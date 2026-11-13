@@ -104,39 +104,16 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
 
         <!-- Material -->
         <section id="tab-material" class="tab" hidden>
-            <details class="card upload" open>
-                <summary>Carica materiale</summary>
-                <p class="muted small">Qui il caricamento veloce. Fotocamera, trascinamento dei file e testo copiato da un'AI:
-                    <a href="appunti-carica.php">pagina Carica</a>. Tutto il materiale a cartelle: <a href="appunti-archivio.php">Archivio</a>.</p>
-                <form id="upload-form" class="stack">
-                    <div class="grid2">
-                        <label>Tipo
-                            <select name="kind">
-                                <option value="appunti">Appunti</option>
-                                <option value="slide">Slide / materiale del prof</option>
-                                <option value="libro">Pagine del libro</option>
-                                <option value="domande">Domande del prof (interrogazione)</option>
-                                <option value="prova">Verifica di preparazione</option>
-                                <option value="altro">Altro</option>
-                            </select>
-                        </label>
-                        <label>Giorno <input type="date" name="lesson_date" required></label>
-                    </div>
-                    <label>Lezione / materia
-                        <select name="lesson" required></select>
-                    </label>
-                    <label>File (foto, PDF, Word, PowerPoint, testo)
-                        <input type="file" name="files" multiple accept="image/*,.pdf,.txt,.md,.docx,.pptx,.odt,.odp">
-                    </label>
-                    <p id="file-hint" class="muted small"></p>
-                    <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
-                    <label>Testo (facoltativo) <textarea name="body" rows="4" maxlength="50000" placeholder="Puoi anche scrivere gli appunti qui"></textarea></label>
-                    <button id="upload-btn">Carica</button>
-                    <p class="muted small">Il materiale lo vedono i compagni della classe e lo legge Google Gemini per preparare i riassunti:
-                        non caricare dati personali, voti o documenti. <a href="privacy.php">Privacy</a></p>
-                    <p id="usage" class="muted small"></p>
-                </form>
-            </details>
+            <div class="card cta-card">
+                <div>
+                    <b>Hai appunti, foto o slide di una lezione?</b>
+                    <span class="muted small">Foto dal telefono, file, testo copiato da un'AI: tutto dalla pagina Carica.</span>
+                </div>
+                <div class="row-actions">
+                    <a class="btn-link" id="upload-link" href="appunti-carica.php">+ Carica</a>
+                    <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
+                </div>
+            </div>
 
             <div class="filters row">
                 <select id="filter-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>
@@ -153,32 +130,13 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 <div class="card ai-bar" id="ai-bar"></div>
                 <h2 class="section-title">Verifiche e interrogazioni in arrivo</h2>
                 <div id="study-tests"></div>
-                <details class="card" id="doc-upload">
-                    <summary>Carica un documento fatto con un'altra AI</summary>
-                    <p class="muted small">Scarica il file <b>"Per AI" (.md)</b> di una lezione o di una verifica: dentro ci sono i prompt e
-                        tutto il materiale già come testo. Allegalo a ChatGPT, Claude, Gemini o un'altra AI, manda il PROMPT 1, poi incolla
-                        qui il risultato. (Lo .zip contiene invece i file originali: molte AI non lo leggono.)</p>
-                    <form id="doc-upload-form" class="stack">
-                        <div class="grid2">
-                            <label>Tipo
-                                <select name="kind">
-                                    <option value="completo">Completo (dispensa)</option>
-                                    <option value="riassunto">Riassunto</option>
-                                    <option value="preparazione">Preparazione mirata</option>
-                                    <option value="quiz">Quiz (JSON)</option>
-                                    <option value="lezione">Appunti di una lezione</option>
-                                </select>
-                            </label>
-                            <label class="for-event">Verifica o interrogazione <select name="event_id"></select></label>
-                            <label class="for-lesson" hidden>Materia <select name="subject_id"></select></label>
-                        </div>
-                        <label class="for-lesson" hidden>Giorno della lezione <input type="date" name="lesson_date"></label>
-                        <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
-                        <label>Testo <textarea name="content" rows="6" placeholder="Incolla qui la risposta dell'AI"></textarea></label>
-                        <label>…oppure un file .md, .txt o .json <input type="file" name="file" accept=".md,.txt,.json,text/plain,text/markdown,application/json"></label>
-                        <button>Carica il documento</button>
-                    </form>
-                </details>
+                <div class="card cta-card">
+                    <div>
+                        <b>Hai fatto un riassunto con ChatGPT, Gemini o Claude?</b>
+                        <span class="muted small">Scarica il file "Per AI" di una verifica, dallo all'AI e carica qui la risposta.</span>
+                    </div>
+                    <a class="ghost-link" id="doc-upload-link" href="appunti-carica.php?m=ai">+ Carica un documento</a>
+                </div>
                 <h2 class="section-title">Appunti delle lezioni</h2>
                 <div class="filters row">
                     <select id="study-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>

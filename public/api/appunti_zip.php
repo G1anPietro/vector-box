@@ -159,7 +159,7 @@ function zipPromptText(array $class, string $what, ?array $event): string {
         . "2. Molte AI (per esempio l'app di Gemini) non leggono gli zip: estrai lo zip e allega i file della cartella\n"
         . "   \"materiale\" e INDICE.txt, oppure scarica dal sito il file \"per AI\" (.md), che ha già dentro tutto il testo.\n"
         . "3. Copia e incolla il PROMPT 1 qui sotto. Gli altri prompt mandali dopo, nella stessa chat.\n"
-        . "4. Copia la risposta e caricala su vector-box: Appunti di classe → Studio → \"Carica un documento fatto con un'altra AI\",\n"
+        . "4. Copia la risposta e caricala su vector-box: Appunti di classe → + Carica → \"Documento da un'altra AI\",\n"
         . "   scegliendo il tipo giusto (il quiz va caricato così com'è, in JSON).\n"
         . "Nota: l'AI può sbagliare. Controlla sempre con il libro e gli appunti originali.\n\n"
         . "Classe {$class['name']} ({$class['school']}). $what.\n"
@@ -187,8 +187,8 @@ function packBuild(PDO $db, array $class, array $scope): array|string {
     $out = ["# Appunti di classe — {$class['name']} ({$class['school']}) — $what", ''];
     $out[] = "Questo file contiene tutto il materiale caricato dalla classe, già come testo (le foto e i PDF sono trascritti).";
     $out[] = "Allegalo (o incollalo) in una chat con un'AI e poi manda il PROMPT 1 qui sotto; gli altri prompt mandali dopo,";
-    $out[] = "nella stessa chat. Poi carica la risposta su vector-box: Appunti di classe → Studio → \"Carica un documento fatto";
-    $out[] = "con un'altra AI\". L'AI può sbagliare: controlla sempre con il libro e gli appunti originali.";
+    $out[] = "nella stessa chat. Poi carica la risposta su vector-box: Appunti di classe → + Carica → \"Documento da un'altra";
+    $out[] = "AI\". L'AI può sbagliare: controlla sempre con il libro e gli appunti originali.";
     if ($event && $event['topics'] !== '') { $out[] = ''; $out[] = "Argomenti annunciati dal prof: {$event['topics']}"; }
     $missing = [];
 

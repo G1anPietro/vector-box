@@ -13,13 +13,35 @@
     let events = [];
     const sel = { subject: null, folder: null, entry: null };   // folder: 'tests' | 'YYYY-MM-DD'
 
-    function status(msg, kind = '') { const s = $('#status'); s.textContent = msg || ''; s.className = 'status arch-status' + (kind ? ' ' + kind : ''); }
+    function status(msg, kind = '') { if (msg) C.toast(msg, kind); }
     const fileUrl = (id) => `../api/appunti.php?action=file&id=${id}`;
     const shortDay = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
-    function setLevel(n) {
+    // On a phone one level is shown at a time: each deeper level is a history entry, so the phone's back
+    // button (and "‹ Indietro") goes up one folder instead of leaving the page
+    let level = 0;
+    function setLevel(n, fromHistory = false) {
+        if (!fromHistory && n > level) history.pushState({ level: n }, '');
+        level = n;
         $('#arch').dataset.level = String(n);
+        $('#back-btn').hidden = n === 0;
         renderCrumbs();
+        if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0);
+    }
+    window.addEventListener('popstate', (ev) => {
+        let n = ev.state && Number.isInteger(ev.state.level) ? ev.state.level : 0;
+        // after a jump with the path links, history can point deeper than what is still selected
+        n = Math.min(n, sel.entry ? 3 : sel.folder ? 2 : sel.subject ? 1 : 0);
+        if (n < 3) sel.entry = null;
+        if (n < 2) sel.folder = null;
+        if (n < 1) sel.subject = null;
+        renderAll();
+        if (n < 3) renderPreview(null);
+        setLevel(n, true);
+    });
+    function goBack() {
+        if (level > 0 && history.state && history.state.level === level) history.back();
+        else { const n = Math.max(0, level - 1); window.dispatchEvent(new PopStateEvent('popstate', { state: { level: n } })); }
     }
 
     function renderCrumbs() {
@@ -212,6 +234,9 @@
         renderPreview(null);
         setLevel(0);
     }
+
+    $('#back-btn').addEventListener('click', goBack);
+    history.replaceState({ level: 0 }, '');
 
     (async () => {
         try {

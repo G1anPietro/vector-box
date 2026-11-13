@@ -140,7 +140,8 @@ $login = 'login.php?next=appunti.php';
                 <li>Se all'AI servono le foto originali, c'è anche lo <strong>.zip</strong> con i file come li avete caricati, più
                     <code>INDICE.txt</code> e <code>PROMPT.txt</code>; molte AI (per esempio l'app di Gemini) però non leggono gli zip:
                     estrailo e allega i file.</li>
-                <li>Copia la risposta e caricala in <em>Studio → Carica un documento fatto con un'altra AI</em>, scegliendo il tipo
+                <li>Copia la risposta e caricala dalla pagina <em>+ Carica → Documento da un'altra AI</em> (sotto ogni verifica, in Studio,
+                    c'è il pulsante che la apre già sulla verifica giusta), scegliendo il tipo
                     (il quiz va caricato così com'è, in JSON). Comparirà accanto agli altri, con il tuo nome.</li>
             </ol>
         </section>

@@ -40,10 +40,9 @@
         return n;
     }
 
+    // Messages go in a toast at the bottom of the screen (visible wherever the page is scrolled)
     function status(msg, kind = '') {
-        const s = $('#status');
-        s.textContent = msg || '';
-        s.className = 'status' + (kind ? ' ' + kind : '');
+        if (msg) window.AppuntiCommon.toast(msg, kind);
     }
 
     const ERRORS = {
@@ -65,7 +64,9 @@
         if (!r.ok || !j || !j.success) throw Object.assign(new Error(errText(j)), { json: j, status: r.status });
         return j;
     }
-    async function post(url, body) {
+    // The pressed button stays disabled ("…") until the answer arrives: no double submissions
+    function post(url, body) { return window.AppuntiCommon.busy(null, () => rawPost(url, body)); }
+    async function rawPost(url, body) {
         const isForm = body instanceof FormData;
         const r = await fetch(url, {
             method: 'POST', credentials: 'same-origin',
@@ -149,99 +150,16 @@
         $$('#tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
         $$('.tab').forEach((t) => { t.hidden = t.id !== 'tab-' + name; });
         status('');
-        if (name === 'material' && current) { prepareUpload(); loadItems(); }
+        if (name === 'material' && current) { $('#upload-link').href = caricaUrl(); loadItems(); }
         if (name === 'calendar' && current) loadEvents();
         if (name === 'study' && current) loadStudy();
         if (name === 'class' && current) renderClass();
         if (name === 'admin') loadAdmin();
     }
 
-    /* ---------- material: upload ---------- */
+    /* ---------- material: uploads happen on pages/appunti-carica.php ---------- */
 
-    async function fillLessons(date, preferred) {
-        const sel = $('#upload-form [name="lesson"]');
-        let lessons = [];
-        try { lessons = (await getJson(`../api/appunti.php?action=lessons&class_id=${current.id}&date=${date}`)).lessons; } catch (e) { /* none */ }
-        const groups = [];
-        if (lessons.length) {
-            groups.push(el('optgroup', { label: 'Lezioni del giorno' }, ...lessons.map((l) => {
-                const hours = l.period === l.period_to ? `${l.period}ª ora` : `${l.period}ª-${l.period_to}ª ora`;
-                const name = l.label || subjectName(l.subject_id);
-                return el('option', { value: `${l.subject_id}|${l.period}`, text: `${hours} · ${name} (${l.start}–${l.end})` });
-            })));
-        }
-        groups.push(el('optgroup', { label: lessons.length ? 'Altra materia' : 'Materia' },
-            ...current.subjects.map((s) => el('option', { value: `${s.id}|`, text: s.name }))));
-        sel.replaceChildren(el('option', { value: '', text: current.subjects.length ? 'Scegli…' : 'Il responsabile deve ancora inserire l\'orario' }), ...groups);
-        if (preferred && [...sel.options].some((o) => o.value === preferred)) sel.value = preferred;
-    }
-
-    async function suggestFor(tsSeconds) {
-        try {
-            const s = await getJson(`../api/appunti.php?action=suggest&class_id=${current.id}&ts=${Math.floor(tsSeconds)}`);
-            $('#upload-form [name="lesson_date"]').value = s.date;
-            await fillLessons(s.date, s.lesson ? `${s.lesson.subject_id}|${s.lesson.period}` : null);
-            return s;
-        } catch (e) { return null; }
-    }
-
-    async function prepareUpload() {
-        const form = $('#upload-form');
-        if (form.dataset.classId !== String(current.id)) {
-            form.dataset.classId = String(current.id);
-            await suggestFor(Date.now() / 1000);
-            updateUsage();
-        }
-    }
-
-    async function updateUsage() {
-        try {
-            const u = await getJson(`../api/appunti.php?action=usage&class_id=${current.id}`);
-            $('#usage').textContent = `Spazio usato: ${sizeText(u.used_bytes)} su ${u.limits_mb.class >= 1024 ? (u.limits_mb.class / 1024).toFixed(1) + ' GB' : u.limits_mb.class + ' MB'} · massimo ${u.limits_mb.file} MB per file`;
-        } catch (e) { /* ignore */ }
-    }
-
-    $('#upload-form [name="lesson_date"]').addEventListener('change', (ev) => fillLessons(ev.target.value));
-    $('#upload-form [name="files"]').addEventListener('change', async (ev) => {
-        const files = [...ev.target.files];
-        const hint = $('#file-hint');
-        if (!files.length) { hint.textContent = ''; return; }
-        // On phones a photo's "last modified" is when it was taken: use it to guess the lesson
-        const oldest = Math.min(...files.map((f) => f.lastModified || Date.now()));
-        const s = await suggestFor(oldest / 1000);
-        const when = new Date(oldest).toLocaleString('it-IT', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
-        hint.textContent = s && s.lesson
-            ? `File del ${when}: ho scelto la lezione di quell'ora. Cambiala se è sbagliata.`
-            : `File del ${when}: scegli tu la lezione.`;
-    });
-
-    $('#upload-form').addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const form = ev.target;
-        const [subjectId, period] = (form.lesson.value || '').split('|');
-        if (!subjectId) { status('Scegli la lezione o la materia.', 'err'); return; }
-        const fd = new FormData();
-        fd.set('action', 'upload');
-        fd.set('class_id', current.id);
-        fd.set('subject_id', subjectId);
-        fd.set('period', period || '');
-        for (const k of ['kind', 'lesson_date', 'title', 'body']) fd.set(k, form[k].value);
-        for (const f of form.files.files) fd.append('files[]', f, f.name);
-        const btn = $('#upload-btn');
-        btn.disabled = true;
-        status('Caricamento…');
-        try {
-            await post('../api/appunti.php', fd);
-            status('Caricato. Grazie!', 'ok');
-            form.title.value = ''; form.body.value = ''; form.files.value = ''; $('#file-hint').textContent = '';
-            loadItems();
-            updateUsage();
-        } catch (e) {
-            status(e.message, 'err');
-        } finally {
-            btn.disabled = false;
-        }
-    });
+    const caricaUrl = (params = {}) => 'appunti-carica.php?' + new URLSearchParams({ class: current.id, ...params });
 
     /* ---------- material: list ---------- */
 
@@ -305,6 +223,19 @@
     $('#ai-subject').addEventListener('click', (ev) => downloadZip({ scope: 'subject', subject_id: $('#filter-subject').value }, ev.target, 'ai_pack'));
     $('#filter-kind').addEventListener('change', loadItems);
 
+    /** Long notes show a few lines and a "Mostra tutto" button (no box scrolling inside the page). */
+    function collapsible(body) {
+        body.classList.add('clamped');
+        const btn = el('button', { type: 'button', class: 'ghost mini more-btn', text: 'Mostra tutto', hidden: true });
+        btn.addEventListener('click', () => {
+            const open = body.classList.toggle('clamped');
+            btn.textContent = open ? 'Mostra tutto' : 'Mostra meno';
+        });
+        // only when the text is really longer than the preview
+        requestAnimationFrame(() => { btn.hidden = body.scrollHeight <= body.clientHeight + 4; });
+        return el('div', {}, body, btn);
+    }
+
     function renderItem(it) {
         const fileUrl = (f) => `../api/appunti.php?action=file&id=${f.id}`;
         const files = it.files.map((f) => f.mime.startsWith('image/') && f.mime !== 'image/heic' && f.mime !== 'image/heif'
@@ -318,7 +249,7 @@
                 it.period ? el('span', { text: `${it.period}ª ora` }) : null,
                 el('span', { text: `da ${it.author || '?'}` })),
             it.title ? el('div', { class: 'title', text: it.title }) : null,
-            it.body ? (window.AppuntiCommon.looksLikeMarkdown(it.body)
+            it.body ? collapsible(window.AppuntiCommon.looksLikeMarkdown(it.body)
                 ? el('div', { class: 'body md' }, md(it.body))
                 : el('div', { class: 'body', text: it.body })) : null,
             files.length ? el('div', { class: 'files' }, files) : null,
@@ -357,7 +288,7 @@
 
     async function deleteItem(it) {
         if (!confirm('Eliminare questo materiale e i suoi file?')) return;
-        try { await notes_({ action: 'delete_item', id: it.id }); status('Eliminato.', 'ok'); loadItems(); updateUsage(); } catch (e) { status(e.message, 'err'); }
+        try { await notes_({ action: 'delete_item', id: it.id }); status('Eliminato.', 'ok'); loadItems(); } catch (e) { status(e.message, 'err'); }
     }
 
 
@@ -377,8 +308,7 @@
                 getJson(`../api/appunti.php?action=events&class_id=${current.id}`),
             ]);
             studyDocs = d.docs;
-            studyEvents = ev.events.filter((e) => e.kind !== 'altro').sort((a, b) => (a.date < b.date ? 1 : -1));
-            fillDocUploadForm();
+            $('#doc-upload-link').href = caricaUrl({ m: 'ai' });
             renderAiBar(d.ai);
             renderStudyTests(ev.events.filter((e) => e.date >= ev.today && e.kind !== 'altro'), d.ai);
             renderStudyLessons();
@@ -446,7 +376,8 @@
                     el('button', { class: 'ghost mini', type: 'button', text: '↓ Per un\'altra AI (.md)',
                         onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') }),
                     el('button', { class: 'ghost mini', type: 'button', text: '↓ Tutto il materiale (.zip)',
-                        onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) })));
+                        onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) }),
+                    el('a', { class: 'ghost-link mini-link', href: caricaUrl({ m: 'ai', event: e.id }), text: '+ Carica un documento fatto con un\'altra AI' })));
         }));
     }
 
@@ -469,48 +400,6 @@
         if (!confirm('Eliminare questo documento caricato a mano?')) return;
         try { await notes_({ action: 'delete_doc', id: d.id }); loadStudy(); } catch (e) { status(e.message, 'err'); }
     }
-
-    // "Carica un documento fatto con un'altra AI"
-    let studyEvents = [];
-    function fillDocUploadForm() {
-        const f = $('#doc-upload-form');
-        f.subject_id.replaceChildren(...current.subjects.map((s) => el('option', { value: s.id, text: s.name })));
-        f.event_id.replaceChildren(...(studyEvents.length
-            ? studyEvents.map((e) => el('option', { value: e.id, text: `${EVENT_KINDS[e.kind]} di ${e.subject} · ${dayFmt.format(parseDate(e.date))}` }))
-            : [el('option', { value: '', text: 'Nessuna verifica in calendario' })]));
-        if (!f.lesson_date.value) f.lesson_date.value = todayStr();
-        toggleDocTarget();
-    }
-    function toggleDocTarget() {
-        const lesson = $('#doc-upload-form').kind.value === 'lezione';
-        $$('#doc-upload-form .for-lesson').forEach((x) => { x.hidden = !lesson; });
-        $$('#doc-upload-form .for-event').forEach((x) => { x.hidden = lesson; });
-    }
-    $('#doc-upload-form [name="kind"]').addEventListener('change', toggleDocTarget);
-    $('#doc-upload-form').addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const f = ev.target;
-        const lesson = f.kind.value === 'lezione';
-        const fd = new FormData();
-        fd.set('action', 'upload_doc');
-        fd.set('class_id', current.id);
-        fd.set('kind', f.kind.value);
-        fd.set('target', lesson ? 'lesson' : 'event');
-        if (lesson) { fd.set('subject_id', f.subject_id.value); fd.set('lesson_date', f.lesson_date.value); } else fd.set('event_id', f.event_id.value);
-        fd.set('title', f.title.value);
-        fd.set('content', f.content.value);
-        if (f.file.files[0]) fd.append('file', f.file.files[0], f.file.files[0].name);
-        try {
-            await post('../api/appunti.php', fd);
-            f.title.value = ''; f.content.value = ''; f.file.value = '';
-            status('Documento caricato: lo trovi qui sotto con il tuo nome.', 'ok');
-            loadStudy();
-        } catch (e) {
-            const msg = { bad_quiz: 'Il quiz deve essere il JSON scritto dall\'AI (PROMPT 4 dello zip).', empty: 'Incolla il testo o scegli un file.',
-                bad_event: 'Scegli una verifica: aggiungila prima nel Calendario.', bad_file: 'Usa un file .md, .txt o .json (massimo 2 MB).' };
-            status((e.json && msg[e.json.code]) || e.message, 'err');
-        }
-    });
 
     async function showDoc(id) {
         try {
@@ -777,7 +666,6 @@
         try {
             await classes_({ action: 'save_timetable', id: current.id, valid_from: $('#tt-from').value, periods, slots });
             await openClass(current.id);
-            $('#upload-form').dataset.classId = '';
             status('Orario salvato.', 'ok');
         } catch (e) { status(e.message, 'err'); }
     });
@@ -986,7 +874,7 @@
     /* ---------- start ---------- */
 
     $$('#tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-    $('#class-select').addEventListener('change', (ev) => { $('#upload-form').dataset.classId = ''; openClass(Number(ev.target.value)).catch((e) => status(e.message, 'err')); });
+    $('#class-select').addEventListener('change', (ev) => { openClass(Number(ev.target.value)).catch((e) => status(e.message, 'err')); });
     const startParams = new URLSearchParams(location.search);
     loadMine(Number(startParams.get('class')) || null)
         .then(() => applyParams(startParams))
