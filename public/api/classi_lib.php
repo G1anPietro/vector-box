@@ -37,6 +37,35 @@ function classLoad(PDO $db, int $id): ?array {
     return $st->fetch() ?: null;
 }
 
+/** What a role or a member can be allowed to do (the representative and the site admin can do everything). */
+const CLASS_PERMS = [
+    'timetable' => "Modificare l'orario",
+    'calendar' => 'Modificare ed eliminare le date del calendario messe da altri',
+    'material' => 'Modificare ed eliminare il materiale caricato da altri',
+    'docs' => "Eliminare i documenti fatti con un'altra AI caricati da altri",
+    'members' => "Vedere il codice d'invito, crearne uno nuovo, togliere compagni",
+    'roles' => 'Creare ruoli e assegnarli, dare permessi (non il ruolo di rappresentante)',
+    'subjects' => 'Unire ed eliminare materie',
+    'settings' => 'Impostazioni della classe (ora del riassunto automatico)',
+];
+
+/** The permissions of a user in a class: all for the representative and the site admin, else role + personal ones. */
+function classPerms(PDO $db, array $class, int $me, bool $isAdmin): array {
+    if ($isAdmin || (int)$class['manager_id'] === $me) return array_keys(CLASS_PERMS);
+    $st = $db->prepare('SELECT m.perms, r.perms AS role_perms FROM class_members m LEFT JOIN class_roles r ON r.id = m.role_id AND r.class_id = m.class_id
+                        WHERE m.class_id = :c AND m.user_id = :u');
+    $st->execute([':c' => $class['id'], ':u' => $me]);
+    $row = $st->fetch();
+    if (!$row) return [];
+    $all = array_merge(json_decode($row['perms'] ?? '[]', true) ?: [], json_decode($row['role_perms'] ?? '[]', true) ?: []);
+    return array_values(array_intersect(array_keys(CLASS_PERMS), $all));
+}
+
+/** Keeps only known permission names. */
+function classCleanPerms($raw): array {
+    return array_values(array_intersect(array_keys(CLASS_PERMS), array_map('strval', is_array($raw) ? $raw : [])));
+}
+
 function classIsMember(PDO $db, int $classId, int $userId): bool {
     $st = $db->prepare('SELECT 1 FROM class_members WHERE class_id = :c AND user_id = :u');
     $st->execute([':c' => $classId, ':u' => $userId]);
@@ -244,19 +273,29 @@ function classSummaryRow(array $c, int $me): array {
     return [
         'id' => (int)$c['id'], 'name' => $c['name'], 'school' => $c['school'],
         'is_manager' => (int)$c['manager_id'] === $me, 'members' => (int)($c['members'] ?? 0),
+        'is_member' => !isset($c['is_member']) || (bool)$c['is_member'],
     ];
 }
 
 function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
     $id = (int)$class['id'];
-    $canManage = $isAdmin || (int)$class['manager_id'] === $me;
+    $perms = classPerms($db, $class, $me, $isAdmin);
+    $canManage = in_array('timetable', $perms, true);
+    $seeAll = in_array('roles', $perms, true) || in_array('members', $perms, true);
 
-    $st = $db->prepare('SELECT a.id, a.username FROM class_members m JOIN accounts a ON a.id = m.user_id
-                        WHERE m.class_id = :c ORDER BY a.username');
+    $st = $db->prepare("SELECT a.id, a.username, m.display_name, m.role_id, m.perms FROM class_members m JOIN accounts a ON a.id = m.user_id
+                        WHERE m.class_id = :c ORDER BY LOWER(COALESCE(NULLIF(m.display_name, ''), a.username))");
     $st->execute([':c' => $id]);
     $members = array_map(fn($r) => [
-        'id' => (int)$r['id'], 'username' => $r['username'], 'is_manager' => (int)$r['id'] === (int)$class['manager_id'],
+        'id' => (int)$r['id'], 'username' => $r['username'], 'name' => $r['display_name'] ?: $r['username'],
+        'display_name' => $r['display_name'] ?? '', 'is_manager' => (int)$r['id'] === (int)$class['manager_id'],
+        'role_id' => $r['role_id'] !== null ? (int)$r['role_id'] : null,
+        'perms' => $seeAll || (int)$r['id'] === $me ? classCleanPerms(json_decode($r['perms'] ?? '[]', true)) : [],
     ], $st->fetchAll());
+    $st = $db->prepare('SELECT id, name, color, perms FROM class_roles WHERE class_id = :c ORDER BY name');
+    $st->execute([':c' => $id]);
+    $roles = array_map(fn($r) => ['id' => (int)$r['id'], 'name' => $r['name'], 'color' => $r['color'],
+        'perms' => classCleanPerms(json_decode($r['perms'], true))], $st->fetchAll());
 
     $subjects = classSubjects($db, $id);
     $names = array_column($subjects, 'name', 'id');
@@ -274,7 +313,11 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'status' => $class['status'],
         'is_manager' => (int)$class['manager_id'] === $me,
         'can_manage' => $canManage,
-        'invite_code' => $canManage ? $class['invite_code'] : null,
+        'perms' => $perms,
+        'perm_labels' => CLASS_PERMS,
+        'is_member' => classIsMember($db, $id, $me),
+        'roles' => $roles,
+        'invite_code' => in_array('members', $perms, true) ? $class['invite_code'] : null,
         'timezone' => $class['timezone'],
         'summary_time' => $class['summary_time'],
         'periods' => classPeriods($class),

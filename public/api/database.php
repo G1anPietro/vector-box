@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 15;
+const DB_SCHEMA_VERSION = 16;
 
 /**
  * Session bootstrap.
@@ -548,6 +548,23 @@ function migrateV15(PDO $db): void {
     $db->exec('CREATE INDEX IF NOT EXISTS idx_review_due ON review_cards(user_id, class_id, due_date)');
 }
 
+function migrateV16(PDO $db): void {
+    // Class roles made by the representative (name, colour, permissions) and per-member extras
+    $db->exec("CREATE TABLE IF NOT EXISTS class_roles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT '#5b8def',
+        perms TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_roles_class ON class_roles(class_id)');
+    addColumnIfMissing($db, 'class_members', 'role_id', 'INTEGER');
+    addColumnIfMissing($db, 'class_members', 'perms', "TEXT NOT NULL DEFAULT '[]'");
+    // The name shown inside the class (real name), instead of the site username
+    addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -597,6 +614,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 15) {
             migrateV15($db);
+        }
+        if ($current < 16) {
+            migrateV16($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

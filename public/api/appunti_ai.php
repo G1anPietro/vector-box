@@ -229,14 +229,14 @@ function aiLessonDocs(PDO $db, array $class): int {
     [$since, $until] = aiLessonRange($class);
     if ($until !== null) {
         // a chosen range: exactly those days
-        $st = $db->prepare('SELECT i.*, a.username AS author, s.name AS subject FROM class_items i
-                            LEFT JOIN accounts a ON a.id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
+        $st = $db->prepare('SELECT i.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author, s.name AS subject FROM class_items i
+                            LEFT JOIN accounts a ON a.id = i.author_id LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
                             WHERE i.class_id = :c AND i.lesson_date BETWEEN :since AND :until ORDER BY i.subject_id, i.lesson_date, i.id');
         $st->execute([':c' => $classId, ':since' => $since, ':until' => $until]);
     } else {
         // Recent lessons, and older lessons whose material was uploaded or changed recently (notes caught up late)
-        $st = $db->prepare('SELECT i.*, a.username AS author, s.name AS subject FROM class_items i
-                            LEFT JOIN accounts a ON a.id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
+        $st = $db->prepare('SELECT i.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author, s.name AS subject FROM class_items i
+                            LEFT JOIN accounts a ON a.id = i.author_id LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
                             WHERE i.class_id = :c AND EXISTS (SELECT 1 FROM class_items j WHERE j.class_id = i.class_id
                                   AND j.subject_id = i.subject_id AND j.lesson_date = i.lesson_date
                                   AND (j.lesson_date >= :since OR j.updated_at >= :recent))
@@ -479,7 +479,7 @@ function aiEventDocs(PDO $db, array $class): int {
                               AND status = 'ok' AND author_id IS NULL AND lesson_date BETWEEN :f AND :t ORDER BY lesson_date");
         $docs->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
         $lessonDocs = $docs->fetchAll(PDO::FETCH_KEY_PAIR);
-        $items = $db->prepare('SELECT i.*, a.username AS author FROM class_items i LEFT JOIN accounts a ON a.id = i.author_id
+        $items = $db->prepare('SELECT i.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_items i LEFT JOIN accounts a ON a.id = i.author_id LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id
                                WHERE i.class_id = :c AND i.subject_id = :s AND i.lesson_date BETWEEN :f AND :t ORDER BY i.lesson_date, i.id');
         $items->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
         $all = $items->fetchAll();

@@ -44,13 +44,13 @@ function apFail(string $code, string $message, int $status = 400): void {
     jsonResponse(['success' => false, 'code' => $code, 'error' => $message], $status);
 }
 
-/** An active class the caller belongs to (or any class for the admin). Returns [class, canManage]. */
+/** An active class the caller belongs to (or any class for the admin). Returns [class, my permissions]. */
 function apClass(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
     if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classIsMember($db, $id, $me))) {
         apFail('not_found', 'Class not found', 404);
     }
-    return [$class, $isAdmin || (int)$class['manager_id'] === $me];
+    return [$class, classPerms($db, $class, $me, $isAdmin)];
 }
 
 function apText($v, int $max, bool $multiline = false): string {
@@ -175,7 +175,8 @@ try {
             ]]);
         }
 
-        [$class, $canManage] = apClass($db, (int)($_GET['class_id'] ?? 0), $me, $isAdmin);
+        [$class, $perms] = apClass($db, (int)($_GET['class_id'] ?? 0), $me, $isAdmin);
+        $canManage = in_array('material', $perms, true);
         $classId = (int)$class['id'];
 
         if ($action === 'lessons') {
@@ -200,8 +201,8 @@ try {
                 $v = (string)($_GET[$k] ?? '');
                 if ($v !== '' && classValidDate($v)) { $where[] = "i.lesson_date $op :$k"; $params[":$k"] = $v; }
             }
-            $st = $db->prepare('SELECT i.*, s.name AS subject, a.username AS author FROM class_items i
-                                LEFT JOIN class_subjects s ON s.id = i.subject_id LEFT JOIN accounts a ON a.id = i.author_id
+            $st = $db->prepare('SELECT i.*, s.name AS subject, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_items i
+                                LEFT JOIN class_subjects s ON s.id = i.subject_id LEFT JOIN accounts a ON a.id = i.author_id LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id
                                 WHERE ' . implode(' AND ', $where) . ' ORDER BY i.lesson_date DESC, i.id DESC LIMIT 300');
             $st->execute($params);
             $items = $st->fetchAll();
@@ -240,12 +241,12 @@ try {
             $to = (string)($_GET['to'] ?? '');
             if (!classValidDate($from)) $from = (new DateTimeImmutable($today))->modify('-60 days')->format('Y-m-d');
             if (!classValidDate($to)) $to = (new DateTimeImmutable($today))->modify('+180 days')->format('Y-m-d');
-            $st = $db->prepare('SELECT e.*, s.name AS subject, a.username AS author FROM class_events e
-                                LEFT JOIN class_subjects s ON s.id = e.subject_id LEFT JOIN accounts a ON a.id = e.author_id
+            $st = $db->prepare('SELECT e.*, s.name AS subject, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_events e
+                                LEFT JOIN class_subjects s ON s.id = e.subject_id LEFT JOIN accounts a ON a.id = e.author_id LEFT JOIN class_members cm ON cm.class_id = e.class_id AND cm.user_id = e.author_id
                                 WHERE e.class_id = :c AND e.event_date BETWEEN :f AND :t ORDER BY e.event_date, e.id LIMIT 500');
             $st->execute([':c' => $classId, ':f' => $from, ':t' => $to]);
             jsonResponse(['success' => true, 'today' => $today, 'events' => array_map(
-                fn($e) => notesFormatEvent($e, $me, $canManage) + ['period' => notesEventPeriod($db, $e)], $st->fetchAll())]);
+                fn($e) => notesFormatEvent($e, $me, in_array('calendar', $perms, true)) + ['period' => notesEventPeriod($db, $e)], $st->fetchAll())]);
         }
 
         if ($action === 'docs') {
@@ -253,8 +254,8 @@ try {
             $params = [':c' => $classId];
             if (!empty($_GET['subject_id'])) { $where .= ' AND d.subject_id = :s'; $params[':s'] = (int)$_GET['subject_id']; }
             $st = $db->prepare("SELECT d.id, d.kind, d.subject_id, d.lesson_date, d.event_id, d.title, d.status, d.updated_at, d.author_id,
-                                       s.name AS subject, a.username AS author
-                                FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id LEFT JOIN accounts a ON a.id = d.author_id
+                                       s.name AS subject, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author
+                                FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id LEFT JOIN accounts a ON a.id = d.author_id LEFT JOIN class_members cm ON cm.class_id = d.class_id AND cm.user_id = d.author_id
                                 WHERE $where ORDER BY COALESCE(d.lesson_date, '') DESC, d.id DESC LIMIT 300");
             $st->execute($params);
             $pending = $db->prepare("SELECT COUNT(*) FROM class_item_files WHERE class_id = :c AND text_status = 'pending'");
@@ -266,7 +267,7 @@ try {
                     'lesson_date' => $d['lesson_date'], 'event_id' => $d['event_id'] !== null ? (int)$d['event_id'] : null,
                     'title' => $d['title'], 'status' => $d['status'], 'updated_at' => (int)$d['updated_at'],
                     'manual' => $d['author_id'] !== null, 'author' => $d['author'],
-                    'can_delete' => $d['author_id'] !== null && ($canManage || (int)$d['author_id'] === $me),
+                    'can_delete' => $d['author_id'] !== null && (in_array('docs', $perms, true) || (int)$d['author_id'] === $me),
                 ], $st->fetchAll()),
                 'ai' => [
                     'configured' => geminiConfigured(),
@@ -465,8 +466,8 @@ try {
     if ($action === 'edit_item' || $action === 'delete_item') {
         $item = apLoadItem($db, (int)($in['id'] ?? 0));
         if (!$item) apFail('not_found', 'Not found', 404);
-        [$class, $canManage] = apClass($db, (int)$item['class_id'], $me, $isAdmin);
-        if (!$canManage && (int)$item['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can change this', 403);
+        [$class, $perms] = apClass($db, (int)$item['class_id'], $me, $isAdmin);
+        if (!in_array('material', $perms, true) && (int)$item['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can change this', 403);
 
         if ($action === 'delete_item') {
             $db->exec('BEGIN IMMEDIATE');
@@ -567,9 +568,9 @@ try {
         $st->execute([':id' => (int)($in['id'] ?? 0)]);
         $doc = $st->fetch();
         if (!$doc) apFail('not_found', 'Not found', 404);
-        [, $canManage] = apClass($db, (int)$doc['class_id'], $me, $isAdmin);
+        [, $perms] = apClass($db, (int)$doc['class_id'], $me, $isAdmin);
         if ($doc['author_id'] === null) apFail('forbidden', 'Documents written by the site\'s AI cannot be deleted', 403);
-        if (!$canManage && (int)$doc['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can delete this', 403);
+        if (!in_array('docs', $perms, true) && (int)$doc['author_id'] !== $me) apFail('forbidden', 'Only the author or who has the permission can delete this', 403);
         $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $doc['id']]);
         jsonResponse(['success' => true]);
     }
@@ -630,8 +631,8 @@ try {
         $st->execute([':id' => (int)($in['id'] ?? 0)]);
         $event = $st->fetch();
         if (!$event) apFail('not_found', 'Not found', 404);
-        [$class, $canManage] = apClass($db, (int)$event['class_id'], $me, $isAdmin);
-        if (!$canManage && (int)$event['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can change this', 403);
+        [$class, $perms] = apClass($db, (int)$event['class_id'], $me, $isAdmin);
+        if (!in_array('calendar', $perms, true) && (int)$event['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can change this', 403);
         if ($action === 'delete_event') {
             $db->prepare('DELETE FROM class_events WHERE id = :id')->execute([':id' => $event['id']]);
             $db->prepare('DELETE FROM class_docs WHERE event_id = :id')->execute([':id' => $event['id']]);

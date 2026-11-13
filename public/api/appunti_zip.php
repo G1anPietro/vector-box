@@ -57,8 +57,8 @@ function zipSelect(PDO $db, array $class, array $scope): array|string {
         $where[] = 'i.subject_id = :s';
         $params[':s'] = $scope['subject_id'];
     }
-    $st = $db->prepare('SELECT i.*, a.username AS author, s.name AS subject FROM class_items i
-                        LEFT JOIN accounts a ON a.id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
+    $st = $db->prepare('SELECT i.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author, s.name AS subject FROM class_items i
+                        LEFT JOIN accounts a ON a.id = i.author_id LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
                         WHERE ' . implode(' AND ', $where) . ' ORDER BY i.lesson_date, i.subject_id, i.id');
     $st->execute($params);
     $items = $st->fetchAll();
@@ -136,7 +136,7 @@ function zipWrite(PDO $db, array $class, array $scope, array $items, array $file
         if ($scope['type'] === 'day') { $dw[] = 'd.lesson_date = :d'; $dp[':d'] = $scope['date']; }
         if (!empty($scope['subject_id'])) { $dw[] = 'd.subject_id = :s'; $dp[':s'] = $scope['subject_id']; }
     }
-    $ds = $db->prepare('SELECT d.*, a.username AS author FROM class_docs d LEFT JOIN accounts a ON a.id = d.author_id WHERE ' . implode(' AND ', $dw) . ' ORDER BY d.lesson_date, d.id');
+    $ds = $db->prepare('SELECT d.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_docs d LEFT JOIN accounts a ON a.id = d.author_id LEFT JOIN class_members cm ON cm.class_id = d.class_id AND cm.user_id = d.author_id WHERE ' . implode(' AND ', $dw) . ' ORDER BY d.lesson_date, d.id');
     $ds->execute($dp);
     foreach ($ds->fetchAll() as $d) {
         $name = zipName($d['title'] . ($d['author'] ? ' (di ' . $d['author'] . ')' : ''), 90) . ($d['kind'] === 'quiz' ? '.json' : '.md');

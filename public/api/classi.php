@@ -42,12 +42,26 @@ function clVisible(PDO $db, int $id, int $me, bool $isAdmin): array {
     return $class;
 }
 
-/** Loads an active class the caller manages (manager or admin), or stops. */
-function clManaged(PDO $db, int $id, int $me, bool $isAdmin): array {
+/** Loads an active class where the caller has a permission (the representative and the admin have all), or stops. */
+function clManaged(PDO $db, int $id, int $me, bool $isAdmin, string $perm = 'settings'): array {
     $class = clVisible($db, $id, $me, $isAdmin);
     if ($class['status'] !== 'active') clFail('not_active', 'This class is not active', 409);
-    if (!$isAdmin && (int)$class['manager_id'] !== $me) clFail('not_manager', 'Only the class manager can do this', 403);
+    if (!in_array($perm, classPerms($db, $class, $me, $isAdmin), true)) clFail('not_manager', 'You do not have the permission to do this', 403);
     return $class;
+}
+
+/** Only the representative (or the site admin). */
+function clRepresentative(PDO $db, int $id, int $me, bool $isAdmin): array {
+    $class = clVisible($db, $id, $me, $isAdmin);
+    if ($class['status'] !== 'active') clFail('not_active', 'This class is not active', 409);
+    if (!$isAdmin && (int)$class['manager_id'] !== $me) clFail('not_manager', 'Only the representative can do this', 403);
+    return $class;
+}
+
+function clRoleOf(PDO $db, int $classId, int $roleId): ?array {
+    $st = $db->prepare('SELECT * FROM class_roles WHERE id = :r AND class_id = :c');
+    $st->execute([':r' => $roleId, ':c' => $classId]);
+    return $st->fetch() ?: null;
 }
 
 function clText($value, int $max): string {
@@ -62,9 +76,12 @@ try {
         $action = (string)($_GET['action'] ?? '');
 
         if ($action === 'mine') {
-            $st = $db->prepare("SELECT c.*, (SELECT COUNT(*) FROM class_members m2 WHERE m2.class_id = c.id) AS members
-                                FROM school_classes c JOIN class_members m ON m.class_id = c.id
-                                WHERE m.user_id = :me AND c.status = 'active' ORDER BY c.school, c.name");
+            // The site admin sees every active class (marked when not a member)
+            $st = $db->prepare("SELECT c.*, (SELECT COUNT(*) FROM class_members m2 WHERE m2.class_id = c.id) AS members,
+                                       EXISTS (SELECT 1 FROM class_members m WHERE m.class_id = c.id AND m.user_id = :me) AS is_member
+                                FROM school_classes c WHERE c.status = 'active'
+                                " . ($isAdmin ? '' : 'AND EXISTS (SELECT 1 FROM class_members m WHERE m.class_id = c.id AND m.user_id = :me)') . "
+                                ORDER BY is_member DESC, c.school, c.name");
             $st->execute([':me' => $me]);
             $classes = array_map(fn($c) => classSummaryRow($c, $me), $st->fetchAll());
 
@@ -228,14 +245,14 @@ try {
     }
 
     if ($action === 'regen_code') {
-        clManaged($db, $id, $me, $isAdmin);
+        clManaged($db, $id, $me, $isAdmin, 'members');
         $code = classNewInviteCode($db);
         $db->prepare('UPDATE school_classes SET invite_code = :c WHERE id = :id')->execute([':c' => $code, ':id' => $id]);
         jsonResponse(['success' => true, 'invite_code' => $code]);
     }
 
     if ($action === 'remove_member' || $action === 'set_manager') {
-        $class = clManaged($db, $id, $me, $isAdmin);
+        $class = $action === 'set_manager' ? clRepresentative($db, $id, $me, $isAdmin) : clManaged($db, $id, $me, $isAdmin, 'members');
         $userId = (int)($in['user_id'] ?? 0);
         if (!classIsMember($db, $id, $userId)) clFail('not_member', 'That user is not in the class', 404);
         if ($action === 'remove_member') {
@@ -247,8 +264,116 @@ try {
         jsonResponse(['success' => true]);
     }
 
+    if ($action === 'display_name') {
+        // My name in this class (or another member's, for whoever manages members)
+        $class = clVisible($db, $id, $me, $isAdmin);
+        $userId = (int)($in['user_id'] ?? $me);
+        if ($userId !== $me) clManaged($db, $id, $me, $isAdmin, 'members');
+        if (!classIsMember($db, $id, $userId)) clFail('not_member', 'That user is not in the class', 404);
+        $name = clText($in['name'] ?? '', 40);
+        $db->prepare('UPDATE class_members SET display_name = :n WHERE class_id = :c AND user_id = :u')
+           ->execute([':n' => $name !== '' ? $name : null, ':c' => $id, ':u' => $userId]);
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'save_role') {
+        // Create (no role_id) or change a role: name, colour, permissions
+        clManaged($db, $id, $me, $isAdmin, 'roles');
+        $name = clText($in['name'] ?? '', 30);
+        if ($name === '') clFail('bad_name', 'Give the role a name');
+        $color = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($in['color'] ?? '')) ? (string)$in['color'] : '#5b8def';
+        $perms = json_encode(classCleanPerms($in['perms'] ?? []));
+        $roleId = (int)($in['role_id'] ?? 0);
+        if ($roleId) {
+            if (!clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
+            $db->prepare('UPDATE class_roles SET name = :n, color = :col, perms = :p WHERE id = :r')
+               ->execute([':n' => $name, ':col' => $color, ':p' => $perms, ':r' => $roleId]);
+        } else {
+            $n = $db->prepare('SELECT COUNT(*) FROM class_roles WHERE class_id = :c');
+            $n->execute([':c' => $id]);
+            if ((int)$n->fetchColumn() >= 20) clFail('too_many', 'At most 20 roles');
+            $db->prepare('INSERT INTO class_roles (class_id, name, color, perms, created_at) VALUES (:c, :n, :col, :p, :t)')
+               ->execute([':c' => $id, ':n' => $name, ':col' => $color, ':p' => $perms, ':t' => time()]);
+            $roleId = (int)$db->lastInsertId();
+        }
+        jsonResponse(['success' => true, 'role_id' => $roleId]);
+    }
+
+    if ($action === 'delete_role') {
+        clManaged($db, $id, $me, $isAdmin, 'roles');
+        $roleId = (int)($in['role_id'] ?? 0);
+        if (!clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
+        $db->prepare('UPDATE class_members SET role_id = NULL WHERE class_id = :c AND role_id = :r')->execute([':c' => $id, ':r' => $roleId]);
+        $db->prepare('DELETE FROM class_roles WHERE id = :r')->execute([':r' => $roleId]);
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'set_member_access') {
+        // A member's role and personal permissions (on top of the role's)
+        $class = clManaged($db, $id, $me, $isAdmin, 'roles');
+        $userId = (int)($in['user_id'] ?? 0);
+        if (!classIsMember($db, $id, $userId)) clFail('not_member', 'That user is not in the class', 404);
+        if ($userId === (int)$class['manager_id']) clFail('is_manager', 'The representative already has every permission', 409);
+        $roleId = (int)($in['role_id'] ?? 0);
+        if ($roleId && !clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
+        $db->prepare('UPDATE class_members SET role_id = :r, perms = :p WHERE class_id = :c AND user_id = :u')
+           ->execute([':r' => $roleId ?: null, ':p' => json_encode(classCleanPerms($in['perms'] ?? [])), ':c' => $id, ':u' => $userId]);
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'merge_subject' || $action === 'delete_subject') {
+        // Merge "Lab Informatica" into "Informatica" (material, calendar, documents, timetable), or delete an empty subject
+        clManaged($db, $id, $me, $isAdmin, 'subjects');
+        $from = (int)($in['subject_id'] ?? 0);
+        $subs = array_column(classSubjects($db, $id), 'name', 'id');
+        if (!isset($subs[$from])) clFail('not_found', 'Subject not found', 404);
+        $into = (int)($in['into'] ?? 0);
+        if ($action === 'merge_subject' && (!isset($subs[$into]) || $into === $from)) clFail('bad_target', 'Choose another subject of this class');
+        $used = 0;
+        foreach (['class_items', 'class_events', 'class_docs'] as $t) {
+            $q = $db->prepare("SELECT COUNT(*) FROM $t WHERE class_id = :c AND subject_id = :s");
+            $q->execute([':c' => $id, ':s' => $from]);
+            $used += (int)$q->fetchColumn();
+        }
+        if ($action === 'delete_subject' && $used > 0) clFail('not_empty', 'This subject has material: merge it into another one instead');
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            if ($action === 'merge_subject') {
+                foreach (['class_items', 'class_events'] as $t) {
+                    $db->prepare("UPDATE $t SET subject_id = :to WHERE class_id = :c AND subject_id = :s")->execute([':to' => $into, ':c' => $id, ':s' => $from]);
+                }
+                // Documents made by hand move; the site's AI documents are rewritten for the merged subject at the next run
+                $db->prepare('UPDATE class_docs SET subject_id = :to WHERE class_id = :c AND subject_id = :s AND author_id IS NOT NULL')
+                   ->execute([':to' => $into, ':c' => $id, ':s' => $from]);
+                $db->prepare('DELETE FROM class_docs WHERE class_id = :c AND (subject_id = :s OR subject_id = :to) AND author_id IS NULL AND event_id IS NULL')
+                   ->execute([':c' => $id, ':s' => $from, ':to' => $into]);
+            }
+            // Timetable versions: the hours of the old subject become the new one's (merge) or free hours (delete)
+            $tts = $db->prepare('SELECT id, slots FROM class_timetables WHERE class_id = :c');
+            $tts->execute([':c' => $id]);
+            $upd = $db->prepare('UPDATE class_timetables SET slots = :s WHERE id = :id');
+            foreach ($tts->fetchAll() as $tt) {
+                $slots = [];
+                foreach (json_decode($tt['slots'], true) ?: [] as $sl) {
+                    if ((int)$sl['subject_id'] === $from) {
+                        if ($action === 'delete_subject') continue;
+                        $sl['subject_id'] = $into;
+                    }
+                    $slots[] = $sl;
+                }
+                $upd->execute([':s' => json_encode($slots), ':id' => $tt['id']]);
+            }
+            $db->prepare('DELETE FROM class_subjects WHERE id = :s AND class_id = :c')->execute([':s' => $from, ':c' => $id]);
+            $db->exec('COMMIT');
+        } catch (Throwable $e) {
+            $db->exec('ROLLBACK');
+            throw $e;
+        }
+        jsonResponse(['success' => true]);
+    }
+
     if ($action === 'settings') {
-        clManaged($db, $id, $me, $isAdmin);
+        clManaged($db, $id, $me, $isAdmin, 'settings');
         $time = (string)($in['summary_time'] ?? '');
         if (!classValidTime($time)) clFail('bad_time', 'Time must be HH:MM');
         $tz = (string)($in['timezone'] ?? 'Europe/Rome');

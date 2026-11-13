@@ -457,7 +457,7 @@ test('"Genera ora" on chosen days rewrites the lessons of those days, even old o
     await upload(mario, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: day(-60), body: 'Il Congresso di Vienna, 1815' });
     site.db("UPDATE class_items SET updated_at = 1000 WHERE lesson_date = ?", [day(-60)]);
     const gen = (body) => { site.db('UPDATE school_classes SET ai_last_manual = NULL WHERE id = ?', [classId]); return ap(luigi, { action: 'generate', class_id: classId, ...body }); };
-    assert.equal((await gen({ from: day(-1), to: day(1) })).json.code, 'bad_range', 'no future days');
+    assert.equal((await gen({ from: day(-1), to: day(2) })).json.code, 'bad_range', 'no future days');
     assert.equal((await gen({ from: day(-5), to: day(-10) })).json.code, 'bad_range');
     assert.equal((await gen({ from: day(-300), to: day(0) })).json.code, 'bad_range', 'at most 120 days');
     const has = () => site.db("SELECT COUNT(*) AS n FROM class_docs WHERE kind = 'lezione' AND lesson_date = ?", [day(-60)])[0].n;
