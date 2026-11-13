@@ -8,7 +8,7 @@ const CLASS_SCHOOL_MAX = 100;
 const CLASS_NOTE_MAX = 300;
 const CLASS_MAX_PENDING = 3;
 const CLASS_MAX_PERIODS = 12;
-const CLASS_MAX_DAYS = 6;            // Monday..Saturday
+const CLASS_MAX_DAYS = 7;            // Monday..Sunday (Sunday only if a class needs it)
 const CLASS_SUBJECT_MAX = 60;
 const CLASS_LABEL_MAX = 30;
 const CLASS_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I
@@ -99,7 +99,7 @@ function classNewInviteCode(PDO $db): string {
 function classDelete(PDO $db, int $id): void {
     $db->exec('BEGIN IMMEDIATE');
     try {
-        foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events', 'class_docs'] as $table) {
+        foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events', 'class_docs', 'class_bell_sent', 'review_cards'] as $table) {
             $db->prepare("DELETE FROM $table WHERE class_id = :id")->execute([':id' => $id]);
         }
         $db->prepare('DELETE FROM school_classes WHERE id = :id')->execute([':id' => $id]);

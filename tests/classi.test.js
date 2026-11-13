@@ -172,6 +172,12 @@ test('bell times can differ by day (shorter hours on Monday and Thursday)', asyn
     const c = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class;
     assert.equal(c.periods['6'].length, 0);
     assert.ok(!c.timetable.slots.some((x) => x.day === 6), 'no Saturday lessons left');
+
+    // Sunday too, if a class ever needs it
+    const sun = await api(mario, { action: 'save_timetable', id: classId, periods: { ...periods, 7: long.slice(0, 1) }, valid_from: '2026-09-02',
+        slots: [{ day: 7, period: 1, subject: 'Matematica' }] });
+    assert.equal(sun.status, 200, sun.text);
+    assert.equal((await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.periods['7'].length, 1);
 });
 
 test('manager: new code, transfer, remove; members can leave', async () => {

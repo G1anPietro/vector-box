@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 14;
+const DB_SCHEMA_VERSION = 15;
 
 /**
  * Session bootstrap.
@@ -517,6 +517,37 @@ function migrateV14(PDO $db): void {
     addColumnIfMissing($db, 'class_docs', 'author_id', 'INTEGER');
 }
 
+function migrateV15(PDO $db): void {
+    // A test can say which material to study (from/to), when the topic does not start after the previous test
+    addColumnIfMissing($db, 'class_events', 'period_from', 'TEXT');
+    addColumnIfMissing($db, 'class_events', 'period_to', 'TEXT');
+    // "Genera ora" on a chosen range of lesson days
+    addColumnIfMissing($db, 'school_classes', 'ai_range_from', 'TEXT');
+    addColumnIfMissing($db, 'school_classes', 'ai_range_to', 'TEXT');
+    // Push 5 minutes before the end of each lesson: what comes next and where (each member chooses)
+    addColumnIfMissing($db, 'class_members', 'bell_notify', 'INTEGER NOT NULL DEFAULT 0');
+    $db->exec("CREATE TABLE IF NOT EXISTS class_bell_sent (
+        class_id INTEGER NOT NULL,
+        lesson_date TEXT NOT NULL,
+        period INTEGER NOT NULL,
+        sent_at INTEGER NOT NULL,
+        PRIMARY KEY (class_id, lesson_date, period)
+    )");
+    // Spaced review: quiz questions answered wrong come back after 1, 3, 7, 14, 30 days until known
+    $db->exec("CREATE TABLE IF NOT EXISTS review_cards (
+        user_id INTEGER NOT NULL,
+        doc_id INTEGER NOT NULL,
+        q_index INTEGER NOT NULL,
+        class_id INTEGER NOT NULL,
+        box INTEGER NOT NULL DEFAULT 0,
+        due_date TEXT NOT NULL,
+        question TEXT NOT NULL,             -- a copy of the question (JSON): the quiz may be rewritten later
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, doc_id, q_index)
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_review_due ON review_cards(user_id, class_id, due_date)');
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -563,6 +594,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 14) {
             migrateV14($db);
+        }
+        if ($current < 15) {
+            migrateV15($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

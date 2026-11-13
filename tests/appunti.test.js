@@ -384,6 +384,42 @@ test('schemas made with another AI: JSON checked, tree kept', async () => {
     await ap(luigi, { action: 'delete_doc', id: r.json.id });
 });
 
+test('spaced review: wrong quiz answers come back after 1, 3, 7, 14, 30 days until known', async () => {
+    const quiz = { questions: [0, 1, 2].map((i) => ({ topic: 'Napoleone', question: `Domanda ${i}?`, options: ['a', 'b', 'c', 'd'], answer: 1, explanation: '' })) };
+    const now = Math.floor(Date.now() / 1000);
+    site.db(`INSERT INTO class_docs (class_id, doc_key, subject_id, kind, title, content, sources, input_hash, model, status, created_at, updated_at)
+             VALUES (?, 'quiz:test', ?, 'quiz', 'Storia — Quiz', ?, '[]', 'h', 'test', 'ok', ?, ?)`, [classId, subj.Storia, JSON.stringify(quiz), now, now]);
+    const docId = site.db("SELECT id FROM class_docs WHERE doc_key = 'quiz:test'")[0].id;
+    const answer = (c, q, correct) => ap(c, { action: 'review_answer', doc_id: docId, q, correct });
+    const review = async (c) => (await c.get(`/api/appunti.php?action=review&class_id=${classId}`)).json;
+
+    assert.equal((await answer(peach, 0, false)).status, 404, 'members only');
+    assert.equal((await answer(luigi, 9, false)).json.code, 'bad_question');
+    assert.equal((await answer(luigi, 0, true)).json.state, 'known', 'right at the first try: not in the review');
+    const w = (await answer(luigi, 1, false)).json;
+    assert.equal(w.box, 0);
+    let r = await review(luigi);
+    assert.deepEqual([r.due.length, r.later], [0, 1], 'tomorrow, not today');
+    assert.equal((await review(toad)).later, 0, 'each student has their own');
+
+    // the quiz is rewritten later: the review keeps the question it had
+    site.db("UPDATE class_docs SET content = ? WHERE id = ?", [JSON.stringify({ questions: [] }), docId]);
+    site.db('UPDATE review_cards SET due_date = ?', [r.today]);
+    r = await review(luigi);
+    assert.equal(r.due.length, 1);
+    assert.equal(r.due[0].question, 'Domanda 1?');
+    assert.equal(r.due[0].from, 'Storia — Quiz');
+    const days = [];
+    for (let i = 0; i < 4; i++) {
+        const a = (await answer(luigi, 1, true)).json;
+        days.push(Math.round((Date.parse(a.due) - Date.parse(r.today)) / 86400000));
+    }
+    assert.deepEqual(days, [3, 7, 14, 30]);
+    assert.equal((await answer(luigi, 1, true)).json.state, 'learned');
+    assert.equal((await review(luigi)).later, 0);
+    site.db("DELETE FROM class_docs WHERE id = ?", [docId]);
+});
+
 test('archive and upload pages: members only, no inline scripts', async () => {
     for (const page of ['appunti-archivio.php', 'appunti-carica.php']) {
         const guest = await fetch(`${site.base}/pages/${page}`, { redirect: 'manual' });

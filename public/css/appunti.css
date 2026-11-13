@@ -50,7 +50,8 @@ h3 { font-size: 17px; margin: 18px 0 6px; }
 .status.ok { color: var(--ok); }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 14px 0; }
-details.card > summary { cursor: pointer; font-weight: 700; font-size: 18px; list-style: none; }
+details.card > summary { cursor: pointer; font-weight: 700; font-size: 18px; list-style: none; margin: 0; line-height: 1.3; }
+details.card > summary::-webkit-details-marker { display: none; }
 details.card > summary::before { content: "+ "; color: var(--accent); }
 details.card[open] > summary::before { content: "− "; }
 details.card[open] > summary { margin-bottom: 12px; }
@@ -133,7 +134,8 @@ button.mini { min-height: 34px; padding: 4px 10px; font-size: 14px; }
 .tt-row .n { color: var(--muted); font-size: 14px; text-align: right; }
 
 .section-title { font-size: 18px; margin: 22px 0 6px; }
-.ai-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.ai-bar { display: block; }
+.ai-bar-row, .review-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
 .ai-bar p { margin: 0; }
 .test-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
 .test-card .docs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -405,3 +407,13 @@ label:has(> .dp-native) { position: relative; }
 .dp-foot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .dp-week { margin: 0 0 0 auto; display: flex; gap: 4px; align-items: center; font-size: 13px; color: var(--muted); }
 .dp-week select { width: auto; padding: 4px 6px; margin: 0; }
+
+/* ---------- "Genera ora" on chosen days, review card ---------- */
+.range-box > summary { font-size: 14px; }
+.range-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 8px; }
+.range-form label { flex: 1 1 140px; margin: 0; }
+.review-box { border-color: var(--accent); }
+.review-box p, .review-box div { margin: 0; }
+.period-box { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 4px; margin: 0; }
+.period-box legend { font-weight: 600; padding: 0 6px; }
+.event-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }

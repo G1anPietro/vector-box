@@ -184,3 +184,40 @@ test('unsubscribe removes only my device', async () => {
     await nt(mario, { action: 'unsubscribe', endpoint: mario.dev.sub.endpoint });
     assert.equal((await mario.get('/api/notifiche.php?action=list')).json.devices, 0);
 });
+
+test('next lesson: a push 5 minutes before the end of the hour, to who turned it on, with subject and room', async () => {
+    // Wednesday 2030-03-20: two hours of Storia in a row (one lesson), then Matematica in C208
+    const r = await mario.post('/api/classi.php', { action: 'save_timetable', id: classId, valid_from: '2030-01-01',
+        periods: { 3: [{ start: '08:10', end: '09:05' }, { start: '09:05', end: '10:00' }, { start: '10:00', end: '10:55' }] },
+        slots: [{ day: 3, period: 1, subject: 'Storia' }, { day: 3, period: 2, subject: 'Storia' }, { day: 3, period: 3, subject: 'Matematica', room: 'C208' }] });
+    assert.equal(r.status, 200, r.text);
+    assert.equal((await nt(peach, { action: 'bell_notify', class_id: classId, on: true })).status, 403, 'members only');
+    assert.equal((await luigi.post('/api/notifiche.php', { action: 'bell_notify', class_id: classId, on: true }, { csrf: false })).status, 403);
+    assert.equal((await nt(luigi, { action: 'bell_notify', class_id: classId, on: true })).status, 200);
+    assert.deepEqual((await luigi.get('/api/notifiche.php?action=list')).json.bell_classes, [classId]);
+    assert.deepEqual((await mario.get('/api/notifiche.php?action=list')).json.bell_classes, []);
+    site.db('DELETE FROM push_subscriptions');   // only the device of this test
+    const dev = newDevice('/ok/luigi-bell');
+    await nt(luigi, { action: 'subscribe', ...dev.sub });
+    const stored = () => site.db("SELECT COUNT(*) AS n FROM notifications WHERE kind = 'campanella'")[0].n;
+
+    pushed.length = 0;
+    await worker(rome('2030-03-20', '09:00'));
+    await worker(rome('2030-03-20', '09:53'));
+    assert.equal(pushed.length, 0, 'not between two hours of the same lesson, not too early');
+    await worker(rome('2030-03-20', '09:56'));
+    assert.equal(pushed.length, 1);
+    assert.equal(pushed[0].url, '/ok/luigi-bell', 'only to who turned it on');
+    const msg = decrypt(dev, pushed[0].body);
+    assert.equal(msg.title, 'Tra 4 minuti: Matematica');
+    assert.equal(msg.body, 'Aula C208 · dalle 10:00 alle 10:55');
+    await worker(rome('2030-03-20', '09:58'));
+    await worker(rome('2030-03-20', '10:52'));
+    assert.equal(pushed.length, 1, 'once; nothing after the last hour');
+    assert.equal(stored(), 0, 'push only: the bell list keeps the test reminders');
+
+    // --bells-only: just this, no AI run
+    assert.equal((await run('php', [path.join(site.root, 'bin/appunti-ai.php'), '--bells-only', `--now=${rome('2030-03-21', '09:00')}`])).stdout, '');
+    await nt(luigi, { action: 'bell_notify', class_id: classId, on: false });
+    assert.deepEqual((await luigi.get('/api/notifiche.php?action=list')).json.bell_classes, []);
+});

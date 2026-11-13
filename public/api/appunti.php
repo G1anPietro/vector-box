@@ -17,9 +17,12 @@
 // GET  ?action=file_text&id=ID                         -> the text of a file (extracted or transcribed), for previews
 // POST multipart {action:"upload", class_id, subject_id, kind, lesson_date, period?, title?, body?, files[]}
 // POST JSON {action:"edit_item", id, subject_id, kind, lesson_date, period, title, body} | {action:"delete_item", id}
-//           {action:"add_event", class_id, subject_id, kind, date, title, topics}
+//           {action:"add_event", class_id, subject_id, kind, date, title, topics, period_from?, period_to?}
 //           {action:"edit_event", id, ...same fields} | {action:"delete_event", id}
-//           {action:"generate", class_id}  -> asks the AI worker to run now (once an hour per class)
+//           {action:"generate", class_id, from?, to?}  -> asks the AI worker to run now (once an hour per class),
+//                                       optionally on chosen lesson days (notes, questions, schemas of those days)
+//           {action:"review_answer", doc_id, q, correct} -> spaced review of quiz questions (wrong ones come back)
+// GET  ?action=review&class_id=ID                      -> my review questions due today
 // POST multipart/JSON {action:"upload_doc", class_id, kind, target:"lesson"|"event", subject_id, lesson_date | event_id,
 //                      title, content (or file .md/.txt)} -> a study document made with another AI
 //      {action:"delete_doc", id}  -> only documents uploaded by hand (author or manager)
@@ -81,10 +84,21 @@ function apEventFields(PDO $db, array $class, array $in): array {
     if (!in_array($kind, EVENT_KINDS, true)) apFail('bad_kind', 'Unknown type of date');
     $date = (string)($in['date'] ?? '');
     if (!classValidDate($date)) apFail('bad_date', 'Date must be YYYY-MM-DD');
+    // Optional study period: the material from..to (the topic may have started before the previous test, or a
+    // new topic may start before this test). Empty = automatic (from the previous test of the subject).
+    $pFrom = trim((string)($in['period_from'] ?? ''));
+    $pTo = trim((string)($in['period_to'] ?? ''));
+    if ($pFrom === '' && $pTo !== '') apFail('bad_period', 'Choose where the material starts');
+    if ($pFrom !== '') {
+        if ($pTo === '') $pTo = $date;
+        if (!classValidDate($pFrom) || !classValidDate($pTo) || $pFrom > $pTo || $pTo > $date) apFail('bad_period', 'The material must go from a day to a later one, not after the test');
+        if ((new DateTimeImmutable($pFrom))->diff(new DateTimeImmutable($pTo))->days > AI_PERIOD_MAX_DAYS * 3) apFail('bad_period', 'Period too long');
+    }
     return [
         'subject_id' => $subjectId, 'kind' => $kind, 'event_date' => $date,
         'title' => apText($in['title'] ?? '', NOTE_TITLE_MAX),
         'topics' => apText($in['topics'] ?? '', EVENT_TOPICS_MAX, true),
+        'period_from' => $pFrom !== '' ? $pFrom : null, 'period_to' => $pFrom !== '' ? $pTo : null,
     ];
 }
 
@@ -203,6 +217,23 @@ try {
                 fn($i) => notesFormatItem($i, $files[(int)$i['id']] ?? [], $me, $canManage), $items)]);
         }
 
+        if ($action === 'review') {
+            $today = classToday($class);
+            $st = $db->prepare('SELECT r.doc_id, r.q_index, r.box, r.due_date, r.question, d.title FROM review_cards r
+                                LEFT JOIN class_docs d ON d.id = r.doc_id
+                                WHERE r.user_id = :u AND r.class_id = :c ORDER BY r.due_date, r.doc_id, r.q_index');
+            $st->execute([':u' => $me, ':c' => $classId]);
+            $due = [];
+            $later = 0;
+            foreach ($st->fetchAll() as $r) {
+                if ($r['due_date'] > $today) { $later++; continue; }
+                $q = json_decode($r['question'], true);
+                if (!is_array($q) || count($due) >= 30) continue;
+                $due[] = ['doc_id' => (int)$r['doc_id'], 'q' => (int)$r['q_index'], 'box' => (int)$r['box'], 'from' => $r['title'] ?? 'Quiz'] + $q;
+            }
+            jsonResponse(['success' => true, 'today' => $today, 'due' => $due, 'later' => $later]);
+        }
+
         if ($action === 'events') {
             $today = classToday($class);
             $from = (string)($_GET['from'] ?? '');
@@ -214,7 +245,7 @@ try {
                                 WHERE e.class_id = :c AND e.event_date BETWEEN :f AND :t ORDER BY e.event_date, e.id LIMIT 500');
             $st->execute([':c' => $classId, ':f' => $from, ':t' => $to]);
             jsonResponse(['success' => true, 'today' => $today, 'events' => array_map(
-                fn($e) => notesFormatEvent($e, $me, $canManage), $st->fetchAll())]);
+                fn($e) => notesFormatEvent($e, $me, $canManage) + ['period' => notesEventPeriod($db, $e)], $st->fetchAll())]);
         }
 
         if ($action === 'docs') {
@@ -460,11 +491,22 @@ try {
     if ($action === 'generate') {
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         if (!geminiConfigured()) apFail('ai_off', 'The AI is not configured on this server', 503);
+        // Optional range of lesson days to (re)write: notes, questions and schemas of those days
+        $rFrom = trim((string)($in['from'] ?? ''));
+        $rTo = trim((string)($in['to'] ?? ''));
+        if ($rFrom !== '' || $rTo !== '') {
+            $today = classToday($class);
+            if ($rTo === '') $rTo = $today;
+            if (!classValidDate($rFrom) || !classValidDate($rTo) || $rFrom > $rTo || $rTo > $today) apFail('bad_range', 'Choose a start day before the end day, not in the future');
+            if ((new DateTimeImmutable($rFrom))->diff(new DateTimeImmutable($rTo))->days > AI_RANGE_MAX_DAYS) apFail('bad_range', 'At most ' . AI_RANGE_MAX_DAYS . ' days at a time');
+        } else {
+            $rFrom = $rTo = null;
+        }
         // Atomic: only one request per hour per class wins
         $now = time();
-        $st = $db->prepare('UPDATE school_classes SET ai_requested_at = :now, ai_last_manual = :now
+        $st = $db->prepare('UPDATE school_classes SET ai_requested_at = :now, ai_last_manual = :now, ai_range_from = :rf, ai_range_to = :rt
                             WHERE id = :id AND (ai_last_manual IS NULL OR ai_last_manual <= :limit)');
-        $st->execute([':now' => $now, ':id' => $class['id'], ':limit' => $now - AI_MANUAL_EVERY_SEC]);
+        $st->execute([':now' => $now, ':id' => $class['id'], ':limit' => $now - AI_MANUAL_EVERY_SEC, ':rf' => $rFrom, ':rt' => $rTo]);
         if ($st->rowCount() === 0) {
             $next = (int)$class['ai_last_manual'] + AI_MANUAL_EVERY_SEC;
             jsonResponse(['success' => false, 'code' => 'too_soon', 'error' => 'Already requested in the last hour', 'next_manual_at' => $next], 429);
@@ -532,14 +574,54 @@ try {
         jsonResponse(['success' => true]);
     }
 
+    if ($action === 'review_answer') {
+        // Leitner boxes: a wrong answer (in a quiz or in the review) puts the question back to tomorrow; a right one in
+        // the review moves it to the next box; after the last box it is learned and leaves the review.
+        $docId = (int)($in['doc_id'] ?? 0);
+        $q = (int)($in['q'] ?? -1);
+        $key = [':u' => $me, ':d' => $docId, ':q' => $q];
+        $cur = $db->prepare('SELECT box, class_id FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q');
+        $cur->execute($key);
+        $card = $cur->fetch();
+        $question = null;
+        if ($card) {
+            $classIdOf = (int)$card['class_id'];   // the copy in the card is used: the quiz may have changed since
+        } else {
+            $st = $db->prepare("SELECT class_id, content FROM class_docs WHERE id = :id AND kind = 'quiz' AND status = 'ok'");
+            $st->execute([':id' => $docId]);
+            $doc = $st->fetch();
+            if (!$doc) apFail('not_found', 'Quiz not found', 404);
+            $question = json_decode($doc['content'], true)['questions'][$q] ?? null;
+            if ($q < 0 || !is_array($question)) apFail('bad_question', 'Unknown question');
+            $classIdOf = (int)$doc['class_id'];
+        }
+        [$class, ] = apClass($db, $classIdOf, $me, $isAdmin);
+        $correct = !empty($in['correct']);
+        if ($correct && !$card) jsonResponse(['success' => true, 'state' => 'known']);   // right at the first try
+        $newBox = $correct ? (int)$card['box'] + 1 : 0;
+        if ($newBox >= count(REVIEW_DAYS)) {
+            $db->prepare('DELETE FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q')->execute($key);
+            jsonResponse(['success' => true, 'state' => 'learned']);
+        }
+        $due = (new DateTimeImmutable(classToday($class)))->modify('+' . REVIEW_DAYS[$newBox] . ' days')->format('Y-m-d');
+        if ($card) {
+            $db->prepare('UPDATE review_cards SET box = :b, due_date = :due, updated_at = :t WHERE user_id = :u AND doc_id = :d AND q_index = :q')
+               ->execute($key + [':b' => $newBox, ':due' => $due, ':t' => time()]);
+        } else {
+            $db->prepare('INSERT INTO review_cards (user_id, doc_id, q_index, class_id, box, due_date, question, updated_at) VALUES (:u, :d, :q, :c, :b, :due, :qq, :t)')
+               ->execute($key + [':c' => $classIdOf, ':b' => $newBox, ':due' => $due, ':qq' => json_encode($question, JSON_UNESCAPED_UNICODE), ':t' => time()]);
+        }
+        jsonResponse(['success' => true, 'state' => 'review', 'box' => $newBox, 'due' => $due]);
+    }
+
     if ($action === 'add_event') {
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         if (!checkRateLimit('class_event', 30, 3600, 'user:' . $me)) apFail('slow_down', 'Too many changes, try later', 429);
         $f = apEventFields($db, $class, $in);
-        $db->prepare('INSERT INTO class_events (class_id, subject_id, kind, event_date, title, topics, author_id, created_at, updated_at)
-                      VALUES (:c, :s, :k, :d, :t, :tp, :a, :now, :now)')
+        $db->prepare('INSERT INTO class_events (class_id, subject_id, kind, event_date, title, topics, period_from, period_to, author_id, created_at, updated_at)
+                      VALUES (:c, :s, :k, :d, :t, :tp, :pf, :pt, :a, :now, :now)')
            ->execute([':c' => $class['id'], ':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['event_date'],
-                      ':t' => $f['title'], ':tp' => $f['topics'], ':a' => $me, ':now' => time()]);
+                      ':t' => $f['title'], ':tp' => $f['topics'], ':pf' => $f['period_from'], ':pt' => $f['period_to'], ':a' => $me, ':now' => time()]);
         jsonResponse(['success' => true, 'id' => (int)$db->lastInsertId()]);
     }
 
@@ -556,9 +638,10 @@ try {
             jsonResponse(['success' => true]);
         }
         $f = apEventFields($db, $class, $in);
-        $db->prepare('UPDATE class_events SET subject_id = :s, kind = :k, event_date = :d, title = :t, topics = :tp, updated_at = :now WHERE id = :id')
+        $db->prepare('UPDATE class_events SET subject_id = :s, kind = :k, event_date = :d, title = :t, topics = :tp,
+                      period_from = :pf, period_to = :pt, updated_at = :now WHERE id = :id')
            ->execute([':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['event_date'], ':t' => $f['title'],
-                      ':tp' => $f['topics'], ':now' => time(), ':id' => $event['id']]);
+                      ':tp' => $f['topics'], ':pf' => $f['period_from'], ':pt' => $f['period_to'], ':now' => time(), ':id' => $event['id']]);
         jsonResponse(['success' => true]);
     }
 

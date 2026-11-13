@@ -218,24 +218,39 @@ function aiDocHash(PDO $db, int $classId, string $key): ?string {
 }
 
 /** Writes the merged document of every recent lesson whose material changed. Returns how many were written. */
+/** The lesson days a run works on: the range chosen with "Genera ora", else the last AI_LESSON_DAYS. [from, to|null] */
+function aiLessonRange(array $class): array {
+    if (!empty($class['ai_range_from'])) return [$class['ai_range_from'], $class['ai_range_to'] ?: classToday($class)];
+    return [(new DateTimeImmutable(classToday($class)))->modify('-' . AI_LESSON_DAYS . ' days')->format('Y-m-d'), null];
+}
+
 function aiLessonDocs(PDO $db, array $class): int {
     $classId = (int)$class['id'];
-    $since = (new DateTimeImmutable(classToday($class)))->modify('-' . AI_LESSON_DAYS . ' days')->format('Y-m-d');
-    // Recent lessons, and older lessons whose material was uploaded or changed recently (notes caught up late)
-    $st = $db->prepare('SELECT i.*, a.username AS author, s.name AS subject FROM class_items i
-                        LEFT JOIN accounts a ON a.id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
-                        WHERE i.class_id = :c AND EXISTS (SELECT 1 FROM class_items j WHERE j.class_id = i.class_id
-                              AND j.subject_id = i.subject_id AND j.lesson_date = i.lesson_date
-                              AND (j.lesson_date >= :since OR j.updated_at >= :recent))
-                        ORDER BY i.subject_id, i.lesson_date, i.id');
-    $st->execute([':c' => $classId, ':since' => $since, ':recent' => time() - AI_LESSON_DAYS * 86400]);
+    [$since, $until] = aiLessonRange($class);
+    if ($until !== null) {
+        // a chosen range: exactly those days
+        $st = $db->prepare('SELECT i.*, a.username AS author, s.name AS subject FROM class_items i
+                            LEFT JOIN accounts a ON a.id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
+                            WHERE i.class_id = :c AND i.lesson_date BETWEEN :since AND :until ORDER BY i.subject_id, i.lesson_date, i.id');
+        $st->execute([':c' => $classId, ':since' => $since, ':until' => $until]);
+    } else {
+        // Recent lessons, and older lessons whose material was uploaded or changed recently (notes caught up late)
+        $st = $db->prepare('SELECT i.*, a.username AS author, s.name AS subject FROM class_items i
+                            LEFT JOIN accounts a ON a.id = i.author_id JOIN class_subjects s ON s.id = i.subject_id
+                            WHERE i.class_id = :c AND EXISTS (SELECT 1 FROM class_items j WHERE j.class_id = i.class_id
+                                  AND j.subject_id = i.subject_id AND j.lesson_date = i.lesson_date
+                                  AND (j.lesson_date >= :since OR j.updated_at >= :recent))
+                            ORDER BY i.subject_id, i.lesson_date, i.id');
+        $st->execute([':c' => $classId, ':since' => $since, ':recent' => time() - AI_LESSON_DAYS * 86400]);
+    }
     $groups = [];
     foreach ($st->fetchAll() as $it) $groups[$it['subject_id'] . '|' . $it['lesson_date']][] = $it;
 
     // A lesson whose material was all deleted loses its document
     $keep = array_map(fn($g) => "lezione:{$g[0]['subject_id']}:{$g[0]['lesson_date']}", $groups);
-    $old = $db->prepare("SELECT id, doc_key FROM class_docs WHERE class_id = :c AND kind = 'lezione' AND author_id IS NULL AND lesson_date >= :since");
-    $old->execute([':c' => $classId, ':since' => $since]);
+    $old = $db->prepare("SELECT id, doc_key FROM class_docs WHERE class_id = :c AND kind = 'lezione' AND author_id IS NULL
+                         AND lesson_date >= :since AND lesson_date <= :until");
+    $old->execute([':c' => $classId, ':since' => $since, ':until' => $until ?? '9999-12-31']);
     foreach ($old->fetchAll() as $d) {
         if (!in_array($d['doc_key'], $keep, true)) $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $d['id']]);
     }
@@ -367,11 +382,11 @@ function aiCleanSchema(string $raw): string {
  */
 function aiLessonSchemas(PDO $db, array $class): int {
     $classId = (int)$class['id'];
-    $since = (new DateTimeImmutable(classToday($class)))->modify('-' . AI_LESSON_DAYS . ' days')->format('Y-m-d');
+    [$since, $until] = aiLessonRange($class);
     $st = $db->prepare("SELECT d.*, s.name AS subject FROM class_docs d JOIN class_subjects s ON s.id = d.subject_id
                         WHERE d.class_id = :c AND d.kind = 'lezione' AND d.status = 'ok' AND d.author_id IS NULL
-                        AND (d.lesson_date >= :since OR d.updated_at >= :recent) ORDER BY d.lesson_date");
-    $st->execute([':c' => $classId, ':since' => $since, ':recent' => time() - AI_LESSON_DAYS * 86400]);
+                        AND " . ($until !== null ? 'd.lesson_date BETWEEN :since AND :until' : '(d.lesson_date >= :since OR d.updated_at >= :recent)') . " ORDER BY d.lesson_date");
+    $st->execute([':c' => $classId, ':since' => $since] + ($until !== null ? [':until' => $until] : [':recent' => time() - AI_LESSON_DAYS * 86400]));
     $written = 0;
     foreach ($st->fetchAll() as $lesson) {
         $key = "schema:{$lesson['subject_id']}:{$lesson['lesson_date']}";
@@ -587,7 +602,7 @@ function aiRun(PDO $db, int $now): array {
             'at' => $now, 'manual' => $manual, 'lessons' => $lessons, 'tests' => $tests,
             'pending' => (int)$pending->fetchColumn(), 'stop' => GeminiError::$lastStop,
         ]));
-        $sets = ['ai_requested_at = NULL'];
+        $sets = ['ai_requested_at = NULL', 'ai_range_from = NULL', 'ai_range_to = NULL'];
         if (!$manual) $sets[] = 'ai_last_auto = :today';
         $params = [':id' => $class['id']] + ($manual ? [] : [':today' => classToday($class, $now)]);
         $db->prepare('UPDATE school_classes SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($params);

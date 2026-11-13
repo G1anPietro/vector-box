@@ -12,6 +12,8 @@ const NOTE_MAX_FILES = 20;
 const NOTE_TEXT_MAX = 400000;          // characters kept from one extracted file
 const EVENT_TOPICS_MAX = 2000;
 const AI_PERIOD_MAX_DAYS = 120;            // first test of a subject: material of at most this many days before
+const REVIEW_DAYS = [1, 3, 7, 14, 30];     // spaced review: days before a question comes back, box by box
+const AI_RANGE_MAX_DAYS = 120;   // "Genera ora" on chosen days: at most this long a range
 
 // Accepted uploads: extension => mime types finfo may report for it
 const NOTE_FILE_TYPES = [
@@ -103,6 +105,7 @@ function notesSuggest(PDO $db, array $class, int $ts): array {
  * (or AI_PERIOD_MAX_DAYS before) to the test day. Returns [from, to] as YYYY-MM-DD.
  */
 function notesEventPeriod(PDO $db, array $ev): array {
+    if (!empty($ev['period_from'])) return [$ev['period_from'], $ev['period_to'] ?: $ev['event_date']];   // chosen by hand
     $prev = $db->prepare("SELECT MAX(event_date) FROM class_events WHERE class_id = :c AND subject_id = :s
                           AND kind IN ('verifica', 'interrogazione') AND event_date < :d");
     $prev->execute([':c' => $ev['class_id'], ':s' => $ev['subject_id'], ':d' => $ev['event_date']]);
@@ -214,6 +217,7 @@ function notesFormatEvent(array $e, int $me, bool $canManage): array {
     return [
         'id' => (int)$e['id'], 'subject_id' => (int)$e['subject_id'], 'subject' => $e['subject'] ?? '',
         'kind' => $e['kind'], 'date' => $e['event_date'], 'title' => $e['title'], 'topics' => $e['topics'],
+        'period_from' => $e['period_from'] ?? null, 'period_to' => $e['period_to'] ?? null,
         'author' => $e['author'] ?? null, 'can_edit' => $canManage || (int)$e['author_id'] === $me,
     ];
 }

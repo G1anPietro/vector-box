@@ -17,7 +17,7 @@ per giorno). Rispondi SOLO con JSON in questa forma:
  "slots":[{"day":1,"period":1,"subject":"TPSIT","label":"Lab TPSIT","room":"C239 INF2"}],
  "notes":"eventuali dubbi"}
 Regole:
-- day: 1 = lunedì ... 6 = sabato. period: il numero dell'ora (1 = prima ora).
+- day: 1 = lunedì ... 6 = sabato, 7 = domenica. period: il numero dell'ora (1 = prima ora).
 - Una casella che occupa più ore diventa una voce per ciascuna ora.
 - subject: il nome della MATERIA, scritto per intero in italiano quando l'abbreviazione è chiara
   (Matem → Matematica, Ita → Italiano, Inf → Informatica, Ing → Inglese, Sci Mot → Scienze motorie,

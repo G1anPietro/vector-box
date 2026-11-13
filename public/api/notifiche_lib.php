@@ -3,19 +3,22 @@
 // Notifications: rows for the in-site bell, plus Web Push to the phones/browsers the user enabled.
 // Test reminders are sent by the worker (bin/appunti-ai.php) 2 days before, the day before and the evening before.
 require_once __DIR__ . '/classi_lib.php';
+require_once __DIR__ . '/appunti_lib.php';
 require_once __DIR__ . '/webpush.php';
 
 const NOTIFY_KEEP = 200;               // notifications kept per user
 const NOTIFY_PUSH_MAX_FAILURES = 10;   // a subscription failing this many times in a row is dropped
 // Reminder slots: [days before the test, local time from which it is sent]
 const REMINDER_SLOTS = ['d2' => [2, '16:00'], 'd1' => [1, '16:00'], 'sera' => [1, '21:00']];
+const BELL_LEAD_SEC = 300;             // "next lesson" push: this long before the end of the current one
 
 /** Saves a notification for each user and pushes it to their devices. Returns how many pushes were delivered. */
-function notifyUsers(PDO $db, array $userIds, ?int $classId, string $kind, string $title, string $body, string $url, bool $push = true): int {
+function notifyUsers(PDO $db, array $userIds, ?int $classId, string $kind, string $title, string $body, string $url, bool $push = true, bool $save = true): int {
     $now = time();
+    if (!$save) $userIds = array_values(array_unique($userIds));
     $ins = $db->prepare('INSERT INTO notifications (user_id, class_id, kind, title, body, url, created_at) VALUES (:u, :c, :k, :t, :b, :url, :now)');
     $trim = $db->prepare('DELETE FROM notifications WHERE user_id = :u AND id <= (SELECT id FROM notifications WHERE user_id = :u ORDER BY id DESC LIMIT 1 OFFSET ' . NOTIFY_KEEP . ')');
-    foreach (array_unique($userIds) as $u) {
+    foreach ($save ? array_unique($userIds) : [] as $u) {
         $ins->execute([':u' => $u, ':c' => $classId, ':k' => $kind, ':t' => $title, ':b' => $body, ':url' => $url, ':now' => $now]);
         $trim->execute([':u' => $u]);
     }
@@ -80,6 +83,42 @@ function remindersRun(PDO $db, int $now): int {
             $sent++;
         }
     }
+    return $sent;
+}
+
+/**
+ * "Next lesson" pushes: BELL_LEAD_SEC before the end of each lesson, to the members who turned them on, the subject
+ * and room of the lesson that follows (none after the last one; hours of the same subject in a row are one lesson).
+ * Push only, not kept in the bell list (they would bury the test reminders). Sent once per lesson, even if the worker
+ * runs late; never more than BELL_LEAD_SEC early.
+ */
+function bellsRun(PDO $db, int $now): int {
+    $sent = 0;
+    $classes = $db->query("SELECT c.* FROM school_classes c WHERE c.status = 'active'
+                           AND EXISTS (SELECT 1 FROM class_members m WHERE m.class_id = c.id AND m.bell_notify = 1)")->fetchAll();
+    $mark = $db->prepare('INSERT OR IGNORE INTO class_bell_sent (class_id, lesson_date, period, sent_at) VALUES (:c, :d, :p, :t)');
+    foreach ($classes as $class) {
+        $tz = classTimezone($class);
+        $date = (new DateTimeImmutable('@' . $now))->setTimezone($tz)->format('Y-m-d');
+        $lessons = notesLessonsOn($db, $class, $date);
+        for ($i = 0; $i < count($lessons) - 1; $i++) {
+            $end = (new DateTimeImmutable("$date {$lessons[$i]['end']}", $tz))->getTimestamp();
+            if ($now < $end - BELL_LEAD_SEC || $now >= $end) continue;
+            $mark->execute([':c' => $class['id'], ':d' => $date, ':p' => $lessons[$i]['period_to'], ':t' => $now]);
+            if ($mark->rowCount() === 0) continue;   // already sent
+            $next = $lessons[$i + 1];
+            $subject = notesSubjectOf($db, (int)$class['id'], $next['subject_id']);
+            $users = $db->prepare('SELECT user_id FROM class_members WHERE class_id = :c AND bell_notify = 1');
+            $users->execute([':c' => $class['id']]);
+            $mins = max(1, (int)round(($end - $now) / 60));
+            notifyUsers($db, array_map('intval', $users->fetchAll(PDO::FETCH_COLUMN)), (int)$class['id'], 'campanella',
+                "Tra $mins minuti: " . ($subject['name'] ?? 'lezione'),
+                ($next['room'] !== '' ? 'Aula ' . $next['room'] : 'Aula non indicata nell\'orario') . " · dalle {$next['start']} alle {$next['end']}",
+                '/pages/appunti.php?class=' . (int)$class['id'], true, false);
+            $sent++;
+        }
+    }
+    $db->prepare('DELETE FROM class_bell_sent WHERE sent_at < :t')->execute([':t' => $now - 7 * 86400]);
     return $sent;
 }
 

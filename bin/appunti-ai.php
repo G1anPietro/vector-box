@@ -30,6 +30,13 @@ if (in_array('--models', $argv, true)) {
     exit(isset($json['models']) ? 0 : 1);
 }
 
+// "Next lesson" pushes and test reminders come before the lock: a long AI run must not delay them.
+// --bells-only does just this (for an optional timer every minute, more punctual than every 5).
+$bellsDb = getDbConnection();
+$bells = bellsRun($bellsDb, $now);
+if ($bells) echo date('Y-m-d H:i:s') . " next-lesson pushes: $bells\n";
+if (in_array('--bells-only', $argv, true)) exit(0);
+
 // One worker at a time: a long run must not overlap the next timer tick
 $lock = fopen(dirname(__DIR__) . '/data/appunti-ai.lock', 'c');
 if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) { echo "another run is in progress\n"; exit(0); }

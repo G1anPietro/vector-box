@@ -11,7 +11,7 @@
         appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro',
     };
     const EVENT_KINDS = { verifica: 'Verifica', interrogazione: 'Interrogazione', altro: 'Altro' };
-    const DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    const DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
     const STORE_KEY = 'vb_appunti_class';
 
     let classes = [];
@@ -313,6 +313,7 @@
             studyDocs = d.docs;
             $('#doc-upload-link').href = caricaUrl({ m: 'ai' });
             renderAiBar(d.ai);
+            loadReview();
             renderStudyTests(ev.events.filter((e) => e.date >= ev.today && e.kind !== 'altro'), d.ai);
             renderStudyLessons();
         } catch (e) { status(e.message, 'err'); }
@@ -339,22 +340,75 @@
                 + (made ? `${made} document${made === 1 ? 'o' : 'i'} nuov${made === 1 ? 'o' : 'i'}${why ? '; ' + why : '.'}` : why) });
         }
         bar.replaceChildren(
-            el('p', {}, el('b', { text: `Riassunto automatico ogni giorno alle ${ai.summary_time}.` }),
+            el('div', { class: 'ai-bar-row' },
+            el('p', {}, el('b', { text: `Riassunto automatico ogni giorno alle ${ai.summary_time} (tutte le materie).` }),
                 el('br'), el('span', { class: 'muted small', text:
                     (ai.pending_files ? `${ai.pending_files} file da trascrivere. ` : '')
                     + (ai.requested ? 'Richiesta in coda: ci vuole qualche minuto.' : wait ? `"Genera ora" di nuovo alle ${at}.` : 'Puoi chiedere di farlo subito (una volta l\'ora).') }),
                 last ? el('br') : null, last),
-            btn);
+            btn),
+            rangeBox(ai.requested || wait));
     }
 
-    async function generateNow() {
+    async function generateNow(range = null) {
         try {
-            await notes_({ action: 'generate', class_id: current.id });
-            status('Richiesta inviata: i documenti arrivano entro qualche minuto.', 'ok');
+            await notes_({ action: 'generate', class_id: current.id, ...(range || {}) });
+            status(range ? `Richiesta inviata: rifaccio appunti, domande e schemi delle lezioni dal ${fmtDay(range.from)} al ${fmtDay(range.to)}. Ci vuole qualche minuto.`
+                : 'Richiesta inviata: i documenti arrivano entro qualche minuto.', 'ok');
         } catch (e) {
-            status(e.json && e.json.code === 'too_soon' ? 'Già chiesto nell\'ultima ora.' : e.json && e.json.code === 'ai_off' ? 'L\'AI non è attiva.' : e.message, 'err');
+            status(e.json && e.json.code === 'too_soon' ? 'Già chiesto nell\'ultima ora.' : e.json && e.json.code === 'ai_off' ? 'L\'AI non è attiva.'
+                : e.json && e.json.code === 'bad_range' ? 'Controlla le date: l\'inizio prima della fine, niente giorni futuri, al massimo 4 mesi.' : e.message, 'err');
         }
         loadStudy();
+    }
+    const fmtDay = (iso) => parseDate(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+
+    /** "Genera ora" on chosen days: when a topic spans weeks, or notes were caught up late. */
+    function rangeBox(disabled) {
+        const from = el('input', { type: 'date', required: true, 'aria-label': 'Dal giorno' });
+        const to = el('input', { type: 'date', required: true, 'aria-label': 'Al giorno' });
+        to.value = todayStr();
+        const form = el('form', { class: 'range-form' },
+            el('label', { text: 'Dal' }, from), el('label', { text: 'Al' }, to),
+            el('button', { class: 'ghost', text: 'Genera su questi giorni', disabled }));
+        form.addEventListener('submit', (ev) => {
+            ev.preventDefault();
+            if (!from.value || !to.value) { status('Scegli i due giorni.', 'err'); return; }
+            generateNow({ from: from.value, to: to.value });
+        });
+        return el('details', { class: 'range-box' }, el('summary', { text: 'Scegli i giorni (appunti, domande e schemi di quelle lezioni)' }), form);
+    }
+
+    /* ---------- spaced review ---------- */
+
+    async function loadReview() {
+        const box = $('#review-box');
+        try {
+            const r = await getJson(`../api/appunti.php?action=review&class_id=${current.id}`);
+            if (!r.due.length) {
+                box.hidden = !r.later;
+                box.replaceChildren(el('p', {}, el('b', { text: 'Ripasso: niente per oggi ✓' }), el('br'),
+                    el('span', { class: 'muted small', text: `${r.later} domand${r.later === 1 ? 'a tornerà' : 'e torneranno'} nei prossimi giorni.` })));
+                return;
+            }
+            box.hidden = false;
+            box.replaceChildren(el('div', {}, el('b', { text: `Ripasso di oggi: ${r.due.length} domand${r.due.length === 1 ? 'a' : 'e'}` }), el('br'),
+                el('span', { class: 'muted small', text: 'Quelle che hai sbagliato nei quiz. Se rispondi giusto tornano tra 3, 7, 14, 30 giorni; se sbagli, domani.' })),
+                el('button', { text: 'Inizia il ripasso', onclick: () => startReview(r.due) }));
+        } catch (e) { box.hidden = true; }
+    }
+
+    function startReview(due) {
+        openDoc = null;
+        $('#study-list').hidden = true;
+        $('#doc-view').hidden = false;
+        $('#doc-title').textContent = 'Ripasso di oggi';
+        $('#doc-meta').textContent = 'Le domande sbagliate nei quiz, finché non le sai.';
+        $('#doc-download').hidden = true;
+        $('#doc-sources').hidden = true;
+        $('#doc-body').replaceChildren(renderQuiz({ questions: due.map((q) => ({ ...q, topic: q.topic || q.from })) },
+            (n, ok) => reviewAnswer(due[n].doc_id, due[n].q, ok)));
+        window.scrollTo(0, 0);
     }
 
     function renderStudyTests(events, ai) {
@@ -421,7 +475,7 @@
             if (doc.kind === 'quiz') {
                 let quiz = null;
                 try { quiz = JSON.parse(doc.content); } catch (e) { /* shown as text below */ }
-                body.replaceChildren(quiz ? renderQuiz(quiz) : el('p', { text: 'Quiz non leggibile.' }));
+                body.replaceChildren(quiz ? renderQuiz(quiz, (n, ok) => reviewAnswer(doc.id, n, ok)) : el('p', { text: 'Quiz non leggibile.' }));
             } else if (doc.kind === 'schema') {
                 body.replaceChildren(window.AppuntiCommon.renderSchema(doc.content));
             } else if (doc.kind === 'domande') {
@@ -437,7 +491,7 @@
             window.scrollTo(0, 0);
         } catch (e) { status(e.message, 'err'); }
     }
-    $('#doc-back').addEventListener('click', () => { $('#doc-view').hidden = true; $('#study-list').hidden = false; });
+    $('#doc-back').addEventListener('click', () => { $('#doc-view').hidden = true; $('#study-list').hidden = false; if (!openDoc) loadReview(); });
     $('#doc-print').addEventListener('click', () => window.print());
     $('#doc-download').addEventListener('click', () => {
         if (!openDoc) return;
@@ -451,7 +505,15 @@
     // Markdown of AI documents and notes: the shared safe renderer (js/appunti-common.js)
     const md = (text) => window.AppuntiCommon.md(text);
 
-    function renderQuiz(quiz) {
+    /** Records a quiz answer for the spaced review (wrong ones come back); silent, it must not disturb the quiz. */
+    async function reviewAnswer(docId, q, correct) {
+        try {
+            const r = await window.AppuntiCommon.rawPost('../api/appunti.php', { action: 'review_answer', doc_id: docId, q, correct });
+            return r.state;
+        } catch (e) { return null; }
+    }
+
+    function renderQuiz(quiz, onAnswer) {
         const qs = quiz.questions || [];
         let answered = 0;
         let right = 0;
@@ -465,6 +527,7 @@
                 opts.dataset.done = '1';
                 answered++;
                 if (k === q.answer) right++;
+                if (onAnswer) onAnswer(n, k === q.answer);
                 ev.target.classList.add(k === q.answer ? 'right' : 'wrong');
                 opts.children[q.answer].classList.add('right');
                 why.hidden = !q.explanation;
@@ -474,7 +537,7 @@
                 q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
                 el('div', {}, el('b', { text: `${n + 1}. ` }), q.question), opts, why));
         });
-        box.append(el('button', { class: 'ghost', text: 'Ricomincia', onclick: () => $('#doc-body').replaceChildren(renderQuiz(quiz)) }));
+        box.append(el('button', { class: 'ghost', text: 'Ricomincia', onclick: () => $('#doc-body').replaceChildren(renderQuiz(quiz, onAnswer)) }));
         return box;
     }
 
@@ -499,8 +562,11 @@
                         el('div', { class: 'what' }, el('span', { class: 'badge ' + e.kind, text: EVENT_KINDS[e.kind] || e.kind }), e.subject,
                             e.title ? ` · ${e.title}` : '', soon ? el('span', { class: 'soon', text: ` · ${soon}` }) : null),
                         e.topics ? el('div', { class: 'topics', text: e.topics }) : null,
-                        el('div', { class: 'muted small' }, `aggiunta da ${e.author || '?'}`,
-                            e.can_edit ? el('button', { class: 'danger mini', style: 'margin-left:10px', text: 'Elimina', onclick: () => deleteEvent(e) }) : null)));
+                        e.period && e.kind !== 'altro' ? el('div', { class: 'muted small', text: `Materiale: lezioni dal ${fmtDay(e.period[0])} al ${fmtDay(e.period[1])}`
+                            + (e.period_from ? ' (scelto a mano)' : '') }) : null,
+                        el('div', { class: 'muted small event-actions' }, `aggiunta da ${e.author || '?'}`,
+                            e.can_edit ? el('button', { class: 'ghost mini', text: 'Modifica', onclick: () => editEvent(e) }) : null,
+                            e.can_edit ? el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteEvent(e) }) : null)));
             };
             box.replaceChildren(
                 upcoming.length ? el('div', {}, ...upcoming.map(row)) : el('p', { class: 'empty', text: 'Nessuna verifica in arrivo.' }),
@@ -510,16 +576,47 @@
         }
     }
 
+    let editingEvent = null;
+    function editEvent(e) {
+        const f = $('#event-form');
+        editingEvent = e.id;
+        f.kind.value = e.kind;
+        f.date.value = e.date;
+        f.subject_id.value = String(e.subject_id);
+        f.title.value = e.title || '';
+        f.topics.value = e.topics || '';
+        f.period_from.value = e.period_from || '';
+        f.period_to.value = e.period_to || '';
+        $('#event-summary').textContent = 'Modifica la data';
+        $('#event-submit').textContent = 'Salva le modifiche';
+        $('#event-cancel').hidden = false;
+        $('#event-box').open = true;
+        $('#event-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function resetEventForm() {
+        editingEvent = null;
+        $('#event-form').reset();
+        $('#event-summary').textContent = 'Aggiungi una data';
+        $('#event-submit').textContent = 'Aggiungi';
+        $('#event-cancel').hidden = true;
+    }
+    $('#event-cancel').addEventListener('click', () => { resetEventForm(); $('#event-box').open = false; });
+
     $('#event-form').addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const f = ev.target;
+        const fields = { subject_id: Number(f.subject_id.value), kind: f.kind.value, date: f.date.value, title: f.title.value,
+            topics: f.topics.value, period_from: f.period_from.value, period_to: f.period_to.value };
         try {
-            await notes_({ action: 'add_event', class_id: current.id, subject_id: Number(f.subject_id.value), kind: f.kind.value,
-                date: f.date.value, title: f.title.value, topics: f.topics.value });
-            f.reset();
-            status('Aggiunta al calendario.', 'ok');
+            if (editingEvent) await notes_({ action: 'edit_event', id: editingEvent, ...fields });
+            else await notes_({ action: 'add_event', class_id: current.id, ...fields });
+            status(editingEvent ? 'Modifiche salvate.' : 'Aggiunta al calendario.', 'ok');
+            resetEventForm();
+            $('#event-box').open = false;
             loadEvents();
-        } catch (e) { status(e.message, 'err'); }
+        } catch (e) {
+            status(e.json && e.json.code === 'bad_period' ? 'Materiale da studiare: il primo giorno deve venire prima dell\'ultimo, e non dopo la verifica.' : e.message, 'err');
+        }
     });
 
     async function deleteEvent(e) {
@@ -550,11 +647,13 @@
         $('#leave-btn').hidden = c.is_manager;
 
         $('#manage-box').hidden = !c.can_manage;
+        $$('.tt-manage').forEach((x) => { x.hidden = !c.can_manage; });
         if (c.can_manage) {
             $('#settings-form').summary_time.value = c.summary_time;
             $('#tt-from').value = c.timetable ? c.timetable.valid_from : todayStr();
-            renderTimetable();
         }
+        renderTimetable();
+        renderBellOpt();
     }
 
     async function regenCode() {
@@ -588,7 +687,7 @@
 
     function ttFrom(periods, slots) {
         tt = {};
-        for (let d = 1; d <= 6; d++) {
+        for (let d = 1; d <= 7; d++) {
             const day = String(d);
             const bells = periods[day] || [];
             if (!bells.length) continue;
@@ -615,11 +714,12 @@
         const box = $('#tt-days');
         const days = Object.keys(tt).sort();
         const rows = Math.max(0, ...days.map((d) => tt[d].length));
+        const edit = !!current.can_manage;
         const grid = el('div', { class: 'tt-grid', style: `grid-template-columns: 34px repeat(${days.length}, minmax(96px, 1fr))` });
         grid.append(el('div', { class: 'tt-corner' }));
         for (const d of days) {
             grid.append(el('div', { class: 'tt-head' }, el('b', { text: DAYS[d - 1] }),
-                el('span', { class: 'tt-head-actions' },
+                !edit ? null : el('span', { class: 'tt-head-actions' },
                     el('button', { type: 'button', class: 'ghost mini', text: '+ ora', title: 'Aggiungi un\'ora in fondo', onclick: () => {
                         const last = tt[d][tt[d].length - 1];
                         tt[d].push({ start: last ? last.end : '08:00', end: addMinutes(last ? last.end : '08:00', 60), subject: '', room: '' });
@@ -636,16 +736,16 @@
             for (const d of days) {
                 const h = tt[d][r];
                 if (!h) { grid.append(el('div', { class: 'tt-cell none' })); continue; }
-                const cell = el('button', { type: 'button', class: 'tt-cell' + (h.subject ? '' : ' empty'), onclick: () => editHour(d, r) },
+                const cell = el(edit ? 'button' : 'div', { type: edit ? 'button' : null, class: 'tt-cell' + (h.subject ? '' : ' empty'), onclick: edit ? () => editHour(d, r) : null },
                     el('span', { class: 'tt-time', text: `${h.start}–${h.end}` }),
-                    el('b', { class: 'tt-subj', text: h.subject || '+ materia' }),
+                    el('b', { class: 'tt-subj', text: h.subject || (edit ? '+ materia' : '—') }),
                     h.room ? el('span', { class: 'tt-room', text: h.room }) : null);
                 if (h.subject) cell.style.setProperty('--h', subjectHue(h.subject));
                 grid.append(cell);
             }
         }
-        const missing = [1, 2, 3, 4, 5, 6].map(String).filter((d) => !tt[d]);
-        const add = missing.length ? el('div', { class: 'row tt-add' },
+        const missing = [1, 2, 3, 4, 5, 6, 7].map(String).filter((d) => !tt[d]);
+        const add = missing.length && edit ? el('div', { class: 'row tt-add' },
             el('select', { 'aria-label': 'Giorno da aggiungere' }, ...missing.map((d) => el('option', { value: d, text: DAYS[d - 1] }))),
             el('button', { type: 'button', class: 'ghost', text: '+ Aggiungi giorno', onclick: (ev) => {
                 const d = ev.target.previousElementSibling.value;
@@ -655,7 +755,7 @@
             } })) : null;
         box.replaceChildren(
             el('datalist', { id: 'tt-subjects' }, ...current.subjects.map((s) => el('option', { value: s.name }))),
-            days.length ? el('div', { class: 'tt-scroll' }, grid) : el('p', { class: 'empty', text: 'Nessun giorno: aggiungine uno.' }),
+            days.length ? el('div', { class: 'tt-scroll' }, grid) : el('p', { class: 'empty', text: edit ? 'Nessun giorno: aggiungine uno.' : 'L\'orario non c\'è ancora: lo inserisce il responsabile della classe.' }),
             ...(add ? [add] : []));
     }
 
@@ -725,7 +825,7 @@
     $('#tt-save').addEventListener('click', async () => {
         const periods = {};
         const slots = [];
-        for (let d = 1; d <= 6; d++) {
+        for (let d = 1; d <= 7; d++) {
             const day = String(d);
             periods[day] = (tt[day] || []).map((h) => ({ start: h.start, end: h.end }));
             (tt[day] || []).forEach((h, i) => { if (h.subject) slots.push({ day: d, period: i + 1, subject: h.subject, label: '', room: h.room }); });
@@ -814,6 +914,25 @@
 
     /* ---------- notifications: bell and push ---------- */
 
+    let bellClasses = [];
+    /** "Next lesson" push: 5 minutes before the end of each lesson, the subject and room that follow (per member). */
+    function renderBellOpt() {
+        const box = $('#bell-opt');
+        if (!box || !current) return;
+        const on = bellClasses.includes(current.id);
+        const input = el('input', { type: 'checkbox', checked: on, onchange: async (ev) => {
+            try {
+                await notes_bell(ev.target.checked);
+                bellClasses = ev.target.checked ? [...bellClasses, current.id] : bellClasses.filter((x) => x !== current.id);
+                status(ev.target.checked ? (devices ? 'Fatto: 5 minuti prima della fine di ogni ora ti arriva la materia dopo e l\'aula.'
+                    : 'Fatto. Attiva anche le notifiche su questo dispositivo (campanella in alto), altrimenti non arrivano.') : 'Avvisi delle ore disattivati.', 'ok');
+            } catch (e) { ev.target.checked = !ev.target.checked; status(e.message, 'err'); }
+        } });
+        box.replaceChildren(el('label', { class: 'switch' }, input, 'Avvisami 5 minuti prima della fine di ogni ora: che materia c\'è dopo e in che aula'),
+            el('p', { class: 'muted small', text: 'Solo per te, sui dispositivi dove hai attivato le notifiche. Non arriva dopo l\'ultima ora.' }));
+    }
+    const notes_bell = (on) => post('../api/notifiche.php', { action: 'bell_notify', class_id: current.id, on });
+
     const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -830,6 +949,8 @@
             const r = await getJson('../api/notifiche.php?action=list');
             notifs = r.notifications;
             devices = r.devices;
+            bellClasses = r.bell_classes || [];
+            renderBellOpt();
             const badge = $('#bell-count');
             badge.hidden = r.unread === 0;
             badge.textContent = r.unread > 9 ? '9+' : String(r.unread);

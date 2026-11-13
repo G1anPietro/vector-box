@@ -7,6 +7,7 @@
 // POST {action:"read", ids:[...]} | {action:"read_all"}
 //      {action:"subscribe", endpoint, keys:{p256dh, auth}} | {action:"unsubscribe", endpoint}
 //      {action:"test"}         -> sends a test push to my devices
+//      {action:"bell_notify", class_id, on} -> push 5 minutes before the end of each lesson: next subject and room
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/notifiche_lib.php';
@@ -32,7 +33,10 @@ try {
             $unread->execute([':u' => $me]);
             $subs = $db->prepare('SELECT COUNT(*) FROM push_subscriptions WHERE user_id = :u');
             $subs->execute([':u' => $me]);
+            $bells = $db->prepare('SELECT class_id FROM class_members WHERE user_id = :u AND bell_notify = 1');
+            $bells->execute([':u' => $me]);
             jsonResponse(['success' => true, 'unread' => (int)$unread->fetchColumn(), 'devices' => (int)$subs->fetchColumn(),
+                'bell_classes' => array_map('intval', $bells->fetchAll(PDO::FETCH_COLUMN)),
                 'notifications' => array_map(fn($n) => [
                     'id' => (int)$n['id'], 'class_id' => $n['class_id'] !== null ? (int)$n['class_id'] : null, 'kind' => $n['kind'],
                     'title' => $n['title'], 'body' => $n['body'], 'url' => $n['url'],
@@ -77,6 +81,13 @@ try {
             $db->prepare('DELETE FROM push_subscriptions WHERE user_id = :u AND id NOT IN (SELECT id FROM push_subscriptions WHERE user_id = :u ORDER BY id DESC LIMIT 10)')
                ->execute([':u' => $me]);
         }
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'bell_notify') {
+        $st = $db->prepare('UPDATE class_members SET bell_notify = :on WHERE class_id = :c AND user_id = :u');
+        $st->execute([':on' => empty($in['on']) ? 0 : 1, ':c' => (int)($in['class_id'] ?? 0), ':u' => $me]);
+        if ($st->rowCount() === 0) ntFail('not_member', 'You are not in this class', 403);
         jsonResponse(['success' => true]);
     }
 

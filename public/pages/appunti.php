@@ -128,6 +128,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         <section id="tab-study" class="tab" hidden>
             <div id="study-list">
                 <div class="card ai-bar" id="ai-bar"></div>
+                <div class="card review-box" id="review-box" hidden></div>
                 <h2 class="section-title">Verifiche e interrogazioni in arrivo</h2>
                 <div id="study-tests"></div>
                 <div class="card cta-card">
@@ -160,8 +161,8 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
 
         <!-- Calendar -->
         <section id="tab-calendar" class="tab" hidden>
-            <details class="card">
-                <summary>Aggiungi una data</summary>
+            <details class="card" id="event-box">
+                <summary id="event-summary">Aggiungi una data</summary>
                 <form id="event-form" class="stack">
                     <div class="grid2">
                         <label>Tipo
@@ -176,7 +177,19 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                     <label>Materia <select name="subject_id" required></select></label>
                     <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
                     <label>Argomenti detti dal prof <textarea name="topics" rows="3" maxlength="2000"></textarea></label>
-                    <button>Aggiungi</button>
+                    <fieldset class="period-box">
+                        <legend>Materiale da studiare (facoltativo)</legend>
+                        <p class="muted small">Di solito è tutto quello dopo la verifica precedente della stessa materia. Se l'argomento è
+                            cominciato prima, o nel frattempo ne avete iniziato un altro, scegli i giorni: l'AI userà solo quelle lezioni.</p>
+                        <div class="grid2">
+                            <label>Dal <input type="date" name="period_from"></label>
+                            <label>Al <input type="date" name="period_to"></label>
+                        </div>
+                    </fieldset>
+                    <div class="row">
+                        <button id="event-submit">Aggiungi</button>
+                        <button type="button" id="event-cancel" class="ghost" hidden>Annulla la modifica</button>
+                    </div>
                 </form>
             </details>
             <div id="events"></div>
@@ -184,26 +197,36 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
 
         <!-- Class: members, code, timetable -->
         <section id="tab-class" class="tab" hidden>
-            <div class="card" id="class-info"></div>
-            <div class="card" id="manage-box" hidden>
-                <h2>Gestione</h2>
-                <form id="settings-form" class="row">
-                    <label>Ora del riassunto automatico <input type="time" name="summary_time" required></label>
-                    <button>Salva</button>
-                </form>
-                <h3>Orario</h3>
-                <p class="muted small">Come l'orario stampato: tocca una casella per cambiare materia, aula e orari. Le ore di fila della
+            <div class="card" id="tt-card">
+                <h2>Orario</h2>
+                <p class="muted small tt-manage">Come l'orario stampato: tocca una casella per cambiare materia, aula e orari. Le ore di fila della
                     stessa materia diventano una lezione sola (il laboratorio scrivilo con lo stesso nome della materia).</p>
+                <div id="tt-days"></div>
+                <div class="tt-manage">
+                <label>Valido dal <input type="date" id="tt-from"></label>
+                <button id="tt-save">Salva l'orario</button>
+                <details class="ai-read-box">
+                <summary>Compila da una foto o un PDF con l'AI</summary>
                 <div class="ai-read">
                     <label>Compila da foto o PDF: l'orario della classe e, se ce l'hai, quello della campanella (fino a 3 file)
                         <input type="file" id="tt-files" multiple accept="image/*,.pdf">
                     </label>
                     <button type="button" id="tt-read">Leggi l'orario</button>
-                    <p class="muted small">L'AI riempie la tabella qui sotto: controlla e poi premi "Salva l'orario".</p>
+                    <p class="muted small">L'AI riempie la tabella qui sopra: controlla e poi premi "Salva l'orario".</p>
                 </div>
-                <label>Valido dal <input type="date" id="tt-from"></label>
-                <div id="tt-days"></div>
-                <button id="tt-save">Salva l'orario</button>
+                </details>
+                </div>
+                <div id="bell-opt" class="bell-opt"></div>
+            </div>
+            <div class="card" id="class-info"></div>
+            <div class="card" id="manage-box" hidden>
+                <h2>Gestione</h2>
+                <form id="settings-form" class="row">
+                    <label>Riassunto automatico ogni giorno alle <input type="time" name="summary_time" required></label>
+                    <button>Salva</button>
+                </form>
+                <p class="muted small">Una volta al giorno l'AI rifà gli appunti di tutte le materie con il materiale nuovo. "Genera ora", nella
+                    scheda Studio, lo fa subito, anche su giorni scelti.</p>
             </div>
             <div class="card">
                 <h2>Compagni</h2>
