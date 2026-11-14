@@ -51,7 +51,7 @@ $login = 'login.php?next=appunti.php';
         </section>
 
         <section class="steps">
-            <div class="step"><b>1</b><h3>Entra nella classe</h3><p>Con il codice d'invito che ti dà il responsabile. Ogni classe vede solo i suoi appunti.</p></div>
+            <div class="step"><b>1</b><h3>Entra nella classe</h3><p>Con il codice d'invito che ti dà il rappresentante. Ogni classe vede solo i suoi appunti.</p></div>
             <div class="step"><b>2</b><h3>Carica quello che hai</h3><p>Una foto a fine lezione basta: il sito capisce da solo di che lezione è, guardando l'orario.</p></div>
             <div class="step"><b>3</b><h3>Studia dai documenti</h3><p>Dispense, riassunti, domande e quiz arrivano da soli ogni sera e prima di ogni verifica.</p></div>
         </section>
@@ -59,7 +59,7 @@ $login = 'login.php?next=appunti.php';
         <nav class="toc card">
             <b>In questa guida:</b>
             <a href="#compagni">Per chi è in una classe</a> ·
-            <a href="#responsabile">Per il responsabile</a> ·
+            <a href="#rappresentante">Per il rappresentante</a> ·
             <a href="#nuova">Chiedere una classe</a> ·
             <a href="#altra-ai">Usare un'altra AI</a> ·
             <a href="#notifiche">Notifiche</a> ·
@@ -77,14 +77,14 @@ $login = 'login.php?next=appunti.php';
                     i documenti sono completi.</li>
                 <li><strong>La lezione giusta:</strong> scegliendo le foto, il sito guarda l'ora in cui le hai scattate e l'orario della
                     classe, e propone la lezione (per esempio "3ª-4ª ora · Lab SISI"). Se sbaglia, cambiala.</li>
-                <li><strong>Pagina Carica</strong> (in alto, <em>+ Carica</em>): tutti i modi per caricare in un posto solo, cioè fotocamera,
+                <li><strong>Pagina Carica</strong> (in alto, <em>Carica</em>): tutti i modi per caricare in un posto solo, cioè fotocamera,
                     file (anche trascinandoli), testo scritto o copiato da un'AI (il <b>**grassetto**</b> di ChatGPT e Gemini viene mostrato
                     formattato) e documenti fatti con un'altra AI, con la barra di avanzamento.</li>
                 <li><strong>Archivio</strong> (in alto): tutto il materiale a cartelle, Materia → Giorno → file, con l'anteprima accanto
                     (foto, PDF, testi, trascrizioni, documenti dell'AI) senza dover scorrere la pagina.</li>
                 <li><strong>Tutti vedono tutto</strong>, con il nome di chi l'ha caricato. Puoi modificare o cancellare solo quello che hai
-                    caricato tu (il responsabile può anche il resto).</li>
-                <li><strong>Scaricare:</strong> tocca una foto per aprirla intera; ogni giorno ha i pulsanti <em>↓ Per AI</em> (un file di
+                    caricato tu (il rappresentante può anche il resto).</li>
+                <li><strong>Scaricare:</strong> tocca una foto per aprirla intera; ogni giorno ha i pulsanti <em>Per AI</em> (un file di
                     testo con tutto, per ChatGPT, Claude o Gemini) e <em>↓ .zip</em> (i file originali); con il filtro di una materia
                     ci sono gli stessi per tutta la materia.</li>
             </ul>
@@ -93,7 +93,7 @@ $login = 'login.php?next=appunti.php';
                 documenti per studiare partono da qui.</p>
             <h3>Studio</h3>
             <ul>
-                <li><strong>Appunti delle lezioni:</strong> ogni sera (all'ora scelta dal responsabile) l'AI unisce gli appunti di tutti in
+                <li><strong>Appunti delle lezioni:</strong> ogni sera (all'ora scelta dal rappresentante) l'AI unisce gli appunti di tutti in
                     un documento per lezione, segna con ⚠️ dove due compagni dicono cose diverse e aggiunge le <strong>possibili domande
                     all'interrogazione</strong> su quella lezione.</li>
                 <li><strong>Per ogni verifica</strong> dei prossimi 30 giorni, con tutto il materiale dalla verifica precedente:
@@ -106,9 +106,9 @@ $login = 'login.php?next=appunti.php';
             </ul>
         </section>
 
-        <section id="responsabile" class="card">
-            <h2>Per il responsabile della classe</h2>
-            <p>Chi ha chiesto la classe ne è il responsabile; può passare il ruolo a un compagno dalla scheda <em>Classe</em>.</p>
+        <section id="rappresentante" class="card">
+            <h2>Per il rappresentante della classe</h2>
+            <p>Chi ha chiesto la classe ne è il rappresentante; può passare il ruolo a un compagno dalla scheda <em>Classe</em>.</p>
             <ul>
                 <li><strong>Codice d'invito:</strong> dallo solo ai compagni (gruppo della classe). Se gira dove non deve, premi
                     <em>Nuovo codice</em>: quello vecchio smette di funzionare.</li>
@@ -176,7 +176,7 @@ $login = 'login.php?next=appunti.php';
             <details><summary>L'AI ha scritto una cosa sbagliata.</summary><p>Succede. Ogni parte indica da quali appunti viene: controlla
                 lì e nel libro, e se serve carica gli appunti corretti; il documento si rifà da solo.</p></details>
             <details><summary>Posso usarlo per un'altra scuola?</summary><p>Sì: chiedi la tua classe, ogni classe è separata dalle altre.</p></details>
-            <details><summary>Ho perso il codice d'invito.</summary><p>Chiedilo al responsabile della classe: lo vede nella scheda <em>Classe</em>.</p></details>
+            <details><summary>Ho perso il codice d'invito.</summary><p>Chiedilo al rappresentante della classe: lo vede nella scheda <em>Classe</em>.</p></details>
         </section>
 
         <?php if ($isAdmin): ?>

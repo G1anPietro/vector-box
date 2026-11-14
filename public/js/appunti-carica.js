@@ -49,7 +49,7 @@
                 text: `${l.period === l.period_to ? l.period + 'ª ora' : `${l.period}ª-${l.period_to}ª ora`} · ${l.label || subjectName(l.subject_id)} (${l.start}–${l.end})` }))));
         }
         groups.push(el('optgroup', { label: lessons.length ? 'Altra materia' : 'Materia' }, ...current.subjects.map((s) => el('option', { value: `${s.id}|`, text: s.name }))));
-        sel.replaceChildren(el('option', { value: '', text: current.subjects.length ? 'Scegli…' : 'Il responsabile deve ancora inserire l\'orario' }), ...groups);
+        sel.replaceChildren(el('option', { value: '', text: current.subjects.length ? 'Scegli…' : 'Il rappresentante deve ancora inserire l\'orario' }), ...groups);
         if (preferred && [...sel.options].some((o) => o.value === preferred)) sel.value = preferred;
     }
 
@@ -202,7 +202,7 @@
     async function openClass(id) {
         current = (await getJson(`../api/classi.php?action=class&id=${id}`)).class;
         C.store(C.CLASS_KEY, String(id));
-        $('[data-method="timetable"]').hidden = !current.can_manage;
+        $('[data-method="timetable"]').hidden = !(current.perms || []).includes('timetable');
         $('#tt-link').href = `appunti.php?class=${id}&tab=class`;
         $('#w-date').value = todayStr();
         await suggest(Date.now() / 1000, false);

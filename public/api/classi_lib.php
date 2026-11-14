@@ -288,7 +288,7 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
     $st->execute([':c' => $id]);
     $members = array_map(fn($r) => [
         'id' => (int)$r['id'], 'username' => $r['username'], 'name' => $r['display_name'] ?: $r['username'],
-        'display_name' => $r['display_name'] ?? '', 'is_manager' => (int)$r['id'] === (int)$class['manager_id'],
+        'display_name' => $r['display_name'] ?? '', 'is_manager' => (int)$r['id'] === (int)$class['manager_id'], 'is_me' => (int)$r['id'] === $me,
         'role_id' => $r['role_id'] !== null ? (int)$r['role_id'] : null,
         'perms' => $seeAll || (int)$r['id'] === $me ? classCleanPerms(json_decode($r['perms'] ?? '[]', true)) : [],
     ], $st->fetchAll());

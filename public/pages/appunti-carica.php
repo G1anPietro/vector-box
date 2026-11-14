@@ -46,7 +46,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
             <button type="button" class="method" data-method="files" role="tab"><span>📁</span>Scegli file<small>foto, audio, PDF, Word, PowerPoint…</small></button>
             <button type="button" class="method" data-method="text" role="tab"><span>✍️</span>Scrivi o incolla<small>anche testo con **grassetto**</small></button>
             <button type="button" class="method" data-method="ai" role="tab"><span>🤖</span>Documento da un'altra AI<small>ChatGPT, Gemini, Claude…</small></button>
-            <button type="button" class="method" data-method="timetable" role="tab" hidden><span>🗓</span>Orario da foto<small>solo il responsabile</small></button>
+            <button type="button" class="method" data-method="timetable" role="tab" hidden><span>🗓</span>Orario da foto<small>rappresentante o chi ha il permesso</small></button>
         </div>
 
         <!-- Where the material goes (photos, files, text) -->

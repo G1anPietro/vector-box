@@ -68,7 +68,7 @@
 
     function renderSubjects() {
         const col = $('#col-subjects');
-        if (!tree.length) { col.replaceChildren(el('p', { class: 'empty', text: 'Ancora nessuna materia: il responsabile deve inserire l\'orario.' })); return; }
+        if (!tree.length) { col.replaceChildren(el('p', { class: 'empty', text: 'Ancora nessuna materia: il rappresentante deve inserire l\'orario.' })); return; }
         col.replaceChildren(el('h3', { class: 'col-h', text: 'Materie' }), ...tree.map((s) => row({
             icon: '📁', label: s.name, active: s.id === sel.subject,
             meta: s.days.length ? `${s.days.length} ${s.days.length === 1 ? 'giorno' : 'giorni'}` : 'vuota',
@@ -218,7 +218,7 @@
         try {
             if (en.type === 'file') {
                 const f = en.file;
-                const dl = el('a', { class: 'ghost-link', href: fileUrl(f.id), download: f.name, text: '↓ Scarica' });
+                const dl = el('a', { class: 'ghost-link ico-dl', href: fileUrl(f.id), download: f.name, text: 'Scarica' });
                 const open = el('a', { class: 'ghost-link', href: fileUrl(f.id), target: '_blank', rel: 'noopener', text: 'Apri' });
                 const meta = el('p', { class: 'muted small', text: `${en.meta}${f.text_status === 'pending' ? ' · trascrizione in arrivo' : ''}` });
                 if (f.mime.startsWith('image/') && !/heic|heif/.test(f.mime)) {

@@ -19,6 +19,7 @@
     let currentTab = 'material';
 
     /* ---------- helpers ---------- */
+    const C = window.AppuntiCommon;
 
     function el(tag, props = {}, ...children) {
         const n = document.createElement(tag);
@@ -51,7 +52,7 @@
         empty: 'Aggiungi un file o scrivi del testo.', bad_subject: 'Scegli la materia.', file_too_large: null,
         class_full: 'La classe ha finito lo spazio.', bad_type: null, too_large: 'Il caricamento è troppo grande.',
         manager_cannot_leave: 'Prima passa la classe a un altro compagno.', forbidden: 'Non puoi modificarlo.',
-        not_manager: 'Solo il responsabile può farlo.',
+        not_manager: 'Non hai il permesso di farlo (chiedi al rappresentante).',
     };
     function errText(json, fallback = 'Qualcosa è andato storto.') {
         if (!json) return fallback;
@@ -102,7 +103,7 @@
         classes = mine.classes;
         isAdmin = mine.is_admin;
         const sel = $('#class-select');
-        sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}` })));
+        sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}${c.is_member ? '' : ' (admin)'}` })));
         sel.parentElement.hidden = classes.length === 0;
         $('[data-tab="admin"]').hidden = !mine.is_admin;
 
@@ -206,9 +207,9 @@
             box.replaceChildren(...[...days].map(([d, list]) => el('section', { class: 'day' },
                 el('div', { class: 'day-head' }, el('h3', { text: dayFmt.format(parseDate(d)) }),
                     el('span', { class: 'row-actions' },
-                        el('button', { class: 'ghost mini', type: 'button', text: '↓ Per AI', title: 'Un file .md con tutto il testo e i prompt, da dare a un\'altra AI',
+                        el('button', { class: 'ghost mini ico-dl', type: 'button', text: 'Per AI', title: 'Un file .md con tutto il testo e i prompt, da dare a un\'altra AI',
                             onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target, 'ai_pack') }),
-                        el('button', { class: 'ghost mini', type: 'button', text: '↓ .zip', title: 'Scarica tutto il materiale originale di questo giorno',
+                        el('button', { class: 'ghost mini ico-dl', type: 'button', text: '.zip', title: 'Scarica tutto il materiale originale di questo giorno',
                             onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target) }))),
                 ...list.map(renderItem))));
         } catch (e) {
@@ -256,9 +257,9 @@
                 ? el('div', { class: 'body md' }, md(it.body))
                 : el('div', { class: 'body', text: it.body })) : null,
             files.length ? el('div', { class: 'files' }, files) : null,
-            it.can_edit ? el('div', { class: 'actions' },
-                el('button', { class: 'ghost mini', text: 'Modifica', onclick: () => editItem(it, card) }),
-                el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteItem(it) })) : null);
+            it.can_edit ? el('div', { class: 'actions' }, C.menu([
+                { label: 'Modifica', onclick: () => editItem(it, card) },
+                { label: 'Elimina', danger: true, onclick: () => deleteItem(it) }])) : null);
         card.style.setProperty('--sub', hue(it.subject_id));
         return card;
     }
@@ -430,9 +431,9 @@
                         ? `I documenti arrivano con il prossimo riassunto (alle ${ai.summary_time}) o con "Genera ora", se c'è materiale caricato.`
                         : 'I documenti arriveranno quando l\'AI sarà attiva.' }),
                 el('div', { class: 'row' },
-                    el('button', { class: 'ghost mini', type: 'button', text: '↓ Per un\'altra AI (.md)',
+                    el('button', { class: 'ghost mini ico-dl', type: 'button', text: 'Per un\'altra AI (.md)',
                         onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') }),
-                    el('button', { class: 'ghost mini', type: 'button', text: '↓ Tutto il materiale (.zip)',
+                    el('button', { class: 'ghost mini ico-dl', type: 'button', text: 'Tutto il materiale (.zip)',
                         onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) }),
                     el('a', { class: 'ghost-link mini-link', href: caricaUrl({ m: 'ai', event: e.id }), text: '+ Carica un documento fatto con un\'altra AI' })));
         }));
@@ -453,7 +454,7 @@
                     .slice(0, 1).map((x) => el('button', { class: 'ghost mini', text: '🧠 Schema', onclick: () => showDoc(x.id) })),
                 ...studyDocs.filter((x) => x.kind === 'domande' && x.status === 'ok' && x.subject_id === d.subject_id && x.lesson_date === d.lesson_date)
                     .slice(0, 1).map((x) => el('button', { class: 'ghost mini', text: '❓ Domande', onclick: () => showDoc(x.id) })),
-                d.can_delete ? el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteDoc(d) }) : null))));
+                d.can_delete ? C.menu([{ label: 'Elimina', danger: true, onclick: () => deleteDoc(d) }]) : null))));
     }
     $('#study-subject').addEventListener('change', renderStudyLessons);
 
@@ -565,8 +566,8 @@
                         e.period && e.kind !== 'altro' ? el('div', { class: 'muted small', text: `Materiale: lezioni dal ${fmtDay(e.period[0])} al ${fmtDay(e.period[1])}`
                             + (e.period_from ? ' (scelto a mano)' : '') }) : null,
                         el('div', { class: 'muted small event-actions' }, `aggiunta da ${e.author || '?'}`,
-                            e.can_edit ? el('button', { class: 'ghost mini', text: 'Modifica', onclick: () => editEvent(e) }) : null,
-                            e.can_edit ? el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteEvent(e) }) : null)));
+                            e.can_edit ? C.menu([{ label: 'Modifica', onclick: () => editEvent(e) },
+                                { label: 'Elimina', danger: true, onclick: () => deleteEvent(e) }]) : null)));
             };
             box.replaceChildren(
                 upcoming.length ? el('div', {}, ...upcoming.map(row)) : el('p', { class: 'empty', text: 'Nessuna verifica in arrivo.' }),
@@ -636,24 +637,139 @@
                 el('div', { class: 'row' }, el('span', { class: 'code', text: c.invite_code }),
                     el('button', { class: 'ghost mini', text: 'Copia', onclick: () => navigator.clipboard && navigator.clipboard.writeText(c.invite_code).then(() => status('Codice copiato.', 'ok')) }),
                     el('button', { class: 'ghost mini', text: 'Nuovo codice', onclick: regenCode })))
-                : el('p', { class: 'muted small', text: 'Il codice d\'invito lo ha il responsabile della classe.' }),
-            el('p', { class: 'muted small', text: `Riassunto automatico ogni giorno alle ${c.summary_time}.` }));
+                : el('p', { class: 'muted small', text: 'Il codice d\'invito lo ha il rappresentante della classe.' }),
+            el('p', { class: 'muted small', text: `Riassunto automatico ogni giorno alle ${c.summary_time}.` }),
+            c.is_member ? myNameForm(c) : el('p', { class: 'admin-note', text: 'Stai guardando questa classe come amministratore del sito: non ne fai parte.' }));
 
-        $('#members').replaceChildren(...c.members.map((m) => el('li', {},
-            el('span', {}, m.username, m.is_manager ? el('span', { class: 'role', text: 'responsabile' }) : null),
-            c.can_manage && !m.is_manager ? el('span', {},
-                el('button', { class: 'ghost mini', text: 'Rendi responsabile', onclick: () => setManager(m) }), ' ',
-                el('button', { class: 'danger mini', text: 'Togli', onclick: () => removeMember(m) })) : null)));
-        $('#leave-btn').hidden = c.is_manager;
+        renderMembers(c);
+        renderRoles(c);
+        renderSubjects(c);
+        $('#leave-btn').hidden = c.is_manager || !c.is_member;
 
-        $('#manage-box').hidden = !c.can_manage;
-        $$('.tt-manage').forEach((x) => { x.hidden = !c.can_manage; });
-        if (c.can_manage) {
-            $('#settings-form').summary_time.value = c.summary_time;
-            $('#tt-from').value = c.timetable ? c.timetable.valid_from : todayStr();
-        }
+        $('#manage-box').hidden = !can('settings');
+        $$('.tt-manage').forEach((x) => { x.hidden = !can('timetable'); });
+        $('#settings-form').summary_time.value = c.summary_time;
+        if (can('timetable')) $('#tt-from').value = c.timetable ? c.timetable.valid_from : todayStr();
         renderTimetable();
         renderBellOpt();
+    }
+
+    const can = (perm) => !!current && (current.perms || []).includes(perm);
+
+    function myNameForm(c) {
+        const me = c.members.find((m) => m.is_me) || null;
+        const input = el('input', { name: 'name', maxLength: 40, placeholder: 'Nome e cognome', value: me ? me.display_name : '' });
+        const form = el('form', { class: 'row my-name' }, el('label', { text: 'Il tuo nome in questa classe' }, input), el('button', { class: 'ghost', text: 'Salva' }));
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            try { await classes_({ action: 'display_name', id: c.id, name: input.value }); await openClass(c.id); status('Nome salvato: in classe i compagni vedono questo.', 'ok'); }
+            catch (e) { status(e.message, 'err'); }
+        });
+        return el('div', {}, form, el('p', { class: 'muted small', text: 'Lo vedono solo i compagni di questa classe; nel resto del sito resta il tuo nome utente.' }));
+    }
+
+    function roleChip(c, m) {
+        if (m.is_manager) return el('span', { class: 'role rep', text: 'Rappresentante' });
+        const r = c.roles.find((x) => x.id === m.role_id);
+        if (!r) return null;
+        const chip = el('span', { class: 'role', text: r.name });
+        chip.style.setProperty('--role', r.color);
+        return chip;
+    }
+
+    function renderMembers(c) {
+        $('#members').replaceChildren(...c.members.map((m) => el('li', {},
+            el('span', { class: 'member' }, el('b', { text: m.name }), m.name !== m.username ? el('span', { class: 'muted small', text: ` @${m.username}` }) : null,
+                ' ', roleChip(c, m)),
+            m.is_manager ? null : C.menu([
+                can('roles') ? { label: 'Ruolo e permessi…', onclick: () => editAccess(c, m) } : null,
+                can('members') ? { label: 'Cambia il nome…', onclick: () => editName(c, m) } : null,
+                c.is_manager || isAdmin ? { label: 'Rendi rappresentante', onclick: () => setManager(m) } : null,
+                can('members') ? { label: 'Togli dalla classe', danger: true, onclick: () => removeMember(m) } : null,
+            ], `Azioni per ${m.name}`))));
+    }
+
+    const permBoxes = (c, chosen) => Object.entries(c.perm_labels).map(([k, label]) =>
+        el('label', { class: 'switch perm' }, el('input', { type: 'checkbox', name: 'perm', value: k, checked: chosen.includes(k) }), label));
+    const checkedPerms = (form) => [...form.querySelectorAll('input[name=perm]:checked')].map((x) => x.value);
+
+    function editAccess(c, m) {
+        C.dialogForm(`${m.name}: ruolo e permessi`, (form) => {
+            form.append(el('label', { text: 'Ruolo' }, el('select', { name: 'role' },
+                el('option', { value: '', text: 'Nessun ruolo' }), ...c.roles.map((r) => el('option', { value: r.id, text: r.name, selected: r.id === m.role_id })))),
+            el('p', { class: 'muted small', text: 'Permessi in più, solo per questa persona (si sommano a quelli del ruolo):' }),
+            ...permBoxes(c, m.perms));
+        }, async (form) => {
+            await classes_({ action: 'set_member_access', id: c.id, user_id: m.id, role_id: Number(form.role.value) || 0, perms: checkedPerms(form) });
+            await openClass(c.id);
+            status('Permessi salvati.', 'ok');
+        });
+    }
+
+    function editName(c, m) {
+        C.dialogForm(`Nome in classe di @${m.username}`, (form) => {
+            form.append(el('label', { text: 'Nome' }, el('input', { name: 'name', maxLength: 40, value: m.display_name })));
+        }, async (form) => {
+            await classes_({ action: 'display_name', id: c.id, user_id: m.id, name: form.name.value });
+            await openClass(c.id);
+        });
+    }
+
+    function renderRoles(c) {
+        $('#roles-card').hidden = !can('roles');
+        if (!can('roles')) return;
+        $('#roles').replaceChildren(...(c.roles.length ? c.roles.map((r) => {
+            const chip = el('span', { class: 'role', text: r.name });
+            chip.style.setProperty('--role', r.color);
+            const who = c.members.filter((m) => m.role_id === r.id).map((m) => m.name);
+            return el('li', {}, el('span', {}, chip, el('span', { class: 'muted small', text: ` ${r.perms.length} permess${r.perms.length === 1 ? 'o' : 'i'}${who.length ? ' · ' + who.join(', ') : ''}` })),
+                C.menu([{ label: 'Modifica…', onclick: () => editRole(c, r) }, { label: 'Elimina', danger: true, onclick: () => deleteRole(c, r) }]));
+        }) : [el('li', { class: 'muted small', text: 'Nessun ruolo: crealo con "+ Nuovo ruolo".' })]));
+    }
+
+    function editRole(c, r = null) {
+        C.dialogForm(r ? `Ruolo: ${r.name}` : 'Nuovo ruolo', (form) => {
+            form.append(el('div', { class: 'row' },
+                el('label', { text: 'Nome' }, el('input', { name: 'name', maxLength: 30, required: true, value: r ? r.name : '', placeholder: 'es. Vice, Informatica' })),
+                el('label', { text: 'Colore' }, el('input', { type: 'color', name: 'color', value: r ? r.color : '#5b8def' }))),
+            el('p', { class: 'muted small', text: 'Cosa può fare chi ha questo ruolo:' }), ...permBoxes(c, r ? r.perms : []));
+        }, async (form) => {
+            await classes_({ action: 'save_role', id: c.id, role_id: r ? r.id : 0, name: form.name.value, color: form.color.value, perms: checkedPerms(form) });
+            await openClass(c.id);
+            status('Ruolo salvato.', 'ok');
+        });
+    }
+
+    async function deleteRole(c, r) {
+        if (!confirm(`Eliminare il ruolo "${r.name}"? Chi lo ha resta in classe, senza ruolo.`)) return;
+        try { await classes_({ action: 'delete_role', id: c.id, role_id: r.id }); await openClass(c.id); } catch (e) { status(e.message, 'err'); }
+    }
+    $('#role-new').addEventListener('click', () => editRole(current));
+
+    function renderSubjects(c) {
+        $('#subjects-card').hidden = !can('subjects');
+        if (!can('subjects')) return;
+        $('#subjects').replaceChildren(...c.subjects.map((s) => el('li', {}, el('span', { text: s.name }), C.menu([
+            c.subjects.length > 1 ? { label: 'Unisci a…', onclick: () => mergeSubject(c, s) } : null,
+            { label: 'Elimina', danger: true, onclick: () => deleteSubject(c, s) }]))));
+    }
+
+    function mergeSubject(c, s) {
+        C.dialogForm(`Unisci "${s.name}" a…`, (form) => {
+            form.append(el('label', { text: 'Materia che resta' }, el('select', { name: 'into' },
+                ...c.subjects.filter((x) => x.id !== s.id).map((x) => el('option', { value: x.id, text: x.name })))),
+            el('p', { class: 'muted small', text: `Il materiale, le date del calendario e le ore dell'orario di "${s.name}" passano alla materia scelta; poi "${s.name}" sparisce. I documenti dell'AI vengono rifatti al prossimo giro.` }));
+        }, async (form) => {
+            await classes_({ action: 'merge_subject', id: c.id, subject_id: s.id, into: Number(form.into.value) });
+            await openClass(c.id);
+            status('Materie unite.', 'ok');
+        }, 'Unisci');
+    }
+
+    async function deleteSubject(c, s) {
+        if (!confirm(`Eliminare la materia "${s.name}"? Le sue ore nell'orario diventano libere.`)) return;
+        try { await classes_({ action: 'delete_subject', id: c.id, subject_id: s.id }); await openClass(c.id); status('Materia eliminata.', 'ok'); }
+        catch (e) { status(e.json && e.json.code === 'not_empty' ? 'Questa materia ha del materiale: usa "Unisci a…".' : e.message, 'err'); }
     }
 
     async function regenCode() {
@@ -661,11 +777,11 @@
         try { await classes_({ action: 'regen_code', id: current.id }); await openClass(current.id); status('Nuovo codice creato.', 'ok'); } catch (e) { status(e.message, 'err'); }
     }
     async function setManager(m) {
-        if (!confirm(`Passare la gestione della classe a ${m.username}?`)) return;
+        if (!confirm(`Far diventare ${m.name} rappresentante della classe? Tu perdi il ruolo.`)) return;
         try { await classes_({ action: 'set_manager', id: current.id, user_id: m.id }); await openClass(current.id); } catch (e) { status(e.message, 'err'); }
     }
     async function removeMember(m) {
-        if (!confirm(`Togliere ${m.username} dalla classe?`)) return;
+        if (!confirm(`Togliere ${m.name} dalla classe?`)) return;
         try { await classes_({ action: 'remove_member', id: current.id, user_id: m.id }); await openClass(current.id); } catch (e) { status(e.message, 'err'); }
     }
     $('#leave-btn').addEventListener('click', async () => {
@@ -714,7 +830,7 @@
         const box = $('#tt-days');
         const days = Object.keys(tt).sort();
         const rows = Math.max(0, ...days.map((d) => tt[d].length));
-        const edit = !!current.can_manage;
+        const edit = can('timetable');
         const grid = el('div', { class: 'tt-grid', style: `grid-template-columns: 34px repeat(${days.length}, minmax(96px, 1fr))` });
         grid.append(el('div', { class: 'tt-corner' }));
         for (const d of days) {
@@ -755,7 +871,7 @@
             } })) : null;
         box.replaceChildren(
             el('datalist', { id: 'tt-subjects' }, ...current.subjects.map((s) => el('option', { value: s.name }))),
-            days.length ? el('div', { class: 'tt-scroll' }, grid) : el('p', { class: 'empty', text: edit ? 'Nessun giorno: aggiungine uno.' : 'L\'orario non c\'è ancora: lo inserisce il responsabile della classe.' }),
+            days.length ? el('div', { class: 'tt-scroll' }, grid) : el('p', { class: 'empty', text: edit ? 'Nessun giorno: aggiungine uno.' : 'L\'orario non c\'è ancora: lo inserisce il rappresentante della classe.' }),
             ...(add ? [add] : []));
     }
 
@@ -888,7 +1004,7 @@
             const stLabel = { active: 'attiva', pending: 'in attesa', rejected: 'rifiutata' };
             $('#admin-classes').replaceChildren(...all.classes.filter((c) => c.status !== 'pending').map((c) => el('li', {},
                 el('span', {}, el('b', { text: `${c.name} · ${c.school}` }), el('br'),
-                    el('span', { class: 'muted small', text: `${stLabel[c.status] || c.status} · ${c.members} iscritti · responsabile ${c.manager || '?'} · ${c.limits_mb.file} MB/file, ${c.limits_mb.class} MB` })),
+                    el('span', { class: 'muted small', text: `${stLabel[c.status] || c.status} · ${c.members} iscritti · rappresentante ${c.manager || '?'} · ${c.limits_mb.file} MB/file, ${c.limits_mb.class} MB` })),
                 el('button', { class: 'danger mini', text: 'Elimina', onclick: () => deleteClass(c) }))));
         } catch (e) { status(e.message, 'err'); }
     }

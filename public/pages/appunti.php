@@ -44,7 +44,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         <a class="home" href="../index.php">vector-box</a>
         <span class="top-right">
             <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
-            <a class="ghost-link" href="appunti-carica.php">+ Carica</a>
+            <a class="btn-link ico-up top-cta" href="appunti-carica.php">Carica</a>
             <a class="ghost-link hide-phone" href="appunti-guida.php">Guida</a>
             <span class="who"><?= $e($username) ?></span>
             <button id="bell" class="bell" type="button" aria-label="Notifiche" aria-expanded="false">
@@ -76,7 +76,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         <!-- No class yet: join with a code or ask for a new class -->
         <section id="welcome" class="card" hidden>
             <h2>Entra nella tua classe</h2>
-            <p class="muted">Chiedi il codice d'invito al responsabile della classe.</p>
+            <p class="muted">Chiedi il codice d'invito al rappresentante della classe.</p>
             <form id="join-form" class="row">
                 <input name="code" placeholder="Codice (es. K7QM-2XPA)" autocomplete="off" required maxlength="20">
                 <button>Entra</button>
@@ -110,7 +110,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                     <span class="muted small">Foto dal telefono, file, testo copiato da un'AI: tutto dalla pagina Carica.</span>
                 </div>
                 <div class="row-actions">
-                    <a class="btn-link" id="upload-link" href="appunti-carica.php">+ Carica</a>
+                    <a class="btn-link ico-up" id="upload-link" href="appunti-carica.php">Carica</a>
                     <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
                 </div>
             </div>
@@ -232,6 +232,18 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 <h2>Compagni</h2>
                 <ul id="members" class="plain members"></ul>
                 <button id="leave-btn" class="ghost">Esci dalla classe</button>
+            </div>
+            <div class="card" id="roles-card" hidden>
+                <div class="card-head"><h2>Ruoli</h2><button type="button" id="role-new" class="ghost mini">+ Nuovo ruolo</button></div>
+                <p class="muted small">Il rappresentante può fare tutto. Gli altri fanno quello che permette il loro ruolo, più i
+                    permessi dati a loro personalmente (dal menu ⋯ accanto al nome). Chi non ha un ruolo non ha etichette.</p>
+                <ul id="roles" class="plain roles"></ul>
+            </div>
+            <div class="card" id="subjects-card" hidden>
+                <h2>Materie</h2>
+                <p class="muted small">Due materie che sono la stessa (per esempio "Lab Informatica" e "Informatica")? Uniscile: il
+                    materiale, il calendario e le ore dell'orario passano all'altra. Una materia vuota si può eliminare.</p>
+                <ul id="subjects" class="plain subjects-list"></ul>
             </div>
             <div class="card">
                 <h2>Altre classi</h2>

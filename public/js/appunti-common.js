@@ -362,7 +362,44 @@
     new MutationObserver((list) => list.forEach((r) => r.addedNodes.forEach((n) => { if (n.nodeType === 1) enhanceAll(n); })))
         .observe(document.documentElement, { childList: true, subtree: true });
 
-    window.AppuntiCommon = { el, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    /* ---------- "⋯" menu: the actions of an element without a row of big buttons ---------- */
+    function closeMenus() { document.querySelectorAll('.kebab-list:not([hidden])').forEach((l) => { l.hidden = true; }); }
+    document.addEventListener('click', closeMenus);
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeMenus(); });
+    /** items: [{label, onclick, danger?}] (falsy entries are skipped). Returns null when there is nothing to do. */
+    function menu(items, label = 'Altre azioni') {
+        const list = items.filter(Boolean);
+        if (!list.length) return null;
+        const box = el('div', { class: 'kebab-list', hidden: true, role: 'menu' }, ...list.map((i) => el('button', {
+            type: 'button', role: 'menuitem', class: i.danger ? 'danger-item' : '', text: i.label,
+            onclick: (ev) => { ev.stopPropagation(); box.hidden = true; i.onclick(ev); } })));
+        const btn = el('button', { type: 'button', class: 'kebab-btn', text: '⋯', title: label, 'aria-label': label, 'aria-haspopup': 'menu',
+            onclick: (ev) => { ev.stopPropagation(); const was = box.hidden; closeMenus(); box.hidden = !was; } });
+        return el('span', { class: 'kebab' }, btn, box);
+    }
+
+    /** A small modal form. build(form) appends the fields; onSave(form) may throw to keep it open. */
+    function dialogForm(title, build, onSave, saveText = 'Salva') {
+        const dlg = el('dialog', { class: 'tt-dialog' });
+        const form = el('form', { method: 'dialog', class: 'stack' }, el('h3', { text: title }));
+        build(form);
+        form.append(el('div', { class: 'row' }, el('button', { value: 'save', text: saveText }),
+            el('button', { type: 'button', class: 'ghost', text: 'Annulla', onclick: () => dlg.close() })));
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            try { await onSave(form); dlg.close(); } catch (e) { toast(e.message, 'err'); }
+        });
+        dlg.append(form);
+        dlg.addEventListener('close', () => dlg.remove());
+        dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
+        document.body.append(dlg);
+        dlg.showModal();
+        const first = form.querySelector('input, select, textarea');
+        if (first) first.focus();
+        return dlg;
+    }
+
+    window.AppuntiCommon = { el, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

@@ -33,7 +33,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-archivio.js') . '-' . filemtime(__DIR__
         <a class="home" href="appunti.php">← Appunti</a>
         <b class="arch-title">Archivio</b>
         <select id="class-select" aria-label="Classe"></select>
-        <a class="ghost-link" href="appunti-carica.php">+ Carica</a>
+        <a class="btn-link ico-up top-cta" href="appunti-carica.php">Carica</a>
     </header>
     <div class="arch-bar">
         <button type="button" id="back-btn" class="ghost mini back-btn" hidden>‹ Indietro</button>

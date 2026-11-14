@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-13 (schema del database **v15**, 166 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-13 (schema del database **v16**, 169 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -152,6 +152,16 @@ con il percorso in alto.
 - **Orario:** nella scheda Classe è una griglia come l'orario stampato (giorni in colonna, ore in riga, orari dentro
   ogni casella); tocca una casella per materia, aula e orari ("stessi orari per tutti i giorni"), "✕" toglie un giorno,
   "+ ora" aggiunge un'ora, "Aggiungi giorno" rimette un giorno tolto. Le modifiche valgono dopo "Salva l'orario".
+- **Ruoli e permessi:** chi chiede la classe è il **rappresentante** e può fare tutto (anche l'admin del sito, che nel
+  selettore vede tutte le classi). Il rappresentante crea **ruoli** (nome, colore, permessi) e li assegna; può dare
+  permessi anche a una sola persona. Permessi: orario, calendario (date degli altri), materiale degli altri, documenti
+  caricati da altri, compagni (codice d'invito, togliere), ruoli, materie (unire/eliminare), impostazioni. Solo il
+  rappresentante passa il ruolo di rappresentante. Tabelle `class_roles`, `class_members.role_id/perms` (schema v16).
+- **Nome in classe:** ognuno può mettere il nome vero (`class_members.display_name`), mostrato nella classe al posto dello
+  username (materiale, calendario, documenti, fonti dell'AI, zip); nel resto del sito resta lo username.
+- **Materie:** "Unisci a…" sposta materiale, date, documenti caricati a mano e ore dell'orario nell'altra materia (i
+  documenti dell'AI si rifanno); una materia vuota si elimina e le sue ore diventano libere.
+- **Azioni:** modifica ed elimina stanno nel menu "⋯" di ogni elemento.
 - **Calendario:** ogni verifica si può **modificare** (argomenti aggiunti dopo, data spostata). "Materiale da studiare"
   (facoltativo) sceglie i giorni delle lezioni da usare: di solito l'AI prende tutto quello dopo la verifica precedente
   della stessa materia, ma se l'argomento è cominciato prima o nel frattempo ne è iniziato un altro si scelgono le date.
@@ -452,7 +462,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 166 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # 169 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 
