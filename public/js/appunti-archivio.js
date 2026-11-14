@@ -79,6 +79,7 @@
     }
 
     function folderTitle(folder) {
+        if (folder.startsWith('topic:')) { const t = ((tree.find((s) => s.id === sel.subject) || {}).topics || []).find((x) => x.id === Number(folder.slice(6))); return t ? t.name : 'Argomento'; }
         if (folder.startsWith('cat:')) { const c = catOf(folder.slice(4)); return c ? c[2] : folder; }
         return shortDay.format(C.parseDate(folder));
     }
@@ -130,7 +131,14 @@
             return row({ icon: '🗂', label: shortDay.format(C.parseDate(d.date)), meta: bits.join(' · '), active: sel.folder === d.date,
                 onclick: () => openFolder(d.date) });
         });
+        // by topic: the topics of the subject that hold uploads or documents
+        const byTopic = (subject.topics || []).map((t) => {
+            const nDocs = docs.filter((d) => d.topic_id === t.id).length;
+            return (t.items || nDocs) ? row({ icon: '🧭', label: t.name, meta: `${t.items} ${t.items === 1 ? 'materiale' : 'materiali'}${nDocs ? ` · ${nDocs} dell'AI` : ''}`,
+                active: sel.folder === 'topic:' + t.id, onclick: () => openFolder('topic:' + t.id) }) : null;
+        }).filter(Boolean);
         col.replaceChildren(el('h3', { class: 'col-h', text: subject.name }),
+            ...(byTopic.length ? [el('p', { class: 'agroup', text: 'Per argomento' }), ...byTopic] : []),
             ...(byType.length ? [el('p', { class: 'agroup', text: 'Per tipo' }), ...byType] : []),
             ...(byDay.length ? [el('p', { class: 'agroup', text: 'Per giorno' }), ...byDay] : []),
             ...(!byType.length && !byDay.length ? [el('p', { class: 'empty', text: 'Ancora niente per questa materia.' })] : []));
@@ -174,7 +182,16 @@
         try {
             const cat = folder.startsWith('cat:') ? folder.slice(4) : null;
             const subjDocs = docs.filter((x) => x.subject_id === sel.subject);
-            if (cat === 'tests') {
+            if (folder.startsWith('topic:')) {
+                const tid = Number(folder.slice(6));
+                const mine = subjDocs.filter((d) => d.topic_id === tid && !d.event_id);
+                const kinds = [['lezione', 'Appunti della lezione'], ['schema', 'Schema della lezione'], ['domande', 'Domande della lezione']];
+                for (const [k, label] of kinds) for (const d of mine.filter((x) => x.kind === k)) entries.push(docEntry(d, `${label}${d.lesson_date ? ' · ' + shortDay.format(C.parseDate(d.lesson_date)) : ''}`));
+                const q = new URLSearchParams({ action: 'items', class_id: classId, subject_id: sel.subject, topic_id: tid });
+                const { items } = await getJson('../api/appunti.php?' + q);
+                if (entries.length && items.length) entries.push({ group: 'Materiale caricato' });
+                for (const it of items) entries.push(...itemEntries(it, true));
+            } else if (cat === 'tests') {
                 const byEvent = new Map();
                 for (const d of subjDocs.filter((x) => x.event_id && x.kind !== 'schema')) {
                     if (!byEvent.has(d.event_id)) byEvent.set(d.event_id, []);

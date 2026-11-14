@@ -68,6 +68,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                 </label>
             </div>
             <label>Lezione / materia <select id="w-lesson"></select></label>
+            <label id="w-topic-l" hidden>Argomento <select id="w-topic"></select></label>
             <p id="w-hint" class="muted small"></p>
             <label>Titolo (facoltativo) <input id="w-title" maxlength="120"></label>
         </section>

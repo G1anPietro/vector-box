@@ -124,6 +124,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
             <div class="filters row">
                 <select id="filter-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>
                 <select id="filter-kind" aria-label="Tipo"><option value="">Tutti i tipi</option></select>
+                <select id="filter-topic" aria-label="Argomento" hidden><option value="">Tutti gli argomenti</option></select>
                 <span id="subject-menu"></span>
             </div>
             <div id="items"></div>

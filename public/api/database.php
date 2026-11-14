@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 25;
+const DB_SCHEMA_VERSION = 26;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,15 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV26(PDO $db): void {
+    // Material by date AND topic: which topic of the subject an upload belongs to (topic_manual = chosen by a person, never
+    // changed by the automatic assignment), and which topic a study document is about (when its material is all of one topic)
+    addColumnIfMissing($db, 'class_items', 'topic_id', 'INTEGER');
+    addColumnIfMissing($db, 'class_items', 'topic_manual', 'INTEGER NOT NULL DEFAULT 0');
+    addColumnIfMissing($db, 'class_docs', 'topic_id', 'INTEGER');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_items_topic ON class_items(class_id, topic_id)');
+}
+
 function migrateV25(PDO $db): void {
     // How far each user got in a long document (index of the last heading passed), the same on phone and computer
     $db->exec("CREATE TABLE IF NOT EXISTS read_progress (
@@ -847,6 +856,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 25) {
             migrateV25($db);
+        }
+        if ($current < 26) {
+            migrateV26($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

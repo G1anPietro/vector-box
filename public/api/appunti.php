@@ -66,6 +66,15 @@ function apText($v, int $max, bool $multiline = false): string {
 }
 
 /** Validated item fields from a request. Returns the array or stops with 400. */
+/** A topic id chosen for an upload: it must be a topic of that subject in this class (0 = let the site decide). */
+function apTopicOf(PDO $db, int $classId, int $subjectId, int $topicId): int {
+    if ($topicId <= 0) return 0;
+    $st = $db->prepare("SELECT 1 FROM class_topics WHERE id = :t AND class_id = :c AND subject_id = :s AND status = 'ok'");
+    $st->execute([':t' => $topicId, ':c' => $classId, ':s' => $subjectId]);
+    if (!$st->fetchColumn()) apFail('bad_topic', 'Choose a topic of this subject');
+    return $topicId;
+}
+
 function apItemFields(PDO $db, array $class, array $in): array {
     $subjectId = (int)($in['subject_id'] ?? 0);
     if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) apFail('bad_subject', 'Choose a subject of this class');
@@ -82,6 +91,7 @@ function apItemFields(PDO $db, array $class, array $in): array {
     return [
         'subject_id' => $subjectId, 'kind' => $kind, 'lesson_date' => $date, 'period' => $period,
         'title' => apText($in['title'] ?? '', NOTE_TITLE_MAX), 'body' => apText($body, NOTE_BODY_MAX, true), 'auto' => $auto,
+        'topic_given' => array_key_exists('topic_id', $in), 'topic_id' => apTopicOf($db, (int)$class['id'], $subjectId, (int)($in['topic_id'] ?? 0)),
     ];
 }
 
@@ -255,6 +265,9 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
         foreach ($stored as $f) @unlink("$dir/{$f['stored']}");
         throw $e;
     }
+    // the topic: the one chosen, or the one that covers that day
+    if (!empty($fields['topic_id'])) $db->prepare('UPDATE class_items SET topic_id = :t, topic_manual = 1 WHERE id = :id')->execute([':t' => $fields['topic_id'], ':id' => $itemId]);
+    else notesAssignTopics($db, $classId, (int)$fields['subject_id']);
     return $itemId;
 }
 
@@ -378,6 +391,7 @@ try {
             $params = [':c' => $classId];
             if (!empty($_GET['subject_id'])) { $where[] = 'i.subject_id = :s'; $params[':s'] = (int)$_GET['subject_id']; }
             if (!empty($_GET['kind']) && in_array($_GET['kind'], NOTE_KINDS, true)) { $where[] = 'i.kind = :k'; $params[':k'] = $_GET['kind']; }
+            if (isset($_GET['topic_id']) && $_GET['topic_id'] !== '') { $where[] = ((int)$_GET['topic_id'] === 0) ? 'i.topic_id IS NULL' : 'i.topic_id = :tp'; if ((int)$_GET['topic_id']) $params[':tp'] = (int)$_GET['topic_id']; }
             foreach (['from' => '>=', 'to' => '<='] as $k => $op) {
                 $v = (string)($_GET[$k] ?? '');
                 if ($v !== '' && classValidDate($v)) { $where[] = "i.lesson_date $op :$k"; $params[":$k"] = $v; }
@@ -447,7 +461,7 @@ try {
                 'docs' => array_map(fn($d) => [
                     'id' => (int)$d['id'], 'kind' => $d['kind'], 'subject_id' => (int)$d['subject_id'], 'subject' => $d['subject'],
                     'lesson_date' => $d['lesson_date'], 'event_id' => $d['event_id'] !== null ? (int)$d['event_id'] : null,
-                    'title' => $d['title'], 'status' => $d['status'], 'updated_at' => (int)$d['updated_at'],
+                    'title' => $d['title'], 'status' => $d['status'], 'updated_at' => (int)$d['updated_at'], 'topic_id' => $d['topic_id'] !== null ? (int)$d['topic_id'] : null,
                     'manual' => $d['author_id'] !== null, 'author' => $d['author'],
                     'can_delete' => in_array('docs', $perms, true) || ($d['author_id'] !== null && (int)$d['author_id'] === $me),
                 ], $st->fetchAll()),
@@ -498,12 +512,19 @@ try {
             $st->execute([':c' => $classId]);
             foreach ($st->fetchAll(PDO::FETCH_NUM) as [$sid, $kind, $n]) $cats[(int)$sid][$kind] = (int)$n;
 
+            // topics of each subject with how many uploads they hold ("Per argomento" folders)
+            $topicCount = [];
+            $tc = $db->prepare('SELECT topic_id, COUNT(*) FROM class_items WHERE class_id = :c AND topic_id IS NOT NULL GROUP BY topic_id');
+            $tc->execute([':c' => $classId]);
+            foreach ($tc->fetchAll(PDO::FETCH_NUM) as [$tid, $n]) $topicCount[(int)$tid] = (int)$n;
+            $topicsOf = [];
+            foreach (notesTopics($db, $classId) as $t) $topicsOf[(int)$t['subject_id']][] = ['id' => (int)$t['id'], 'name' => $t['name'], 'start' => $t['start_date'], 'end' => $t['end_date'], 'items' => $topicCount[(int)$t['id']] ?? 0];
             $subjects = [];
             foreach (classSubjects($db, $classId) as $sub) {
                 $list = array_values($days[$sub['id']] ?? []);
                 usort($list, fn($a, $b) => strcmp($b['date'], $a['date']));
                 $subjects[] = ['id' => $sub['id'], 'name' => $sub['name'], 'days' => $list, 'test_docs' => $testDocs[$sub['id']] ?? 0,
-                               'cats' => (object)($cats[$sub['id']] ?? [])];
+                               'cats' => (object)($cats[$sub['id']] ?? []), 'topics' => $topicsOf[$sub['id']] ?? []];
             }
             jsonResponse(['success' => true, 'subjects' => $subjects]);
         }
@@ -773,6 +794,9 @@ try {
                       WHERE id = :id')
            ->execute([':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['lesson_date'], ':p' => $f['period'],
                       ':t' => $f['title'], ':b' => $f['body'], ':now' => time(), ':id' => $item['id']]);
+        if ($f['topic_given']) $db->prepare('UPDATE class_items SET topic_id = :t, topic_manual = :m WHERE id = :id')->execute([':t' => $f['topic_id'] ?: null, ':m' => $f['topic_id'] ? 1 : 0, ':id' => $item['id']]);
+        notesAssignTopics($db, (int)$class['id'], (int)$f['subject_id']);
+        if ((int)$item['subject_id'] !== (int)$f['subject_id']) notesAssignTopics($db, (int)$class['id'], (int)$item['subject_id']);
         jsonResponse(['success' => true]);
     }
 

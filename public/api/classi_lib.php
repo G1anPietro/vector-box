@@ -355,6 +355,11 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'summary_on' => (json_decode((string)($class['settings'] ?? '{}'), true)['summary_on'] ?? true) !== false,
         'digest' => digestSettings($class),
         'missing' => notesMissingSettings($class),
+        'topics' => (function () use ($db, $id) {
+            $t = $db->prepare("SELECT id, subject_id, name, start_date, end_date FROM class_topics WHERE class_id = :c AND status = 'ok' ORDER BY start_date, id");
+            $t->execute([':c' => $id]);
+            return array_map(fn($r) => ['id' => (int)$r['id'], 'subject_id' => (int)$r['subject_id'], 'name' => $r['name'], 'start' => $r['start_date'], 'end' => $r['end_date']], $t->fetchAll());
+        })(),
         'periods' => classPeriods($class),
         'subjects' => $subjects,
         'timetable' => $timetable,

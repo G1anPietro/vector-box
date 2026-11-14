@@ -51,7 +51,17 @@
         groups.push(el('optgroup', { label: lessons.length ? 'Altra materia' : 'Materia' }, ...current.subjects.map((s) => el('option', { value: `${s.id}|`, text: s.name }))));
         sel.replaceChildren(el('option', { value: '', text: current.subjects.length ? 'Scegli…' : 'Il rappresentante deve ancora inserire l\'orario' }), ...groups);
         if (preferred && [...sel.options].some((o) => o.value === preferred)) sel.value = preferred;
+        fillTopics();
     }
+
+    /** The topic of the upload: "the site decides" by the day, or one of the subject's topics (shown only if the subject has any). */
+    function fillTopics() {
+        const sid = Number(($('#w-lesson').value || '').split('|')[0]) || 0;
+        const list = sid ? (current.topics || []).filter((t) => t.subject_id === sid) : [];
+        $('#w-topic-l').hidden = !list.length;
+        $('#w-topic').replaceChildren(el('option', { value: '0', text: 'Lo decide il sito (in base al giorno)' }), ...list.map((t) => el('option', { value: t.id, text: t.name })));
+    }
+    $('#w-lesson').addEventListener('change', fillTopics);
 
     async function suggest(tsSeconds, fromFile) {
         try {
@@ -114,7 +124,7 @@
         const files = method !== 'text' ? queue.slice() : [];
         window.AppuntiUpload.enqueue({
             class_id: current.id, label: subjectName(Number(subjectId)),
-            fields: { subject_id: subjectId, period: period || '', kind: $('#w-kind').value, lesson_date: $('#w-date').value, title: $('#w-title').value, body: text },
+            fields: { subject_id: subjectId, period: period || '', kind: $('#w-kind').value, lesson_date: $('#w-date').value, title: $('#w-title').value, body: text, topic_id: Number($('#w-topic').value) || 0 },
             files,
         }).then(() => {
             status(files.length ? 'Messo in coda: parte da solo e riprende se la connessione cade.' : 'Invio…', 'ok');

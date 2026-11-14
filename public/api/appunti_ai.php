@@ -280,34 +280,58 @@ function aiLessonDocs(PDO $db, array $class): int {
         $st->execute([':c' => $classId, ':since' => $since, ':recent' => time() - AI_LESSON_DAYS * 86400]);
     }
     $groups = [];
-    foreach ($st->fetchAll() as $it) $groups[$it['subject_id'] . '|' . $it['lesson_date']][] = $it;
+    // A day whose uploads belong to different topics is split: one document per topic (key lezione:S:D:tID), the uploads with no topic
+    // keep the plain key. A day with one topic (or none) stays one document, as before.
+    $byDay = [];
+    foreach ($st->fetchAll() as $it) $byDay[$it['subject_id'] . '|' . $it['lesson_date']][] = $it;
+    $groups = [];
+    $suffix = [];
+    foreach ($byDay as $day => $its) {
+        $topicIds = array_values(array_unique(array_map(fn($i) => $i['topic_id'] === null ? 0 : (int)$i['topic_id'], $its)));
+        if (count($topicIds) < 2) { $groups[$day] = $its; $suffix[$day] = ''; continue; }
+        foreach ($topicIds as $tid) {
+            $g = $day . ($tid ? '|t' . $tid : '');
+            $groups[$g] = array_values(array_filter($its, fn($i) => ($i['topic_id'] === null ? 0 : (int)$i['topic_id']) === $tid));
+            $suffix[$g] = $tid ? ':t' . $tid : '';
+        }
+    }
 
     // A lesson whose material was all deleted loses its document
-    $keep = array_map(fn($g) => "lezione:{$g[0]['subject_id']}:{$g[0]['lesson_date']}", $groups);
+    $keep = [];
+    foreach ($groups as $gk => $g) $keep[] = "lezione:{$g[0]['subject_id']}:{$g[0]['lesson_date']}" . $suffix[$gk];
     $old = $db->prepare("SELECT id, doc_key FROM class_docs WHERE class_id = :c AND kind = 'lezione' AND author_id IS NULL
                          AND lesson_date >= :since AND lesson_date <= :until");
     $old->execute([':c' => $classId, ':since' => $since, ':until' => $until ?? '9999-12-31']);
     foreach ($old->fetchAll() as $d) {
-        if (!in_array($d['doc_key'], $keep, true)) $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $d['id']]);
+        if (!in_array($d['doc_key'], $keep, true)) {
+            $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $d['id']]);
+            // its questions and its schema go with it (they are made from the same lesson)
+            $db->prepare("DELETE FROM class_docs WHERE class_id = :c AND author_id IS NULL AND doc_key IN (:q, :s)")
+               ->execute([':c' => $classId, ':q' => 'domande:' . substr($d['doc_key'], 8), ':s' => 'schema:' . substr($d['doc_key'], 8)]);
+        }
     }
 
     // With topics in the calendar, the daily run only works on open topics and coming tests (not on a chosen range)
     $scope = $until === null ? notesAiScope($db, $class) : null;
     $written = 0;
-    foreach ($groups as $items) {
+    foreach ($groups as $gk => $items) {
         $first = $items[0];
         if ($scope && !$scope((int)$first['subject_id'], $first['lesson_date'])) continue;
-        $key = "lezione:{$first['subject_id']}:{$first['lesson_date']}";
+        $sfx = $suffix[$gk];
+        $key = "lezione:{$first['subject_id']}:{$first['lesson_date']}" . $sfx;
+        $topicName = '';
+        if ($sfx !== '') { $tn = $db->prepare('SELECT name FROM class_topics WHERE id = :id'); $tn->execute([':id' => substr($sfx, 2)]); $topicName = (string)$tn->fetchColumn(); }
+        $label = $topicName !== '' ? " — $topicName" : '';
         [$material, $sources, $hash, $ready] = aiMaterial($db, $items);
         if (!$ready) continue;
         $date = (new DateTimeImmutable($first['lesson_date']))->format('d/m/Y');
-        $context = "Classe {$class['name']} ({$class['school']}). Materia: {$first['subject']}. Lezione del $date.\n\n<materiale>\n$material\n</materiale>";
+        $context = "Classe {$class['name']} ({$class['school']}). Materia: {$first['subject']}. Lezione del $date" . ($topicName !== '' ? ". Argomento: $topicName" : '') . ".\n\n<materiale>\n$material\n</materiale>";
 
         // The questions of the lesson, in their own document (asked by the teacher first, likely ones only if few)
-        $qKey = "domande:{$first['subject_id']}:{$first['lesson_date']}";
+        $qKey = "domande:{$first['subject_id']}:{$first['lesson_date']}" . $sfx;
         if (aiDocHash($db, $classId, $qKey) !== $hash && geminiLeftToday($db, 'fast') > 0) {
             $q = ['class_id' => $classId, 'doc_key' => $qKey, 'subject_id' => (int)$first['subject_id'], 'kind' => 'domande',
-                  'lesson_date' => $first['lesson_date'], 'title' => "{$first['subject']} — domande del $date",
+                  'lesson_date' => $first['lesson_date'], 'title' => "{$first['subject']} — domande del $date$label",
                   'sources' => $sources, 'input_hash' => $hash, 'model' => geminiTier('fast')['model']];
             try {
                 $q['content'] = aiCleanQuestions(geminiGenerate($db, 'fast', AI_PROMPT_DOMANDE, [['text' => $context]], ['json' => true]));
@@ -326,12 +350,12 @@ function aiLessonDocs(PDO $db, array $class): int {
 
         $doc = [
             'class_id' => $classId, 'doc_key' => $key, 'subject_id' => (int)$first['subject_id'], 'kind' => 'lezione',
-            'lesson_date' => $first['lesson_date'], 'title' => "{$first['subject']} — lezione del $date",
+            'lesson_date' => $first['lesson_date'], 'title' => "{$first['subject']} — lezione del $date$label",
             'sources' => $sources, 'input_hash' => $hash, 'model' => geminiTier('fast')['model'],
         ];
         try {
             $doc['content'] = trim(geminiGenerate($db, 'fast', AI_PROMPT_LESSON . AI_PROMPT_STYLE, [[
-                'text' => "Classe {$class['name']} ({$class['school']}). Materia: {$first['subject']}. Lezione del $date.\n\n"
+                'text' => "Classe {$class['name']} ({$class['school']}). Materia: {$first['subject']}. Lezione del $date" . ($topicName !== '' ? ". Argomento: $topicName" : '') . ".\n\n"
                         . "<materiale>\n$material\n</materiale>",
             ]]));
             $doc['status'] = 'ok';
@@ -428,12 +452,12 @@ function aiLessonSchemas(PDO $db, array $class): int {
     $st->execute([':c' => $classId, ':since' => $since] + ($until !== null ? [':until' => $until] : [':recent' => time() - AI_LESSON_DAYS * 86400]));
     $written = 0;
     foreach ($st->fetchAll() as $lesson) {
-        $key = "schema:{$lesson['subject_id']}:{$lesson['lesson_date']}";
+        $key = 'schema:' . substr($lesson['doc_key'], 8);   // same suffix as the lesson (a day split by topic has one schema per topic)
         $hash = hash('sha256', $lesson['content']);
         if (aiDocHash($db, $classId, $key) === $hash) continue;
         if (geminiLeftToday($db, 'fast') <= 0) break;
         $doc = ['class_id' => $classId, 'doc_key' => $key, 'subject_id' => (int)$lesson['subject_id'], 'kind' => 'schema',
-                'lesson_date' => $lesson['lesson_date'], 'title' => "{$lesson['subject']} — schema del " . (new DateTimeImmutable($lesson['lesson_date']))->format('d/m/Y'),
+                'lesson_date' => $lesson['lesson_date'], 'title' => "{$lesson['subject']} — schema del " . (new DateTimeImmutable($lesson['lesson_date']))->format('d/m/Y') . (preg_match('/:t(\\d+)$/', $lesson['doc_key'], $m) ? ' — ' . ($db->query('SELECT name FROM class_topics WHERE id = ' . (int)$m[1])->fetchColumn() ?: '') : ''),
                 'sources' => [], 'input_hash' => $hash, 'model' => geminiTier('fast')['model']];
         try {
             $doc['content'] = aiCleanSchema(geminiGenerate($db, 'fast', AI_PROMPT_SCHEMA,
@@ -527,8 +551,18 @@ function aiClassifyItems(PDO $db, int $now, int $max = 8): int {
             $who = array_unique(array_merge($it['author_id'] ? [(int)$it['author_id']] : [], aiWhoHas($db, (int)$it['class_id'], 'reports')));
             notifyUsers($db, $who, (int)$it['class_id'], 'segnalazione', 'Da controllare: ' . textCut($title, 60), $r['text'], '/pages/appunti.php?class=' . (int)$it['class_id'] . '&tab=board');
         }
-        // a topic of the subject that nobody has written down
+        // two topics run on that day: the AI picks the one the text is about (a person can change it)
         $topic = trim((string)($j['argomento'] ?? ''));
+        if ($topic !== '' && empty($it['topic_manual'])) {
+            $cover = array_values(array_filter(notesTopics($db, (int)$it['class_id'], (int)$it['subject_id']), fn($t) => $t['start_date'] <= $it['lesson_date'] && ($t['end_date'] === null || $t['end_date'] >= $it['lesson_date'])));
+            if (count($cover) >= 2) {
+                $best = null; $bestN = 0;
+                $w = notesWords($topic . ' ' . $text);
+                foreach ($cover as $t) { $n = count(array_intersect(notesWords($t['name']), $w)); if ($n > $bestN) { $best = $t; $bestN = $n; } }
+                if ($best) $db->prepare('UPDATE class_items SET topic_id = :t, topic_manual = 1 WHERE id = :id')->execute([':t' => $best['id'], ':id' => $it['id']]);
+            }
+        }
+        // a topic of the subject that nobody has written down
         if ($topic !== '' && textLength($topic) <= 60 && $it['kind'] !== 'domande') {
             $has = $db->prepare("SELECT 1 FROM class_topics WHERE class_id = :c AND subject_id = :s AND status IN ('ok', 'proposed') AND start_date <= :d AND (end_date IS NULL OR end_date >= :d)");
             $has->execute([':c' => $it['class_id'], ':s' => $it['subject_id'], ':d' => $it['lesson_date']]);
@@ -615,15 +649,19 @@ function aiEventDocs(PDO $db, array $class): int {
         [$from, $to] = notesEventPeriod($db, $ev);
 
         // Lesson documents of the period; raw material for lessons that have no document yet
-        $docs = $db->prepare("SELECT lesson_date, content FROM class_docs WHERE class_id = :c AND subject_id = :s AND kind = 'lezione'
-                              AND status = 'ok' AND author_id IS NULL AND lesson_date BETWEEN :f AND :t ORDER BY lesson_date");
+        $docs = $db->prepare("SELECT lesson_date, content, topic_id FROM class_docs WHERE class_id = :c AND subject_id = :s AND kind = 'lezione'
+                              AND status = 'ok' AND author_id IS NULL AND lesson_date BETWEEN :f AND :t ORDER BY lesson_date, id");
         $docs->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
-        $dayOk = notesEventDayFilter($db, $ev);   // topics unticked for this test are left out
-        $lessonDocs = array_filter($docs->fetchAll(PDO::FETCH_KEY_PAIR), fn($d) => $dayOk($d), ARRAY_FILTER_USE_KEY);
+        $itemOk = notesEventItemFilter($db, $ev);   // what belongs to a topic unticked for this test is left out
+        $lessonDocs = [];
+        foreach ($docs->fetchAll() as $d) {      // a day split by topic has several documents: the ones of the topics in the test are joined
+            if (!$itemOk(['lesson_date' => $d['lesson_date'], 'topic_id' => $d['topic_id']])) continue;
+            $lessonDocs[$d['lesson_date']] = isset($lessonDocs[$d['lesson_date']]) ? $lessonDocs[$d['lesson_date']] . "\n\n" . $d['content'] : $d['content'];
+        }
         $items = $db->prepare('SELECT i.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_items i LEFT JOIN accounts a ON a.id = i.author_id LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id
                                WHERE i.class_id = :c AND i.subject_id = :s AND i.lesson_date BETWEEN :f AND :t ORDER BY i.lesson_date, i.id');
         $items->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
-        $all = array_values(array_filter($items->fetchAll(), fn($i) => $dayOk($i['lesson_date'])));
+        $all = array_values(array_filter($items->fetchAll(), $itemOk));
         if (!$all && !$lessonDocs) continue;
         $raw = array_values(array_filter($all, fn($i) => !isset($lessonDocs[$i['lesson_date']])));
         $exam = array_values(array_filter($all, fn($i) => in_array($i['kind'], ['domande', 'prova'], true)));
@@ -741,6 +779,7 @@ function aiRun(PDO $db, int $now): array {
         $lessons = aiLessonDocs($db, $class);
         $lessons += aiLessonSchemas($db, $class);
         $tests = aiEventDocs($db, $class);
+        notesAssignTopics($db, (int)$class['id']);   // tell the new documents which topic they are about
         $stats['lessons'] += $lessons;
         $stats['tests'] += $tests;
         $stats['classes']++;

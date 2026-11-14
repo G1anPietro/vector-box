@@ -134,6 +134,8 @@ try {
                ->execute([':c' => $class['id'], ':s' => $subjectId, ':n' => $name, ':a' => $start, ':b' => $end !== '' ? $end : null, ':u' => $me, ':t' => $now]);
             $id = (int)$db->lastInsertId();
         }
+        $db->prepare('UPDATE class_items SET topic_id = NULL, topic_manual = 0 WHERE topic_id = :id AND subject_id != :s')->execute([':id' => $id, ':s' => $subjectId]);
+        notesAssignTopics($db, (int)$class['id']);   // a topic can move subject or dates: look at the whole class once
         jsonResponse(['success' => true, 'id' => $id]);
     }
 
@@ -144,8 +146,11 @@ try {
         if ($action === 'confirm_topic') {
             $db->prepare("UPDATE class_topics SET status = 'ok', updated_at = :t WHERE id = :id")->execute([':t' => $now, ':id' => $t['id']]);
         } else {
+            $db->prepare('UPDATE class_items SET topic_id = NULL, topic_manual = 0 WHERE topic_id = :id')->execute([':id' => $t['id']]);
+            $db->prepare('UPDATE class_docs SET topic_id = NULL WHERE topic_id = :id')->execute([':id' => $t['id']]);
             $db->prepare('DELETE FROM class_topics WHERE id = :id')->execute([':id' => $t['id']]);
         }
+        notesAssignTopics($db, (int)$t['class_id'], (int)$t['subject_id']);
         jsonResponse(['success' => true]);
     }
 

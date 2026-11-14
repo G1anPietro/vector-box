@@ -211,6 +211,7 @@
         const q = new URLSearchParams({ action: 'items', class_id: current.id });
         if ($('#filter-subject').value) q.set('subject_id', $('#filter-subject').value);
         if ($('#filter-kind').value) q.set('kind', $('#filter-kind').value);
+        if ($('#filter-topic').value !== '') q.set('topic_id', $('#filter-topic').value);
         const box = $('#items');
         try {
             const { items } = await getJson('../api/appunti.php?' + q);
@@ -229,7 +230,17 @@
             box.replaceChildren(el('p', { class: 'empty', text: e.message }));
         }
     }
+    /** The topic filter only exists once a subject is chosen and it has topics ("Senza argomento" for uploads no topic covers). */
+    function fillTopicFilter() {
+        const sid = Number($('#filter-subject').value) || 0;
+        const list = sid ? (current.topics || []).filter((t) => t.subject_id === sid) : [];
+        const sel = $('#filter-topic');
+        sel.hidden = !list.length;
+        sel.replaceChildren(el('option', { value: '', text: 'Tutti gli argomenti' }), ...list.map((t) => el('option', { value: t.id, text: t.name })), ...(list.length ? [el('option', { value: '0', text: 'Senza argomento' })] : []));
+    }
+    $('#filter-topic').addEventListener('change', loadItems);
     $('#filter-subject').addEventListener('change', () => {
+        fillTopicFilter();
         const sid = $('#filter-subject').value;
         $('#subject-menu').replaceChildren(...(sid ? [C.menu([
             { label: 'Tutta la materia per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'subject', subject_id: sid }, ev.target, 'ai_pack') },
@@ -252,6 +263,8 @@
         return el('div', {}, body, btn);
     }
 
+    const topicName = (it) => { const t = it.topic_id && (current.topics || []).find((x) => x.id === it.topic_id); return t ? t.name : ''; };
+
     function renderItem(it) {
         const fileUrl = (f) => `../api/appunti.php?action=file&id=${f.id}`;
         const files = it.files.map((f) => f.mime.startsWith('image/') && f.mime !== 'image/heic' && f.mime !== 'image/heif'
@@ -266,6 +279,7 @@
                 el('span', { class: 'subject', text: it.subject }),
                 el('span', { class: 'kind', text: KINDS[it.kind] || it.kind }),
                 it.period ? el('span', { text: `${it.period}ª ora` }) : null,
+                topicName(it) ? el('span', { class: 'topic-chip', text: topicName(it) }) : null,
                 el('span', { text: `da ${it.author || '?'}` })),
             it.title ? el('div', { class: 'title', text: it.title }) : null,
             it.body ? collapsible(window.AppuntiCommon.looksLikeMarkdown(it.body)
@@ -294,6 +308,8 @@
                 el('label', { text: 'Giorno' }, el('input', { type: 'date', name: 'lesson_date', value: it.lesson_date, required: true }))),
             el('label', { text: 'Tipo' }, el('select', { name: 'kind' },
                 ...Object.entries(KINDS).map(([k, v]) => el('option', { value: k, text: v, selected: k === it.kind })))),
+            el('label', { text: 'Argomento' }, el('select', { name: 'topic_id' }, el('option', { value: '0', text: 'Lo decide il sito (in base al giorno)' }),
+                ...(current.topics || []).filter((t) => t.subject_id === it.subject_id).map((t) => el('option', { value: t.id, text: t.name, selected: t.id === it.topic_id })))),
             el('label', { text: 'Titolo' }, el('input', { name: 'title', value: it.title, maxLength: 120 })),
             el('label', { text: 'Testo' }, el('textarea', { name: 'body', rows: 5, maxLength: 50000, value: it.body })),
             el('div', { class: 'row' }, el('button', { text: 'Salva' }), el('button', { type: 'button', class: 'ghost', text: 'Annulla', onclick: () => loadItems() })));
@@ -303,7 +319,7 @@
                 await notes_({
                     action: 'edit_item', id: it.id, subject_id: Number(form.subject_id.value), kind: form.kind.value,
                     lesson_date: form.lesson_date.value, period: form.subject_id.value === String(it.subject_id) && form.lesson_date.value === it.lesson_date ? it.period : null,
-                    title: form.title.value, body: form.body.value,
+                    title: form.title.value, body: form.body.value, topic_id: form.subject_id.value === String(it.subject_id) ? Number(form.topic_id.value) : 0,
                 });
                 status('Salvato.', 'ok');
                 loadItems();

@@ -275,6 +275,7 @@ function notesFormatItem(array $item, array $files, int $me, bool $canManage): a
         'mine' => (int)$item['author_id'] === $me,
         'can_edit' => $canManage || (int)$item['author_id'] === $me,
         'source' => $item['source'],
+        'topic_id' => isset($item['topic_id']) && $item['topic_id'] !== null ? (int)$item['topic_id'] : null,
         'created_at' => (int)$item['created_at'],
         'files' => array_map(fn($f) => [
             'id' => (int)$f['id'], 'name' => $f['original_name'], 'mime' => $f['mime'],
@@ -388,4 +389,58 @@ function notesMissing(PDO $db, array $class): array {
         }
     }
     return $out;
+}
+
+
+/* ---------- material by date AND topic ---------- */
+
+/**
+ * Puts each upload of a subject under its topic: the topic (confirmed in the calendar) that covers the lesson day, when there is exactly one.
+ * What a person chose by hand (topic_manual) is never touched; a day with two topics at once stays unassigned until someone picks.
+ * Also tells the study documents which topic they are about, when all the material of their lesson is of that topic.
+ */
+function notesAssignTopics(PDO $db, int $classId, int $subjectId = 0): void {
+    $topics = [];
+    foreach (notesTopics($db, $classId, $subjectId ?: null) as $t) $topics[(int)$t['subject_id']][] = $t;
+    $where = $subjectId ? ' AND subject_id = :s' : '';
+    $items = $db->prepare("SELECT id, subject_id, lesson_date, topic_id FROM class_items WHERE class_id = :c AND topic_manual = 0$where");
+    $items->execute([':c' => $classId] + ($subjectId ? [':s' => $subjectId] : []));
+    $set = $db->prepare('UPDATE class_items SET topic_id = :t WHERE id = :id');
+    foreach ($items->fetchAll() as $it) {
+        $cover = array_values(array_filter($topics[(int)$it['subject_id']] ?? [], fn($t) => $t['start_date'] <= $it['lesson_date'] && ($t['end_date'] === null || $t['end_date'] >= $it['lesson_date'])));
+        $want = count($cover) === 1 ? (int)$cover[0]['id'] : null;
+        if ($want !== ($it['topic_id'] === null ? null : (int)$it['topic_id'])) $set->execute([':t' => $want, ':id' => $it['id']]);
+    }
+    // documents of a lesson day: the topic when every upload of that day has the same one
+    $docs = $db->prepare("SELECT id, subject_id, lesson_date, doc_key, topic_id FROM class_docs WHERE class_id = :c AND kind IN ('lezione', 'domande', 'schema') AND event_id IS NULL AND lesson_date IS NOT NULL$where");
+    $docs->execute([':c' => $classId] + ($subjectId ? [':s' => $subjectId] : []));
+    $day = $db->prepare('SELECT DISTINCT topic_id FROM class_items WHERE class_id = :c AND subject_id = :s AND lesson_date = :d');
+    $upd = $db->prepare('UPDATE class_docs SET topic_id = :t WHERE id = :id');
+    foreach ($docs->fetchAll() as $d) {
+        if (preg_match('/:t(\d+)$/', $d['doc_key'], $m)) { $want = (int)$m[1]; }       // split by topic: the key says it
+        else {
+            $day->execute([':c' => $classId, ':s' => $d['subject_id'], ':d' => $d['lesson_date']]);
+            $vals = $day->fetchAll(PDO::FETCH_COLUMN);
+            $want = count($vals) === 1 && $vals[0] !== null ? (int)$vals[0] : null;
+        }
+        if ($want !== ($d['topic_id'] === null ? null : (int)$d['topic_id'])) $upd->execute([':t' => $want, ':id' => $d['id']]);
+    }
+}
+
+/** Topics a member may pick for an upload of this subject on this day: the confirmed ones that cover it, plus those that start later (still open). */
+function notesTopicChoices(PDO $db, int $classId, int $subjectId): array {
+    return array_map(fn($t) => ['id' => (int)$t['id'], 'name' => $t['name'], 'start' => $t['start_date'], 'end' => $t['end_date']], notesTopics($db, $classId, $subjectId));
+}
+
+/**
+ * Which uploads count for a test: those of its study period, except what belongs to a topic unticked for it. An upload with its own
+ * topic follows that topic; one without follows the day rule (notesEventDayFilter). Returns a function(item row): bool.
+ */
+function notesEventItemFilter(PDO $db, array $ev): callable {
+    $off = array_flip(array_map('intval', json_decode($ev['topics_off'] ?? '[]', true) ?: []));
+    $dayOk = notesEventDayFilter($db, $ev);
+    return function (array $it) use ($off, $dayOk): bool {
+        if (!empty($it['topic_id'])) return !isset($off[(int)$it['topic_id']]);
+        return $dayOk($it['lesson_date']);
+    };
 }
