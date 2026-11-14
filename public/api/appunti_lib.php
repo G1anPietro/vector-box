@@ -122,6 +122,16 @@ function notesEventPeriod(PDO $db, array $ev): array {
     $from = $prevDate
         ? (new DateTimeImmutable($prevDate))->modify('+1 day')->format('Y-m-d')
         : (new DateTimeImmutable($ev['event_date']))->modify('-' . AI_PERIOD_MAX_DAYS . ' days')->format('Y-m-d');
+    // With topics in the calendar: from the start of the earliest topic of this test (it may have begun before the
+    // previous test), not from a guess
+    $off = array_flip(array_map('intval', json_decode($ev['topics_off'] ?? '[]', true) ?: []));
+    $starts = [];
+    foreach (notesTopics($db, (int)$ev['class_id'], (int)$ev['subject_id']) as $t) {
+        if (isset($off[(int)$t['id']]) || $t['start_date'] > $ev['event_date']) continue;
+        if ($t['end_date'] !== null && $t['end_date'] < $from) continue;   // finished before this period
+        $starts[] = $t['start_date'];
+    }
+    if ($starts) $from = min($starts);
     return [$from, $ev['event_date']];
 }
 

@@ -544,37 +544,10 @@
 
     /* ---------- calendar ---------- */
 
+    // The agenda (tests, homework, turns, days off, topics) is drawn by js/appunti-calendario.js
     async function loadEvents() {
-        const box = $('#events');
         $('#event-form [name="date"]').min = '';
-        try {
-            const { events, today } = await getJson(`../api/appunti.php?action=events&class_id=${current.id}`);
-            if (!events.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Nessuna verifica in calendario.' })); return; }
-            const t0 = parseDate(today);
-            const upcoming = events.filter((e) => e.date >= today);
-            const past = events.filter((e) => e.date < today).reverse();
-            const row = (e) => {
-                const d = parseDate(e.date);
-                const diff = Math.round((d - t0) / 86400000);
-                const soon = diff === 0 ? 'oggi' : diff === 1 ? 'domani' : diff > 1 && diff <= 14 ? `tra ${diff} giorni` : '';
-                return el('div', { class: 'event' + (e.date < today ? ' past' : '') },
-                    el('div', { class: 'date' }, el('span', { text: shortDay.format(d) }), el('b', { text: String(d.getDate()) }), el('span', { text: shortMonth.format(d) })),
-                    el('div', {},
-                        el('div', { class: 'what' }, el('span', { class: 'badge ' + e.kind, text: EVENT_KINDS[e.kind] || e.kind }), e.subject,
-                            e.title ? ` · ${e.title}` : '', soon ? el('span', { class: 'soon', text: ` · ${soon}` }) : null),
-                        e.topics ? el('div', { class: 'topics', text: e.topics }) : null,
-                        e.period && e.kind !== 'altro' ? el('div', { class: 'muted small', text: `Materiale: lezioni dal ${fmtDay(e.period[0])} al ${fmtDay(e.period[1])}`
-                            + (e.period_from ? ' (scelto a mano)' : '') }) : null,
-                        el('div', { class: 'muted small event-actions' }, `aggiunta da ${e.author || '?'}`,
-                            e.can_edit ? C.menu([{ label: 'Modifica', onclick: () => editEvent(e) },
-                                { label: 'Elimina', danger: true, onclick: () => deleteEvent(e) }]) : null)));
-            };
-            box.replaceChildren(
-                upcoming.length ? el('div', {}, ...upcoming.map(row)) : el('p', { class: 'empty', text: 'Nessuna verifica in arrivo.' }),
-                ...(past.length ? [el('details', {}, el('summary', { text: `Passate (${past.length})` }), ...past.map(row))] : []));
-        } catch (e) {
-            box.replaceChildren(el('p', { class: 'empty', text: e.message }));
-        }
+        if (window.AppuntiCalendar) await window.AppuntiCalendar.load();
     }
 
     let editingEvent = null;
@@ -588,6 +561,7 @@
         f.topics.value = e.topics || '';
         f.period_from.value = e.period_from || '';
         f.period_to.value = e.period_to || '';
+        if (window.AppuntiCalendar) window.AppuntiCalendar.setEventTopics(e.topics_off);
         $('#event-summary').textContent = 'Modifica la data';
         $('#event-submit').textContent = 'Salva le modifiche';
         $('#event-cancel').hidden = false;
@@ -597,7 +571,8 @@
     function resetEventForm() {
         editingEvent = null;
         $('#event-form').reset();
-        $('#event-summary').textContent = 'Aggiungi una data';
+        if (window.AppuntiCalendar) window.AppuntiCalendar.setEventTopics([]);
+        $('#event-summary').textContent = 'Aggiungi una verifica o un\'interrogazione';
         $('#event-submit').textContent = 'Aggiungi';
         $('#event-cancel').hidden = true;
     }
@@ -607,7 +582,8 @@
         ev.preventDefault();
         const f = ev.target;
         const fields = { subject_id: Number(f.subject_id.value), kind: f.kind.value, date: f.date.value, title: f.title.value,
-            topics: f.topics.value, period_from: f.period_from.value, period_to: f.period_to.value };
+            topics: f.topics.value, period_from: f.period_from.value, period_to: f.period_to.value,
+            topics_off: window.AppuntiCalendar ? window.AppuntiCalendar.topicsOff() : [] };
         try {
             if (editingEvent) await notes_({ action: 'edit_event', id: editingEvent, ...fields });
             else await notes_({ action: 'add_event', class_id: current.id, ...fields });
@@ -1180,6 +1156,10 @@
     $$('#tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
     $('#class-select').addEventListener('change', (ev) => { openClass(Number(ev.target.value)).catch((e) => status(e.message, 'err')); });
     const startParams = new URLSearchParams(location.search);
+    // For the calendar module (js/appunti-calendario.js)
+    window.AppuntiPage = { get current() { return current; }, editEvent, deleteEvent, hue,
+        me: () => { const m = current && current.members.find((x) => x.is_me); return m ? m.id : 0; } };
+
     loadMine(Number(startParams.get('class')) || null)
         .then(() => applyParams(startParams))
         .catch((e) => status(e.message, 'err'));

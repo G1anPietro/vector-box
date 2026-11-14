@@ -307,6 +307,9 @@
             select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}`, selected: c.id === pick.id })));
             select.addEventListener('change', () => openClass(Number(select.value)));
             await openClass(pick.id);
+            // a link from the calendar: straight into a subject
+            const wantSubject = Number(new URLSearchParams(location.search).get('subject'));
+            if (wantSubject && tree.some((x) => x.id === wantSubject)) { sel.subject = wantSubject; sel.folder = null; sel.entry = null; renderAll(); setLevel(1); }
         } catch (e) { status(e.message, 'err'); }
     })();
 })();

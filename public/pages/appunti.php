@@ -19,7 +19,8 @@ $isAdmin = !empty($_SESSION['is_admin']);
 session_write_close();
 
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
+$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css')
+    . '-' . filemtime(__DIR__ . '/../js/appunti-calendario.js');
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -38,6 +39,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/appunti-calendario.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
     <header class="top">
@@ -162,7 +164,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         <!-- Calendar -->
         <section id="tab-calendar" class="tab" hidden>
             <details class="card" id="event-box">
-                <summary id="event-summary">Aggiungi una data</summary>
+                <summary id="event-summary">Aggiungi una verifica o un'interrogazione</summary>
                 <form id="event-form" class="stack">
                     <div class="grid2">
                         <label>Tipo
@@ -177,6 +179,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                     <label>Materia <select name="subject_id" required></select></label>
                     <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
                     <label>Argomenti detti dal prof <textarea name="topics" rows="3" maxlength="2000"></textarea></label>
+                    <fieldset class="period-box" id="event-topics" hidden></fieldset>
                     <fieldset class="period-box">
                         <legend>Materiale da studiare (facoltativo)</legend>
                         <p class="muted small">Di solito è tutto quello dopo la verifica precedente della stessa materia. Se l'argomento è
@@ -192,6 +195,9 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                     </div>
                 </form>
             </details>
+            <div id="cal-tools" class="row cal-tools"></div>
+            <div id="cal-topics"></div>
+            <h3 class="section-title">Agenda</h3>
             <div id="events"></div>
         </section>
 
