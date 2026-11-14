@@ -47,6 +47,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         <a class="home" href="../index.php">vector-box</a>
         <span class="top-right">
             <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
+            <a class="ghost-link hide-phone" href="appunti-impostazioni.php">Impostazioni</a>
             <a class="btn-link ico-up top-cta" href="appunti-carica.php">Carica</a>
             <a class="ghost-link hide-phone" href="appunti-guida.php">Guida</a>
             <span class="who"><?= $e($username) ?></span>
@@ -98,11 +99,11 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         </section>
 
         <nav id="tabs" class="tabs" hidden>
+            <button data-tab="class">Classe</button>
             <button data-tab="board" aria-selected="true">Bacheca</button>
             <button data-tab="material">Materiale</button>
             <button data-tab="study">Studio</button>
             <button data-tab="calendar">Calendario</button>
-            <button data-tab="class">Classe</button>
             <button data-tab="admin" hidden>Admin</button>
         </nav>
 

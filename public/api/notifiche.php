@@ -6,6 +6,7 @@
 // GET  ?action=vapid          -> the public key the browser needs to subscribe
 // POST {action:"read", ids:[...]} | {action:"read_all"}
 //      {action:"subscribe", endpoint, keys:{p256dh, auth}} | {action:"unsubscribe", endpoint}
+//      {action:"save_prefs", class_id, prefs:{promemoria, turno, annuncio, slots:[d2,d1,sera]}}; GET ?action=prefs&class_id
 //      {action:"test"}         -> sends a test push to my devices
 //      {action:"bell_notify", class_id, on} -> push 5 minutes before the end of each lesson: next subject and room
 require_once __DIR__ . '/database.php';
@@ -26,6 +27,14 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $action = (string)($_GET['action'] ?? '');
+        if ($action === 'prefs') {
+            $st = $db->prepare('SELECT settings, bell_notify FROM class_members WHERE class_id = :c AND user_id = :u');
+            $st->execute([':c' => (int)($_GET['class_id'] ?? 0), ':u' => $me]);
+            $m = $st->fetch();
+            if (!$m) ntFail('not_member', 'You are not in this class', 404);
+            jsonResponse(['success' => true, 'prefs' => notifyPrefs((string)$m['settings']), 'bell' => (int)$m['bell_notify'] === 1,
+                          'slots' => array_map(fn($k) => ['key' => $k, 'days' => REMINDER_SLOTS[$k][0], 'from' => REMINDER_SLOTS[$k][1]], array_keys(REMINDER_SLOTS))]);
+        }
         if ($action === 'list') {
             $st = $db->prepare('SELECT id, class_id, kind, title, body, url, created_at, read_at FROM notifications WHERE user_id = :u ORDER BY id DESC LIMIT 30');
             $st->execute([':u' => $me]);
@@ -90,6 +99,24 @@ try {
         $st->execute([':on' => empty($in['on']) ? 0 : 1, ':c' => (int)($in['class_id'] ?? 0), ':u' => $me]);
         if ($st->rowCount() === 0) ntFail('not_member', 'You are not in this class', 403);
         jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'save_prefs') {
+        // My notification choices in one class: kinds on/off and which reminders of a test I want
+        if (!checkRateLimit('notify_prefs', 60, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many changes, try later', 429);
+        $classId = (int)($in['class_id'] ?? 0);
+        $st = $db->prepare('SELECT settings FROM class_members WHERE class_id = :c AND user_id = :u');
+        $st->execute([':c' => $classId, ':u' => $me]);
+        $cur = $st->fetchColumn();
+        if ($cur === false) ntFail('not_member', 'You are not in this class', 404);
+        $p = is_array($in['prefs'] ?? null) ? $in['prefs'] : [];
+        $settings = json_decode((string)$cur, true);
+        if (!is_array($settings)) $settings = [];
+        $settings['notify'] = ['promemoria' => !empty($p['promemoria']), 'turno' => !empty($p['turno']), 'annuncio' => !empty($p['annuncio']),
+            'slots' => array_values(array_intersect(array_keys(REMINDER_SLOTS), is_array($p['slots'] ?? null) ? $p['slots'] : []))];
+        $db->prepare('UPDATE class_members SET settings = :s WHERE class_id = :c AND user_id = :u')
+           ->execute([':s' => json_encode($settings), ':c' => $classId, ':u' => $me]);
+        jsonResponse(['success' => true, 'prefs' => notifyPrefs(json_encode($settings))]);
     }
 
     if ($action === 'unsubscribe') {

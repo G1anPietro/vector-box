@@ -12,9 +12,35 @@ const NOTIFY_PUSH_MAX_FAILURES = 10;   // a subscription failing this many times
 const REMINDER_SLOTS = ['d2' => [2, '16:00'], 'd1' => [1, '16:00'], 'sera' => [1, '21:00']];
 const BELL_LEAD_SEC = 300;             // "next lesson" push: this long before the end of the current one
 
+const NOTIFY_PREF_KINDS = ['promemoria', 'turno', 'annuncio'];   // what a member can switch off (the bell has its own switch)
+
+/** A member's notification choices in a class, with defaults (everything on, all three reminders of a test). */
+function notifyPrefs(string $settingsJson): array {
+    $s = json_decode($settingsJson, true);
+    $n = is_array($s) && is_array($s['notify'] ?? null) ? $s['notify'] : [];
+    $slots = isset($n['slots']) && is_array($n['slots']) ? array_values(array_intersect(array_keys(REMINDER_SLOTS), $n['slots'])) : array_keys(REMINDER_SLOTS);
+    return ['promemoria' => ($n['promemoria'] ?? true) !== false, 'slots' => $slots,
+            'turno' => ($n['turno'] ?? true) !== false, 'annuncio' => ($n['annuncio'] ?? true) !== false];
+}
+
+/** Drops the members who switched this kind of notification (or this reminder slot) off. */
+function notifyAllowed(PDO $db, array $userIds, int $classId, string $kind, ?string $slot): array {
+    if (!in_array($kind, NOTIFY_PREF_KINDS, true) || !$userIds) return $userIds;
+    $st = $db->prepare('SELECT user_id, settings FROM class_members WHERE class_id = :c');
+    $st->execute([':c' => $classId]);
+    $off = [];
+    foreach ($st->fetchAll() as $m) {
+        $p = notifyPrefs((string)$m['settings']);
+        if (!$p[$kind] || ($kind === 'promemoria' && $slot !== null && !in_array($slot, $p['slots'], true))) $off[(int)$m['user_id']] = true;
+    }
+    return array_values(array_filter($userIds, fn($u) => !isset($off[(int)$u])));
+}
+
 /** Saves a notification for each user and pushes it to their devices. Returns how many pushes were delivered. */
-function notifyUsers(PDO $db, array $userIds, ?int $classId, string $kind, string $title, string $body, string $url, bool $push = true, bool $save = true): int {
+function notifyUsers(PDO $db, array $userIds, ?int $classId, string $kind, string $title, string $body, string $url, bool $push = true, bool $save = true, ?string $slot = null): int {
     $now = time();
+    if ($classId !== null) $userIds = notifyAllowed($db, $userIds, $classId, $kind, $slot);
+    if (!$userIds) return 0;
     if (!$save) $userIds = array_values(array_unique($userIds));
     $ins = $db->prepare('INSERT INTO notifications (user_id, class_id, kind, title, body, url, created_at) VALUES (:u, :c, :k, :t, :b, :url, :now)');
     $trim = $db->prepare('DELETE FROM notifications WHERE user_id = :u AND id <= (SELECT id FROM notifications WHERE user_id = :u ORDER BY id DESC LIMIT 1 OFFSET ' . NOTIFY_KEEP . ')');
@@ -79,7 +105,7 @@ function remindersRun(PDO $db, int $now): int {
             foreach ($due as $slot) $mark->execute([':e' => $ev['id'], ':s' => $slot, ':t' => $now]);
             [$title, $body] = reminderText($db, $ev, end($due));
             notifyUsers($db, classMemberIds($db, (int)$class['id']), (int)$class['id'], 'promemoria', $title, $body,
-                '/pages/appunti.php?class=' . (int)$class['id'] . '&tab=study');
+                '/pages/appunti.php?class=' . (int)$class['id'] . '&tab=study', true, true, end($due));
             $sent++;
         }
     }

@@ -602,3 +602,11 @@ label:has(> .dp-native) { position: relative; }
 .pdf-view:not(.pdf-dark) .idx-link { color: #1b1b1b; }
 .pdf-view:not(.pdf-dark) .idx-link.sub, .pdf-view:not(.pdf-dark) .idx-link.read::after { color: #5b5a52; }
 .pdf-view:not(.pdf-dark) .doc-index summary { color: #1b1b1b; }
+
+/* Timetable: the hour number also on the right (phone: easier to tell which hour a cell is) */
+/* Settings page */
+.settings-page .set-sec { margin: 12px 0; }
+.settings-page .set-sec h2 { margin-bottom: 4px; }
+.settings-page .set-sub { margin: 0 0 8px 28px; }
+.settings-page label:not(.switch) { display: block; margin: 8px 0; }
+.settings-page select { max-width: 100%; }

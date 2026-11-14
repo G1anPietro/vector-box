@@ -1,0 +1,44 @@
+// tests/impostazioni.test.js — personal notification choices: stored per member and class, and honoured when sending
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { startSite, Client, makeAdmin } = require('./helpers');
+
+let site, admin, mario, luigi, peach, classId;
+const nt = (c, body) => c.post('/api/notifiche.php', body);
+
+test.before(async () => {
+    site = await startSite();
+    admin = await makeAdmin(site, 'im_admin');
+    mario = new Client(site); await mario.register('im_mario');
+    luigi = new Client(site); await luigi.register('im_luigi');
+    peach = new Client(site); await peach.register('im_peach');
+    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5C', school: 'ITIS' })).json.id;
+    await admin.post('/api/classi.php', { action: 'decide', id: classId, approve: true });
+    const code = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.invite_code;
+    await luigi.post('/api/classi.php', { action: 'join', code });
+});
+test.after(() => site.stop());
+
+test('defaults are all on; members only; choices are saved per member', async () => {
+    const d = (await luigi.get(`/api/notifiche.php?action=prefs&class_id=${classId}`)).json;
+    assert.deepEqual([d.prefs.promemoria, d.prefs.turno, d.prefs.annuncio, d.prefs.slots], [true, true, true, ['d2', 'd1', 'sera']]);
+    assert.equal((await peach.get(`/api/notifiche.php?action=prefs&class_id=${classId}`)).status, 404);
+    assert.equal((await nt(peach, { action: 'save_prefs', class_id: classId, prefs: {} })).status, 404);
+    assert.equal((await luigi.post('/api/notifiche.php', { action: 'save_prefs', class_id: classId, prefs: {} }, { csrf: false })).status, 403);
+    const r = await nt(luigi, { action: 'save_prefs', class_id: classId, prefs: { promemoria: true, turno: false, annuncio: false, slots: ['sera', 'bogus'] } });
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(r.json.prefs.slots, ['sera']);
+    const m = (await mario.get(`/api/notifiche.php?action=prefs&class_id=${classId}`)).json;
+    assert.equal(m.prefs.annuncio, true, "another member's choices are untouched");
+});
+
+test('an announcement is not sent to who switched announcements off; the others still get it', async () => {
+    const r = await mario.post('/api/bacheca.php', { action: 'save_announcement', class_id: classId, title: 'Gita', notify: true });
+    assert.equal(r.status, 200);
+    const luigiId = site.db("SELECT id FROM accounts WHERE username = 'im_luigi'")[0].id;
+    assert.equal(site.db("SELECT COUNT(*) AS n FROM notifications WHERE kind = 'annuncio' AND user_id = ?", [luigiId])[0].n, 0);
+    await nt(luigi, { action: 'save_prefs', class_id: classId, prefs: { promemoria: true, turno: true, annuncio: true, slots: ['d2'] } });
+    await mario.post('/api/bacheca.php', { action: 'save_announcement', class_id: classId, title: 'Gita 2', notify: true });
+    assert.equal(site.db("SELECT COUNT(*) AS n FROM notifications WHERE kind = 'annuncio' AND user_id = ?", [luigiId])[0].n, 1);
+});

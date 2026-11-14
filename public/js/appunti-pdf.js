@@ -118,6 +118,10 @@
         const pages = el('div', { class: 'pdf-pages', tabindex: '0', 'aria-label': name });
         const textBox = el('div', { class: 'pdf-textbox', hidden: true });
         let pdf = null; let zoom = 1; let dark = get(THEME_KEY) !== '0'; let mode = 'pages'; let textFont = 1;
+        // how PDFs open is a personal choice (Impostazioni): by default the readable text on a phone, the pages on a computer
+        const pref = get('vb_pdf_mode') || 'auto';
+        let auto = pref === 'auto' || pref === 'text';
+        const startText = pref === 'text' || (pref === 'auto' && window.matchMedia('(max-width: 760px)').matches);
         const zoomLabel = el('span', { class: 'pdf-zoom-label', text: '100%' });
         const root = el('div', { class: 'pdf-view' });
         const btn = (text, title, onclick) => el('button', { type: 'button', class: 'ghost mini', text, title, 'aria-label': title, onclick });
@@ -188,6 +192,7 @@
                 try {
                     const t = await buildText(pdf, (n, tot) => { textBox.firstChild.textContent = `Preparo il testo… ${n} di ${tot}`; });
                     textBox.replaceChildren(t);
+                    if (t.querySelector('.empty') && auto) { auto = false; textBox.dataset.ready = ''; setMode('pages'); return; }   // a scan: nothing to re-set, show the pages
                     window.AppuntiCommon.addIndex(textBox, 'pdf' + name);
                     textBox.dataset.ready = '1';
                 } catch (e) { textBox.replaceChildren(el('p', { class: 'err', text: 'Non riesco a leggere il testo di questo PDF.' })); }
@@ -206,7 +211,7 @@
 
         paintTheme();
         pages.append(el('p', { class: 'muted', text: 'Carico il PDF…' }));
-        loadLib().then(() => window.pdfjsLib.getDocument({ url }).promise).then((doc) => { pdf = doc; drawPages(); })
+        loadLib().then(() => window.pdfjsLib.getDocument({ url }).promise).then((doc) => { pdf = doc; drawPages(); if (startText) setMode('text'); })
             .catch((e) => { pages.replaceChildren(el('p', { class: 'err', text: e.message || 'PDF non leggibile.' }), el('a', { class: 'ghost-link', href: url, target: '_blank', rel: 'noopener', text: 'Aprilo in una nuova scheda' })); });
         return root;
     }

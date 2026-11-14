@@ -637,6 +637,7 @@
                     el('button', { class: 'ghost mini', text: 'Nuovo codice', onclick: regenCode })))
                 : el('p', { class: 'muted small', text: 'Il codice d\'invito lo ha il rappresentante della classe.' }),
             el('p', { class: 'muted small', text: `Riassunto automatico ogni giorno alle ${c.summary_time}.` }),
+            el('p', {}, el('a', { class: 'ghost-link', href: 'appunti-impostazioni.php?class=' + c.id, text: 'Le tue impostazioni: notifiche, nome, PDF' })),
             c.is_member ? myNameForm(c) : el('p', { class: 'admin-note', text: 'Stai guardando questa classe come amministratore del sito: non ne fai parte.' }));
 
         renderMembers(c);
@@ -829,7 +830,7 @@
         const days = Object.keys(tt).sort();
         const rows = Math.max(0, ...days.map((d) => tt[d].length));
         const edit = can('timetable');
-        const grid = el('div', { class: 'tt-grid', style: `grid-template-columns: 34px repeat(${days.length}, minmax(96px, 1fr))` });
+        const grid = el('div', { class: 'tt-grid', style: `grid-template-columns: 34px repeat(${days.length}, minmax(96px, 1fr)) 34px` });
         grid.append(el('div', { class: 'tt-corner' }));
         for (const d of days) {
             grid.append(el('div', { class: 'tt-head' + (d === String(focusDay(days)) ? ' today' : ''), 'data-day': d }, el('b', { text: DAYS[d - 1] }),
@@ -845,6 +846,7 @@
                         drawTimetable();
                     } }))));
         }
+        grid.append(el('div', { class: 'tt-corner' }));
         for (let r = 0; r < rows; r++) {
             grid.append(el('div', { class: 'tt-num', text: `${r + 1}ª` }));
             for (const d of days) {
@@ -857,6 +859,7 @@
                 if (h.subject) cell.style.setProperty('--h', subjectHue(h.subject));
                 grid.append(cell);
             }
+            grid.append(el('div', { class: 'tt-num tt-num-end', text: `${r + 1}ª` }));
         }
         const missing = [1, 2, 3, 4, 5, 6, 7].map(String).filter((d) => !tt[d]);
         const add = missing.length && edit ? el('div', { class: 'row tt-add' },
