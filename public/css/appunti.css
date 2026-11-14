@@ -787,7 +787,6 @@ html.lefty .day-head, html.lefty .sr-head, html.lefty .pv-head, html.lefty .card
 html.lefty .doc-tools, html.lefty .sc-mine, html.lefty .bb-note-top, html.lefty .notif-head { flex-direction: row-reverse; }
 html.lefty .row-actions { flex-direction: row-reverse; }
 html.lefty .up-widget { left: auto; right: 12px; }
-html.lefty .code-actions { flex-direction: row-reverse; justify-content: flex-start; }
 html.lefty .inline-pair, html.lefty .join-row { flex-direction: row-reverse; }
 
 /* The bar at the top of every notes page: home on one side, the same four buttons on the other */
@@ -840,7 +839,6 @@ html.lefty .ai-bar-row { flex-direction: row-reverse; }
 html.lefty .subjects-list li { flex-direction: row-reverse; }
 html.lefty .test-head { flex-direction: row-reverse; }
 html.lefty .test-ready { text-align: left; }
-html.lefty .code-actions { flex-direction: row-reverse; }
 html.lefty .up-line { flex-direction: row-reverse; }
 html.lefty .sc-mine { flex-direction: row-reverse; }
 html.lefty .asked-tools { flex-direction: row-reverse; }
