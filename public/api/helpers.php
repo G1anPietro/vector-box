@@ -270,6 +270,10 @@ function sendBaseSecurityHeaders(): void {
     header('X-Frame-Options: SAMEORIGIN');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+    // Other sites cannot keep a handle on our windows (tab-nabbing, cross-window leaks)
+    header('Cross-Origin-Opener-Policy: same-origin');
+    // Browsers that have seen the site over HTTPS never go back to plain HTTP (no downgrade on public Wi-Fi)
+    if (isHttps()) header('Strict-Transport-Security: max-age=31536000');
 }
 
 /**

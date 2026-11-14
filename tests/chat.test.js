@@ -101,6 +101,8 @@ test('moderation commands: admin gets a success notice, users are refused', asyn
 test('security headers: baseline on API, CSP (report-only by default) on pages', async () => {
     const api = await guest.get('/api/get_feed.php?room_id=general');
     assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(api.headers.get('cross-origin-opener-policy'), 'same-origin');
+    assert.equal(api.headers.get('strict-transport-security'), null, 'HSTS only over HTTPS (the test site is plain HTTP)');
     assert.equal(api.headers.get('x-frame-options'), 'SAMEORIGIN');
     const page = await guest.get('/');
     const csp = page.headers.get('content-security-policy-report-only');
