@@ -47,6 +47,13 @@ const CLASS_PERMS = [
     'roles' => 'Creare ruoli e assegnarli, dare permessi (non il ruolo di rappresentante)',
     'subjects' => 'Unire ed eliminare materie',
     'settings' => 'Impostazioni della classe (ora del riassunto automatico)',
+    'topics' => 'Creare, confermare e modificare gli argomenti',
+    'homework' => 'Modificare ed eliminare i compiti messi da altri',
+    'daysoff' => 'Segnare i giorni e le ore senza lezione',
+    'turns' => 'Gestire i turni delle interrogazioni',
+    'board' => 'Scrivere annunci in bacheca',
+    'reports' => "Vedere e risolvere le segnalazioni e le proposte dell'AI",
+    'scoreboard' => 'Vedere la classifica quando è riservata',
 ];
 
 /** The permissions of a user in a class: all for the representative and the site admin, else role + personal ones. */
@@ -128,7 +135,8 @@ function classNewInviteCode(PDO $db): string {
 function classDelete(PDO $db, int $id): void {
     $db->exec('BEGIN IMMEDIATE');
     try {
-        foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events', 'class_docs', 'class_bell_sent', 'review_cards'] as $table) {
+        foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events', 'class_docs', 'class_bell_sent', 'review_cards',
+                  'class_roles', 'class_topics', 'class_homework', 'class_days_off', 'class_turns', 'class_board'] as $table) {
             $db->prepare("DELETE FROM $table WHERE class_id = :id")->execute([':id' => $id]);
         }
         $db->prepare('DELETE FROM school_classes WHERE id = :id')->execute([':id' => $id]);

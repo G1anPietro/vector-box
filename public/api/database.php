@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 16;
+const DB_SCHEMA_VERSION = 17;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,80 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV17(PDO $db): void {
+    // Topics of a subject: from a day to a day (end NULL = still being explained). 'proposed' = suggested by the AI.
+    $db->exec("CREATE TABLE IF NOT EXISTS class_topics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        status TEXT NOT NULL DEFAULT 'ok',
+        author_id INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_topics ON class_topics(class_id, subject_id, start_date)');
+    // Topics of the period that a test does NOT cover (unticked in the calendar)
+    addColumnIfMissing($db, 'class_events', 'topics_off', "TEXT NOT NULL DEFAULT '[]'");
+    $db->exec("CREATE TABLE IF NOT EXISTS class_homework (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        due_date TEXT NOT NULL,
+        body TEXT NOT NULL,
+        author_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_homework ON class_homework(class_id, due_date)');
+    // Days (or single hours) without lessons: holidays, strikes, trips, absent teacher
+    $db->exec("CREATE TABLE IF NOT EXISTS class_days_off (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        date_from TEXT NOT NULL,
+        date_to TEXT NOT NULL,
+        period INTEGER,
+        reason TEXT NOT NULL DEFAULT '',
+        author_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_days_off ON class_days_off(class_id, date_from, date_to)');
+    // Oral-exam turns: who is examined on which day; the class keeps one order (template) used for every subject
+    $db->exec("CREATE TABLE IF NOT EXISTS class_turns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        turn_date TEXT NOT NULL,
+        user_ids TEXT NOT NULL DEFAULT '[]',
+        note TEXT NOT NULL DEFAULT '',
+        notified_at INTEGER,
+        author_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_turns ON class_turns(class_id, turn_date)');
+    addColumnIfMissing($db, 'school_classes', 'turn_order', "TEXT NOT NULL DEFAULT '[]'");
+    // Board: announcements, things the AI is not sure about, proposals to confirm
+    $db->exec("CREATE TABLE IF NOT EXISTS class_board (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        data TEXT NOT NULL DEFAULT '{}',
+        user_id INTEGER,
+        status TEXT NOT NULL DEFAULT 'open',
+        pinned INTEGER NOT NULL DEFAULT 0,
+        author_id INTEGER,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_board ON class_board(class_id, status, created_at)');
+    // Settings: of the class (scoreboard, missing notes, weekly digest) and of each member (notifications, uploads)
+    addColumnIfMissing($db, 'school_classes', 'settings', "TEXT NOT NULL DEFAULT '{}'");
+    addColumnIfMissing($db, 'class_members', 'settings', "TEXT NOT NULL DEFAULT '{}'");
+}
+
 /** Runs pending migrations once, under an exclusive lock. */
 function runMigrations(PDO $db): void {
     $db->exec('BEGIN IMMEDIATE');
@@ -617,6 +691,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 16) {
             migrateV16($db);
+        }
+        if ($current < 17) {
+            migrateV17($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

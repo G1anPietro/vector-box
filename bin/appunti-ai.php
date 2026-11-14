@@ -34,6 +34,8 @@ if (in_array('--models', $argv, true)) {
 // --bells-only does just this (for an optional timer every minute, more punctual than every 5).
 $bellsDb = getDbConnection();
 $bells = bellsRun($bellsDb, $now);
+$turnsSent = turnsRun($bellsDb, $now);
+if ($turnsSent) echo date('Y-m-d H:i:s') . " turn reminders: $turnsSent\n";
 if ($bells) echo date('Y-m-d H:i:s') . " next-lesson pushes: $bells\n";
 if (in_array('--bells-only', $argv, true)) exit(0);
 

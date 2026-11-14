@@ -255,9 +255,12 @@ function aiLessonDocs(PDO $db, array $class): int {
         if (!in_array($d['doc_key'], $keep, true)) $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $d['id']]);
     }
 
+    // With topics in the calendar, the daily run only works on open topics and coming tests (not on a chosen range)
+    $scope = $until === null ? notesAiScope($db, $class) : null;
     $written = 0;
     foreach ($groups as $items) {
         $first = $items[0];
+        if ($scope && !$scope((int)$first['subject_id'], $first['lesson_date'])) continue;
         $key = "lezione:{$first['subject_id']}:{$first['lesson_date']}";
         [$material, $sources, $hash, $ready] = aiMaterial($db, $items);
         if (!$ready) continue;
@@ -478,11 +481,12 @@ function aiEventDocs(PDO $db, array $class): int {
         $docs = $db->prepare("SELECT lesson_date, content FROM class_docs WHERE class_id = :c AND subject_id = :s AND kind = 'lezione'
                               AND status = 'ok' AND author_id IS NULL AND lesson_date BETWEEN :f AND :t ORDER BY lesson_date");
         $docs->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
-        $lessonDocs = $docs->fetchAll(PDO::FETCH_KEY_PAIR);
+        $dayOk = notesEventDayFilter($db, $ev);   // topics unticked for this test are left out
+        $lessonDocs = array_filter($docs->fetchAll(PDO::FETCH_KEY_PAIR), fn($d) => $dayOk($d), ARRAY_FILTER_USE_KEY);
         $items = $db->prepare('SELECT i.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_items i LEFT JOIN accounts a ON a.id = i.author_id LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id
                                WHERE i.class_id = :c AND i.subject_id = :s AND i.lesson_date BETWEEN :f AND :t ORDER BY i.lesson_date, i.id');
         $items->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
-        $all = $items->fetchAll();
+        $all = array_values(array_filter($items->fetchAll(), fn($i) => $dayOk($i['lesson_date'])));
         if (!$all && !$lessonDocs) continue;
         $raw = array_values(array_filter($all, fn($i) => !isset($lessonDocs[$i['lesson_date']])));
         $exam = array_values(array_filter($all, fn($i) => in_array($i['kind'], ['domande', 'prova'], true)));
@@ -515,6 +519,11 @@ Argomenti annunciati dal prof: "
                . ($ev['topics'] !== '' ? $ev['topics'] : 'non indicati') . "
 
 ";
+        // Homework given in the period: it tells what the teacher wants students to be able to do (exercises, code)
+        $hw = $db->prepare('SELECT due_date, body FROM class_homework WHERE class_id = :c AND subject_id = :s AND due_date BETWEEN :f AND :t ORDER BY due_date LIMIT 30');
+        $hw->execute([':c' => $classId, ':s' => $sid, ':f' => $from, ':t' => $to]);
+        $hwLines = array_map(fn($h) => '- per il ' . (new DateTimeImmutable($h['due_date']))->format('d/m') . ': ' . textCut($h['body'], 600), $hw->fetchAll());
+        if ($hwLines) $intro .= "Compiti assegnati dal prof in questo periodo (mostrano cosa bisogna saper fare):\n" . implode("\n", $hwLines) . "\n\n";
         $missing = aiLessonsWithoutNotes($db, $class, $sid, $from, min($today, $to));
         $questions = aiQuestionsText($db, $classId, $sid, $from, $to);
         $hash = hash('sha256', $intro . $material . '|' . $examText . '|' . $questions . '|' . implode(',', $missing));

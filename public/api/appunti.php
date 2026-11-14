@@ -99,6 +99,7 @@ function apEventFields(PDO $db, array $class, array $in): array {
         'title' => apText($in['title'] ?? '', NOTE_TITLE_MAX),
         'topics' => apText($in['topics'] ?? '', EVENT_TOPICS_MAX, true),
         'period_from' => $pFrom !== '' ? $pFrom : null, 'period_to' => $pFrom !== '' ? $pTo : null,
+        'topics_off' => json_encode(array_values(array_unique(array_map('intval', array_slice((array)($in['topics_off'] ?? []), 0, 50))))),
     ];
 }
 
@@ -620,10 +621,19 @@ try {
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         if (!checkRateLimit('class_event', 30, 3600, 'user:' . $me)) apFail('slow_down', 'Too many changes, try later', 429);
         $f = apEventFields($db, $class, $in);
-        $db->prepare('INSERT INTO class_events (class_id, subject_id, kind, event_date, title, topics, period_from, period_to, author_id, created_at, updated_at)
-                      VALUES (:c, :s, :k, :d, :t, :tp, :pf, :pt, :a, :now, :now)')
-           ->execute([':c' => $class['id'], ':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['event_date'],
+        $db->prepare('INSERT INTO class_events (class_id, subject_id, kind, event_date, title, topics, period_from, period_to, topics_off, author_id, created_at, updated_at)
+                      VALUES (:c, :s, :k, :d, :t, :tp, :pf, :pt, :off, :a, :now, :now)')
+           ->execute([':c' => $class['id'], ':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['event_date'], ':off' => $f['topics_off'],
                       ':t' => $f['title'], ':tp' => $f['topics'], ':pf' => $f['period_from'], ':pt' => $f['period_to'], ':a' => $me, ':now' => time()]);
+        // The topics of the subject still open end with their test (they can be reopened by editing them)
+        if ($f['kind'] !== 'altro') {
+            $off = json_decode($f['topics_off'], true);
+            $open = $db->prepare("SELECT id FROM class_topics WHERE class_id = :c AND subject_id = :s AND status = 'ok' AND end_date IS NULL AND start_date <= :d");
+            $open->execute([':c' => $class['id'], ':s' => $f['subject_id'], ':d' => $f['event_date']]);
+            foreach ($open->fetchAll(PDO::FETCH_COLUMN) as $tid) {
+                if (!in_array((int)$tid, $off, true)) $db->prepare('UPDATE class_topics SET end_date = :d, updated_at = :t WHERE id = :id')->execute([':d' => $f['event_date'], ':t' => time(), ':id' => $tid]);
+            }
+        }
         jsonResponse(['success' => true, 'id' => (int)$db->lastInsertId()]);
     }
 
@@ -641,8 +651,8 @@ try {
         }
         $f = apEventFields($db, $class, $in);
         $db->prepare('UPDATE class_events SET subject_id = :s, kind = :k, event_date = :d, title = :t, topics = :tp,
-                      period_from = :pf, period_to = :pt, updated_at = :now WHERE id = :id')
-           ->execute([':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['event_date'], ':t' => $f['title'],
+                      period_from = :pf, period_to = :pt, topics_off = :off, updated_at = :now WHERE id = :id')
+           ->execute([':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['event_date'], ':t' => $f['title'], ':off' => $f['topics_off'],
                       ':tp' => $f['topics'], ':pf' => $f['period_from'], ':pt' => $f['period_to'], ':now' => time(), ':id' => $event['id']]);
         jsonResponse(['success' => true]);
     }

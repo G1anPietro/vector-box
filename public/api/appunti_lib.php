@@ -61,11 +61,20 @@ function notesUsedBytes(PDO $db, int $classId): int {
 function notesLessonsOn(PDO $db, array $class, string $date): array {
     $weekday = (int)(new DateTimeImmutable($date))->format('N');
     if ($weekday > CLASS_MAX_DAYS) return [];
+    // Days (or single hours) without lessons: holidays, strikes, trips, absent teacher
+    $off = $db->prepare('SELECT period FROM class_days_off WHERE class_id = :c AND date_from <= :d AND date_to >= :d');
+    $off->execute([':c' => $class['id'], ':d' => $date]);
+    $offPeriods = [];
+    foreach ($off->fetchAll(PDO::FETCH_COLUMN) as $p) {
+        if ($p === null) return [];
+        $offPeriods[(int)$p] = true;
+    }
     $timetable = classTimetableFor($db, (int)$class['id'], $date);
     if (!$timetable) return [];
     $bells = classPeriods($class)[(string)$weekday] ?? [];
 
-    $slots = array_values(array_filter($timetable['slots'], fn($s) => (int)$s['day'] === $weekday && isset($bells[$s['period'] - 1])));
+    $slots = array_values(array_filter($timetable['slots'], fn($s) => (int)$s['day'] === $weekday && isset($bells[$s['period'] - 1])
+        && !isset($offPeriods[(int)$s['period']])));
     usort($slots, fn($a, $b) => $a['period'] <=> $b['period']);
     $out = [];
     foreach ($slots as $s) {
@@ -114,6 +123,57 @@ function notesEventPeriod(PDO $db, array $ev): array {
         ? (new DateTimeImmutable($prevDate))->modify('+1 day')->format('Y-m-d')
         : (new DateTimeImmutable($ev['event_date']))->modify('-' . AI_PERIOD_MAX_DAYS . ' days')->format('Y-m-d');
     return [$from, $ev['event_date']];
+}
+
+/** Confirmed topics of a subject (or of the whole class), oldest first. */
+function notesTopics(PDO $db, int $classId, ?int $subjectId = null): array {
+    $st = $db->prepare("SELECT * FROM class_topics WHERE class_id = :c AND status = 'ok'" . ($subjectId !== null ? ' AND subject_id = :s' : '') . ' ORDER BY start_date, id');
+    $st->execute([':c' => $classId] + ($subjectId !== null ? [':s' => $subjectId] : []));
+    return $st->fetchAll();
+}
+
+/**
+ * Which lesson days a test covers inside its period: every day, except those that belong only to topics unticked
+ * for this test. Returns a function(date): bool.
+ */
+function notesEventDayFilter(PDO $db, array $ev): callable {
+    $off = array_flip(array_map('intval', json_decode($ev['topics_off'] ?? '[]', true) ?: []));
+    if (!$off) return fn(string $d): bool => true;
+    $topics = notesTopics($db, (int)$ev['class_id'], (int)$ev['subject_id']);
+    $last = $ev['event_date'];
+    return function (string $d) use ($topics, $off, $last): bool {
+        $inOff = false;
+        foreach ($topics as $t) {
+            if ($d < $t['start_date'] || $d > ($t['end_date'] ?: $last)) continue;
+            if (!isset($off[(int)$t['id']])) return true;   // also part of a topic that is in the test
+            $inOff = true;
+        }
+        return !$inOff;
+    };
+}
+
+/**
+ * Which lessons the daily AI run works on. With no topics in the class: all (as before). With topics: only the lessons
+ * of a topic still open (no end yet) or inside the period of a coming test, so finished topics are left alone.
+ * Returns a function(subjectId, date): bool, or null for "all".
+ */
+function notesAiScope(PDO $db, array $class): ?callable {
+    $topics = notesTopics($db, (int)$class['id']);
+    if (!$topics) return null;
+    $today = classToday($class);
+    $st = $db->prepare("SELECT * FROM class_events WHERE class_id = :c AND kind IN ('verifica', 'interrogazione') AND event_date >= :d");
+    $st->execute([':c' => $class['id'], ':d' => (new DateTimeImmutable($today))->modify('-1 day')->format('Y-m-d')]);
+    $events = [];
+    foreach ($st->fetchAll() as $ev) $events[] = [(int)$ev['subject_id'], notesEventPeriod($db, $ev), notesEventDayFilter($db, $ev)];
+    return function (int $subjectId, string $date) use ($topics, $events): bool {
+        foreach ($topics as $t) {
+            if ((int)$t['subject_id'] === $subjectId && $t['end_date'] === null && $date >= $t['start_date']) return true;
+        }
+        foreach ($events as [$sid, [$from, $to], $ok]) {
+            if ($sid === $subjectId && $date >= $from && $date <= $to && $ok($date)) return true;
+        }
+        return false;
+    };
 }
 
 function notesSubjectOf(PDO $db, int $classId, int $subjectId): ?array {
@@ -218,6 +278,7 @@ function notesFormatEvent(array $e, int $me, bool $canManage): array {
         'id' => (int)$e['id'], 'subject_id' => (int)$e['subject_id'], 'subject' => $e['subject'] ?? '',
         'kind' => $e['kind'], 'date' => $e['event_date'], 'title' => $e['title'], 'topics' => $e['topics'],
         'period_from' => $e['period_from'] ?? null, 'period_to' => $e['period_to'] ?? null,
+        'topics_off' => array_map('intval', json_decode($e['topics_off'] ?? '[]', true) ?: []),
         'author' => $e['author'] ?? null, 'can_edit' => $canManage || (int)$e['author_id'] === $me,
     ];
 }

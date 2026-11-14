@@ -122,6 +122,29 @@ function bellsRun(PDO $db, int $now): int {
     return $sent;
 }
 
+/** The afternoon before an oral-exam turn (from 16:00), a reminder to who is on it. Returns how many turns were announced. */
+function turnsRun(PDO $db, int $now): int {
+    $sent = 0;
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active'")->fetchAll();
+    foreach ($classes as $class) {
+        $local = (new DateTimeImmutable('@' . $now))->setTimezone(classTimezone($class));
+        if ($local->format('H:i') < '16:00') continue;
+        $st = $db->prepare('SELECT t.*, s.name AS subject FROM class_turns t JOIN class_subjects s ON s.id = t.subject_id
+                            WHERE t.class_id = :c AND t.turn_date = :d AND t.notified_at IS NULL');
+        $st->execute([':c' => $class['id'], ':d' => $local->modify('+1 day')->format('Y-m-d')]);
+        foreach ($st->fetchAll() as $t) {
+            $db->prepare('UPDATE class_turns SET notified_at = :n WHERE id = :id AND notified_at IS NULL')->execute([':n' => $now, ':id' => $t['id']]);
+            $users = array_values(array_intersect(array_map('intval', json_decode($t['user_ids'], true) ?: []), classMemberIds($db, (int)$class['id'])));
+            if (!$users) continue;
+            notifyUsers($db, $users, (int)$class['id'], 'turno', "Domani sei interrogato in {$t['subject']}",
+                ($t['note'] !== '' ? $t['note'] . '. ' : '') . 'Apri le domande fatte in classe e il ripasso.',
+                '/pages/appunti-archivio.php?class=' . (int)$class['id'] . '&subject=' . (int)$t['subject_id']);
+            $sent++;
+        }
+    }
+    return $sent;
+}
+
 function reminderText(PDO $db, array $ev, string $slot): array {
     $what = $ev['kind'] === 'interrogazione' ? 'Interrogazione' : 'Verifica';
     $when = ['d2' => 'tra 2 giorni', 'd1' => 'domani', 'sera' => 'domani: ultimo ripasso'][$slot];
