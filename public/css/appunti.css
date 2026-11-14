@@ -688,3 +688,11 @@ label:has(> .dp-native) { position: relative; }
 .danger-soft { color: var(--danger); }
 .test-row { margin-bottom: 10px; }
 .code-actions + .ghost-link { display: inline-block; margin-top: 16px; }
+
+/* Top-bar buttons (Archivio, Carica, Guida): one size, Carica in yellow */
+.top-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 6px 14px; border-radius: 10px; box-sizing: border-box;
+    border: 1px solid var(--line); color: var(--text); background: transparent; font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.top-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.top-btn[hidden] { display: none; }
+.ai-get { margin-bottom: 8px; }
+.step { margin: 14px 0 6px; font-size: 17px; }

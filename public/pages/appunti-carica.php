@@ -32,7 +32,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
     <header class="top">
         <a class="home back-link" href="appunti.php">Appunti</a>
         <span class="top-right">
-            <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
+            <a class="top-btn" href="appunti-archivio.php">Archivio</a>
             <select id="class-select" aria-label="Classe" class="top-select"></select>
         </span>
     </header>
@@ -107,8 +107,26 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
 
         <section class="card panel" id="p-ai" hidden>
             <h2>🤖 Documento fatto con un'altra AI</h2>
-            <p class="muted small">Scarica dall'<a href="appunti-archivio.php">Archivio</a> o dalla pagina Appunti il file <b>"Per AI"</b> di una
-                lezione o di una verifica, dallo all'AI con il PROMPT 1 e incolla qui la risposta.</p>
+            <h3 class="step">1. Prendi il materiale e il prompt</h3>
+            <p class="muted small">Il file <b>.md</b> contiene tutto il testo del materiale e i prompt da dare all'AI (comincia dal PROMPT 1).
+                Lo <b>.zip</b> ha i file originali (foto, PDF, audio) più <code>PROMPT.txt</code>, per le AI che li leggono.</p>
+            <div class="stack ai-get">
+                <label>Che materiale
+                    <select id="aiget-scope">
+                        <option value="event">Una verifica o interrogazione</option>
+                        <option value="day">Una lezione (un giorno)</option>
+                        <option value="subject">Tutta una materia</option>
+                    </select>
+                </label>
+                <label id="aiget-event-l">Verifica o interrogazione <select id="aiget-event"></select></label>
+                <label id="aiget-subject-l" hidden>Materia <select id="aiget-subject"></select></label>
+                <label id="aiget-date-l" hidden>Giorno <input type="date" id="aiget-date"></label>
+                <div class="row">
+                    <button type="button" id="aiget-md" class="ico-dl">Scarica per l'AI (.md)</button>
+                    <button type="button" id="aiget-zip" class="ghost ico-dl">Scarica i file (.zip)</button>
+                </div>
+            </div>
+            <h3 class="step">2. Carica la risposta dell'AI</h3>
             <form id="ai-form" class="stack">
                 <div class="grid2">
                     <label>Tipo

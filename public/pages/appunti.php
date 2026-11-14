@@ -46,9 +46,9 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <header class="top">
         <a class="home" href="../index.php">vector-box</a>
         <span class="top-right">
-            <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
-            <a class="btn-link ico-up top-cta" href="appunti-carica.php">Carica</a>
-            <a class="ghost-link hide-phone" href="appunti-guida.php">Guida</a>
+            <a class="top-btn needs-class" href="appunti-archivio.php">Archivio</a>
+            <a class="top-btn primary ico-up needs-class" href="appunti-carica.php">Carica</a>
+            <a class="top-btn hide-phone" href="appunti-guida.php">Guida</a>
             <span class="who hide-phone"><?= $e($username) ?></span>
             <a id="bell" class="bell" href="appunti-impostazioni.php" aria-label="Impostazioni e notifiche" title="Impostazioni e notifiche">
                 <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
@@ -225,7 +225,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 </details>
                 </div>
             </div>
-            <div class="card" id="class-info"></div>
+            <p id="admin-note" class="admin-note" hidden>Stai guardando questa classe come amministratore del sito: non ne fai parte.</p>
             <details class="card fold" id="members-fold">
                 <summary>Compagni</summary>
                 <ul id="members" class="plain members"></ul>

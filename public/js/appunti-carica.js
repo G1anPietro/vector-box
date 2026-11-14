@@ -166,7 +166,43 @@
             : [el('option', { value: '', text: 'Nessuna verifica in calendario' })]));
         f.lesson_date.value = f.lesson_date.value || todayStr();
         toggleAiTarget();
+        // the "take the material" block uses the same lists
+        $('#aiget-event').replaceChildren(...[...f.event_id.options].map((o) => el('option', { value: o.value, text: o.textContent })));
+        $('#aiget-subject').replaceChildren(...current.subjects.map((s) => el('option', { value: s.id, text: s.name })));
+        $('#aiget-date').value = $('#aiget-date').value || todayStr();
+        toggleGetScope();
     }
+    function toggleGetScope() {
+        const sc = $('#aiget-scope').value;
+        $('#aiget-event-l').hidden = sc !== 'event';
+        $('#aiget-subject-l').hidden = sc === 'event';
+        $('#aiget-date-l').hidden = sc !== 'day';
+    }
+    $('#aiget-scope').addEventListener('change', toggleGetScope);
+    /** Downloads the material of the chosen scope: the .md for an AI (text + prompts) or the .zip of the original files. */
+    async function getMaterial(action, btn) {
+        const sc = $('#aiget-scope').value;
+        const q = new URLSearchParams({ action, class_id: current.id, scope: sc });
+        if (sc === 'event') { if (!$('#aiget-event').value) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; } q.set('event_id', $('#aiget-event').value); }
+        else q.set('subject_id', $('#aiget-subject').value);
+        if (sc === 'day') { if (!$('#aiget-date').value) { status('Scegli il giorno.', 'err'); return; } q.set('date', $('#aiget-date').value); }
+        btn.disabled = true;
+        status(action === 'zip' ? 'Preparo lo .zip…' : 'Preparo il file per l\'AI…');
+        try {
+            const r = await fetch('../api/appunti.php?' + q, { credentials: 'same-origin' });
+            if (!r.ok) { const j = await r.json().catch(() => null); throw new Error(j && j.error ? j.error : 'Download non riuscito.'); }
+            const cd = r.headers.get('content-disposition') || '';
+            const m = /filename\*=UTF-8''([^;]+)/.exec(cd);
+            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : 'appunti-per-AI.md');
+            const url = URL.createObjectURL(await r.blob());
+            const a = el('a', { href: url, download: name });
+            document.body.append(a); a.click();
+            setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+            status(action === 'zip' ? 'Scaricato: dentro c\'è anche PROMPT.txt.' : 'Scaricato: allegalo all\'AI e manda il PROMPT 1 che trovi all\'inizio del file.', 'ok');
+        } catch (e) { status(e.message, 'err'); } finally { btn.disabled = false; }
+    }
+    $('#aiget-md').addEventListener('click', (ev) => getMaterial('ai_pack', ev.currentTarget));
+    $('#aiget-zip').addEventListener('click', (ev) => getMaterial('zip', ev.currentTarget));
     function toggleAiTarget() {
         const lesson = $('#ai-form').kind.value === 'lezione';
         $$('#ai-form .for-lesson').forEach((x) => { x.hidden = !lesson; });

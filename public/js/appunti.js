@@ -116,6 +116,7 @@
         $('#my-requests').replaceChildren(...mine.requests.map((r) =>
             el('li', {}, el('span', { text: `Richiesta: ${r.name} · ${r.school}` }), el('span', { class: 'muted small', text: reqStatus[r.status] || r.status }))));
 
+        $$('.needs-class').forEach((x) => { x.hidden = classes.length === 0; });
         if (!classes.length) {
             $('#welcome').hidden = false;
             $('#tabs').hidden = !mine.is_admin;
@@ -625,11 +626,7 @@
 
     function renderClass() {
         const c = current;
-        const info = $('#class-info');
-        info.replaceChildren(
-            el('h2', { text: `${c.name} · ${c.school}` }),
-            el('p', { class: 'small' }, el('a', { href: 'appunti-impostazioni.php?class=' + c.id, text: 'Cambia classe, codice d\'invito, nome, notifiche e riassunto automatico: Impostazioni' })),
-            ...(c.is_member ? [] : [el('p', { class: 'admin-note', text: 'Stai guardando questa classe come amministratore del sito: non ne fai parte.' })]));
+        $('#admin-note').hidden = c.is_member;
 
         renderMembers(c);
         renderRoles(c);
