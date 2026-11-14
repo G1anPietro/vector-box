@@ -16,6 +16,10 @@
     let events = [];
     let today = '';
     let perms = [];
+    let view = C.stored('vb_cal_view') || (window.innerWidth >= 900 ? 'month' : 'agenda');   // month on a computer, agenda on a phone
+    let monthRef = null;      // first day of the month shown
+    let pickedDay = null;     // a day chosen in the month: the list shows only that day
+    let subjectFilter = 0;
     const can = (p) => perms.includes(p);
     const members = () => P().current.members;
     const nameOf = (id) => { const m = members().find((x) => x.id === id); return m ? m.name : '?'; };
@@ -245,11 +249,13 @@
     function renderAgenda() {
         const days = new Map();
         const put = (date, node, order) => { if (!days.has(date)) days.set(date, []); days.get(date).push([order, node]); };
-        events.forEach((e) => put(e.date, eventRow(e), 1));
-        data.turns.forEach((t) => put(t.date, turnRow(t), 2));
-        data.homework.forEach((h) => put(h.due, homeworkRow(h), 3));
+        const mine = (x) => !subjectFilter || x.subject_id === subjectFilter;
+        events.filter(mine).forEach((e) => put(e.date, eventRow(e), 1));
+        data.turns.filter(mine).forEach((t) => put(t.date, turnRow(t), 2));
+        data.homework.filter(mine).forEach((h) => put(h.due, homeworkRow(h), 3));
         data.days_off.forEach((o) => put(o.from < today && o.to >= today ? today : o.from, offRow(o), 0));
-        const dates = [...days.keys()].sort();
+        let dates = [...days.keys()].sort();
+        if (pickedDay) dates = dates.filter((d) => d === pickedDay);
         const block = (date) => {
             const d = C.parseDate(date);
             return el('div', { class: 'ag-day' + (date === today ? ' today' : '') + (date < today ? ' past' : '') },
@@ -257,11 +263,65 @@
                     el('span', { text: d.toLocaleDateString('it-IT', { month: 'short' }) })),
                 el('div', { class: 'ag-items' }, ...days.get(date).sort((a, b) => a[0] - b[0]).map((x) => x[1])));
         };
-        const upcoming = dates.filter((d) => d >= today);
-        const past = dates.filter((d) => d < today).reverse();
+        const upcoming = pickedDay ? dates : dates.filter((d) => d >= today);
+        const past = pickedDay ? [] : dates.filter((d) => d < today).reverse();
+        $('#agenda-title').textContent = pickedDay ? `Il ${dayLong.format(C.parseDate(pickedDay))}` : 'Agenda';
         $('#events').replaceChildren(
-            upcoming.length ? el('div', {}, ...upcoming.map(block)) : el('p', { class: 'empty', text: 'Niente in calendario nei prossimi giorni.' }),
+            ...(pickedDay ? [el('button', { type: 'button', class: 'ghost mini', text: 'Mostra tutta l\'agenda', onclick: () => { pickedDay = null; render(); } })] : []),
+            upcoming.length ? el('div', {}, ...upcoming.map(block)) : el('p', { class: 'empty', text: pickedDay ? 'Niente in questo giorno.' : 'Niente in calendario nei prossimi giorni.' }),
             ...(past.length ? [el('details', {}, el('summary', { text: `Passati (${past.length} giorni)` }), ...past.map(block))] : []));
+    }
+
+    /* ---------- month view (computer) and the subject filter ---------- */
+
+    function renderViewBar() {
+        const subjects = P().current.subjects;
+        const sel = el('select', { 'aria-label': 'Materia', onchange: (ev) => { subjectFilter = Number(ev.target.value) || 0; render(); } },
+            el('option', { value: '', text: 'Tutte le materie' }), ...subjects.map((s) => el('option', { value: s.id, text: s.name, selected: s.id === subjectFilter })));
+        set($('#cal-view'),
+            el('span', { class: 'bb-seg' }, ...[['month', 'Mese'], ['agenda', 'Agenda']].map(([k, t]) =>
+                el('button', { type: 'button', class: 'ghost mini', 'aria-pressed': String(view === k), text: t, onclick: () => { view = k; pickedDay = null; C.store('vb_cal_view', k); render(); } }))),
+            sel);
+    }
+
+    function renderMonth() {
+        const box = $('#cal-month');
+        box.hidden = view !== 'month';
+        if (view !== 'month') { box.replaceChildren(); return; }
+        const ref = monthRef || (monthRef = new Date(C.parseDate(today).getFullYear(), C.parseDate(today).getMonth(), 1));
+        const ws = C.weekStart();                      // 1 = Monday, 0 = Sunday
+        const first = new Date(ref.getFullYear(), ref.getMonth(), 1);
+        const lead = (first.getDay() - ws + 7) % 7;
+        const start = new Date(first); start.setDate(1 - lead);
+        const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const mine = (x) => !subjectFilter || x.subject_id === subjectFilter;
+        const per = new Map();
+        const add = (date, label, cls, subjectId) => { if (!per.has(date)) per.set(date, []); per.get(date).push({ label, cls, subjectId }); };
+        events.filter(mine).forEach((e) => add(e.date, `${KIND[e.kind] || ''} ${e.subject}`.trim(), e.kind, e.subject_id));
+        data.homework.filter(mine).forEach((h) => add(h.due, `Compito ${h.subject}`, 'compito', h.subject_id));
+        data.turns.filter(mine).forEach((t) => add(t.date, `Turno ${t.subject}`, 'turno', t.subject_id));
+        data.days_off.forEach((o) => { for (let d = C.parseDate(o.from), end = C.parseDate(o.to); d <= end && per.size < 4000; d.setDate(d.getDate() + 1)) add(iso(d), o.reason || 'Niente lezione', 'off', 0); });
+        const names = [];
+        for (let i = 0; i < 7; i++) { const d = new Date(2024, 0, 7 + ws + i); names.push(d.toLocaleDateString('it-IT', { weekday: 'short' })); }
+        const cells = [];
+        for (let i = 0; i < 42; i++) {
+            const d = new Date(start); d.setDate(start.getDate() + i);
+            const key = iso(d);
+            const items = per.get(key) || [];
+            const cell = el('button', { type: 'button', class: 'mc' + (d.getMonth() !== ref.getMonth() ? ' other' : '') + (key === today ? ' today' : '') + (key === pickedDay ? ' picked' : ''),
+                'aria-label': `${dayLong.format(d)}: ${items.length} cose`, onclick: () => { pickedDay = pickedDay === key ? null : key; render(); } },
+                el('span', { class: 'mc-n', text: String(d.getDate()) }),
+                ...items.slice(0, 3).map((x) => { const chip = el('span', { class: 'mc-chip ' + x.cls, text: x.label }); if (x.subjectId) chip.style.setProperty('--h', P().hue(x.subjectId)); return chip; }),
+                items.length > 3 ? el('span', { class: 'mc-more', text: `+${items.length - 3}` }) : null);
+            cells.push(cell);
+        }
+        const title = ref.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+        const go = (n) => { monthRef = new Date(ref.getFullYear(), ref.getMonth() + n, 1); pickedDay = null; render(); };
+        set(box,
+            el('div', { class: 'mc-head' }, el('button', { type: 'button', class: 'ghost mini', text: 'Prima', onclick: () => go(-1) }), el('b', { text: title }),
+                el('button', { type: 'button', class: 'ghost mini', text: 'Dopo', onclick: () => go(1) }),
+                el('button', { type: 'button', class: 'ghost mini', text: 'Oggi', onclick: () => { monthRef = null; pickedDay = null; render(); } })),
+            el('div', { class: 'mc-grid' }, ...names.map((n) => el('div', { class: 'mc-dow', text: n })), ...cells));
     }
 
     /* ---------- the topics of a test, in the test form ---------- */
@@ -292,6 +352,8 @@
     }));
 
     function render() {
+        renderViewBar();
+        renderMonth();
         renderTools();
         renderTopics();
         renderAgenda();

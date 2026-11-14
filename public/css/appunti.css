@@ -755,3 +755,21 @@ html, body { overflow-x: clip; }
 .asked-tools select { flex: 1; min-width: 0; }
 .quiz-qtext { display: flex; gap: 8px; align-items: flex-start; }
 .quiz-qtext .speak-btn { margin-left: auto; flex: none; }
+
+/* Calendar: month view */
+.cal-view { align-items: center; justify-content: space-between; margin: 10px 0; }
+.cal-view select { flex: 1; min-width: 0; max-width: 260px; }
+.mc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.mc-head b { text-transform: capitalize; flex: 1; text-align: center; }
+.mc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.mc-dow { text-align: center; font-size: 12px; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
+.mc { display: flex; flex-direction: column; gap: 2px; align-items: stretch; text-align: left; min-height: 78px; padding: 4px; background: var(--card); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; font-weight: 400; overflow: hidden; }
+.mc.other { opacity: 0.45; }
+.mc.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.mc.picked { background: #262b36; border-color: var(--accent); }
+.mc-n { font-size: 13px; font-weight: 700; }
+.mc-chip { display: block; font-size: 11px; line-height: 1.25; padding: 1px 4px; border-radius: 4px; background: color-mix(in srgb, var(--h, #888) 30%, #11131a); border-left: 3px solid var(--h, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-chip.off { --h: #6b7280; font-style: italic; }
+.mc-more { font-size: 11px; color: var(--muted); }
+@media (max-width: 600px) { .mc { min-height: 56px; } .mc-chip { font-size: 0; height: 6px; padding: 0; border-radius: 3px; border-left-width: 0; } .mc-more { font-size: 10px; } }

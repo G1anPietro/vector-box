@@ -237,7 +237,9 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 </form>
             </details>
             <div id="cal-tools" class="row cal-tools"></div>
-            <h3 class="section-title">Agenda</h3>
+            <div class="cal-view row" id="cal-view"></div>
+            <div id="cal-month"></div>
+            <h3 class="section-title" id="agenda-title">Agenda</h3>
             <div id="events"></div>
             <div id="cal-topics"></div>
         </section>
