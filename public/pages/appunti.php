@@ -19,7 +19,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
 session_write_close();
 
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css')
+$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../js/appunti-upload.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css')
     . '-' . filemtime(__DIR__ . '/../js/appunti-calendario.js') . '-' . filemtime(__DIR__ . '/../js/appunti-bacheca.js');
 ?>
 <!DOCTYPE html>
@@ -40,6 +40,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/dropzone.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/appunti-upload.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-calendario.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-bacheca.js?v=<?= $e($v) ?>" defer></script>

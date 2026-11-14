@@ -128,6 +128,7 @@
         const sendPrefs = async () => {
             try { await post('../api/notifiche.php', { action: 'save_prefs', class_id: classId, prefs: p }); saved(); } catch (e) { fail(e); }
         };
+        const up = window.AppuntiUpload.settings();
         const slotLabel = { d2: 'Due giorni prima, alle 16:00', d1: 'Il giorno prima, alle 16:00', sera: 'La sera prima, alle 21:00' };
 
         // name in the class
@@ -217,6 +218,10 @@
                 sw('5 minuti prima della fine di ogni ora: materia e aula dopo', prefs.bell, async (on, box) => {
                     try { await post('../api/notifiche.php', { action: 'bell_notify', class_id: classId, on }); saved(); } catch (e) { box.checked = !on; fail(e); }
                 })),
+            section('Caricamenti', 'Su questo dispositivo. I file si caricano a pezzi e, se la connessione cade, riprendono da dove erano.',
+                sw('Riprendi da solo i caricamenti rimasti a metà', up.auto, (on) => { window.AppuntiUpload.setSetting('auto', on); saved(); }),
+                sw('Carica solo con il Wi-Fi (funziona solo su Android con Chrome: altrove carica sempre)', up.wifi, (on) => { window.AppuntiUpload.setSetting('wifi', on); saved(); }),
+                sw('Riduci le foto grandi prima di inviarle (più veloce, la scrittura resta leggibile)', up.shrink, (on) => { window.AppuntiUpload.setSetting('shrink', on); saved(); })),
             section('Come lo vedo', 'Su questo dispositivo.',
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),

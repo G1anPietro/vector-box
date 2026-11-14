@@ -74,7 +74,9 @@
         queue.push(...files);
         if (queue.length > 20) { queue = queue.slice(0, 20); status('Al massimo 20 file alla volta: gli altri caricali dopo.', 'err'); }
         renderQueue();
-        suggest(Math.min(...files.map((f) => f.lastModified || Date.now())) / 1000, true);
+        // an audio file says when it was recorded inside itself; the date of the file is only the fallback
+        Promise.all(files.map(async (f) => (f.type.startsWith('audio/') && await C.mediaTime(f)) || f.lastModified || Date.now()))
+            .then((times) => suggest(Math.min(...times) / 1000, true));
     }
 
     function renderQueue() {
@@ -108,44 +110,22 @@
         if (method !== 'text' && !queue.length) { status('Aggiungi almeno una foto o un file.', 'err'); return; }
         if (method === 'text' && !text) { status('Scrivi qualcosa.', 'err'); return; }
 
-        const fd = new FormData();
-        fd.set('action', 'upload');
-        fd.set('class_id', current.id);
-        fd.set('subject_id', subjectId);
-        fd.set('period', period || '');
-        fd.set('kind', $('#w-kind').value);
-        fd.set('lesson_date', $('#w-date').value);
-        fd.set('title', $('#w-title').value);
-        fd.set('body', text);
-        if (method !== 'text') queue.forEach((f) => fd.append('files[]', f, f.name));
-
-        const xhr = new XMLHttpRequest();
-        const bar = $('#progress');
-        bar.hidden = false;
-        bar.firstElementChild.style.width = '0%';
-        $('#send-btn').disabled = true;
-        xhr.upload.onprogress = (e) => { if (e.lengthComputable) bar.firstElementChild.style.width = Math.round(100 * e.loaded / e.total) + '%'; };
-        xhr.onloadend = () => {
-            $('#send-btn').disabled = false;
-            bar.hidden = true;
-            let j = null;
-            try { j = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
-            if (xhr.status === 200 && j && j.success) {
-                status(`Caricato in ${subjectName(Number(subjectId))}. Grazie! Lo trovi nell'Archivio.`, 'ok');
-                $('#send-btn').textContent = 'Carica altro';
-                queue = []; renderQueue();
-                $('#text-input').value = ''; $('#text-preview').replaceChildren(); $('#w-title').value = ''; $('#w-hint').textContent = '';
-                updateLimits();
-            } else {
-                const msg = { file_too_large: null, class_full: 'La classe ha finito lo spazio.', bad_type: null, too_large: 'Il caricamento è troppo grande.' };
-                status((j && (msg[j.code] || j.error)) || 'Caricamento non riuscito: riprova.', 'err');
-            }
-        };
-        xhr.onerror = () => status('Connessione persa durante il caricamento: riprova.', 'err');
-        xhr.open('POST', '../api/appunti.php');
-        xhr.setRequestHeader('X-CSRF-Token', csrf);
-        xhr.send(fd);
-        status('Caricamento…');
+        // The queue (js/appunti-upload.js) sends it in pieces, survives a lost connection or a reload, and keeps going on the other pages
+        const files = method !== 'text' ? queue.slice() : [];
+        window.AppuntiUpload.enqueue({
+            class_id: current.id, label: subjectName(Number(subjectId)),
+            fields: { subject_id: subjectId, period: period || '', kind: $('#w-kind').value, lesson_date: $('#w-date').value, title: $('#w-title').value, body: text },
+            files,
+        }).then(() => {
+            status(files.length ? 'Messo in coda: parte da solo e riprende se la connessione cade.' : 'Invio…', 'ok');
+            $('#send-btn').textContent = 'Carica altro';
+            queue = []; renderQueue();
+            $('#text-input').value = ''; $('#text-preview').replaceChildren(); $('#w-title').value = ''; $('#w-hint').textContent = '';
+        }).catch((e) => status('Non riesco a preparare i file: ' + e.message, 'err'));
+    });
+    window.AppuntiUpload.on('done', (job, info) => {
+        status(`Caricato in ${job.label || 'classe'}. Grazie! Lo trovi nell'Archivio.` + (info.duplicates.length ? ` Già presenti e saltati: ${info.duplicates.join(', ')}.` : ''), 'ok');
+        if (current && current.id === job.class_id) updateLimits();
     });
 
     async function updateLimits() {

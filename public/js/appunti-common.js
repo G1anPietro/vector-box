@@ -542,7 +542,75 @@
         } catch (e) { return []; }
     }
 
-    window.AppuntiCommon = { el, addIndex, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    /* ---------- recording date inside an audio file (m4a/mp4, mp3, wav): better than the file's date, which a copy changes ---------- */
+    async function mediaTime(file) {
+        const u8 = async (a, b) => new Uint8Array(await file.slice(a, b).arrayBuffer());
+        const ascii = (arr, a, b) => String.fromCharCode(...arr.subarray(a, b));
+        const plausible = (ms) => (ms > Date.UTC(2015, 0, 1) && ms < Date.now() + 86400000 ? ms : null);
+        try {
+            const head = await u8(0, 12);
+            if (ascii(head, 4, 8) === 'ftyp') {                         // mp4 / m4a: creation time in moov > mvhd (seconds since 1904)
+                let off = 0;
+                for (let guard = 0; guard < 40 && off < file.size; guard++) {
+                    const h = await u8(off, off + 16);
+                    const dv = new DataView(h.buffer);
+                    let size = dv.getUint32(0); const type = ascii(h, 4, 8);
+                    let hdr = 8;
+                    if (size === 1) { size = Number(dv.getBigUint64(8)); hdr = 16; } else if (size === 0) size = file.size - off;
+                    if (size < hdr) return null;
+                    if (type === 'moov') {
+                        const body = await u8(off + hdr, off + Math.min(size, hdr + 4096));
+                        for (let i = 0; i + 24 < body.length; i++) {
+                            if (ascii(body, i, i + 4) !== 'mvhd') continue;
+                            const v = new DataView(body.buffer, i + 4);
+                            const secs = v.getUint8(0) === 1 ? Number(v.getBigUint64(4)) : v.getUint32(4);
+                            return secs ? plausible((secs - 2082844800) * 1000) : null;
+                        }
+                        return null;
+                    }
+                    off += size;
+                }
+                return null;
+            }
+            if (ascii(head, 0, 3) === 'ID3') {                         // mp3: the recording date frame (TDRC, or TYER+TDAT)
+                const size = ((head[6] & 127) << 21) | ((head[7] & 127) << 14) | ((head[8] & 127) << 7) | (head[9] & 127);
+                const tag = await u8(10, 10 + Math.min(size, 65536));
+                let year = null;
+                for (let i = 0; i + 10 < tag.length;) {
+                    const id = ascii(tag, i, i + 4);
+                    const fsize = (tag[i + 4] << 24) | (tag[i + 5] << 16) | (tag[i + 6] << 8) | tag[i + 7];
+                    if (!/^[A-Z0-9]{4}$/.test(id) || fsize <= 0 || i + 10 + fsize > tag.length) break;
+                    if (id === 'TDRC' || id === 'TYER') {
+                        const text = new TextDecoder(tag[i + 10] === 1 ? 'utf-16' : 'utf-8').decode(tag.subarray(i + 11, i + 10 + fsize)).replace(/\0/g, '');
+                        const m = /(\d{4})(?:-(\d\d))?(?:-(\d\d))?(?:T(\d\d):(\d\d))?/.exec(text);
+                        if (m && m[2]) return plausible(Date.UTC(+m[1], +m[2] - 1, +(m[3] || 1), +(m[4] || 12), +(m[5] || 0)));
+                        if (m) year = m[1];
+                    }
+                    i += 10 + fsize;
+                }
+                return null;
+            }
+            if (ascii(head, 0, 4) === 'RIFF' && ascii(head, 8, 12) === 'WAVE') {   // wav: bext (origination date) or LIST/INFO ICRD
+                const data = await u8(12, Math.min(file.size, 65536));
+                for (let i = 0; i + 8 < data.length;) {
+                    const id = ascii(data, i, i + 4);
+                    const sz = new DataView(data.buffer).getUint32(i + 4, true);
+                    if (id === 'bext' && i + 8 + 330 < data.length) {
+                        const m = /(\d{4})-(\d\d)-(\d\d)/.exec(ascii(data, i + 8 + 320, i + 8 + 330));
+                        if (m) return plausible(Date.UTC(+m[1], +m[2] - 1, +m[3], 12));
+                    }
+                    if (id === 'LIST') {
+                        const m = /ICRD\W{0,6}(\d{4})-(\d\d)-(\d\d)/.exec(ascii(data, i + 8, Math.min(data.length, i + 8 + sz)));
+                        if (m) return plausible(Date.UTC(+m[1], +m[2] - 1, +m[3], 12));
+                    }
+                    i += 8 + sz + (sz & 1);
+                }
+            }
+        } catch (e) { /* unreadable: the file's own date is used */ }
+        return null;
+    }
+
+    window.AppuntiCommon = { el, addIndex, mediaTime, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

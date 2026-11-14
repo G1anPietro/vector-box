@@ -26,6 +26,8 @@
 // POST multipart/JSON {action:"upload_doc", class_id, kind, target:"lesson"|"event", subject_id, lesson_date | event_id,
 //                      title, content (or file .md/.txt)} -> a study document made with another AI
 //      {action:"delete_doc", id}  -> a document: the AI's ones need the "docs" permission, hand-made ones also their author
+//      resumable: {upload_begin, class_id, name, size, sha256?} -> {upload_id, chunk} | {duplicate}; multipart {upload_chunk, upload_id, offset, chunk};
+//                 GET ?action=upload_status&upload_id; {upload_commit, class_id, upload_ids[], + item fields}; {upload_cancel, upload_id}
 //      {action:"delete_file", id}  -> one file of an item (author or "material" permission)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
@@ -117,11 +119,114 @@ function apDeleteFiles(PDO $db, int $itemId): void {
     $db->prepare('DELETE FROM class_item_files WHERE item_id = :i')->execute([':i' => $itemId]);
 }
 
+/* ---------- resumable uploads: a file is sent in pieces into a temporary folder and kept until it is committed ---------- */
+const UP_CHUNK = 2097152;          // size of a piece the page is told to send (2 MB: below any server limit)
+const UP_MAX_OPEN = 40;            // unfinished uploads per user
+const UP_KEEP_SEC = 86400;         // an abandoned upload is deleted after a day
+
+function apTmpRoot(): string { return dirname(__DIR__, 2) . '/data/appunti-tmp'; }
+
+/** The temp folder of one of MY uploads, or null when the id is not mine / unknown. */
+function apTmpDir(int $me, string $id): ?string {
+    if (!preg_match('/^[a-f0-9]{24}$/', $id)) return null;
+    $dir = apTmpRoot() . "/$me/$id";
+    return is_file("$dir/meta.json") ? $dir : null;
+}
+
+function apTmpMeta(string $dir): array {
+    $m = json_decode((string)@file_get_contents("$dir/meta.json"), true);
+    return is_array($m) ? $m : [];
+}
+
+function apTmpRemove(string $dir): void {
+    foreach (glob("$dir/*") ?: [] as $f) @unlink($f);
+    @rmdir($dir);
+}
+
+/** Deletes the unfinished uploads nobody touched for a day (done when someone starts a new one). */
+function apTmpClean(): void {
+    foreach (glob(apTmpRoot() . '/*/*', GLOB_ONLYDIR) ?: [] as $dir) {
+        $t = (int)@filemtime(is_file("$dir/data.part") ? "$dir/data.part" : "$dir/meta.json");
+        if ($t > 0 && $t < time() - UP_KEEP_SEC) apTmpRemove($dir);
+    }
+}
+
+/**
+ * Checks and stores the files of one upload and creates the item. $uploads: [{name, tmp, size, error, local?}]; `local` marks a
+ * file assembled by the server from chunks (renamed instead of move_uploaded_file). Returns the new item id.
+ */
+function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $uploads): int {
+    $classId = (int)$class['id'];
+    $limits = classLimits($db, $class);
+    $total = 0;
+    foreach ($uploads as $u) {
+        if (in_array($u['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) || $u['size'] > $limits['file'] * 1048576) {
+            apFail('file_too_large', "\"{$u['name']}\" is larger than {$limits['file']} MB", 413);
+        }
+        if ($u['error'] !== UPLOAD_ERR_OK || empty($u['local']) && !is_uploaded_file($u['tmp'])) apFail('upload_failed', "Upload of \"{$u['name']}\" failed");
+        $total += $u['size'];
+    }
+    if (notesUsedBytes($db, $classId) + $total > $limits['class'] * 1048576) {
+        apFail('class_full', 'The class has used all its space (' . $limits['class'] . ' MB)', 413);
+    }
+
+    // Check every file's real type before keeping any of them
+    foreach ($uploads as $k => $u) {
+        $type = notesFileType($u['tmp'], $u['name']);
+        if (!$type) apFail('bad_type', "\"{$u['name']}\": use photos, PDF, text, Word/PowerPoint or LibreOffice files", 415);
+        $uploads[$k]['type'] = $type;
+    }
+
+    $dir = notesDir($classId);
+    if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) throw new RuntimeException('cannot create ' . $dir);
+    $stored = [];
+    try {
+        foreach ($uploads as $u) {
+            [$ext, $mime] = $u['type'];
+            $name = bin2hex(random_bytes(16)) . '.' . $ext;
+            if (!empty($u['local']) ? !rename($u['tmp'], "$dir/$name") : !move_uploaded_file($u['tmp'], "$dir/$name")) throw new RuntimeException('cannot store the file');
+            $stored[] = ['stored' => $name, 'original' => textCut(basename(str_replace('\\', '/', $u['name'])), 200),
+                         'mime' => $mime, 'size' => $u['size'], 'ext' => $ext, 'sha256' => (string)@hash_file('sha256', "$dir/$name")];
+        }
+
+        $now = time();
+        $db->exec('BEGIN IMMEDIATE');
+        $db->prepare('INSERT INTO class_items (class_id, subject_id, kind, lesson_date, period, title, body, author_id, source, created_at, updated_at)
+                      VALUES (:c, :s, :k, :d, :p, :t, :b, :a, :src, :now, :now)')
+           ->execute([':c' => $classId, ':s' => $fields['subject_id'], ':k' => $fields['kind'], ':d' => $fields['lesson_date'],
+                      ':p' => $fields['period'], ':t' => $fields['title'], ':b' => $fields['body'], ':a' => $me,
+                      ':src' => 'site', ':now' => $now]);
+        $itemId = (int)$db->lastInsertId();
+        $ins = $db->prepare('INSERT INTO class_item_files (item_id, class_id, stored_name, original_name, mime, size, text, text_status, created_at, sha256)
+                             VALUES (:i, :c, :n, :o, :m, :sz, :tx, :ts, :now, :h)');
+        foreach ($stored as $f) {
+            [$text, $status] = notesExtractText("$dir/{$f['stored']}", $f['ext']);
+            $ins->execute([':i' => $itemId, ':c' => $classId, ':n' => $f['stored'], ':o' => $f['original'], ':m' => $f['mime'],
+                           ':sz' => $f['size'], ':tx' => $text, ':ts' => $status, ':now' => $now, ':h' => $f['sha256']]);
+        }
+        $db->exec('COMMIT');
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->exec('ROLLBACK');
+        foreach ($stored as $f) @unlink("$dir/{$f['stored']}");
+        throw $e;
+    }
+    return $itemId;
+}
+
 try {
     $db = getDbConnection();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $action = (string)($_GET['action'] ?? '');
+
+        if ($action === 'upload_status') {
+            // Where a resumable upload stopped (so the page can continue after a break or a reload)
+            $dir = apTmpDir($me, (string)($_GET['upload_id'] ?? ''));
+            if (!$dir) apFail('not_found', 'Unknown upload', 404);
+            $meta = apTmpMeta($dir);
+            clearstatcache(true, "$dir/data.part");
+            jsonResponse(['success' => true, 'received' => is_file("$dir/data.part") ? (int)filesize("$dir/data.part") : 0, 'size' => (int)$meta['size'], 'name' => $meta['name']]);
+        }
 
         if ($action === 'file') {
             $st = $db->prepare('SELECT * FROM class_item_files WHERE id = :id');
@@ -390,6 +495,88 @@ try {
     $restriction = accountRestriction($db, $me);
     if ($restriction) apFail('restricted', $restriction, 403);
 
+    if ($action === 'upload_begin') {
+        // Start (or recognise) one file of a resumable upload
+        [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        if (!checkRateLimit('notes_upload_begin', 300, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
+        $name = textCut(basename(str_replace('\\', '/', (string)($in['name'] ?? ''))), 200);
+        $size = (int)($in['size'] ?? 0);
+        $hash = strtolower((string)($in['sha256'] ?? ''));
+        $limits = classLimits($db, $class);
+        if ($name === '' || $size <= 0) apFail('bad_file', 'Empty file');
+        if ($size > $limits['file'] * 1048576) apFail('file_too_large', "\"$name\" is larger than {$limits['file']} MB", 413);
+        if (notesUsedBytes($db, (int)$class['id']) + $size > $limits['class'] * 1048576) apFail('class_full', 'The class has used all its space', 413);
+        if (preg_match('/^[a-f0-9]{64}$/', $hash)) {
+            $dup = $db->prepare('SELECT f.original_name, i.lesson_date FROM class_item_files f JOIN class_items i ON i.id = f.item_id WHERE f.class_id = :c AND f.sha256 = :h LIMIT 1');
+            $dup->execute([':c' => $class['id'], ':h' => $hash]);
+            if ($row = $dup->fetch()) jsonResponse(['success' => true, 'duplicate' => true, 'name' => $row['original_name'], 'lesson_date' => $row['lesson_date']]);
+        }
+        apTmpClean();
+        $mine = glob(apTmpRoot() . "/$me/*", GLOB_ONLYDIR) ?: [];
+        if (count($mine) >= UP_MAX_OPEN) apFail('too_many_open', 'Too many unfinished uploads: finish or cancel some');
+        $id = bin2hex(random_bytes(12));
+        $dir = apTmpRoot() . "/$me/$id";
+        if (!@mkdir($dir, 0750, true) && !is_dir($dir)) throw new RuntimeException('cannot create ' . $dir);
+        file_put_contents("$dir/meta.json", json_encode(['class_id' => (int)$class['id'], 'name' => $name, 'size' => $size, 'created' => time()]));
+        jsonResponse(['success' => true, 'upload_id' => $id, 'received' => 0, 'chunk' => UP_CHUNK]);
+    }
+
+    if ($action === 'upload_chunk') {
+        // One piece, at the exact offset where the server stopped: a repeated or out-of-order piece is refused with the right offset
+        if (!checkRateLimit('notes_upload_chunk', 3000, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
+        $dir = apTmpDir($me, (string)($in['upload_id'] ?? ''));
+        if (!$dir) apFail('not_found', 'Unknown upload', 404);
+        $meta = apTmpMeta($dir);
+        apClass($db, (int)$meta["class_id"], $me, $isAdmin);
+        $part = $_FILES['chunk'] ?? null;
+        if (!is_array($part) || $part['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($part['tmp_name']) || $part['size'] > 2 * UP_CHUNK) apFail('bad_chunk', 'Bad piece');
+        clearstatcache(true, "$dir/data.part");
+        $have = is_file("$dir/data.part") ? (int)filesize("$dir/data.part") : 0;
+        if ((int)($in['offset'] ?? -1) !== $have) jsonResponse(['success' => false, 'code' => 'offset', 'error' => 'Wrong offset', 'received' => $have], 409);
+        if ($have + $part['size'] > (int)$meta['size']) { apTmpRemove($dir); apFail('too_big', 'More data than announced', 413); }
+        $fh = fopen("$dir/data.part", 'ab');
+        if (!$fh || !flock($fh, LOCK_EX)) throw new RuntimeException('cannot write the piece');
+        $src = fopen($part['tmp_name'], 'rb');
+        stream_copy_to_stream($src, $fh);
+        fclose($src);
+        fflush($fh);
+        flock($fh, LOCK_UN);
+        fclose($fh);
+        jsonResponse(['success' => true, 'received' => $have + (int)$part['size'], 'done' => $have + (int)$part['size'] === (int)$meta['size']]);
+    }
+
+    if ($action === 'upload_cancel') {
+        $dir = apTmpDir($me, (string)($in['upload_id'] ?? ''));
+        if ($dir) apTmpRemove($dir);
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'upload_commit') {
+        // All the files are here: make the item (same checks as a normal upload)
+        [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        if (!checkRateLimit('notes_upload', 60, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
+        $fields = apItemFields($db, $class, $in);
+        $ids = is_array($in['upload_ids'] ?? null) ? array_values(array_unique(array_map('strval', $in['upload_ids']))) : [];
+        if (!$ids && $fields['body'] === '') apFail('empty', 'Add a file or write some text');
+        if (count($ids) > NOTE_MAX_FILES) apFail('too_many_files', 'At most ' . NOTE_MAX_FILES . ' files at a time');
+        $uploads = [];
+        $dirs = [];
+        foreach ($ids as $id) {
+            $dir = apTmpDir($me, $id);
+            if (!$dir) apFail('not_found', 'Unknown upload', 404);
+            $meta = apTmpMeta($dir);
+            if ((int)$meta['class_id'] !== (int)$class['id']) apFail('not_found', 'Unknown upload', 404);
+            clearstatcache(true, "$dir/data.part");
+            $have = is_file("$dir/data.part") ? (int)filesize("$dir/data.part") : 0;
+            if ($have !== (int)$meta['size']) jsonResponse(['success' => false, 'code' => 'incomplete', 'error' => 'A file is not complete', 'upload_id' => $id, 'received' => $have], 409);
+            $uploads[] = ['name' => $meta['name'], 'tmp' => "$dir/data.part", 'size' => $have, 'error' => UPLOAD_ERR_OK, 'local' => true];
+            $dirs[] = $dir;
+        }
+        $itemId = apCommitUploads($db, $class, $me, $fields, $uploads);
+        foreach ($dirs as $d) apTmpRemove($d);
+        jsonResponse(['success' => true, 'id' => $itemId]);
+    }
+
     if ($action === 'upload') {
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         $classId = (int)$class['id'];
@@ -410,59 +597,7 @@ try {
         if (!$uploads && $fields['body'] === '') apFail('empty', 'Add a file or write some text');
         if (count($uploads) > NOTE_MAX_FILES) apFail('too_many_files', 'At most ' . NOTE_MAX_FILES . ' files at a time');
 
-        $limits = classLimits($db, $class);
-        $total = 0;
-        foreach ($uploads as $u) {
-            if (in_array($u['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) || $u['size'] > $limits['file'] * 1048576) {
-                apFail('file_too_large', "\"{$u['name']}\" is larger than {$limits['file']} MB", 413);
-            }
-            if ($u['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($u['tmp'])) apFail('upload_failed', "Upload of \"{$u['name']}\" failed");
-            $total += $u['size'];
-        }
-        if (notesUsedBytes($db, $classId) + $total > $limits['class'] * 1048576) {
-            apFail('class_full', 'The class has used all its space (' . $limits['class'] . ' MB)', 413);
-        }
-
-        // Check every file's real type before keeping any of them
-        foreach ($uploads as $k => $u) {
-            $type = notesFileType($u['tmp'], $u['name']);
-            if (!$type) apFail('bad_type', "\"{$u['name']}\": use photos, PDF, text, Word/PowerPoint or LibreOffice files", 415);
-            $uploads[$k]['type'] = $type;
-        }
-
-        $dir = notesDir($classId);
-        if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) throw new RuntimeException('cannot create ' . $dir);
-        $stored = [];
-        try {
-            foreach ($uploads as $u) {
-                [$ext, $mime] = $u['type'];
-                $name = bin2hex(random_bytes(16)) . '.' . $ext;
-                if (!move_uploaded_file($u['tmp'], "$dir/$name")) throw new RuntimeException('move_uploaded_file failed');
-                $stored[] = ['stored' => $name, 'original' => textCut(basename(str_replace('\\', '/', $u['name'])), 200),
-                             'mime' => $mime, 'size' => $u['size'], 'ext' => $ext];
-            }
-
-            $now = time();
-            $db->exec('BEGIN IMMEDIATE');
-            $db->prepare('INSERT INTO class_items (class_id, subject_id, kind, lesson_date, period, title, body, author_id, source, created_at, updated_at)
-                          VALUES (:c, :s, :k, :d, :p, :t, :b, :a, :src, :now, :now)')
-               ->execute([':c' => $classId, ':s' => $fields['subject_id'], ':k' => $fields['kind'], ':d' => $fields['lesson_date'],
-                          ':p' => $fields['period'], ':t' => $fields['title'], ':b' => $fields['body'], ':a' => $me,
-                          ':src' => 'site', ':now' => $now]);
-            $itemId = (int)$db->lastInsertId();
-            $ins = $db->prepare('INSERT INTO class_item_files (item_id, class_id, stored_name, original_name, mime, size, text, text_status, created_at)
-                                 VALUES (:i, :c, :n, :o, :m, :sz, :tx, :ts, :now)');
-            foreach ($stored as $f) {
-                [$text, $status] = notesExtractText("$dir/{$f['stored']}", $f['ext']);
-                $ins->execute([':i' => $itemId, ':c' => $classId, ':n' => $f['stored'], ':o' => $f['original'], ':m' => $f['mime'],
-                               ':sz' => $f['size'], ':tx' => $text, ':ts' => $status, ':now' => $now]);
-            }
-            $db->exec('COMMIT');
-        } catch (Throwable $e) {
-            if ($db->inTransaction()) $db->exec('ROLLBACK');
-            foreach ($stored as $f) @unlink("$dir/{$f['stored']}");
-            throw $e;
-        }
+        $itemId = apCommitUploads($db, $class, $me, $fields, $uploads);
         jsonResponse(['success' => true, 'id' => $itemId]);
     }
 

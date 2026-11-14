@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 17;
+const DB_SCHEMA_VERSION = 18;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,12 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV18(PDO $db): void {
+    // Fingerprint (sha256) of each uploaded file: the same file sent twice to a class is recognised and not stored again
+    addColumnIfMissing($db, 'class_item_files', 'sha256', "TEXT NOT NULL DEFAULT ''");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_item_files_hash ON class_item_files(class_id, sha256)');
+}
+
 function migrateV17(PDO $db): void {
     // Topics of a subject: from a day to a day (end NULL = still being explained). 'proposed' = suggested by the AI.
     $db->exec("CREATE TABLE IF NOT EXISTS class_topics (
@@ -694,6 +700,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 17) {
             migrateV17($db);
+        }
+        if ($current < 18) {
+            migrateV18($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

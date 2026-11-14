@@ -705,3 +705,13 @@ label:has(> .dp-native) { position: relative; }
 .set-pair { display: grid; gap: 12px; margin: 12px 0; }
 .set-pair .set-sec { margin: 0; }
 @media (min-width: 880px) { .set-pair { grid-template-columns: 1fr 1fr; align-items: start; } }
+
+/* Upload queue box (js/appunti-upload.js) */
+.up-widget { position: fixed; z-index: 900; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(360px, calc(100vw - 24px));
+    background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); display: grid; gap: 8px; }
+.up-line { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.up-failed { color: var(--danger); font-size: 14px; }
+.up-bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.up-bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.up-actions { display: flex; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .up-bar i { transition: none; } }
