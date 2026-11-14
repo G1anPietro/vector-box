@@ -319,6 +319,16 @@
         setLevel(0);
     }
 
+    // On a phone folders and files can be shown as tiles (two per row, no scrolling to reach the bottom) or as a list: remembered
+    const VIEW_KEY = 'vb_arch_view';
+    function paintView() {
+        const tiles = C.stored(VIEW_KEY) !== 'list';
+        $('#arch').classList.toggle('tiles', tiles);
+        $('#view-btn').textContent = tiles ? 'Elenco' : 'Tabella';
+        $('#view-btn').title = tiles ? 'Mostra come elenco' : 'Mostra come tabella';
+    }
+    $('#view-btn').addEventListener('click', () => { C.store(VIEW_KEY, C.stored(VIEW_KEY) === 'list' ? 'tiles' : 'list'); paintView(); });
+    paintView();
     $('#back-btn').addEventListener('click', goBack);
     history.replaceState({ level: 0 }, '');
 

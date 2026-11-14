@@ -6,6 +6,9 @@
     const C = window.AppuntiCommon;
     const { el, getJson, post } = C;
     const $ = (s) => document.querySelector(s);
+    const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
     let classId = null;
     let classes = [];
 
@@ -18,6 +21,78 @@
     }
     function sw(label, checked, onchange, disabled = false) {
         return el('label', { class: 'switch' }, el('input', { type: 'checkbox', checked, disabled, onchange: (ev) => onchange(ev.target.checked, ev.target) }), label);
+    }
+
+
+    /* ---------- notifications received, and this device ---------- */
+    const b64uToBytes = (s) => {
+        const raw = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
+        return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    };
+    const when = (t) => new Date(t * 1000).toLocaleString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+    async function pushBox(box, devices) {
+        if (!pushSupported) {
+            box.replaceChildren(el('span', { text: isIos && !isStandalone
+                ? 'Per ricevere i promemoria sull\'iPhone: tocca Condividi, poi "Aggiungi alla schermata Home", apri gli Appunti da quell\'icona e attiva qui le notifiche.'
+                : 'Questo browser non supporta le notifiche push: i promemoria li trovi comunque qui sotto.' }));
+            return;
+        }
+        let sub = null;
+        try { const reg = await navigator.serviceWorker.getRegistration('./'); sub = reg && await reg.pushManager.getSubscription(); } catch (e) { /* none */ }
+        if (Notification.permission === 'denied') {
+            box.replaceChildren(el('span', { text: 'Hai bloccato le notifiche per questo sito: riattivale dalle impostazioni del browser (lucchetto accanto all\'indirizzo).' }));
+            return;
+        }
+        const redo = () => drawNotifs();
+        const enable = async () => {
+            try {
+                if (await Notification.requestPermission() !== 'granted') { status('Senza il permesso del browser le notifiche non possono arrivare.', 'err'); redo(); return; }
+                const reg = await navigator.serviceWorker.register('appunti-sw.js', { scope: './' });
+                await navigator.serviceWorker.ready;
+                const { public_key: key } = await getJson('../api/notifiche.php?action=vapid');
+                let sb = await reg.pushManager.getSubscription();
+                if (!sb) sb = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(key) });
+                const j = sb.toJSON();
+                await post('../api/notifiche.php', { action: 'subscribe', endpoint: j.endpoint, keys: j.keys });
+                status('Notifiche attivate.', 'ok'); redo();
+            } catch (e) { status('Non sono riuscito ad attivare le notifiche: ' + e.message, 'err'); }
+        };
+        const disable = async () => {
+            try {
+                const reg = await navigator.serviceWorker.getRegistration('./');
+                const sb = reg && await reg.pushManager.getSubscription();
+                if (sb) { await post('../api/notifiche.php', { action: 'unsubscribe', endpoint: sb.endpoint }); await sb.unsubscribe(); }
+                status('Notifiche disattivate su questo dispositivo.', 'ok'); redo();
+            } catch (e) { fail(e); }
+        };
+        const test = async () => {
+            try {
+                const r = await post('../api/notifiche.php', { action: 'test' });
+                status(r.delivered ? 'Prova inviata: dovrebbe arrivare tra pochi secondi.' : 'La prova non è partita: riattiva le notifiche.', r.delivered ? 'ok' : 'err');
+            } catch (e) { fail(e); }
+        };
+        box.replaceChildren(sub
+            ? el('div', {}, el('span', { text: `Notifiche attive su questo dispositivo${devices > 1 ? ` (e su altri ${devices - 1})` : ''}.` }),
+                el('div', { class: 'row' }, el('button', { class: 'ghost mini', text: 'Manda una prova', onclick: test }), el('button', { class: 'ghost mini', text: 'Disattiva qui', onclick: disable })))
+            : el('div', {}, el('span', { text: 'Ricevi i promemoria anche a sito chiuso.' }),
+                el('div', { class: 'row' }, el('button', { class: 'mini', text: 'Attiva le notifiche su questo dispositivo', onclick: enable }))));
+    }
+
+    async function drawNotifs() {
+        const box = document.querySelector('#notifs-box');
+        if (!box) return;
+        let r;
+        try { r = await getJson('../api/notifiche.php?action=list'); } catch (e) { return; }
+        const device = el('div', { class: 'push-box' });
+        const list = el('ul', { class: 'plain notif-list' }, ...(r.notifications.length ? r.notifications.map((n) => el('li', { class: n.read ? '' : 'unread', onclick: () => {
+            const u = new URL(n.url || '/pages/appunti.php', location.origin);
+            if (u.origin === location.origin) location.href = u.href;
+        } }, el('b', { text: n.title }), el('br'), n.body ? el('span', { text: n.body }) : null, el('br'), el('span', { class: 'when', text: when(n.created_at) })))
+            : [el('li', { class: 'muted', text: 'Nessuna notifica ancora.' })]));
+        box.replaceChildren(device, list);
+        pushBox(device, r.devices);
+        if (r.unread) { try { await post('../api/notifiche.php', { action: 'read_all' }); } catch (e) { /* ignore */ } }
     }
 
     async function draw() {
@@ -60,9 +135,10 @@
         pdf.value = C.stored('vb_pdf_mode') || 'auto';
 
         $('#settings-root').replaceChildren(
+            Object.assign(section('Notifiche', 'Su questo dispositivo, e quelle che ti sono arrivate.', el('div', { id: 'notifs-box' })), { id: 'notifiche' }),
             section(`${c.name} · ${c.school}`, 'Queste scelte valgono solo per te.', nameForm,
                 el('p', { class: 'muted small', text: 'Lo vedono solo i compagni di questa classe; nel resto del sito resta il tuo nome utente.' })),
-            section('Notifiche', 'Scegli cosa ricevere. Per riceverle sul telefono a sito chiuso attiva anche le notifiche su questo dispositivo (campanella in Appunti).',
+            section('Cosa ricevere', 'Per questa classe. Sul telefono a sito chiuso arrivano solo se hai attivato le notifiche qui sopra.',
                 sw('Promemoria di verifiche e interrogazioni', p.promemoria, (on) => { p.promemoria = on; slotBox.hidden = !on; sendPrefs(); }), slotBox,
                 sw('Quando sono io a essere interrogato (il pomeriggio prima)', p.turno, (on) => { p.turno = on; sendPrefs(); }),
                 sw('Annunci della bacheca', p.annuncio, (on) => { p.annuncio = on; sendPrefs(); }),
@@ -86,8 +162,11 @@
             classId = pick.id;
             const sel = $('#class-select');
             sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}`, selected: c.id === pick.id })));
-            sel.addEventListener('change', () => { classId = Number(sel.value); C.store(C.CLASS_KEY, String(classId)); draw(); });
+            sel.hidden = classes.length < 2;
+            sel.addEventListener('change', () => { classId = Number(sel.value); C.store(C.CLASS_KEY, String(classId)); draw().then(drawNotifs); });
             await draw();
+            drawNotifs();
+            if (location.hash === '#notifiche') document.getElementById('notifiche').scrollIntoView();
         } catch (e) { fail(e); }
     })();
 })();

@@ -47,35 +47,20 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         <a class="home" href="../index.php">vector-box</a>
         <span class="top-right">
             <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
-            <a class="ghost-link hide-phone" href="appunti-impostazioni.php">Impostazioni</a>
             <a class="btn-link ico-up top-cta" href="appunti-carica.php">Carica</a>
             <a class="ghost-link hide-phone" href="appunti-guida.php">Guida</a>
-            <span class="who"><?= $e($username) ?></span>
-            <button id="bell" class="bell" type="button" aria-label="Notifiche" aria-expanded="false">
-                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg>
+            <span class="who hide-phone"><?= $e($username) ?></span>
+            <a id="bell" class="bell" href="appunti-impostazioni.php" aria-label="Impostazioni e notifiche" title="Impostazioni e notifiche">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
                 <span id="bell-count" class="bell-count" hidden></span>
-            </button>
+            </a>
         </span>
     </header>
 
     <main class="wrap">
-        <div class="head">
-            <h1>Appunti di classe</h1>
-            <label class="pick">
-                <span class="sr">Classe</span>
-                <select id="class-select" aria-label="Classe"></select>
-            </label>
-        </div>
+        <h1 class="sr">Appunti di classe</h1>
         <p id="status" class="status" role="status" aria-live="polite"></p>
 
-        <section id="notif-panel" class="card notif-panel" hidden>
-            <div class="notif-head">
-                <h2>Notifiche</h2>
-                <button id="notif-close" class="ghost mini" type="button">Chiudi</button>
-            </div>
-            <div id="push-box" class="push-box"></div>
-            <ul id="notif-list" class="plain notif-list"></ul>
-        </section>
 
         <!-- No class yet: join with a code or ask for a new class -->
         <section id="welcome" class="card" hidden>
@@ -214,18 +199,18 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 </form>
             </details>
             <div id="cal-tools" class="row cal-tools"></div>
-            <div id="cal-topics"></div>
             <h3 class="section-title">Agenda</h3>
             <div id="events"></div>
+            <div id="cal-topics"></div>
         </section>
 
         <!-- Class: members, code, timetable -->
         <section id="tab-class" class="tab" hidden>
             <div class="card" id="tt-card">
                 <h2>Orario</h2>
+                <div id="tt-days"></div>
                 <p class="muted small tt-manage">Come l'orario stampato: tocca una casella per cambiare materia, aula e orari. Le ore di fila della
                     stessa materia diventano una lezione sola (il laboratorio scrivilo con lo stesso nome della materia).</p>
-                <div id="tt-days"></div>
                 <div class="tt-manage">
                 <label>Valido dal <input type="date" id="tt-from"></label>
                 <button id="tt-save">Salva l'orario</button>
@@ -240,9 +225,14 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 </div>
                 </details>
                 </div>
-                <div id="bell-opt" class="bell-opt"></div>
             </div>
-            <div class="card" id="class-info"></div>
+            <label class="pick card" id="class-pick" hidden>
+                <span>Classe</span>
+                <select id="class-select" aria-label="Classe"></select>
+            </label>
+            <details class="card fold" id="class-more">
+            <summary>Compagni, ruoli, materie e codice della classe</summary>
+            <div id="class-info"></div>
             <div class="card" id="manage-box" hidden>
                 <h2>Gestione</h2>
                 <form id="settings-form" class="row">
@@ -277,6 +267,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 </form>
                 <button id="show-request" class="ghost">Chiedi una nuova classe</button>
             </div>
+            </details>
         </section>
 
         <!-- Admin: requests, switch, limits -->
