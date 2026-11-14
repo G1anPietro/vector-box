@@ -108,8 +108,12 @@ $login = 'login.php?next=appunti.php';
                     <strong>Riassunto</strong>, <strong>Scheda da tenere sotto mano</strong> (una pagina di soli punti chiave, senza spiegazioni:
                     per chi può consultare gli appunti durante la verifica), <strong>Preparazione mirata</strong> (come interroga il prof, domande probabili con le
                     risposte, verifica di prova svolta) e <strong>Quiz</strong> da fare lì sul telefono.</li>
+                <li><strong>Link temporaneo:</strong> in <em>Condividi</em> scegli <em>Manda il link</em> (vale 1, 7 o 30 giorni): chi lo apre vede il file o il
+                    documento in una pagina, senza account, e può ingrandire, scaricare e condividere (gli schemi anche in PNG e SVG). Nelle <em>Impostazioni</em>
+                    vedi i tuoi link e puoi revocarli. Chi ha il link vede solo quel materiale.</li>
+                <li><strong>Gesti sugli schemi e sulle foto:</strong> due dita per zoomare, un dito per muoverti, doppio tocco per adattare o ingrandire.</li>
                 <li><strong>Schermo intero e Condividi:</strong> documenti, schemi e file hanno l'icona <em>schermo intero</em> (le quattro frecce agli angoli, in alto a destra; <em>Chiudi</em> in basso) e <em>Condividi</em>:
-                    si apre il menu del telefono e scegli Gmail, WhatsApp, Drive… con il tuo account, non quello del sito. Su computer il file si scarica
+                    scegli prima in che formato (per uno schema: PNG, SVG, testo) e poi si apre il menu del telefono: scegli Gmail, WhatsApp, Drive… con il tuo account, non quello del sito. Su computer il file si scarica
                     (da allegare) o si apre la tua posta con il testo già scritto.</li>
                 <li><strong>Schemi:</strong> col pulsante <em>Scarica</em> sopra lo schema li prendi come <strong>SVG</strong> (si modifica con Inkscape,
                     Illustrator, Figma, LibreOffice Draw: testi e riquadri restano separati) o come <strong>PNG</strong> (immagine da mandare), a colori o in

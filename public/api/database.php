@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 26;
+const DB_SCHEMA_VERSION = 27;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,24 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV27(PDO $db): void {
+    // Temporary links to one piece of class material (a file, a study document, a note): the token is stored only as a hash
+    $db->exec("CREATE TABLE IF NOT EXISTS share_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_hash TEXT NOT NULL UNIQUE,
+        class_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        ref_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        views INTEGER NOT NULL DEFAULT 0,
+        revoked INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_share_user ON share_links(user_id, created_at)');
+}
+
 function migrateV26(PDO $db): void {
     // Material by date AND topic: which topic of the subject an upload belongs to (topic_manual = chosen by a person, never
     // changed by the automatic assignment), and which topic a study document is about (when its material is all of one topic)
@@ -859,6 +877,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 26) {
             migrateV26($db);
+        }
+        if ($current < 27) {
+            migrateV27($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

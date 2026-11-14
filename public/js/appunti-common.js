@@ -354,7 +354,7 @@
             try { await navigator.share({ title: title || '', ...(text ? { text } : {}), ...(url ? { url } : {}) }); return 'shared'; } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
         }
         if (blob) { saveBlob(blob, name); toast(why === 'no-share' ? 'Qui non c\'è il menu di condivisione: ho scaricato il file, allegalo alla tua e-mail.' : 'Questo browser non condivide i file: l\'ho scaricato. Prova con Chrome per il menu di condivisione.', 'ok', 6000); return 'saved'; }
-        if (text) { window.open('mailto:?subject=' + encodeURIComponent(title || '') + '&body=' + encodeURIComponent(text.slice(0, 1800)), '_self'); return 'mailto'; }
+        if (text || url) { window.open('mailto:?subject=' + encodeURIComponent(title || '') + '&body=' + encodeURIComponent(((text || '') + (url ? '\n\n' + url : '')).slice(0, 1800)), '_self'); return 'mailto'; }
         return 'none';
     }
     /** A schema as plain indented text (for a share sheet that cannot take a picture). */
@@ -365,6 +365,50 @@
         return out.join('\n');
     }
     const markdownFile = (title, content) => ({ blob: new Blob([`# ${title}\n\n${content}\n`], { type: 'text/plain;charset=utf-8' }), name: String(title).replace(/[\\/:*?"<>|]+/g, '-') + '.md' });
+
+    /** A temporary link to a file / document / note (the server makes it); returns the full address. */
+    async function makeShareLink(ref, days) {
+        const r = await post('../api/appunti.php', { action: 'share_create', kind: ref.kind, id: ref.id, days });
+        return location.origin + r.path;
+    }
+
+    /**
+     * "Condividi": a window to choose WHAT to send (the format) and then opens the phone's share sheet with it. `choices` =
+     * [{label, hint, get: async () => ({blob, name, text})}]. With `ref` ({kind: 'file'|'doc'|'item', id}) there is also the temporary link
+     * (opens the material in a page, no login needed), valid 1, 7 or 30 days, to send or copy.
+     */
+    function shareDialog(title, choices, ref) {
+        const dlg = el('dialog', { class: 'tt-dialog share-dialog' });
+        const fail = (e) => toast(e && e.message && !/^Failed|NetworkError|Load failed/.test(e.message) ? e.message : 'Non sono riuscito a preparare la condivisione.', 'err');
+        const go = (fn) => async () => { dlg.close(); try { await fn(); } catch (e) { fail(e); } };
+        const days = el('select', { 'aria-label': 'Quanto vale il link' }, el('option', { value: '1', text: '1 giorno' }), el('option', { value: '7', text: '7 giorni', selected: true }), el('option', { value: '30', text: '30 giorni' }));
+        const opt = (label, hint, fn) => el('button', { type: 'button', class: 'ghost share-opt', onclick: go(fn) }, el('b', { text: label }), el('small', { class: 'muted', text: hint }));
+        dlg.append(el('div', { class: 'stack' },
+            el('h3', { text: 'Condividi' }),
+            el('p', { class: 'muted small', text: 'Scegli cosa mandare: poi si apre il menu del telefono con le tue app (Gmail, WhatsApp, Drive…).' }),
+            ...choices.map((c) => opt(c.label, c.hint || '', async () => { await shareOut({ ...(await c.get()), title }); })),
+            ...(ref ? [el('h3', { text: 'Link temporaneo' }),
+                el('p', { class: 'muted small', text: 'Chi ha il link apre il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere. Si può revocare dalle Impostazioni.' }),
+                el('label', { text: 'Il link vale' }, days),
+                opt('Manda il link', 'menu del telefono', async () => { await shareOut({ title, text: title, url: await makeShareLink(ref, Number(days.value)) }); }),
+                opt('Copia il link', 'da incollare dove vuoi', async () => { await navigator.clipboard.writeText(await makeShareLink(ref, Number(days.value))); toast('Link copiato.', 'ok'); })] : []),
+            el('button', { type: 'button', class: 'ghost', text: 'Annulla', onclick: () => dlg.close() })));
+        dlg.addEventListener('close', () => dlg.remove());
+        dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
+        document.body.append(dlg);
+        dlg.showModal();
+    }
+    /** The formats a schema can be sent in. */
+    const schemaChoices = (data) => [
+        { label: 'Immagine PNG a colori', hint: 'per chat e social', get: async () => { const f = await schemaBlob(data, 'png', false, data.title); return { blob: f.blob, name: f.name }; } },
+        { label: 'Immagine PNG bianco e nero', hint: 'per stampare', get: async () => { const f = await schemaBlob(data, 'png', true, data.title); return { blob: f.blob, name: f.name }; } },
+        { label: 'SVG modificabile (colori)', hint: 'per Inkscape, Figma…', get: async () => { const f = await schemaBlob(data, 'svg', false, data.title); return { blob: f.blob, name: f.name }; } },
+        { label: 'SVG modificabile (bianco e nero)', hint: '', get: async () => { const f = await schemaBlob(data, 'svg', true, data.title); return { blob: f.blob, name: f.name }; } },
+        { label: 'Solo testo (elenco dei punti)', hint: 'nel corpo del messaggio', get: async () => ({ text: schemaText(data) }) }];
+    /** The formats of a written document / note. */
+    const textChoices = (title, content) => [
+        { label: 'File .md', hint: 'allegato, con la formattazione', get: async () => markdownFile(title, content) },
+        { label: 'Solo testo', hint: 'nel corpo del messaggio', get: async () => ({ text: `${title}\n\n${content}` }) }];
 
     /**
      * Full screen for a block (a document, a schema, a preview): the browser's own full screen when there is one (not on iPhone),
@@ -390,6 +434,46 @@
     }
     document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && fsOn) fsOn.exit(); });
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && fsOn) fsOn.exit(); });
+    /**
+     * Touch gestures for a scrollable block: two fingers zoom (around the fingers, and moving them moves the view), a double tap on the
+     * background zooms in / back out. One finger keeps scrolling as usual. getScale() reads the current zoom, setScale(z) applies it
+     * and returns the zoom really used; onDouble() is called on a double tap.
+     */
+    function pinchZoom(box, { getScale, setScale, onDouble }) {
+        let st = null; let lastTap = 0; let tapAt = null;
+        const mid = (t) => { const r = box.getBoundingClientRect(); return { x: (t[0].clientX + t[1].clientX) / 2 - r.left, y: (t[0].clientY + t[1].clientY) / 2 - r.top }; };
+        const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) || 1;
+        box.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                const m = mid(e.touches); const s = getScale();
+                st = { d: dist(e.touches), s, cx: (box.scrollLeft + m.x) / s, cy: (box.scrollTop + m.y) / s };
+                tapAt = null;
+            } else if (e.touches.length === 1) tapAt = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+        }, { passive: true });
+        box.addEventListener('touchmove', (e) => {
+            if (tapAt && Math.hypot(e.touches[0].clientX - tapAt.x, e.touches[0].clientY - tapAt.y) > 10) tapAt = null;
+            if (!st || e.touches.length !== 2) return;
+            e.preventDefault();
+            const s = setScale(st.s * dist(e.touches) / st.d);
+            const m = mid(e.touches);
+            box.scrollLeft = st.cx * s - m.x; box.scrollTop = st.cy * s - m.y;
+        }, { passive: false });
+        box.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) st = null;
+            if (tapAt && e.touches.length === 0 && Date.now() - tapAt.t < 300 && !(e.target.closest && e.target.closest('button, a, .mm-node, summary'))) {
+                const now = Date.now();
+                if (now - lastTap < 350 && onDouble) { onDouble(); lastTap = 0; } else lastTap = now;
+            }
+            tapAt = null;
+        }, { passive: true });
+    }
+    /** A picture that can be zoomed with two fingers (or double tap) inside its frame; scrolls when bigger than the frame. */
+    function enableZoom(box, img) {
+        let scale = 1;
+        const set = (z) => { scale = Math.max(1, Math.min(5, z)); img.style.width = (scale * 100) + '%'; return scale; };
+        pinchZoom(box, { getScale: () => scale, setScale: set, onDouble: () => set(scale > 1.2 ? 1 : 2.5) });
+    }
+
     /** The classic "four corners" full screen icon (as on video players): a small square button with an SVG, no text. */
     function fullButton(getTarget, onChange, cls = '') {
         const NS = 'http://www.w3.org/2000/svg';
@@ -406,7 +490,7 @@
      * A schema (concept map) written by the AI as JSON {title, children:[{label, note, children}]}: drawn as a tree with
      * branches that open and close. Text only (light, fast, readable without the picture).
      */
-    function renderSchema(content) {
+    function renderSchema(content, opts = {}) {
         let data = null;
         try { data = typeof content === 'string' ? JSON.parse(content) : content; } catch (e) { /* below */ }
         if (!data || !Array.isArray(data.children)) return el('p', { class: 'empty', text: 'Schema non leggibile.' });
@@ -484,10 +568,12 @@
         }
         const map = el('div', { class: 'mm', tabIndex: 0, 'aria-label': 'Mappa dello schema: trascina per spostarti' }, canvas);
         let scale = 1;
-        const zoom = (z) => { scale = Math.max(0.3, Math.min(2, z)); canvas.style.zoom = String(scale); };
+        const zoom = (z) => { scale = Math.max(0.3, Math.min(3, z)); canvas.style.zoom = String(scale); return scale; };
         const fit = () => { canvas.style.zoom = '1'; drawLinks(); const w = canvas.scrollWidth || 1; const h = canvas.scrollHeight || 1; const big = wrap.classList.contains('is-fs');
             zoom(big ? Math.min(2, (map.clientWidth - 32) / w, (map.clientHeight - 32) / h) : Math.min(1, (map.clientWidth - 16) / w));
             map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2; };
+        // phone: two fingers zoom, double tap on the background fits / enlarges (no need to reach the buttons)
+        pinchZoom(map, { getScale: () => scale, setScale: zoom, onDouble: () => { if (scale < 0.95 || scale > 1.05) { canvas.style.zoom = '1'; scale = 1; } else fit(); } });
         // drag to pan (mouse); touch screens scroll natively
         let moved = false;
         let drag = null;
@@ -525,7 +611,7 @@
             item('PNG bianco e nero', 'immagine', () => downloadSchema(data, 'png', true, data.title)),
             item('SVG a colori', 'modificabile', () => downloadSchema(data, 'svg', false, data.title)),
             item('SVG bianco e nero', 'modificabile', () => downloadSchema(data, 'svg', true, data.title)),
-            item('Condividi…', 'Gmail, WhatsApp…', async () => { const f = await schemaBlob(data, 'png', false, data.title); await shareOut({ blob: f.blob, name: f.name, title: String(data.title || 'Schema'), text: schemaText(data) }); }));
+            item('Condividi…', 'scegli il formato', async () => shareDialog(String(data.title || 'Schema'), schemaChoices(data), opts.ref)));
         const dlBtn = el('button', { type: 'button', class: 'mini dl-btn', text: 'Scarica', 'aria-expanded': 'false', onclick: (ev) => { ev.stopPropagation(); const open = menu.hidden; menu.hidden = !open; dlBtn.setAttribute('aria-expanded', String(open)); } });
         document.addEventListener('click', (ev) => { if (!menu.hidden && !menu.contains(ev.target)) closeMenu(); });
         const dl = el('span', { class: 'schema-dl' }, dlBtn, menu);
@@ -893,7 +979,7 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
     })();
 
-    window.AppuntiCommon = { schemaText, shareOut, markdownFile, schemaBlob, toggleFull, fullButton, weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    window.AppuntiCommon = { shareDialog, schemaChoices, textChoices, makeShareLink, pinchZoom, enableZoom, saveBlob, schemaText, shareOut, markdownFile, schemaBlob, toggleFull, fullButton, weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', scheda: 'Scheda', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

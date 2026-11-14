@@ -17,6 +17,24 @@
     const saved = (m) => { status(typeof m === 'string' ? m : 'Salvato.', 'ok'); setTimeout(() => status(''), 2000); };
     const fail = (e) => status(e.message, 'err');
 
+    /** My temporary links (made with "Condividi"): who opened them, when they expire, and a button to revoke each one. */
+    function linksSection() {
+        const box = el('div', { class: 'stack' }, el('p', { class: 'muted small', text: 'Carico…' }));
+        const load = async () => {
+            try {
+                const { links } = await getJson('../api/appunti.php?action=share_list');
+                box.replaceChildren(...(links.length ? links.map((l) => el('div', { class: 'row link-row' },
+                    el('span', { class: 'grow' }, el('b', { text: l.title }), el('small', { class: 'muted', text: ` · scade il ${new Date(l.expires_at * 1000).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} · aperto ${l.views} ${l.views === 1 ? 'volta' : 'volte'}` })),
+                    el('button', { type: 'button', class: 'ghost mini danger', text: 'Revoca', onclick: async () => {
+                        if (!confirm(`Revocare il link a «${l.title}»? Chi lo ha non potrà più aprirlo.`)) return;
+                        try { await C.post('../api/appunti.php', { action: 'share_revoke', id: l.id }); await load(); } catch (e) { fail(e); }
+                    } }))) : [el('p', { class: 'muted small', text: 'Nessun link attivo. Li crei con "Condividi" su un file o un documento.' })]));
+            } catch (e) { box.replaceChildren(el('p', { class: 'muted small', text: 'Non riesco a caricare i link.' })); }
+        };
+        load();
+        return section('Link temporanei', 'Chi ha il link apre il materiale senza account, finché non scade o lo revochi.', box);
+    }
+
     function section(title, hint, ...children) {
         return el('section', { class: 'card set-sec' }, el('h2', { text: title }), hint ? el('p', { class: 'muted small', text: hint }) : null, ...children);
     }
@@ -335,7 +353,8 @@
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
             section('Riassunto automatico', null, summaryBox)),
             section('Riepilogo settimanale', null, digestBox),
-            section('Appunti mancanti', null, missingBox));
+            section('Appunti mancanti', null, missingBox),
+            linksSection());
     }
 
     window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });

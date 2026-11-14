@@ -130,8 +130,8 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                             </optgroup>
                         </select>
                     </label>
+                    <label>Materia <select name="subject_id" form="ai-form"></select></label>
                     <label class="for-event">Per quale verifica <select name="event_id" form="ai-form"></select></label>
-                    <label class="for-lesson" hidden>Materia <select name="subject_id" form="ai-form"></select></label>
                     <label class="for-lesson" hidden>Giorno della lezione <input type="date" name="lesson_date" form="ai-form"></label>
                 </div>
             </div>
@@ -162,6 +162,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
 
             <form id="ai-form" class="stack ai-step">
                 <h3 class="step"><span class="n">4</span> Carica la risposta dell'AI</h3>
+                <p id="ai-format" class="note-box small"></p>
                 <label>Incolla qui la risposta <textarea name="content" rows="8" placeholder="Il testo che ti ha scritto l'AI"></textarea></label>
                 <label>…oppure scegli un file dell'AI (.md, .txt, .json, PDF, Word, PowerPoint, immagine) <input type="file" name="file" accept=".md,.txt,.json,.pdf,.doc,.docx,.odt,.ppt,.pptx,.rtf,image/*,text/plain,text/markdown,application/json,application/pdf"></label>
                 <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>

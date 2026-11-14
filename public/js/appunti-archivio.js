@@ -262,15 +262,18 @@
                 const b = ev.currentTarget; b.disabled = true;
                 try {
                     if (en.type === 'file') {
-                        const r = await fetch(fileUrl(en.file.id), { credentials: 'same-origin' });
-                        if (!r.ok) throw new Error('file');
-                        await C.shareOut({ blob: await r.blob(), name: en.file.name, title: en.file.name, url: new URL(fileUrl(en.file.id), location.href).href });
+                        C.shareDialog(en.file.name, [{ label: 'Il file', hint: en.file.name, get: async () => {
+                            const r = await fetch(fileUrl(en.file.id), { credentials: 'same-origin' });
+                            if (!r.ok) throw new Error('Non riesco a leggere il file.');
+                            return { blob: await r.blob(), name: en.file.name };
+                        } }], { kind: 'file', id: en.file.id });
                     } else if (en.type === 'text') {
-                        await C.shareOut({ title, text: `${title}\n\n${en.item.body}` });
+                        C.shareDialog(title, C.textChoices(title, en.item.body), { kind: 'item', id: en.item.id });
                     } else {
                         const { doc } = await getJson(`../api/appunti.php?action=doc&id=${en.id}`);
-                        if (doc.kind === 'schema') { const d = JSON.parse(doc.content); const f = await C.schemaBlob(d, 'png', false, d.title || doc.title); await C.shareOut({ blob: f.blob, name: f.name, title: doc.title, text: C.schemaText(d) }); }
-                        else { const f = C.markdownFile(doc.title, doc.content); await C.shareOut({ blob: f.blob, name: f.name, title: doc.title, text: `${doc.title}\n\n${doc.content}` }); }
+                        const ref = ['quiz', 'domande'].includes(doc.kind) ? null : { kind: 'doc', id: doc.id };
+                        if (doc.kind === 'schema') C.shareDialog(doc.title, C.schemaChoices(JSON.parse(doc.content)), ref);
+                        else C.shareDialog(doc.title, C.textChoices(doc.title, doc.content), ref);
                     }
                 } catch (e) { C.toast('Non riesco a condividerlo: usa "Scarica".', 'err'); } finally { b.disabled = false; }
             } });
@@ -296,7 +299,7 @@
                 const open = el('a', { class: 'ghost-link', href: fileUrl(f.id), target: '_blank', rel: 'noopener', text: 'Apri' });
                 const meta = el('p', { class: 'muted small', text: `${en.meta}${f.text_status === 'pending' ? ' · trascrizione in arrivo' : ''}` });
                 if (f.mime.startsWith('image/') && !/heic|heif/.test(f.mime)) {
-                    pv.replaceChildren(head(f.name, open, dl), meta, el('img', { class: 'pv-img', src: fileUrl(f.id), alt: f.name }), await textBlock(f, true));
+                    pv.replaceChildren(head(f.name, open, dl), meta, imageBox(fileUrl(f.id), f.name), await textBlock(f, true));
                 } else if (f.mime.startsWith('audio/')) {
                     pv.replaceChildren(head(f.name, dl), meta, el('audio', { class: 'pv-audio', controls: true, preload: 'metadata', src: fileUrl(f.id) }), await textBlock(f, true));
                 } else if (f.mime === 'application/pdf') {
@@ -310,7 +313,7 @@
                     C.looksLikeMarkdown(it.body) ? el('div', { class: 'md' }, md(it.body)) : el('div', { class: 'pv-text', text: it.body }));
             } else {
                 const { doc } = await getJson(`../api/appunti.php?action=doc&id=${en.id}`);
-                const body = doc.kind === 'quiz' ? quizList(doc.content) : doc.kind === 'schema' ? C.renderSchema(doc.content)
+                const body = doc.kind === 'quiz' ? quizList(doc.content) : doc.kind === 'schema' ? C.renderSchema(doc.content, { ref: { kind: 'doc', id: doc.id } })
                     : doc.kind === 'domande' ? C.renderQuestions(doc.content) : el('div', { class: 'md' }, md(doc.content));
                 pv.replaceChildren(head(doc.title, el('a', { class: 'ghost-link', href: `appunti.php?class=${classId}&tab=study`, text: 'Apri in Studio' })),
                     el('p', { class: 'muted small', text: doc.manual ? `Fatto con un'altra AI, caricato da ${doc.author || '?'}` : 'Scritto dall\'AI dal materiale della classe: può sbagliare, controlla.' }),
@@ -320,6 +323,14 @@
             }
             pv.scrollTop = 0;
         } catch (e) { pv.replaceChildren(el('p', { class: 'empty', text: e.message })); }
+    }
+
+    /** A picture in a frame: two-finger zoom and double tap on a phone. */
+    function imageBox(src, alt) {
+        const img = el('img', { class: 'pv-img', src, alt });
+        const box = el('div', { class: 'shared-img' }, img);
+        C.enableZoom(box, img);
+        return box;
     }
 
     /** The text the site has for a file: what was extracted (Word, slides, text) or the AI transcription (photos, PDF). */

@@ -649,7 +649,7 @@ ${lines.join('\n')}
                 try { quiz = JSON.parse(doc.content); } catch (e) { /* shown as text below */ }
                 body.replaceChildren(quiz ? renderQuiz(quiz, (n, choice) => C.rawPost('../api/appunti.php', { action: 'quiz_answer', doc_id: doc.id, q: n, choice })) : el('p', { text: 'Quiz non leggibile.' }));
             } else if (doc.kind === 'schema') {
-                body.replaceChildren(window.AppuntiCommon.renderSchema(doc.content));
+                body.replaceChildren(window.AppuntiCommon.renderSchema(doc.content, { ref: { kind: 'doc', id: doc.id } }));
             } else if (doc.kind === 'domande') {
                 body.replaceChildren(window.AppuntiCommon.renderQuestions(doc.content));
             } else {
@@ -670,16 +670,13 @@ ${lines.join('\n')}
     $('#doc-back').addEventListener('click', () => { store(DOC_KEY, ''); $('#doc-view').hidden = true; $('#study-list').hidden = false; if (!openDoc) loadReview(); });
     $('#doc-print').addEventListener('click', () => window.print());
     $('#doc-full-slot').append(C.fullButton(() => $('#doc-view')));
-    $('#doc-share').addEventListener('click', async () => {
+    $('#doc-share').addEventListener('click', () => {
         if (!openDoc) return;
+        const ref = { kind: 'doc', id: openDoc.id };
         if (openDoc.kind === 'schema') {
             let data = null; try { data = JSON.parse(openDoc.content); } catch (e) { return; }
-            const f = await C.schemaBlob(data, 'png', false, data.title || openDoc.title);
-            await C.shareOut({ blob: f.blob, name: f.name, title: openDoc.title, text: C.schemaText(data) });
-        } else {
-            const f = C.markdownFile(openDoc.title, openDoc.content);
-            await C.shareOut({ blob: f.blob, name: f.name, title: openDoc.title, text: `${openDoc.title}\n\n${openDoc.content}` });
-        }
+            C.shareDialog(openDoc.title, C.schemaChoices(data), ref);
+        } else C.shareDialog(openDoc.title, C.textChoices(openDoc.title, openDoc.content), ref);
     });
     $('#doc-download').addEventListener('click', () => {
         if (!openDoc) return;

@@ -155,12 +155,24 @@
         try { events = (await getJson(`../api/appunti.php?action=events&class_id=${current.id}`)).events.filter((e) => e.kind !== 'altro'); } catch (e) { /* none */ }
         events.sort((a, b) => (a.date < b.date ? 1 : -1));
         aiEvents = events;
-        f.event_id.replaceChildren(...(events.length
-            ? events.map((e) => el('option', { value: e.id, text: `${EVENT_KINDS[e.kind]} di ${e.subject} · ${C.dayFmt.format(C.parseDate(e.date))}` }))
-            : [el('option', { value: '', text: 'Nessuna verifica in calendario' })]));
+        fillEventOptions();
         f.lesson_date.value = f.lesson_date.value || todayStr();
         toggleAiTarget();
     }
+    /** The tests of the chosen subject (the subject is chosen first, in step 1). */
+    function fillEventOptions(keep) {
+        const f = $('#ai-form');
+        const mine = aiEvents.filter((e) => String(e.subject_id) === f.subject_id.value);
+        f.event_id.replaceChildren(...(mine.length
+            ? mine.map((e) => el('option', { value: e.id, text: `${EVENT_KINDS[e.kind]} · ${C.dayFmt.format(C.parseDate(e.date))}` }))
+            : [el('option', { value: '', text: 'Nessuna verifica di questa materia in calendario' })]));
+        if (keep && [...f.event_id.options].some((o) => o.value === keep)) f.event_id.value = keep;
+    }
+    /** What the answer of the other AI must look like for the chosen document (step 4). */
+    const FORMAT_HINT = {
+        schema: 'Lo schema si dà al sito come testo in formato JSON (lo scrive l\'AI con il prompt del passo 3): incolla la risposta qui sotto o carica un file .json. Non servono immagini: il sito lo disegna come mappa, e poi lo scarichi in PNG o SVG.',
+        quiz: 'Il quiz si dà al sito come testo in formato JSON (lo scrive l\'AI con il prompt del passo 3): incolla la risposta o carica un file .json, così com\'è.',
+        _text: 'Questo documento si dà al sito come testo Markdown: incolla la risposta qui sotto, oppure carica un file .md o .txt. Va bene anche un PDF, un Word o una foto: si salva come materiale e il sito lo legge.' };
     /** Downloads the material for what was chosen in step 1: a test (its material since the previous test) or one lesson day. */
     async function getMaterial(action, btn) {
         const f = $('#ai-form');
@@ -196,11 +208,13 @@
     $('#aiget-zip').addEventListener('click', (ev) => getMaterial('zip', ev.currentTarget));
     function toggleAiTarget() {
         const lesson = $('#ai-form').kind.value === 'lezione';
+        $('#ai-format').textContent = FORMAT_HINT[$('#ai-form').kind.value] || FORMAT_HINT._text;
         $$('#p-ai .for-lesson').forEach((x) => { x.hidden = !lesson; });
         $$('#p-ai .for-event').forEach((x) => { x.hidden = lesson; });
         showPrompt();
     }
     $('#p-ai [name="kind"]').addEventListener('change', toggleAiTarget);
+    $('#p-ai [name="subject_id"]').addEventListener('change', () => fillEventOptions());
 
     /* Step 3: the exact text to give the AI for the chosen document (the same prompts that are inside the downloaded file) */
     const promptCache = {};
@@ -331,7 +345,8 @@
             }
             if (params.get('drop')) { const dropped = await C.takeHandOff(); if (dropped.length) { choose('files'); addFiles(dropped); } history.replaceState(null, '', 'appunti-carica.php'); }
             const ev = params.get('event');
-            if (ev && [...$('#ai-form').elements.event_id.options].some((o) => o.value === ev)) $('#ai-form').elements.event_id.value = ev;
+            const evo = ev && aiEvents.find((x) => String(x.id) === ev);
+            if (evo) { $('#ai-form').elements.subject_id.value = String(evo.subject_id); fillEventOptions(ev); }
         } catch (e) { status(e.message, 'err'); }
     })();
 })();

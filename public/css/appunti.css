@@ -831,6 +831,18 @@ html.has-fs { overflow: hidden; }
 .fs-icon { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 10px; background: var(--card); color: var(--text); border: 1px solid var(--line); cursor: pointer; }
 .fs-icon:hover { border-color: var(--accent); color: var(--accent); }
 .mm-frame { position: relative; }
+.note-box { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--card); border-radius: 6px; }
+.share-dialog { max-height: 90vh; overflow-y: auto; }
+.share-dialog .stack { gap: 8px; }
+.share-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; min-height: 48px; }
+.share-opt small { font-size: 12px; }
+.share-dialog h3 { margin: 8px 0 0; }
+.shared-img { position: relative; overflow: auto; max-height: 78vh; border: 1px solid var(--line); border-radius: 12px; touch-action: pan-x pan-y; }
+.shared-img img { display: block; width: 100%; max-width: none; height: auto; }
+.is-fs.shared-img, .is-fs .shared-img { max-height: none; height: calc(100vh - 24px); }
+.shared-page { max-width: 960px; margin: 0 auto; padding: 16px 16px 40px; }
+.shared-page .row { margin: 8px 0 14px; flex-wrap: wrap; }
+.shared-doc.is-fs { padding-bottom: 80px; }
 .fs-icon.on-map { position: absolute; top: 8px; right: 8px; z-index: 5; background: rgba(28, 31, 38, 0.85); }
 .schema[data-view="list"] .fs-icon.on-map { display: none; }
 .is-fs .mm { max-height: none; height: calc(100vh - 120px); }
