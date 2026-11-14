@@ -184,6 +184,7 @@
             try { await post('../api/notifiche.php', { action: 'save_prefs', class_id: classId, prefs: p }); saved(); } catch (e) { fail(e); }
         };
         let digestRow = null;
+        let hourRow = null;
         const up = window.AppuntiUpload.settings();
         const slotLabel = { d2: 'Due giorni prima, alle 16:00', d1: 'Il giorno prima, alle 16:00', sera: 'La sera prima, alle 21:00' };
 
@@ -209,6 +210,9 @@
         const pdf = el('select', { 'aria-label': 'Come si aprono i PDF', onchange: (ev) => { C.store('vb_pdf_mode', ev.target.value); saved(); } },
             el('option', { value: 'auto', text: 'Testo sul telefono, pagine sul computer' }), el('option', { value: 'text', text: 'Sempre il testo' }), el('option', { value: 'pages', text: 'Sempre le pagine' }));
         pdf.value = C.stored('vb_pdf_mode') || 'auto';
+        const openTab = el('select', { 'aria-label': 'Gli Appunti si aprono su', onchange: (ev) => { C.store('vb_open_tab', ev.target.value); saved(); } },
+            ...[['last', 'L\'ultima scheda che hai usato'], ['board', 'Bacheca'], ['class', 'Classe (con l\'orario)'], ['calendar', 'Calendario'], ['study', 'Studio'], ['score', 'Classifica'], ['material', 'Materiale']].map(([v, t]) => el('option', { value: v, text: t })));
+        openTab.value = C.stored('vb_open_tab') || 'last';
 
         // class code and the automatic summary (who may manage settings changes the summary; the code is for who manages members)
         const canSettings = (c.perms || []).includes('settings');
@@ -308,6 +312,10 @@
                 } })),
                 sw('Promemoria di verifiche e interrogazioni', p.promemoria, (on) => { p.promemoria = on; slotBox.hidden = !on; sendPrefs(); }), slotBox,
                 sw('Avvisami il pomeriggio prima se sono di turno per l\'interrogazione', p.turno, (on) => { p.turno = on; sendPrefs(); }),
+                sw('Ricordami il ripasso di ogni giorno (se ci sono domande da ripassare)', p.ripasso_on, (on) => { p.ripasso_on = on; hourRow.hidden = !on; sendPrefs(); }),
+                (() => { const h = el('select', { 'aria-label': 'Ora del promemoria del ripasso', onchange: () => { p.ripasso_hour = Number(h.value); sendPrefs(); } },
+                    ...Array.from({ length: 24 }, (_, i) => el('option', { value: i, text: `${String(i).padStart(2, '0')}:00` }))); h.value = String(p.ripasso_hour);
+                    hourRow = el('div', { class: 'set-sub' }, el('label', { text: 'A che ora' }, h)); hourRow.hidden = !p.ripasso_on; return hourRow; })(),
                 sw('Il riepilogo della settimana', p.riepilogo, (on) => { p.riepilogo = on; sendPrefs(); }),
                 sw('Annunci della bacheca', p.annuncio, (on) => { p.annuncio = on; sendPrefs(); }),
                 sw('5 minuti prima della fine di ogni ora: materia e aula dopo', prefs.bell, async (on, box) => {
@@ -320,6 +328,7 @@
             ...(sc ? [scoreSection(sc, c)] : []),
             ...(C.canSpeak() ? [voiceSection()] : []),
             section('Come lo vedo', 'Su questo dispositivo.',
+                el('label', { text: 'Gli Appunti si aprono su' }, openTab),
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),
             el('div', { class: 'set-pair' },

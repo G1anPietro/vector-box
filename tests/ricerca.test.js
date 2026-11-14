@@ -76,3 +76,15 @@ test('another class cannot search this one; empty or odd queries are harmless', 
     }
     assert.equal((await mario.get(`/api/appunti.php?action=search&class_id=${classId}&q=x`, {})).status !== 500, true);
 });
+
+test('where I stopped reading is kept on the server, per user, only forwards', async () => {
+    const get = async (c, ref) => (await c.get(`/api/appunti.php?action=progress&ref=${encodeURIComponent(ref)}`)).json.idx;
+    assert.equal(await get(mario, 'doc1'), -1);
+    assert.equal((await ap(mario, { action: 'progress_set', ref: 'doc1', idx: 4 })).status, 200);
+    assert.equal(await get(mario, 'doc1'), 4);
+    await ap(mario, { action: 'progress_set', ref: 'doc1', idx: 2 });
+    assert.equal(await get(mario, 'doc1'), 4, 'going back does not lose the place');
+    assert.equal(await get(peach, 'doc1'), -1, 'each user has their own');
+    assert.equal((await ap(mario, { action: 'progress_set', ref: 'doc1', idx: 9999 })).json.code, 'bad_request');
+    assert.equal((await mario.post('/api/appunti.php', { action: 'progress_set', ref: 'x', idx: 1 }, { csrf: false })).status, 403);
+});

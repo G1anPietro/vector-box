@@ -68,3 +68,21 @@ test('the class chooses day and hour; a member can switch it off; who is on a tu
     await worker(wed);
     assert.equal(site.db("SELECT COUNT(*) AS n FROM notifications WHERE kind = 'riepilogo'")[0].n, 0);
 });
+
+test('the review reminder is off by default; at the member\'s hour it says how many questions are due, once a day', async () => {
+    const luigiId = site.db("SELECT id FROM accounts WHERE username = 'rs_luigi'")[0].id;
+    site.db("DELETE FROM notifications");
+    site.db("INSERT INTO review_cards (user_id, doc_id, q_index, class_id, box, due_date, question, updated_at) VALUES (?, 1, 0, ?, 0, '2000-01-01', '{}', 1)", [luigiId, classId]);
+    site.db("INSERT INTO review_cards (user_id, doc_id, q_index, class_id, box, due_date, question, updated_at) VALUES (?, 1, 1, ?, 0, '2000-01-01', '{}', 1)", [luigiId, classId]);
+    const evening = Math.floor(Date.parse('2030-02-04T20:30:00Z') / 1000);
+    const reviews = () => site.db("SELECT title FROM notifications WHERE kind = 'ripasso' AND user_id = ?", [luigiId]);
+    await worker(evening);
+    assert.equal(reviews().length, 0, 'off by default');
+    assert.equal((await luigi.post('/api/notifiche.php', { action: 'save_prefs', class_id: classId, prefs: { promemoria: true, turno: true, annuncio: true, riepilogo: true, ripasso_on: true, ripasso_hour: 21, slots: ['d2'] } })).status, 200);
+    await worker(Math.floor(Date.parse('2030-02-04T19:30:00Z') / 1000));   // 20:30 Rome: before 21:00
+    assert.equal(reviews().length, 0);
+    await worker(Math.floor(Date.parse('2030-02-04T20:30:00Z') / 1000) + 1800);   // 21:00 Rome
+    assert.deepEqual(reviews().map((r) => r.title), ['Il ripasso di oggi: 2 domande']);
+    await worker(Math.floor(Date.parse('2030-02-04T22:30:00Z') / 1000));
+    assert.equal(reviews().length, 1, 'once a day');
+});

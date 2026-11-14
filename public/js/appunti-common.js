@@ -488,6 +488,18 @@
         const links = heads.map((h, i) => el('button', { type: 'button', class: 'idx-link' + (h.tagName === 'H3' ? ' sub' : ''), text: h.textContent,
             onclick: () => { h.scrollIntoView({ behavior: 'smooth', block: 'start' }); idx.open = false; } }));
         const paint = () => links.forEach((l, i) => l.classList.toggle('read', i <= furthest));
+        // the same place on every device: what the server remembers wins when it is further than this device's
+        let pushTimer = null;
+        const push = () => { clearTimeout(pushTimer); pushTimer = setTimeout(() => { rawPost('../api/appunti.php', { action: 'progress_set', ref: key, idx: furthest }).catch(() => {}); }, 1500); };
+        getJson('../api/appunti.php?action=progress&ref=' + encodeURIComponent(key)).then((r) => {
+            if (Number.isInteger(r.idx) && r.idx > furthest && r.idx < heads.length) {
+                furthest = r.idx; store(k, String(furthest)); paint();
+                if (furthest < heads.length - 1 && !box.querySelector('.idx-resume')) {
+                    const w = box.querySelector('.doc-index-wrap');
+                    if (w) w.append(el('button', { type: 'button', class: 'idx-resume', text: `Riprendi da «${heads[furthest].textContent}»`, onclick: () => heads[furthest].scrollIntoView({ behavior: 'smooth', block: 'start' }) }));
+                }
+            } else if (furthest > (r.idx ?? -1)) push();
+        }).catch(() => {});
         const resume = furthest >= 0 && furthest < heads.length - 1
             ? el('button', { type: 'button', class: 'idx-resume', text: `Riprendi da «${heads[furthest].textContent}»`,
                 onclick: () => { heads[furthest].scrollIntoView({ behavior: 'smooth', block: 'start' }); } }) : null;
@@ -501,7 +513,7 @@
             let now = -1;
             heads.forEach((h, i) => { if (h.getBoundingClientRect().top < window.innerHeight * 0.45) now = i; });
             // only forwards, so that scrolling up to re-read does not lose the place
-            if (now > furthest) { furthest = now; store(k, String(furthest)); paint(); }
+            if (now > furthest) { furthest = now; store(k, String(furthest)); paint(); push(); }
         };
         const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(check); } };
         document.addEventListener('scroll', onScroll, { capture: true, passive: true });

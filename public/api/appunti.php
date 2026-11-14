@@ -264,6 +264,15 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $action = (string)($_GET['action'] ?? '');
 
+        if ($action === 'progress') {
+            // Where I stopped reading a document (the same on every device)
+            $ref = substr((string)($_GET['ref'] ?? ''), 0, 120);
+            $st = $db->prepare('SELECT idx FROM read_progress WHERE user_id = :u AND ref = :r');
+            $st->execute([':u' => $me, ':r' => $ref]);
+            $v = $st->fetchColumn();
+            jsonResponse(['success' => true, 'idx' => $v === false ? -1 : (int)$v]);
+        }
+
         if ($action === 'upload_status') {
             // Where a resumable upload stopped (so the page can continue after a break or a reload)
             $dir = apTmpDir($me, (string)($_GET['upload_id'] ?? ''));
@@ -603,6 +612,18 @@ try {
 
     $restriction = accountRestriction($db, $me);
     if ($restriction) apFail('restricted', $restriction, 403);
+
+    if ($action === 'progress_set') {
+        if (!checkRateLimit('read_progress', 600, 3600, 'user:' . $me)) apFail('slow_down', 'Too many updates', 429);
+        $ref = substr((string)($in['ref'] ?? ''), 0, 120);
+        $idx = (int)($in['idx'] ?? -1);
+        if ($ref === '' || $idx < -1 || $idx > 500) apFail('bad_request', 'Bad request');
+        $db->prepare('INSERT INTO read_progress (user_id, ref, idx, updated_at) VALUES (:u, :r, :i, :t) ON CONFLICT(user_id, ref) DO UPDATE SET idx = MAX(read_progress.idx, excluded.idx), updated_at = excluded.updated_at')
+           ->execute([':u' => $me, ':r' => $ref, ':i' => $idx, ':t' => time()]);
+        // keep the latest 300 per user
+        $db->exec("DELETE FROM read_progress WHERE user_id = $me AND ref NOT IN (SELECT ref FROM read_progress WHERE user_id = $me ORDER BY updated_at DESC LIMIT 300)");
+        jsonResponse(['success' => true]);
+    }
 
     if ($action === 'upload_begin') {
         // Start (or recognise) one file of a resumable upload

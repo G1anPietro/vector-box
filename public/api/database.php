@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 24;
+const DB_SCHEMA_VERSION = 25;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,17 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV25(PDO $db): void {
+    // How far each user got in a long document (index of the last heading passed), the same on phone and computer
+    $db->exec("CREATE TABLE IF NOT EXISTS read_progress (
+        user_id INTEGER NOT NULL,
+        ref TEXT NOT NULL,
+        idx INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, ref)
+    )");
+}
+
 function migrateV24(PDO $db): void {
     // AI check of each upload: '' = not checked yet, 'auto' = the uploader asked the AI to decide the type, 'done' = checked
     addColumnIfMissing($db, 'class_items', 'ai_state', "TEXT NOT NULL DEFAULT ''");
@@ -833,6 +844,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 24) {
             migrateV24($db);
+        }
+        if ($current < 25) {
+            migrateV25($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

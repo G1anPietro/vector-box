@@ -20,7 +20,8 @@ function notifyPrefs(string $settingsJson): array {
     $n = is_array($s) && is_array($s['notify'] ?? null) ? $s['notify'] : [];
     $slots = isset($n['slots']) && is_array($n['slots']) ? array_values(array_intersect(array_keys(REMINDER_SLOTS), $n['slots'])) : array_keys(REMINDER_SLOTS);
     return ['promemoria' => ($n['promemoria'] ?? true) !== false, 'slots' => $slots,
-            'turno' => ($n['turno'] ?? true) !== false, 'annuncio' => ($n['annuncio'] ?? true) !== false, 'riepilogo' => ($n['riepilogo'] ?? true) !== false];
+            'turno' => ($n['turno'] ?? true) !== false, 'annuncio' => ($n['annuncio'] ?? true) !== false, 'riepilogo' => ($n['riepilogo'] ?? true) !== false,
+            'ripasso_on' => !empty($n['ripasso_on']), 'ripasso_hour' => max(0, min(23, (int)($n['ripasso_hour'] ?? 18)))];
 }
 
 /** Drops the members who switched this kind of notification (or this reminder slot) off. */
@@ -241,6 +242,38 @@ function digestRun(PDO $db, int $now): int {
         if ($plain) notifyUsers($db, $plain, $cid, 'riepilogo', $title, implode('. ', $parts), $url);
         foreach ($mine as $u => $lines) if (in_array($u, $members, true)) notifyUsers($db, [$u], $cid, 'riepilogo', $title, implode('. ', array_merge($lines, $parts)), $url);
         $sent++;
+    }
+    return $sent;
+}
+
+
+/**
+ * The daily review reminder: for the members who asked for it (off by default), at their hour, if some questions of the review are due.
+ * Once a day per member. Returns how many reminders went out.
+ */
+function reviewRemindRun(PDO $db, int $now): int {
+    $sent = 0;
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active'")->fetchAll();
+    foreach ($classes as $class) {
+        $cid = (int)$class['id'];
+        $local = (new DateTimeImmutable('@' . $now))->setTimezone(classTimezone($class));
+        $today = $local->format('Y-m-d');
+        $st = $db->prepare('SELECT user_id, settings FROM class_members WHERE class_id = :c');
+        $st->execute([':c' => $cid]);
+        foreach ($st->fetchAll() as $m) {
+            $raw = json_decode((string)$m['settings'], true);
+            if (!is_array($raw)) continue;
+            $p = notifyPrefs((string)$m['settings']);
+            if (!$p['ripasso_on'] || (int)$local->format('G') < $p['ripasso_hour'] || ($raw['ripasso_last'] ?? '') === $today) continue;
+            $raw['ripasso_last'] = $today;
+            $db->prepare('UPDATE class_members SET settings = :s WHERE class_id = :c AND user_id = :u')->execute([':s' => json_encode($raw), ':c' => $cid, ':u' => $m['user_id']]);
+            $n = $db->prepare('SELECT COUNT(*) FROM review_cards WHERE user_id = :u AND class_id = :c AND due_date <= :d');
+            $n->execute([':u' => $m['user_id'], ':c' => $cid, ':d' => $today]);
+            $due = (int)$n->fetchColumn();
+            if ($due === 0) continue;
+            notifyUsers($db, [(int)$m['user_id']], $cid, 'ripasso', "Il ripasso di oggi: $due " . ($due === 1 ? 'domanda' : 'domande'), 'Poche domande ogni giorno: le sbagliate tornano finché non le sai.', '/pages/appunti.php?class=' . $cid . '&tab=study');
+            $sent++;
+        }
     }
     return $sent;
 }

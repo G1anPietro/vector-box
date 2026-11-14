@@ -36,6 +36,8 @@ $bellsDb = getDbConnection();
 $bells = bellsRun($bellsDb, $now);
 $turnsSent = turnsRun($bellsDb, $now);
 $digests = digestRun($bellsDb, $now);
+$reviews = reviewRemindRun($bellsDb, $now);
+if ($reviews) echo date('Y-m-d H:i:s') . " review reminders: $reviews\n";
 if ($digests) echo date('Y-m-d H:i:s') . " weekly digests: $digests\n";
 if ($turnsSent) echo date('Y-m-d H:i:s') . " turn reminders: $turnsSent\n";
 if ($bells) echo date('Y-m-d H:i:s') . " next-lesson pushes: $bells\n";

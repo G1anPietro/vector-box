@@ -19,7 +19,12 @@
     let classes = [];
     let current = null;          // class detail from api/classi.php
     // the tab you were on, read before anything can overwrite it (opening a class shows the board first)
-    const startTab = (() => { try { return localStorage.getItem('vb_appunti_tab'); } catch (e) { return null; } })();
+    const startTab = (() => {
+        try {
+            const open = localStorage.getItem('vb_open_tab') || 'last';   // Impostazioni › "Gli Appunti si aprono su"
+            return open === 'last' ? localStorage.getItem('vb_appunti_tab') : open;
+        } catch (e) { return null; }
+    })();
     let currentTab = 'board';
 
     /* ---------- helpers ---------- */
