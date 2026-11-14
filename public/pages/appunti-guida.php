@@ -10,6 +10,7 @@ $logged = !empty($_SESSION['user_id']);
 $isAdmin = !empty($_SESSION['is_admin']);
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 $v = (string)filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js');
+$v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers csrf.js too (the files are cached for a year)
 $login = 'login.php?next=appunti.php';
 ?>
 <!DOCTYPE html>
