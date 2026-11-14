@@ -387,6 +387,13 @@ try {
         $settings = json_decode((string)($class['settings'] ?? '{}'), true);
         if (!is_array($settings)) $settings = [];
         if (array_key_exists('summary_on', $in)) $settings['summary_on'] = !empty($in['summary_on']);
+        if (array_key_exists('digest_on', $in) || array_key_exists('digest_day', $in) || array_key_exists('digest_hour', $in)) {
+            $d = is_array($settings['digest'] ?? null) ? $settings['digest'] : [];
+            if (array_key_exists('digest_on', $in)) $d['on'] = !empty($in['digest_on']);
+            if (array_key_exists('digest_day', $in)) $d['day'] = max(0, min(6, (int)$in['digest_day']));
+            if (array_key_exists('digest_hour', $in)) $d['hour'] = max(0, min(23, (int)$in['digest_hour']));
+            $settings['digest'] = $d;
+        }
         $db->prepare('UPDATE school_classes SET summary_time = :s, timezone = :z, settings = :j WHERE id = :id')
            ->execute([':s' => $time, ':z' => $tz, ':j' => json_encode($settings), ':id' => $id]);
         jsonResponse(['success' => true]);

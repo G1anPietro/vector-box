@@ -12,7 +12,7 @@ const NOTIFY_PUSH_MAX_FAILURES = 10;   // a subscription failing this many times
 const REMINDER_SLOTS = ['d2' => [2, '16:00'], 'd1' => [1, '16:00'], 'sera' => [1, '21:00']];
 const BELL_LEAD_SEC = 300;             // "next lesson" push: this long before the end of the current one
 
-const NOTIFY_PREF_KINDS = ['promemoria', 'turno', 'annuncio'];   // what a member can switch off (the bell has its own switch)
+const NOTIFY_PREF_KINDS = ['promemoria', 'turno', 'annuncio', 'riepilogo'];   // what a member can switch off (the bell has its own switch)
 
 /** A member's notification choices in a class, with defaults (everything on, all three reminders of a test). */
 function notifyPrefs(string $settingsJson): array {
@@ -20,7 +20,7 @@ function notifyPrefs(string $settingsJson): array {
     $n = is_array($s) && is_array($s['notify'] ?? null) ? $s['notify'] : [];
     $slots = isset($n['slots']) && is_array($n['slots']) ? array_values(array_intersect(array_keys(REMINDER_SLOTS), $n['slots'])) : array_keys(REMINDER_SLOTS);
     return ['promemoria' => ($n['promemoria'] ?? true) !== false, 'slots' => $slots,
-            'turno' => ($n['turno'] ?? true) !== false, 'annuncio' => ($n['annuncio'] ?? true) !== false];
+            'turno' => ($n['turno'] ?? true) !== false, 'annuncio' => ($n['annuncio'] ?? true) !== false, 'riepilogo' => ($n['riepilogo'] ?? true) !== false];
 }
 
 /** Drops the members who switched this kind of notification (or this reminder slot) off. */
@@ -184,4 +184,63 @@ function reminderText(PDO $db, array $ev, string $slot): array {
           . ($docs ? '. Pronti: ' . implode(', ', $docs) . '.' : '.')
           . ($slot === 'sera' && in_array('quiz', $docs, true) ? ' Fai il quiz prima di dormire!' : '');
     return ["$what di {$ev['subject']} $when", $body];
+}
+
+
+/**
+ * The weekly digest: on the chosen weekday and hour, one notification per member with what is coming in the next 7 days (tests,
+ * homework, days without lessons and, for who is on them, the oral-exam turns). Sent once a week per class, even if the worker
+ * runs late (it is sent at any time of that day after the hour). Returns how many classes got one.
+ */
+function digestRun(PDO $db, int $now): int {
+    $sent = 0;
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active'")->fetchAll();
+    foreach ($classes as $class) {
+        $set = digestSettings($class);
+        if (!$set['on']) continue;
+        $local = (new DateTimeImmutable('@' . $now))->setTimezone(classTimezone($class));
+        if ((int)$local->format('w') !== $set['day'] || (int)$local->format('G') < $set['hour']) continue;
+        $key = $local->format('Y-m-d');
+        $cfg = json_decode((string)($class['settings'] ?? '{}'), true);
+        if (!is_array($cfg)) $cfg = [];
+        if (($cfg['digest_last'] ?? '') === $key) continue;
+        // mark first: a crash must not turn into a notification every minute
+        $cfg['digest_last'] = $key;
+        $db->prepare('UPDATE school_classes SET settings = :s WHERE id = :id')->execute([':s' => json_encode($cfg), ':id' => $class['id']]);
+
+        $from = $local->modify('+1 day')->format('Y-m-d');
+        $to = $local->modify('+7 days')->format('Y-m-d');
+        $cid = (int)$class['id'];
+        $names = array_column(classSubjects($db, $cid), 'name', 'id');
+        $day = fn(string $d) => (new DateTimeImmutable($d))->format('d/m');
+        $q = $db->prepare("SELECT subject_id, kind, event_date FROM class_events WHERE class_id = :c AND kind IN ('verifica', 'interrogazione') AND event_date BETWEEN :f AND :t ORDER BY event_date");
+        $q->execute([':c' => $cid, ':f' => $from, ':t' => $to]);
+        $tests = array_map(fn($e) => ($e['kind'] === 'interrogazione' ? 'Interrogazione ' : 'Verifica ') . ($names[$e['subject_id']] ?? '?') . ' il ' . $day($e['event_date']), $q->fetchAll());
+        $q = $db->prepare('SELECT subject_id, due_date FROM class_homework WHERE class_id = :c AND due_date BETWEEN :f AND :t ORDER BY due_date');
+        $q->execute([':c' => $cid, ':f' => $from, ':t' => $to]);
+        $homework = array_map(fn($h) => ($names[$h['subject_id']] ?? '?') . ' per il ' . $day($h['due_date']), $q->fetchAll());
+        $q = $db->prepare('SELECT date_from, date_to, reason FROM class_days_off WHERE class_id = :c AND period IS NULL AND date_to >= :f AND date_from <= :t ORDER BY date_from');
+        $q->execute([':c' => $cid, ':f' => $from, ':t' => $to]);
+        $off = array_map(fn($o) => ($o['reason'] !== '' ? $o['reason'] : 'Niente lezione') . ' ' . $day($o['date_from']) . ($o['date_to'] !== $o['date_from'] ? '-' . $day($o['date_to']) : ''), $q->fetchAll());
+        $q = $db->prepare('SELECT subject_id, turn_date, user_ids FROM class_turns WHERE class_id = :c AND turn_date BETWEEN :f AND :t ORDER BY turn_date');
+        $q->execute([':c' => $cid, ':f' => $from, ':t' => $to]);
+        $turns = $q->fetchAll();
+        if (!$tests && !$homework && !$off && !$turns) continue;   // nothing to say: no empty digest
+
+        $parts = [];
+        if ($tests) $parts[] = implode(', ', array_slice($tests, 0, 3)) . (count($tests) > 3 ? ' e altre ' . (count($tests) - 3) : '');
+        if ($homework) $parts[] = 'Compiti: ' . implode(', ', array_slice($homework, 0, 3)) . (count($homework) > 3 ? ' e altri ' . (count($homework) - 3) : '');
+        if ($off) $parts[] = implode(', ', array_slice($off, 0, 2));
+        $title = 'La settimana in arrivo: ' . implode(', ', array_filter([
+            $tests ? count($tests) . (count($tests) === 1 ? ' verifica' : ' verifiche') : null, $homework ? count($homework) . (count($homework) === 1 ? ' compito' : ' compiti') : null]) ?: 'cosa c\'è');
+        $url = '/pages/appunti.php?class=' . $cid . '&tab=board';
+        $members = classMemberIds($db, $cid);
+        $mine = [];
+        foreach ($turns as $t) foreach (json_decode($t['user_ids'], true) ?: [] as $u) $mine[(int)$u][] = 'Sei interrogato in ' . ($names[$t['subject_id']] ?? '?') . ' il ' . $day($t['turn_date']);
+        $plain = array_values(array_filter($members, fn($u) => !isset($mine[$u])));
+        if ($plain) notifyUsers($db, $plain, $cid, 'riepilogo', $title, implode('. ', $parts), $url);
+        foreach ($mine as $u => $lines) if (in_array($u, $members, true)) notifyUsers($db, [$u], $cid, 'riepilogo', $title, implode('. ', array_merge($lines, $parts)), $url);
+        $sent++;
+    }
+    return $sent;
 }

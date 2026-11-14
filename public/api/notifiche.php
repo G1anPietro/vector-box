@@ -129,7 +129,7 @@ try {
         $p = is_array($in['prefs'] ?? null) ? $in['prefs'] : [];
         $settings = json_decode((string)$cur, true);
         if (!is_array($settings)) $settings = [];
-        $settings['notify'] = ['promemoria' => !empty($p['promemoria']), 'turno' => !empty($p['turno']), 'annuncio' => !empty($p['annuncio']),
+        $settings['notify'] = ['promemoria' => !empty($p['promemoria']), 'turno' => !empty($p['turno']), 'annuncio' => !empty($p['annuncio']), 'riepilogo' => !empty($p['riepilogo']), 'riepilogo' => !empty($p['riepilogo']),
             'slots' => array_values(array_intersect(array_keys(REMINDER_SLOTS), is_array($p['slots'] ?? null) ? $p['slots'] : []))];
         $db->prepare('UPDATE class_members SET settings = :s WHERE class_id = :c AND user_id = :u')
            ->execute([':s' => json_encode($settings), ':c' => $classId, ':u' => $me]);

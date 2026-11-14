@@ -35,6 +35,8 @@ if (in_array('--models', $argv, true)) {
 $bellsDb = getDbConnection();
 $bells = bellsRun($bellsDb, $now);
 $turnsSent = turnsRun($bellsDb, $now);
+$digests = digestRun($bellsDb, $now);
+if ($digests) echo date('Y-m-d H:i:s') . " weekly digests: $digests\n";
 if ($turnsSent) echo date('Y-m-d H:i:s') . " turn reminders: $turnsSent\n";
 if ($bells) echo date('Y-m-d H:i:s') . " next-lesson pushes: $bells\n";
 if (in_array('--bells-only', $argv, true)) exit(0);

@@ -56,6 +56,13 @@ const CLASS_PERMS = [
     'scoreboard' => 'Vedere la classifica quando è riservata',
 ];
 
+/** The weekly digest setting of a class: on/off, weekday (0 = Sunday) and hour. Default: Sunday 19:00. */
+function digestSettings(array $class): array {
+    $s = json_decode((string)($class['settings'] ?? '{}'), true);
+    $d = is_array($s) && is_array($s['digest'] ?? null) ? $s['digest'] : [];
+    return ['on' => ($d['on'] ?? true) !== false, 'day' => max(0, min(6, (int)($d['day'] ?? 0))), 'hour' => max(0, min(23, (int)($d['hour'] ?? 19)))];
+}
+
 /** The permissions of a user in a class: all for the representative and the site admin, else role + personal ones. */
 function classPerms(PDO $db, array $class, int $me, bool $isAdmin): array {
     if ($isAdmin || (int)$class['manager_id'] === $me) return array_keys(CLASS_PERMS);
@@ -329,6 +336,7 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'timezone' => $class['timezone'],
         'summary_time' => $class['summary_time'],
         'summary_on' => (json_decode((string)($class['settings'] ?? '{}'), true)['summary_on'] ?? true) !== false,
+        'digest' => digestSettings($class),
         'periods' => classPeriods($class),
         'subjects' => $subjects,
         'timetable' => $timetable,

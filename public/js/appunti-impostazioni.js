@@ -167,6 +167,7 @@
         const sendPrefs = async () => {
             try { await post('../api/notifiche.php', { action: 'save_prefs', class_id: classId, prefs: p }); saved(); } catch (e) { fail(e); }
         };
+        let digestRow = null;
         const up = window.AppuntiUpload.settings();
         const slotLabel = { d2: 'Due giorni prima, alle 16:00', d1: 'Il giorno prima, alle 16:00', sera: 'La sera prima, alle 21:00' };
 
@@ -218,6 +219,23 @@
             el('p', { class: 'muted small', text: 'Una volta al giorno l\'AI rifà gli appunti delle materie con il materiale nuovo. Spento, lo fa solo quando premi "Genera ora" nella scheda Studio.' + (canSettings ? '' : ' Lo cambia il rappresentante (o chi ha il permesso).') }));
         sumForm.hidden = !summaryOn;
 
+        // weekly digest: chosen by who manages the class settings (default Sunday 19:00)
+        const dg = c.digest || { on: true, day: 0, hour: 19 };
+        let digestOn = dg.on;
+        const dayPick = el('select', { 'aria-label': 'Giorno del riepilogo', disabled: !canSettings, onchange: () => sendDigest() },
+            ...[[1, 'Lunedì'], [2, 'Martedì'], [3, 'Mercoledì'], [4, 'Giovedì'], [5, 'Venerdì'], [6, 'Sabato'], [0, 'Domenica']].map(([v, t]) => el('option', { value: v, text: t })));
+        dayPick.value = String(dg.day);
+        const hourPick = el('select', { 'aria-label': 'Ora del riepilogo', disabled: !canSettings, onchange: () => sendDigest() },
+            ...Array.from({ length: 24 }, (_, h) => el('option', { value: h, text: `${String(h).padStart(2, '0')}:00` })));
+        hourPick.value = String(dg.hour);
+        const sendDigest = async () => {
+            try { await post('../api/classi.php', { action: 'settings', id: classId, summary_time: c.summary_time, timezone: c.timezone, digest_on: digestOn, digest_day: Number(dayPick.value), digest_hour: Number(hourPick.value) }); saved(); } catch (e) { fail(e); }
+        };
+        const digestBox = el('div', {},
+            sw('Riepilogo della settimana a tutta la classe', digestOn, (on) => { digestOn = on; digestRow.hidden = !on; sendDigest(); }, !canSettings),
+            (() => { const r = el('div', { class: 'row' }, el('label', { text: 'Giorno' }, dayPick), el('label', { text: 'Ora' }, hourPick)); digestRow = r; r.hidden = !digestOn; return r; })(),
+            el('p', { class: 'muted small', text: 'Verifiche, compiti, giorni senza lezione dei 7 giorni dopo e i turni di chi è interrogato. Non parte se non c\'è niente da dire.' + (canSettings ? '' : ' Lo sceglie il rappresentante (o chi ha il permesso).') }));
+
         // which class the app shows; another class by code, or ask for a new one
         const picker = el('select', { 'aria-label': 'Classe', onchange: () => { classId = Number(picker.value); C.store(C.CLASS_KEY, String(classId)); draw().then(drawNotifs); } },
             ...classes.map((k) => el('option', { value: k.id, text: `${k.name} · ${k.school}`, selected: k.id === classId })));
@@ -253,6 +271,7 @@
                 } })),
                 sw('Promemoria di verifiche e interrogazioni', p.promemoria, (on) => { p.promemoria = on; slotBox.hidden = !on; sendPrefs(); }), slotBox,
                 sw('Avvisami il pomeriggio prima se sono di turno per l\'interrogazione', p.turno, (on) => { p.turno = on; sendPrefs(); }),
+                sw('Il riepilogo della settimana', p.riepilogo, (on) => { p.riepilogo = on; sendPrefs(); }),
                 sw('Annunci della bacheca', p.annuncio, (on) => { p.annuncio = on; sendPrefs(); }),
                 sw('5 minuti prima della fine di ogni ora: materia e aula dopo', prefs.bell, async (on, box) => {
                     try { await post('../api/notifiche.php', { action: 'bell_notify', class_id: classId, on }); saved(); } catch (e) { box.checked = !on; fail(e); }
@@ -269,7 +288,8 @@
             el('div', { class: 'set-pair' },
             section('Codice della classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox,
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
-            section('Riassunto automatico', null, summaryBox)));
+            section('Riassunto automatico', null, summaryBox)),
+            section('Riepilogo settimanale', null, digestBox));
     }
 
     window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });
