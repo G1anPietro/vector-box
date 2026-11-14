@@ -670,3 +670,21 @@ label:has(> .dp-native) { position: relative; }
 .subjects-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
 .subjects-list li { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 6px 4px 6px 12px; border: 1px solid var(--line); border-radius: 10px; background: #11131a; min-width: 0; }
 .subjects-list li > span:first-child { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+
+/* Studio: tests with the documents in the menu; lessons on one line */
+.test-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.test-head .what { min-width: 0; flex: 1; }
+.kebab-list .accent-item { color: var(--accent); font-weight: 700; }
+.doc-row { gap: 8px; flex-wrap: nowrap; }
+.doc-row-text { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-row .row-actions { flex: none; flex-wrap: nowrap; }
+
+/* Settings page spacing */
+.join-row { margin-bottom: 18px; }
+.name-form label { display: block; margin-bottom: 6px; }
+.inline-pair { display: flex; gap: 8px; align-items: stretch; }
+.inline-pair input { flex: 1 1 auto; min-width: 0; }
+.code-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 24px; }
+.danger-soft { color: var(--danger); }
+.test-row { margin-bottom: 10px; }
+.code-actions + .ghost-link { display: inline-block; margin-top: 16px; }

@@ -431,7 +431,7 @@
         const list = items.filter(Boolean);
         if (!list.length) return null;
         const box = el('div', { class: 'kebab-list', hidden: true, role: 'menu' }, ...list.map((i) => el('button', {
-            type: 'button', role: 'menuitem', class: i.danger ? 'danger-item' : '', text: i.label,
+            type: 'button', role: 'menuitem', class: i.danger ? 'danger-item' : i.accent ? 'accent-item' : '', text: i.label,
             onclick: (ev) => { ev.stopPropagation(); box.hidden = true; i.onclick(ev); } })));
         const btn = el('button', { type: 'button', class: 'kebab-btn', text: '⋯', title: label, 'aria-label': label, 'aria-haspopup': 'menu',
             onclick: (ev) => {

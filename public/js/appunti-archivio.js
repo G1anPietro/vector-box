@@ -138,7 +138,7 @@
 
     const fileIcon = (f) => f.mime.startsWith('image/') ? '🖼' : f.mime.startsWith('audio/') ? '🎧' : f.mime === 'application/pdf' ? '📕'
         : /word|opendocument\.text/.test(f.mime) ? '📄' : /presentation/.test(f.mime) ? '📊' : '📃';
-    const docEntry = (d, label) => ({ type: 'doc', id: d.id, kind: d.kind, icon: d.kind === 'schema' ? '🧠' : d.kind === 'quiz' || d.kind === 'domande' ? '❓' : d.event_id ? '📘' : '📝',
+    const docEntry = (d, label) => ({ type: 'doc', id: d.id, kind: d.kind, can_delete: d.can_delete, rawTitle: d.title, manualAi: !d.manual, icon: d.kind === 'schema' ? '🧠' : d.kind === 'quiz' || d.kind === 'domande' ? '❓' : d.event_id ? '📘' : '📝',
         label: label + (d.manual ? ` · di ${d.author || '?'}` : ''), meta: d.status === 'ok' ? (d.lesson_date ? shortDay.format(C.parseDate(d.lesson_date)) : '') : 'non riuscito',
         disabled: d.status !== 'ok' });
     /** Entries of one item: its text and its files (optionally only some files). */
@@ -238,7 +238,21 @@
     async function renderPreview(en) {
         const pv = $('#preview');
         if (!en) { pv.replaceChildren(el('p', { class: 'empty', text: sel.folder ? 'Scegli un file.' : 'Scegli una materia, poi un giorno: qui vedi il file senza uscire dalla pagina.' })); return; }
-        const head = (title, ...actions) => el('div', { class: 'pv-head' }, el('h2', { text: title }), el('div', { class: 'row-actions' }, ...actions));
+        const head = (title, ...actions) => el('div', { class: 'pv-head' }, el('h2', { text: title }), el('div', { class: 'row-actions' }, ...actions, deleteMenu(en)));
+        // "⋯ > Elimina": only shown to who may (the server checks again); always asks first
+        function deleteMenu(en) {
+            const isFile = en.type === 'file' && en.file.can_delete;
+            const isDoc = en.type === 'doc' && en.can_delete;
+            if (!isFile && !isDoc) return null;
+            const name = isFile ? en.file.name : (en.rawTitle || en.label);
+            return C.menu([{ label: isFile ? 'Elimina questo file…' : 'Elimina questo documento…', danger: true, onclick: async () => {
+                if (!confirm(`Eliminare «${name}»?${isDoc && en.manualAi ? ' L\'AI può rifarlo al prossimo riassunto se c\'è ancora il materiale.' : ''} Non si può annullare.`)) return;
+                try {
+                    await C.post('../api/appunti.php', { action: isFile ? 'delete_file' : 'delete_doc', id: isFile ? en.file.id : en.id });
+                    location.reload();
+                } catch (e) { C.toast(e.message, 'err'); }
+            } }], 'Altre azioni');
+        }
         try {
             if (en.type === 'file') {
                 const f = en.file;

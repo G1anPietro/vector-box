@@ -328,7 +328,8 @@ test('documents made with another AI: upload, list with the author, delete', asy
     assert.equal((await ap(luigi, { action: 'delete_doc', id: l.id })).status, 200);
     site.db("INSERT INTO class_docs (class_id, doc_key, subject_id, kind, title, content, created_at, updated_at) VALUES (?, 'lezione:x', ?, 'lezione', 'AI', 'testo', 1, 1)", [classId, subj_Storia()]);
     const aiDoc = site.db("SELECT id FROM class_docs WHERE doc_key = 'lezione:x'")[0].id;
-    assert.equal((await ap(mario, { action: 'delete_doc', id: aiDoc })).status, 403, 'documents of the site AI are not deleted by hand');
+    assert.equal((await ap(luigi, { action: 'delete_doc', id: aiDoc })).status, 403, 'a document of the site AI needs the docs permission');
+    assert.equal((await ap(mario, { action: 'delete_doc', id: aiDoc })).status, 200, 'the manager may delete it');
 });
 
 test('archive API: subjects -> days with counts, and the text of a file for previews', async () => {

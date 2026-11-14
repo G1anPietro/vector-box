@@ -263,9 +263,16 @@
             files.length ? el('div', { class: 'files' }, files) : null,
             it.can_edit ? el('div', { class: 'actions' }, C.menu([
                 { label: 'Modifica', onclick: () => editItem(it, card) },
-                { label: 'Elimina', danger: true, onclick: () => deleteItem(it) }])) : null);
+                { label: it.files.length || it.body ? 'Elimina tutto' : 'Elimina', danger: true, onclick: () => deleteItem(it) },
+                ...(it.files.length > 1 || (it.files.length === 1 && it.body) ? it.files.filter((f) => f.can_delete).map((f) => ({ label: `Elimina solo «${f.name}»`, danger: true, onclick: () => deleteFile(f, loadItems) })) : [])])) : null);
         card.style.setProperty('--sub', hue(it.subject_id));
         return card;
+    }
+
+    /** Deletes one file after a confirmation (the server checks who may). */
+    async function deleteFile(f, reload) {
+        if (!confirm(`Eliminare il file «${f.name}»? Non si può annullare.`)) return;
+        try { await notes_({ action: 'delete_file', id: f.id }); status('File eliminato.', 'ok'); reload(); } catch (e) { status(e.message, 'err'); }
     }
 
     function editItem(it, card) {
@@ -407,6 +414,8 @@
         window.scrollTo(0, 0);
     }
 
+    const shortDate = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+
     function renderStudyTests(events, ai) {
         const box = $('#study-tests');
         if (!events.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Nessuna verifica in calendario. Aggiungile nella scheda Calendario: i documenti per studiare si preparano da soli.' })); return; }
@@ -414,21 +423,18 @@
             const docs = DOC_ORDER.map((k) => studyDocs.find((d) => d.event_id === e.id && d.kind === k && !d.manual)).filter(Boolean)
                 .concat(studyDocs.filter((d) => d.event_id === e.id && d.manual));
             const d = parseDate(e.date);
+            const docItems = docs.map((doc) => ({ label: DOC_KINDS[doc.kind] + (doc.manual ? ` · di ${doc.author || '?'}` : '') + (doc.status === 'ok' ? '' : ' (errore)'),
+                accent: true, onclick: () => { if (doc.status === 'ok') showDoc(doc.id); else status('Questo documento non è riuscito: si rifà con il prossimo riassunto.', 'err'); } }));
+            const delItems = docs.filter((doc) => doc.can_delete).map((doc) => ({ label: `Elimina «${DOC_KINDS[doc.kind]}»…`, danger: true, onclick: () => deleteDoc(doc) }));
             return el('div', { class: 'test-card' },
-                el('div', { class: 'what' }, el('span', { class: 'badge ' + e.kind, text: EVENT_KINDS[e.kind] }), el('b', { text: e.subject }),
-                    ` · ${dayFmt.format(d)}`, e.title ? ` · ${e.title}` : ''),
-                docs.length
-                    ? el('div', { class: 'docs' }, ...docs.map((doc) => el('button', {
-                        class: doc.status !== 'ok' ? 'ghost' : doc.manual ? 'manual' : '',
-                        text: DOC_KINDS[doc.kind] + (doc.manual ? ` · di ${doc.author || '?'}` : '') + (doc.status === 'ok' ? '' : ' (errore)'),
-                        disabled: doc.status !== 'ok', onclick: () => showDoc(doc.id) })))
-                    : el('p', { class: 'muted small', text: ai.configured
-                        ? `I documenti arrivano con il prossimo riassunto (alle ${ai.summary_time}) o con "Genera ora", se c'è materiale caricato.`
-                        : 'I documenti arriveranno quando l\'AI sarà attiva.' }),
-                el('div', { class: 'row' }, C.menu([
-                    { label: 'Per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') },
-                    { label: 'Tutto il materiale (.zip)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) },
-                    { label: 'Carica un documento fatto con un\'altra AI', onclick: () => { location.href = caricaUrl({ m: 'ai', event: e.id }); } }], 'Altre azioni')));
+                el('div', { class: 'test-head' },
+                    el('div', { class: 'what' }, el('span', { class: 'badge ' + e.kind, text: EVENT_KINDS[e.kind] }), el('b', { text: e.subject }),
+                        ` · ${shortDate(d)}`, e.title ? ` · ${e.title}` : ''),
+                    C.menu([...docItems,
+                        { label: 'Per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') },
+                        { label: 'Tutto il materiale (.zip)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) },
+                        { label: 'Carica un documento fatto con un\'altra AI', onclick: () => { location.href = caricaUrl({ m: 'ai', event: e.id }); } },
+                        ...delItems], 'Documenti e azioni')));
         }));
     }
 
@@ -437,22 +443,27 @@
         const list = studyDocs.filter((d) => d.kind === 'lezione' && (!sid || d.subject_id === sid));
         const box = $('#study-lessons');
         if (!list.length) { box.replaceChildren(el('p', { class: 'empty', text: 'Ancora nessun riassunto delle lezioni.' })); return; }
-        box.replaceChildren(...list.map((d) => el('div', { class: 'doc-row' },
-            el('span', {}, el('b', { text: d.subject }), ' · ', d.lesson_date ? dayFmt.format(parseDate(d.lesson_date)) : '',
-                d.manual ? el('span', { class: 'muted small', text: ` · caricato da ${d.author || '?'}` }) : null,
-                d.status !== 'ok' ? el('span', { class: 'err', text: ' (non riuscito, riprova più tardi)' }) : null),
-            el('span', { class: 'row-actions' },
-                el('button', { class: 'ghost mini', text: 'Apri', disabled: d.status !== 'ok', onclick: () => showDoc(d.id) }),
-                ...studyDocs.filter((x) => x.kind === 'schema' && !x.event_id && x.status === 'ok' && x.subject_id === d.subject_id && x.lesson_date === d.lesson_date)
-                    .slice(0, 1).map((x) => el('button', { class: 'ghost mini', text: '🧠 Schema', onclick: () => showDoc(x.id) })),
-                ...studyDocs.filter((x) => x.kind === 'domande' && x.status === 'ok' && x.subject_id === d.subject_id && x.lesson_date === d.lesson_date)
-                    .slice(0, 1).map((x) => el('button', { class: 'ghost mini', text: '❓ Domande', onclick: () => showDoc(x.id) })),
-                d.can_delete ? C.menu([{ label: 'Elimina', danger: true, onclick: () => deleteDoc(d) }]) : null))));
+        box.replaceChildren(...list.map((d) => {
+            const sub = (kind) => studyDocs.filter((x) => x.kind === kind && x.status === 'ok' && x.subject_id === d.subject_id && x.lesson_date === d.lesson_date && (kind === 'schema' ? !x.event_id : true))[0];
+            const schema = sub('schema'); const questions = sub('domande');
+            return el('div', { class: 'doc-row' },
+                el('span', { class: 'doc-row-text' }, el('b', { text: d.subject }), ' · ', d.lesson_date ? shortDate(parseDate(d.lesson_date)) : '',
+                    d.manual ? el('span', { class: 'muted small', text: ` · di ${d.author || '?'}` }) : null,
+                    d.status !== 'ok' ? el('span', { class: 'err', text: ' (non riuscito)' }) : null),
+                el('span', { class: 'row-actions' },
+                    el('button', { class: 'ghost mini', text: 'Apri', disabled: d.status !== 'ok', onclick: () => showDoc(d.id) }),
+                    C.menu([schema ? { label: 'Schema', accent: true, onclick: () => showDoc(schema.id) } : null,
+                        questions ? { label: 'Domande', accent: true, onclick: () => showDoc(questions.id) } : null,
+                        d.can_delete ? { label: 'Elimina questi appunti…', danger: true, onclick: () => deleteDoc(d) } : null,
+                        schema && schema.can_delete ? { label: 'Elimina lo schema…', danger: true, onclick: () => deleteDoc(schema) } : null,
+                        questions && questions.can_delete ? { label: 'Elimina le domande…', danger: true, onclick: () => deleteDoc(questions) } : null])));
+        }));
     }
     $('#study-subject').addEventListener('change', renderStudyLessons);
 
     async function deleteDoc(d) {
-        if (!confirm('Eliminare questo documento caricato a mano?')) return;
+        const ai = d.manual === false;
+        if (!confirm(`Eliminare «${d.title || DOC_KINDS[d.kind] || 'questo documento'}»?${ai ? ' È stato scritto dall\'AI: se c\'è ancora il materiale, può rifarlo al prossimo riassunto.' : ''} Non si può annullare.`)) return;
         try { await notes_({ action: 'delete_doc', id: d.id }); loadStudy(); } catch (e) { status(e.message, 'err'); }
     }
 

@@ -25,7 +25,8 @@
 // GET  ?action=review&class_id=ID                      -> my review questions due today
 // POST multipart/JSON {action:"upload_doc", class_id, kind, target:"lesson"|"event", subject_id, lesson_date | event_id,
 //                      title, content (or file .md/.txt)} -> a study document made with another AI
-//      {action:"delete_doc", id}  -> only documents uploaded by hand (author or manager)
+//      {action:"delete_doc", id}  -> a document: the AI's ones need the "docs" permission, hand-made ones also their author
+//      {action:"delete_file", id}  -> one file of an item (author or "material" permission)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/appunti_lib.php';
@@ -268,7 +269,7 @@ try {
                     'lesson_date' => $d['lesson_date'], 'event_id' => $d['event_id'] !== null ? (int)$d['event_id'] : null,
                     'title' => $d['title'], 'status' => $d['status'], 'updated_at' => (int)$d['updated_at'],
                     'manual' => $d['author_id'] !== null, 'author' => $d['author'],
-                    'can_delete' => $d['author_id'] !== null && (in_array('docs', $perms, true) || (int)$d['author_id'] === $me),
+                    'can_delete' => in_array('docs', $perms, true) || ($d['author_id'] !== null && (int)$d['author_id'] === $me),
                 ], $st->fetchAll()),
                 'ai' => [
                     'configured' => geminiConfigured(),
@@ -571,9 +572,41 @@ try {
         $doc = $st->fetch();
         if (!$doc) apFail('not_found', 'Not found', 404);
         [, $perms] = apClass($db, (int)$doc['class_id'], $me, $isAdmin);
-        if ($doc['author_id'] === null) apFail('forbidden', 'Documents written by the site\'s AI cannot be deleted', 403);
-        if (!in_array('docs', $perms, true) && (int)$doc['author_id'] !== $me) apFail('forbidden', 'Only the author or who has the permission can delete this', 403);
-        $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $doc['id']]);
+        // Documents written by the AI only by who has the "docs" permission; hand-made ones also by their author
+        $mayAll = in_array('docs', $perms, true);
+        if (!$mayAll && ($doc['author_id'] === null || (int)$doc['author_id'] !== $me)) apFail('forbidden', 'You do not have the permission to delete this', 403);
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            $db->prepare('DELETE FROM review_cards WHERE doc_id = :id')->execute([':id' => $doc['id']]);
+            $db->prepare('DELETE FROM class_docs WHERE id = :id')->execute([':id' => $doc['id']]);
+            $db->exec('COMMIT');
+        } catch (Throwable $e) {
+            $db->exec('ROLLBACK');
+            throw $e;
+        }
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'delete_file') {
+        // One file of an item (a photo, a PDF, a recording). An item left with no file and no text goes away too.
+        $st = $db->prepare('SELECT f.*, i.class_id AS item_class, i.author_id, i.body FROM class_item_files f JOIN class_items i ON i.id = f.item_id WHERE f.id = :id');
+        $st->execute([':id' => (int)($in['id'] ?? 0)]);
+        $f = $st->fetch();
+        if (!$f) apFail('not_found', 'Not found', 404);
+        [, $perms] = apClass($db, (int)$f['item_class'], $me, $isAdmin);
+        if (!in_array('material', $perms, true) && (int)$f['author_id'] !== $me) apFail('forbidden', 'Only the author or who has the permission can delete this', 403);
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            $db->prepare('DELETE FROM class_item_files WHERE id = :id')->execute([':id' => $f['id']]);
+            $left = $db->prepare('SELECT COUNT(*) FROM class_item_files WHERE item_id = :i');
+            $left->execute([':i' => $f['item_id']]);
+            if ((int)$left->fetchColumn() === 0 && trim((string)$f['body']) === '') $db->prepare('DELETE FROM class_items WHERE id = :i')->execute([':i' => $f['item_id']]);
+            $db->exec('COMMIT');
+        } catch (Throwable $e) {
+            $db->exec('ROLLBACK');
+            throw $e;
+        }
+        @unlink(notesDir((int)$f['item_class']) . '/' . basename($f['stored_name']));
         jsonResponse(['success' => true]);
     }
 

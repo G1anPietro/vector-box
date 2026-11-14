@@ -278,7 +278,7 @@ function notesFormatItem(array $item, array $files, int $me, bool $canManage): a
         'created_at' => (int)$item['created_at'],
         'files' => array_map(fn($f) => [
             'id' => (int)$f['id'], 'name' => $f['original_name'], 'mime' => $f['mime'],
-            'size' => (int)$f['size'], 'text_status' => $f['text_status'],
+            'size' => (int)$f['size'], 'text_status' => $f['text_status'], 'can_delete' => $canManage || (int)$item['author_id'] === $me,
         ], $files),
     ];
 }

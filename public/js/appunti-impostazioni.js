@@ -75,7 +75,7 @@
         };
         box.replaceChildren(sub
             ? el('div', {}, el('span', { text: `Notifiche attive su questo dispositivo${devices > 1 ? ` (e su altri ${devices - 1})` : ''}.` }),
-                el('div', { class: 'row' }, el('button', { class: 'ghost mini', text: 'Manda una prova', onclick: test }), el('button', { class: 'ghost mini', text: 'Disattiva qui', onclick: disable })))
+                el('div', { class: 'row' }, el('button', { class: 'ghost mini', text: 'Disattiva qui', onclick: disable })))
             : el('div', {}, el('span', { text: 'Ricevi i promemoria anche a sito chiuso.' }),
                 el('div', { class: 'row' }, el('button', { class: 'mini', text: 'Attiva le notifiche su questo dispositivo', onclick: enable }))));
     }
@@ -130,7 +130,9 @@
 
         // name in the class
         const name = el('input', { name: 'name', maxLength: 40, placeholder: 'Nome e cognome', value: me ? me.display_name : '' });
-        const nameForm = el('form', { class: 'row my-name' }, el('label', { text: 'Il tuo nome in questa classe' }, name), el('button', { class: 'ghost', text: 'Salva' }));
+        const nameForm = el('form', { class: 'name-form' }, el('label', { for: 'my-name', text: 'Il tuo nome in questa classe' }),
+            el('div', { class: 'inline-pair' }, name, el('button', { class: 'ghost', text: 'Salva' })));
+        name.id = 'my-name';
         nameForm.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             try { await post('../api/classi.php', { action: 'display_name', id: classId, name: name.value }); saved(); } catch (e) { fail(e); }
@@ -153,9 +155,10 @@
         const canSettings = (c.perms || []).includes('settings');
         const codeBox = c.invite_code ? el('div', {},
             el('p', { class: 'muted small', text: 'Codice d\'invito (dallo solo ai compagni):' }),
-            el('div', { class: 'row' }, el('span', { class: 'code', text: c.invite_code }),
+            el('span', { class: 'code', text: c.invite_code }),
+            el('div', { class: 'code-actions' },
                 el('button', { class: 'ghost mini', text: 'Copia', onclick: () => navigator.clipboard && navigator.clipboard.writeText(c.invite_code).then(() => saved('Codice copiato.')) }),
-                el('button', { class: 'ghost mini', text: 'Nuovo codice', onclick: async () => {
+                el('button', { class: 'ghost mini danger-soft', text: 'Nuovo codice', onclick: async () => {
                     if (!confirm('Il codice vecchio smetterà di funzionare. Continuare?')) return;
                     try { await post('../api/classi.php', { action: 'regen_code', id: classId }); await draw(); drawNotifs(); saved('Nuovo codice creato.'); } catch (e) { fail(e); }
                 } })))
@@ -177,7 +180,7 @@
         const picker = el('select', { 'aria-label': 'Classe', onchange: () => { classId = Number(picker.value); C.store(C.CLASS_KEY, String(classId)); draw().then(drawNotifs); } },
             ...classes.map((k) => el('option', { value: k.id, text: `${k.name} · ${k.school}`, selected: k.id === classId })));
         const codeIn = el('input', { name: 'code', placeholder: 'Codice d\'invito', autocomplete: 'off', required: true, maxLength: 20 });
-        const joinForm = el('form', { class: 'row' }, codeIn, el('button', { text: 'Entra' }));
+        const joinForm = el('form', { class: 'row join-row' }, codeIn, el('button', { text: 'Entra' }));
         joinForm.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             try { const j = await post('../api/classi.php', { action: 'join', code: codeIn.value }); C.store(C.CLASS_KEY, String(j.id)); classes = (await getJson('../api/classi.php?action=mine')).classes; classId = j.id; await draw(); drawNotifs(); saved(`Sei entrato in ${j.name}.`); }
@@ -202,6 +205,9 @@
             section(`${c.name} · ${c.school}`, 'Queste scelte valgono solo per te.', nameForm,
                 el('p', { class: 'muted small', text: 'Lo vedono solo i compagni di questa classe; nel resto del sito resta il tuo nome utente.' })),
             section('Cosa ricevere', 'Per questa classe. Sul telefono a sito chiuso arrivano solo se hai attivato le notifiche qui sopra.',
+                el('div', { class: 'row test-row' }, el('button', { type: 'button', class: 'ghost mini', text: 'Manda una notifica di prova', onclick: async () => {
+                    try { const r = await post('../api/notifiche.php', { action: 'test' }); status(r.delivered ? 'Prova inviata: dovrebbe arrivare tra pochi secondi.' : 'La prova non è partita: attiva prima le notifiche su questo dispositivo.', r.delivered ? 'ok' : 'err'); drawNotifs(); } catch (e) { fail(e); }
+                } })),
                 sw('Promemoria di verifiche e interrogazioni', p.promemoria, (on) => { p.promemoria = on; slotBox.hidden = !on; sendPrefs(); }), slotBox,
                 sw('Avvisami il pomeriggio prima se sono di turno per l\'interrogazione', p.turno, (on) => { p.turno = on; sendPrefs(); }),
                 sw('Annunci della bacheca', p.annuncio, (on) => { p.annuncio = on; sendPrefs(); }),
@@ -211,8 +217,9 @@
             section('Come lo vedo', 'Su questo dispositivo.',
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),
-            section('Classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox, summaryBox,
-                el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })));
+            section('Codice della classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox,
+                el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
+            section('Riassunto automatico', null, summaryBox));
     }
 
     (async () => {
