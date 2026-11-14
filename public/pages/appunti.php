@@ -19,7 +19,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
 session_write_close();
 
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../js/appunti-upload.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css')
+$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../js/appunti-upload.js') . '-' . filemtime(__DIR__ . '/../js/appunti-classifica.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css')
     . '-' . filemtime(__DIR__ . '/../js/appunti-calendario.js') . '-' . filemtime(__DIR__ . '/../js/appunti-bacheca.js');
 ?>
 <!DOCTYPE html>
@@ -44,6 +44,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-calendario.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-bacheca.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/appunti-classifica.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
     <header class="top">
@@ -91,6 +92,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
             <button data-tab="board" aria-selected="true">Bacheca</button>
             <button data-tab="calendar">Calendario</button>
             <button data-tab="study">Studio</button>
+            <button data-tab="score">Classifica</button>
             <button data-tab="material">Materiale</button>
             <button data-tab="admin" hidden>Admin</button>
         </nav>
@@ -106,10 +108,14 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 <div class="bb-col-side">
                     <div id="bb-you" class="bb-block" hidden></div>
                     <div id="bb-notes" class="bb-block"></div>
-                    <div id="bb-score" class="bb-block" hidden></div>
                     <div id="bb-fix" class="bb-block" hidden></div>
                 </div>
             </div>
+        </section>
+
+        <!-- Scoreboard -->
+        <section id="tab-score" class="tab" hidden>
+            <div id="sc-box"></div>
         </section>
 
         <section id="tab-material" class="tab" hidden>

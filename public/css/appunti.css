@@ -725,3 +725,15 @@ label:has(> .dp-native) { position: relative; }
 .bb-score .rk { color: var(--muted); font-variant-numeric: tabular-nums; }
 .bb-score .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .set-sub-block { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+
+/* Scoreboard tab */
+.sc-mine { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sc-big { font-size: 40px; line-height: 1; margin-right: 6px; }
+.sc-how li { margin: 6px 0; }
+/* No sideways scrolling on a phone: the top bar shrinks instead of being as wide as its content */
+html, body { overflow-x: clip; }
+@media (max-width: 560px) {
+    .top-btn { min-width: 0; padding: 6px 10px; font-size: 14px; }
+    .top, .top-right { min-width: 0; }
+    .top-right { gap: 6px; }
+}

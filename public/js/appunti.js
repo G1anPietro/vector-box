@@ -160,6 +160,7 @@
         if (name === 'material' && current) { $('#upload-link').href = caricaUrl(); loadItems(); }
         if (name === 'calendar' && current) loadEvents();
         if (name === 'study' && current) loadStudy();
+        if (name === 'score' && current && window.AppuntiScore) window.AppuntiScore.load();
         if (name === 'class' && current) { renderClass(); centerTimetable(); }
         if (name === 'admin') loadAdmin();
     }
@@ -1045,7 +1046,7 @@
             $('#class-select').value = String(cid);
             await openClass(cid);
         }
-        if (tab && ['board', 'material', 'study', 'calendar', 'class'].includes(tab) && current) showTab(tab);
+        if (tab && ['board', 'material', 'study', 'calendar', 'class', 'score'].includes(tab) && current) showTab(tab);
         // a reload (or coming back from another page) reopens the document you were reading
         const lastDoc = Number(stored(DOC_KEY));
         if (!params.get('tab') && tab === 'study' && lastDoc && current) {
