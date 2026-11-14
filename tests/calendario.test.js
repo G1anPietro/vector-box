@@ -136,3 +136,33 @@ test('turns: one class order, put on the next lessons of a subject; days off are
 
     assert.equal((await ca(mario, { action: 'clear_turns', class_id: classId, subject_id: storia })).status, 200);
 });
+
+test('another class cannot read or change this class\'s topics, homework, days off or turns by their ids', async () => {
+    // peach has her own class, where she is the representative (every permission there)
+    const other = (await peach.post('/api/classi.php', { action: 'request', name: '4A', school: 'Liceo' })).json.id;
+    await admin.post('/api/classi.php', { action: 'decide', id: other, approve: true });
+    await peach.post('/api/classi.php', { action: 'save_timetable', id: other, valid_from: '2026-09-01',
+        periods: [{ start: '08:00', end: '09:00' }], slots: [{ day: 1, period: 1, subject: 'Arte' }] });
+    const arte = site.db('SELECT id FROM class_subjects WHERE class_id = ?', [other])[0].id;
+
+    const topic = site.db('SELECT id, name FROM class_topics WHERE class_id = ? LIMIT 1', [classId])[0];
+    const hw = (await ca(luigi, { action: 'save_homework', class_id: classId, subject_id: mate, due: '2026-12-01', body: 'Segreto' })).json.id;
+    const off = site.db('SELECT id FROM class_days_off WHERE class_id = ? LIMIT 1', [classId])[0].id;
+    const turn = (await ca(mario, { action: 'add_turn', class_id: classId, subject_id: storia, date: '2026-12-02', user_ids: [ids.ca_luigi] })).json.id;
+
+    assert.equal((await peach.get(`/api/calendario.php?action=overview&class_id=${classId}`)).status, 404);
+    // by id alone
+    for (const body of [{ action: 'delete_topic', id: topic.id }, { action: 'confirm_topic', id: topic.id }, { action: 'delete_homework', id: hw },
+        { action: 'delete_dayoff', id: off }, { action: 'delete_turn', id: turn }, { action: 'save_turn', id: turn, date: '2026-12-03', user_ids: [] }]) {
+        assert.equal((await ca(peach, body)).status, 404, body.action);
+    }
+    // through her own class: an id of the other class, a subject of the other class, members of the other class
+    assert.equal((await ca(peach, { action: 'save_topic', class_id: other, id: topic.id, subject_id: arte, name: 'Rubato', start: '2026-10-01' })).status, 404);
+    assert.equal((await ca(peach, { action: 'save_homework', class_id: other, id: hw, subject_id: arte, due: '2026-12-01', body: 'x' })).status, 404);
+    assert.equal((await ca(peach, { action: 'save_topic', class_id: other, subject_id: storia, name: 'X', start: '2026-10-01' })).json.code, 'bad_subject');
+    assert.deepEqual((await ca(peach, { action: 'save_turn_order', class_id: other, order: [ids.ca_luigi, ids.ca_mario] })).json.order, [], 'only her own classmates');
+
+    assert.equal(site.db('SELECT name FROM class_topics WHERE id = ?', [topic.id])[0].name, topic.name);
+    assert.equal(site.db('SELECT body FROM class_homework WHERE id = ?', [hw])[0].body, 'Segreto');
+    assert.equal(site.db('SELECT turn_date FROM class_turns WHERE id = ?', [turn])[0].turn_date, '2026-12-02');
+});
