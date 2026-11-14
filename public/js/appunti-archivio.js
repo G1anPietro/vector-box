@@ -395,6 +395,7 @@
             const pick = classes.find((c) => c.id === want) || classes[0];
             const select = $('#class-select');
             select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}`, selected: c.id === pick.id })));
+            select.hidden = classes.length < 2;
             select.addEventListener('change', () => openClass(Number(select.value)));
             await openClass(pick.id);
             // a link from the calendar: straight into a subject

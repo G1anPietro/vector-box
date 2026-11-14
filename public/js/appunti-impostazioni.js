@@ -130,18 +130,16 @@
             el('button', { type: 'button', class: 'ghost mini', text: 'Prova la voce', onclick: () => C.speak('Qual è la capitale d\'Italia? A: Roma. B: Milano.') }));
     }
 
-    /** Two messages for the class group chat: the invitation (no code in it) and, apart, the code alone. */
+    /** Three things to send in the class chat, one after the other: a short message, the link, the code (each copies with one tap). */
     function inviteDialog(c) {
-        const site = location.origin;
-        const invite = `Ciao! Ho preparato gli appunti della classe su vector-box (${site}).\n\nCi carichiamo foto, audio e file delle lezioni e il sito prepara da solo riassunti, schemi e quiz per le verifiche, con orario, calendario e promemoria.\n\nPer entrare:\n1) apri ${site}/pages/appunti-guida.php e crea un account (o accedi);\n2) vai su "Appunti di classe";\n3) scrivi il codice della classe: te lo mando nel messaggio qui sotto.\n\nÈ gratis e ogni classe vede solo i suoi appunti.`;
-        C.dialogForm('Messaggio per il gruppo', (form) => {
-            form.append(el('p', { class: 'muted small', text: 'Manda prima il messaggio, poi il codice da solo: così si copia con un tocco e il codice non resta dentro un testo lungo.' }),
-                el('label', { text: '1. Messaggio' }, el('textarea', { rows: 8, readOnly: true, id: 'inv-msg' }, invite)),
-                el('button', { type: 'button', class: 'ghost mini', text: 'Copia il messaggio', onclick: () => copy(invite) }),
-                el('label', { text: '2. Il codice (da mandare subito dopo)' }, el('textarea', { rows: 1, readOnly: true, id: 'inv-code' }, c.invite_code)),
-                el('button', { type: 'button', class: 'ghost mini', text: 'Copia il codice', onclick: () => copy(c.invite_code) }));
-            form.querySelector('#inv-msg').value = invite;
-            form.querySelector('#inv-code').value = c.invite_code;
+        const link = `${location.origin}/pages/appunti-guida.php`;
+        const msg = 'Ragazzi, ho aperto gli appunti di classe su vector-box. Ognuno carica foto e audio delle lezioni e il sito prepara riassunti e quiz per le verifiche. Qui sotto vi mando il link e il codice: vi registrate e mettete il codice.';
+        const block = (title, text, rows) => [el('label', { text: title }, el('textarea', { rows, readOnly: true, value: text })),
+            el('button', { type: 'button', class: 'ghost mini', text: 'Copia', onclick: () => copy(text) })];
+        C.dialogForm('Per invitare la classe', (form) => {
+            form.append(el('p', { class: 'muted small', text: 'Mandali in ordine: messaggio, link, codice. Così link e codice si copiano con un tocco.' }),
+                ...block('1. Messaggio', msg, 4), ...block('2. Link', link, 1), ...block('3. Codice', c.invite_code, 1));
+            form.querySelectorAll('textarea').forEach((t, i) => { t.value = [msg, link, c.invite_code][i]; });
         }, async () => {}, 'Chiudi');
     }
     const copy = async (t) => { try { await navigator.clipboard.writeText(t); saved('Copiato.'); } catch (e) { fail(new Error('Non riesco a copiare: seleziona il testo e copialo a mano.')); } };
@@ -225,7 +223,7 @@
                     if (!confirm('Il codice vecchio smetterà di funzionare. Continuare?')) return;
                     try { await post('../api/classi.php', { action: 'regen_code', id: classId }); await draw(); drawNotifs(); saved('Nuovo codice creato.'); } catch (e) { fail(e); }
                 } })),
-            el('button', { type: 'button', class: 'ghost mini invite-btn', text: 'Messaggio per invitare il gruppo', onclick: () => inviteDialog(c) }))
+            el('div', { class: 'invite-row' }, el('button', { type: 'button', class: 'ghost mini invite-btn', text: 'Invita la classe', onclick: () => inviteDialog(c) })))
             : el('p', { class: 'muted small', text: 'Il codice d\'invito lo ha il rappresentante della classe.' });
         const time = el('input', { type: 'time', name: 'summary_time', value: c.summary_time, required: true, disabled: !canSettings });
         const sumForm = el('form', { class: 'row' }, el('label', { text: 'Ogni giorno alle' }, time), canSettings ? el('button', { class: 'ghost', text: 'Salva l\'ora' }) : null);

@@ -2,13 +2,14 @@
 // public/pages/appunti-guida.php — what "Appunti di classe" is and how to use it. Public: it is what guests see
 // when they open the notes from the menu (pages/appunti.php sends them here), and the guide for members.
 require_once __DIR__ . '/../includes/head.php';
+require_once __DIR__ . '/../includes/appunti-top.php';
 require_once __DIR__ . '/../api/database.php';
 
 initSession();
 $logged = !empty($_SESSION['user_id']);
 $isAdmin = !empty($_SESSION['is_admin']);
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = (string)filemtime(__DIR__ . '/../css/appunti.css');
+$v = (string)filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js');
 $login = 'login.php?next=appunti.php';
 ?>
 <!DOCTYPE html>
@@ -23,15 +24,15 @@ $login = 'login.php?next=appunti.php';
         '/pages/appunti-guida.php') ?>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
     <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
+    <?php if ($logged): ?><script src="../js/csrf.js?v=<?= $e($v) ?>"></script><script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script><?php endif; ?>
 </head>
 <body>
+    <?php if ($logged): appuntiTop('guida'); else: ?>
     <header class="top">
         <a class="home" href="../index.php">vector-box</a>
-        <span class="top-right">
-            <?php if ($logged): ?><a class="ghost-link" href="appunti.php">Apri i tuoi appunti</a>
-            <?php else: ?><a class="ghost-link" href="<?= $e($login) ?>">Accedi</a><?php endif; ?>
-        </span>
+        <span class="top-right"><a class="ghost-link" href="<?= $e($login) ?>">Accedi</a></span>
     </header>
+    <?php endif; ?>
 
     <main class="wrap guide">
         <section class="hero">
@@ -111,15 +112,19 @@ $login = 'login.php?next=appunti.php';
             <h2>Per il rappresentante della classe</h2>
             <p>Chi ha chiesto la classe ne è il rappresentante; può passare il ruolo a un compagno dalla scheda <em>Classe</em>.</p>
             <ul>
-                <li><strong>Codice d'invito:</strong> dallo solo ai compagni (gruppo della classe). Se gira dove non deve, premi
+                <li><strong>Codice d'invito</strong> (in <em>Impostazioni</em>): dallo solo ai compagni. <em>Invita la classe</em> prepara un messaggio
+                    breve, il link e il codice da incollare uno dopo l'altro nel gruppo. Se il codice gira dove non deve, premi
                     <em>Nuovo codice</em>: quello vecchio smette di funzionare.</li>
                 <li><strong>Orario:</strong> nella scheda <em>Classe</em> premi <em>Compila da foto o PDF</em> e carica lo screenshot
                     dell'orario e, se ce l'hai, la foto degli orari della campanella. L'AI riempie la tabella: controllala e premi
                     <em>Salva l'orario</em>. Gli orari possono essere diversi da un giorno all'altro; "Lab TPSIT" e "TPSIT" sono la
                     stessa materia (cambia solo l'etichetta). Quando arriva l'orario definitivo, salvalo con la nuova data
                     "Valido dal": gli appunti vecchi restano sulle lezioni giuste.</li>
-                <li><strong>Ora del riassunto:</strong> 18:00 se non la cambi.</li>
-                <li><strong>Compagni:</strong> puoi togliere chi non c'entra.</li>
+                <li><strong>Riassunto automatico, riepilogo della settimana, appunti mancanti e classifica</strong> si accendono, spengono e
+                    regolano in <em>Impostazioni</em> (il riassunto parte alle 18:00 se non cambi l'ora).</li>
+                <li><strong>Pannello del rappresentante</strong> (scheda <em>Classe</em>): ruoli e permessi, unire o eliminare materie e il
+                    registro di chi ha cambiato o eliminato cosa. Dai compagni puoi togliere chi non c'entra.</li>
+                <li><strong>Eliminare:</strong> dal menu <em>⋯</em> si elimina anche un solo file o un documento dell'AI (chiede sempre conferma).</li>
             </ul>
         </section>
 
@@ -132,19 +137,21 @@ $login = 'login.php?next=appunti.php';
 
         <section id="altra-ai" class="card">
             <h2>Usare un'altra AI (ChatGPT, Claude, Gemini…)</h2>
+            <p>Tutto si fa dalla pagina <em>Carica</em>, scheda <em>Con un'altra AI</em>, in quattro passi:</p>
             <ol>
-                <li>Scarica il file <strong>"Per AI" (.md)</strong> di un giorno, di una materia o di una verifica (nella scheda
-                    <em>Studio</em>, sotto ogni verifica: <em>Per un'altra AI</em>). Dentro ci sono i prompt pronti e tutto il materiale
-                    già come testo, foto e PDF compresi (trascritti).</li>
-                <li>Allegalo all'AI che preferisci (o incollane il contenuto) e manda il <strong>PROMPT 1</strong>; gli altri prompt
-                    mandali dopo, nella stessa chat.</li>
-                <li>Se all'AI servono le foto originali, c'è anche lo <strong>.zip</strong> con i file come li avete caricati, più
-                    <code>INDICE.txt</code> e <code>PROMPT.txt</code>; molte AI (per esempio l'app di Gemini) però non leggono gli zip:
-                    estrailo e allega i file.</li>
-                <li>Copia la risposta e caricala dalla pagina <em>+ Carica → Documento da un'altra AI</em> (sotto ogni verifica, in Studio,
-                    c'è il pulsante che la apre già sulla verifica giusta), scegliendo il tipo
-                    (il quiz va caricato così com'è, in JSON). Comparirà accanto agli altri, con il tuo nome.</li>
+                <li><strong>Cosa vuoi ottenere?</strong> Scegli il documento (dispensa completa, riassunto, preparazione mirata, quiz, schema
+                    oppure gli appunti di una lezione) e per quale verifica o per quale giorno.</li>
+                <li><strong>Scarica il materiale.</strong> Il <strong>.md</strong> ha tutto il testo (foto e PDF già trascritti); il
+                    <strong>PDF</strong> è lo stesso con anche le foto originali, per le AI che leggono meglio i PDF; lo <strong>.zip</strong> ha i file
+                    come li avete caricati (molte AI, come l'app di Gemini, non leggono gli zip: allega i file estratti).</li>
+                <li><strong>Dai tutto all'AI.</strong> Allega il file e incolla il testo che trovi lì, con il pulsante <em>Copia il prompt</em>
+                    (dice anche in che ordine mandare gli altri). Se hai la registrazione audio della lezione, spunta la casella: compare il
+                    prompt per le AI che sanno ascoltare.</li>
+                <li><strong>Carica la risposta.</strong> Incollala o scegli il file (il quiz e lo schema vanno caricati così come sono, in JSON).
+                    Comparirà accanto agli altri documenti, con il tuo nome.</li>
             </ol>
+            <p>Sotto trovi anche altri prompt da copiare: studiare una materia (una versione per ogni AI), allenarsi sul tema, la verifica da foto
+                e il report degli errori dei temi. Dalla scheda <em>Studio</em>, il menu <em>⋯</em> di ogni verifica scarica gli stessi file.</p>
         </section>
 
         <section id="novita" class="card">
@@ -165,8 +172,13 @@ $login = 'login.php?next=appunti.php';
                     ripasso. I punti li conta il sito, non si possono inventare. Puoi uscire quando vuoi: i tuoi punti vengono cancellati.</li>
                 <li><strong>Trascina i file</strong> da qualsiasi parte delle pagine Appunti: compare "Mettili qui" e si aprono nella pagina Carica.
                     I caricamenti riprendono da soli se la connessione cade.</li>
+                <li><strong>La barra in alto</strong> è uguale in tutte le pagine degli Appunti: <em>Archivio</em>, <em>Carica</em>, <em>Guida</em> e
+                    l'ingranaggio delle <em>Impostazioni</em> (con il numero delle notifiche non lette).</li>
+                <li><strong>Mancino?</strong> In Impostazioni, <em>Come lo vedo</em>, c'è la modalità mancina: testata, menu e pulsanti si specchiano
+                    verso sinistra.</li>
                 <li><strong>Impostazioni</strong> (l'ingranaggio in alto): notifiche, il tuo nome in classe, cambio classe, codice della
-                    classe, riassunto automatico, riepilogo settimanale, voce che legge le domande, caricamenti.</li>
+                    classe, riassunto automatico, riepilogo settimanale, appunti mancanti, classifica, voce che legge le domande, caricamenti. Da lì puoi anche
+                    mandare l'invito alla classe: un messaggio breve, il link e il codice, da incollare uno dopo l'altro nel gruppo.</li>
             </ul>
         </section>
 

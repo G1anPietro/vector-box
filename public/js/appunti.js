@@ -579,6 +579,7 @@ ${lines.join('\n')}
                 el('div', { class: 'test-head' },
                     el('div', { class: 'what' }, el('span', { class: 'badge ' + e.kind, text: EVENT_KINDS[e.kind] }), el('b', { text: e.subject }),
                         ` · ${shortDate(d)}`, e.title ? ` · ${e.title}` : ''),
+                    docs.length ? el('span', { class: 'muted small test-ready', text: `${docs.length} ${docs.length === 1 ? 'documento pronto' : 'documenti pronti'}: apri il menu` }) : null,
                     C.menu([...docItems,
                         { label: 'Per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') },
                         { label: 'Per un\'altra AI (.pdf con le foto)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'pdf') },
@@ -1197,17 +1198,6 @@ ${lines.join('\n')}
 
     /* ---------- notifications: bell and push ---------- */
 
-    // The notification list, the device switch and the choices live on the settings page; here only the badge on its button.
-    async function loadNotifs() {
-        try {
-            const r = await getJson('../api/notifiche.php?action=list');
-            const badge = $('#bell-count');
-            badge.hidden = r.unread === 0;
-            badge.textContent = r.unread > 9 ? '9+' : String(r.unread);
-        } catch (e) { /* offline: try later */ }
-    }
-    setInterval(() => { if (document.visibilityState === 'visible') loadNotifs(); }, 60000);
-
     /** ?class=ID&tab=study (links from notifications) */
     async function applyParams(params) {
         const cid = Number(params.get('class'));
@@ -1239,5 +1229,4 @@ ${lines.join('\n')}
     loadMine(Number(startParams.get('class')) || null)
         .then(() => applyParams(startParams))
         .catch((e) => status(e.message, 'err'));
-    loadNotifs();
 })();

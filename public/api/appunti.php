@@ -264,6 +264,24 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $action = (string)($_GET['action'] ?? '');
 
+        if ($action === 'ai_prompt') {
+            // The text to give another AI for one kind of document (the same prompts that are inside the "Per AI" file)
+            require_once __DIR__ . '/appunti_zip.php';
+            $kind = (string)($_GET['kind'] ?? '');
+            $after = "Dalla dispensa che hai appena scritto:\n";
+            $map = [
+                'completo' => [zipPackPrompt(AI_PROMPT_COMPLETO), ''],
+                'riassunto' => [$after . AI_PROMPT_RIASSUNTO, 'Mandalo nella stessa chat, dopo che l\'AI ha scritto la dispensa completa (fai prima "Dispensa completa").'],
+                'preparazione' => ["Dalla dispensa che hai appena scritto e dalle fonti di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE, 'Mandalo nella stessa chat, dopo la dispensa completa.'],
+                'quiz' => [$after . AI_PROMPT_QUIZ, 'Mandalo nella stessa chat, dopo la dispensa completa. L\'AI risponde con un testo in formato JSON: caricalo così com\'è, senza modificarlo.'],
+                'schema' => [$after . AI_PROMPT_SCHEMA, 'Mandalo nella stessa chat, dopo la dispensa completa. L\'AI risponde con un testo in formato JSON: caricalo così com\'è.'],
+                'lezione' => [zipPackPrompt(AI_PROMPT_LESSON), ''],
+                'audio' => [AI_PROMPT_AUDIO, ''],
+            ];
+            if (!isset($map[$kind])) apFail('bad_kind', 'Unknown prompt');
+            jsonResponse(['success' => true, 'prompt' => trim($map[$kind][0]), 'note' => $map[$kind][1]]);
+        }
+
         if ($action === 'progress') {
             // Where I stopped reading a document (the same on every device)
             $ref = substr((string)($_GET['ref'] ?? ''), 0, 120);

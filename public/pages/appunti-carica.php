@@ -3,6 +3,7 @@
 // (or drop them), write/paste text, upload a document made with another AI, timetable from a photo (manager).
 // Uses api/appunti.php; logic in js/appunti-carica.js.
 require_once __DIR__ . '/../includes/head.php';
+require_once __DIR__ . '/../includes/appunti-top.php';
 require_once __DIR__ . '/../api/database.php';
 
 initSession();
@@ -33,13 +34,8 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
     <script src="../js/appunti-carica.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
-    <header class="top">
-        <a class="home back-link" href="appunti.php">Appunti</a>
-        <span class="top-right">
-            <a class="top-btn" href="appunti-archivio.php">Archivio</a>
-            <select id="class-select" aria-label="Classe" class="top-select"></select>
-        </span>
-    </header>
+    <?php appuntiTop('carica'); ?>
+    <div class="page-tools"><select id="class-select" aria-label="Classe" hidden></select></div>
 
     <main class="wrap upload-page">
         <h1>Carica</h1>
@@ -49,7 +45,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
             <button type="button" class="method" data-method="camera" role="tab"><span>📷</span>Scatta una foto<small>dal telefono</small></button>
             <button type="button" class="method" data-method="files" role="tab"><span>📁</span>Scegli file<small>foto, audio, PDF, Word, PowerPoint…</small></button>
             <button type="button" class="method" data-method="text" role="tab"><span>✍️</span>Scrivi o incolla<small>anche testo con **grassetto**</small></button>
-            <button type="button" class="method" data-method="ai" role="tab"><span>🤖</span>Documento da un'altra AI<small>ChatGPT, Gemini, Claude…</small></button>
+            <button type="button" class="method" data-method="ai" role="tab"><span>🤖</span>Con un'altra AI<small>ChatGPT, Gemini, Claude: prompt e documenti</small></button>
             <button type="button" class="method" data-method="timetable" role="tab" hidden><span>🗓</span>Orario da foto<small>rappresentante o chi ha il permesso</small></button>
         </div>
 
@@ -111,28 +107,65 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
         <p id="limits" class="muted small"></p>
 
         <section class="card panel" id="p-ai" hidden>
-            <h2>🤖 Documento fatto con un'altra AI</h2>
-            <h3 class="step">1. Prendi il materiale e il prompt</h3>
-            <p class="muted small">Il file <b>.md</b> contiene tutto il testo del materiale e i prompt da dare all'AI (comincia dal PROMPT 1).
-                Il <b>PDF</b> è lo stesso in un solo file, con anche le foto originali (per le AI che leggono meglio i PDF). Lo <b>.zip</b> ha i file originali (foto, PDF, audio) più <code>PROMPT.txt</code>, per le AI che li leggono.</p>
-            <div class="stack ai-get">
-                <label>Che materiale
-                    <select id="aiget-scope">
-                        <option value="event">Una verifica o interrogazione</option>
-                        <option value="day">Una lezione (un giorno)</option>
-                        <option value="subject">Tutta una materia</option>
-                    </select>
-                </label>
-                <label id="aiget-event-l">Verifica o interrogazione <select id="aiget-event"></select></label>
-                <label id="aiget-subject-l" hidden>Materia <select id="aiget-subject"></select></label>
-                <label id="aiget-date-l" hidden>Giorno <input type="date" id="aiget-date"></label>
-                <label class="switch"><input type="checkbox" id="aiget-audio"> Aggiungi il prompt per la registrazione audio (per le AI che sanno ascoltare, come Gemini)</label>
-                <div class="row">
-                    <button type="button" id="aiget-md" class="ico-dl">Scarica per l'AI (.md)</button>
-                    <button type="button" id="aiget-pdf" class="ghost ico-dl">Scarica un PDF (con le foto)</button>
-                    <button type="button" id="aiget-zip" class="ghost ico-dl">Scarica i file (.zip)</button>
+            <h2>Con un'altra AI (ChatGPT, Gemini, Claude)</h2>
+            <p class="muted small">Si fa in quattro passi: scegli cosa vuoi ottenere, scarica il materiale della classe, daglielo all'AI con il prompt e carica qui la sua risposta.</p>
+
+            <div class="ai-step">
+                <h3 class="step"><span class="n">1</span> Cosa vuoi ottenere?</h3>
+                <div class="stack">
+                    <label>Documento
+                        <select name="kind" form="ai-form">
+                            <optgroup label="Per una verifica o interrogazione">
+                                <option value="completo">Dispensa completa</option>
+                                <option value="riassunto">Riassunto</option>
+                                <option value="preparazione">Preparazione mirata</option>
+                                <option value="quiz">Quiz</option>
+                                <option value="schema">Schema</option>
+                            </optgroup>
+                            <optgroup label="Per una lezione">
+                                <option value="lezione">Appunti della lezione</option>
+                            </optgroup>
+                        </select>
+                    </label>
+                    <label class="for-event">Per quale verifica <select name="event_id" form="ai-form"></select></label>
+                    <label class="for-lesson" hidden>Materia <select name="subject_id" form="ai-form"></select></label>
+                    <label class="for-lesson" hidden>Giorno della lezione <input type="date" name="lesson_date" form="ai-form"></label>
                 </div>
             </div>
+
+            <div class="ai-step">
+                <h3 class="step"><span class="n">2</span> Scarica il materiale</h3>
+                <p class="muted small">È tutto quello che la classe ha caricato, già pronto per l'AI. Se non sai quale scegliere prendi il <b>.md</b>; se l'AI legge meglio i PDF, il <b>PDF</b> ha anche le foto; lo <b>.zip</b> ha i file originali.</p>
+                <div class="row">
+                    <button type="button" id="aiget-md" class="ico-dl">Scarica per l'AI (.md)</button>
+                    <button type="button" id="aiget-pdf" class="ghost ico-dl">PDF con le foto</button>
+                    <button type="button" id="aiget-zip" class="ghost ico-dl">File originali (.zip)</button>
+                </div>
+            </div>
+
+            <div class="ai-step">
+                <h3 class="step"><span class="n">3</span> Dai tutto all'AI</h3>
+                <p class="muted small">Apri l'AI, allega il file che hai scaricato e incolla questo testo.</p>
+                <pre id="aiw-prompt" class="prompt-box">Carico il prompt…</pre>
+                <p id="aiw-note" class="muted small"></p>
+                <div class="row"><button type="button" id="aiw-copy" class="ghost mini">Copia il prompt</button></div>
+                <label class="switch"><input type="checkbox" id="aiget-audio"> Ho anche la registrazione audio della lezione (per le AI che sanno ascoltare, come Gemini)</label>
+                <div id="aiw-audio" hidden>
+                    <p class="muted small">Allega anche la registrazione e manda prima questo prompt (il file scaricato lo contiene già come "PROMPT A"):</p>
+                    <pre id="aiw-audio-prompt" class="prompt-box"></pre>
+                    <div class="row"><button type="button" id="aiw-audio-copy" class="ghost mini">Copia il prompt dell'audio</button></div>
+                </div>
+            </div>
+
+            <form id="ai-form" class="stack ai-step">
+                <h3 class="step"><span class="n">4</span> Carica la risposta dell'AI</h3>
+                <label>Incolla qui la risposta <textarea name="content" rows="8" placeholder="Il testo che ti ha scritto l'AI"></textarea></label>
+                <label>…oppure scegli un file dell'AI (.md, .txt, .json, PDF, Word, PowerPoint, immagine) <input type="file" name="file" accept=".md,.txt,.json,.pdf,.doc,.docx,.odt,.ppt,.pptx,.rtf,image/*,text/plain,text/markdown,application/json,application/pdf"></label>
+                <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
+                <p class="muted small">Testo, .md, .txt e .json diventano un documento di studio (lo trovi in Studio e nell'Archivio, con il tuo nome). PDF, Word, PowerPoint e immagini si salvano come materiale della lezione o della verifica: il sito li legge.</p>
+                <button>Carica il documento</button>
+            </form>
+
             <details class="prompt-lib" id="prompt-lib">
                 <summary>Altri prompt da copiare (studiare, tema, verifica da foto)</summary>
                 <div class="stack">
@@ -143,29 +176,6 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                     <div class="row"><button type="button" id="pl-copy" class="ghost mini">Copia il prompt</button><button type="button" id="pl-save" class="ghost mini ico-dl">Scarica .txt</button></div>
                 </div>
             </details>
-            <h3 class="step">2. Carica la risposta dell'AI</h3>
-            <form id="ai-form" class="stack">
-                <div class="grid2">
-                    <label>Tipo
-                        <select name="kind">
-                            <option value="completo">Completo (dispensa)</option>
-                            <option value="riassunto">Riassunto</option>
-                            <option value="preparazione">Preparazione mirata</option>
-                            <option value="quiz">Quiz (JSON)</option>
-                            <option value="schema">Schema (JSON)</option>
-                            <option value="lezione">Appunti di una lezione</option>
-                        </select>
-                    </label>
-                    <label class="for-event">Verifica o interrogazione <select name="event_id"></select></label>
-                    <label class="for-lesson" hidden>Materia <select name="subject_id"></select></label>
-                </div>
-                <label class="for-lesson" hidden>Giorno della lezione <input type="date" name="lesson_date"></label>
-                <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
-                <label>Testo <textarea name="content" rows="8" placeholder="Incolla qui la risposta dell'AI"></textarea></label>
-                <label>…oppure un file dell'AI: .md, .txt, .json, PDF, Word, PowerPoint o immagine <input type="file" name="file" accept=".md,.txt,.json,.pdf,.doc,.docx,.odt,.ppt,.pptx,.rtf,image/*,text/plain,text/markdown,application/json,application/pdf"></label>
-                <p class="muted small">I file .md, .txt e .json diventano un documento di studio. PDF, Word, PowerPoint e immagini vengono salvati come materiale della lezione o della verifica, e il sito li legge.</p>
-                <button>Carica il documento</button>
-            </form>
         </section>
 
         <section class="card panel" id="p-timetable" hidden>

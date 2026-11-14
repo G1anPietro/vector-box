@@ -3,6 +3,7 @@
 // class management (manager) and class requests (admin). Logged-in users only; data from api/classi.php
 // and api/appunti.php, rendered by js/appunti.js with textContent only.
 require_once __DIR__ . '/../includes/head.php';
+require_once __DIR__ . '/../includes/appunti-top.php';
 require_once __DIR__ . '/../api/database.php';
 
 initSession(true);
@@ -47,19 +48,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <script src="../js/appunti-classifica.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
-    <header class="top">
-        <a class="home" href="../index.php">vector-box</a>
-        <span class="top-right">
-            <a class="top-btn needs-class" href="appunti-archivio.php">Archivio</a>
-            <a class="top-btn primary ico-up needs-class" href="appunti-carica.php">Carica</a>
-            <a class="top-btn hide-phone" href="appunti-guida.php">Guida</a>
-            <span class="who hide-phone"><?= $e($username) ?></span>
-            <a id="bell" class="bell" href="appunti-impostazioni.php" aria-label="Impostazioni e notifiche" title="Impostazioni e notifiche">
-                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
-                <span id="bell-count" class="bell-count" hidden></span>
-            </a>
-        </span>
-    </header>
+    <?php appuntiTop('appunti', $username); ?>
 
     <main class="wrap">
         <h1 class="sr">Appunti di classe</h1>

@@ -78,3 +78,17 @@ test('the "Per AI" file can include the optional audio prompt', async () => {
     assert.ok(withAudio.text.includes('PROMPT A') && withAudio.text.includes('registrazione di una lezione'));
     assert.ok(withAudio.text.indexOf('## PROMPT A') < withAudio.text.indexOf('## PROMPT 1'), 'the audio prompt comes first');
 });
+
+test('the text to give another AI for each document, as shown in the upload page; members only', async () => {
+    const get = (c, kind) => c.get(`/api/appunti.php?action=ai_prompt&kind=${kind}`);
+    for (const kind of ['completo', 'riassunto', 'preparazione', 'quiz', 'schema', 'lezione', 'audio']) {
+        const r = (await get(mario, kind)).json;
+        assert.equal(r.success, true, kind);
+        assert.ok(r.prompt.length > 80, kind);
+    }
+    assert.match((await get(mario, 'completo')).json.prompt, /nella sezione "Materiale" di questo file/);
+    assert.match((await get(mario, 'quiz')).json.note, /JSON/);
+    assert.equal((await get(mario, 'riassunto')).json.prompt.startsWith('Dalla dispensa che hai appena scritto'), true);
+    assert.equal((await get(mario, 'boh')).json.code, 'bad_kind');
+    assert.equal((await new Client(site).get('/api/appunti.php?action=ai_prompt&kind=quiz')).status, 401);
+});

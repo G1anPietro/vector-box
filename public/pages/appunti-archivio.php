@@ -3,6 +3,7 @@
 // columns on a computer (each scrolls on its own, the page does not), one folder at a time on a phone.
 // Data from api/appunti.php (tree, items, docs, file_text); rendered by js/appunti-archivio.js.
 require_once __DIR__ . '/../includes/head.php';
+require_once __DIR__ . '/../includes/appunti-top.php';
 require_once __DIR__ . '/../api/database.php';
 
 initSession();
@@ -33,12 +34,8 @@ $v = filemtime(__DIR__ . '/../js/appunti-archivio.js') . '-' . filemtime(__DIR__
     <script src="../js/appunti-archivio.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body class="archive">
-    <header class="arch-top">
-        <a class="home back-link" href="appunti.php">Appunti</a>
-        <b class="arch-title">Archivio</b>
-        <select id="class-select" aria-label="Classe"></select>
-        <a class="top-btn primary ico-up" href="appunti-carica.php">Carica</a>
-    </header>
+    <?php appuntiTop('archivio'); ?>
+    <div class="page-tools"><select id="class-select" aria-label="Classe" hidden></select></div>
     <div class="arch-bar">
         <button type="button" id="back-btn" class="ghost mini back-btn" hidden>Indietro</button>
         <nav class="arch-crumbs" id="crumbs" aria-label="Percorso"></nav>

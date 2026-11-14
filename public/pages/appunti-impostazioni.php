@@ -2,6 +2,7 @@
 // public/pages/appunti-impostazioni.php — personal settings for one class: name in the class, which notifications to
 // receive and when, how the week and the PDFs are shown. Logic in js/appunti-impostazioni.js (api/notifiche.php, api/classi.php).
 require_once __DIR__ . '/../includes/head.php';
+require_once __DIR__ . '/../includes/appunti-top.php';
 require_once __DIR__ . '/../api/database.php';
 
 initSession();
@@ -31,9 +32,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-impostazioni.js') . '-' . filemtime(__D
     <script src="../js/appunti-impostazioni.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
-    <header class="top">
-        <a class="home back-link" href="appunti.php">Appunti</a>
-    </header>
+    <?php appuntiTop('impostazioni'); ?>
     <main class="wrap settings-page">
         <h1>Impostazioni</h1>
         <p id="status" class="status" role="status" aria-live="polite"></p>

@@ -234,6 +234,7 @@
             opened = !opened;
             tree.querySelectorAll('details').forEach((d) => { d.open = opened; });
             map.querySelectorAll('.mm-branch.has-kids').forEach((b) => b.classList.toggle('collapsed', !opened));
+            requestAnimationFrame(drawLinks);
             toggle.textContent = opened ? 'Chiudi tutto' : 'Apri tutto';
         } });
 
@@ -246,7 +247,7 @@
                 n.note ? el('span', { class: 'mm-note' }, inline(String(n.note))) : null);
             const b = el('div', { class: 'mm-branch' + (kids.length ? ' has-kids' : '') + (kids.length && depth >= 2 ? ' collapsed' : '') }, box,
                 kids.length ? el('div', { class: 'mm-kids' }, ...kids.map((c) => branch(c, depth + 1))) : null);
-            if (kids.length) box.addEventListener('click', () => { if (!moved) b.classList.toggle('collapsed'); });
+            if (kids.length) box.addEventListener('click', () => { if (!moved) { b.classList.toggle('collapsed'); requestAnimationFrame(drawLinks); } });
             return b;
         };
         const tops = data.children.map((c, i) => { const b = branch(c, 1); b.style.setProperty('--c', `hsl(${HUES[i % HUES.length]} 70% 60%)`); return b; });
@@ -257,14 +258,43 @@
         const right = [];
         const left = [];
         data.children.forEach((c, i) => { (acc < total / 2 || data.children.length < 3 ? right : left).push(tops[i]); acc += weight(c); });
-        const canvas = el('div', { class: 'mm-canvas' },
-            el('div', { class: 'mm-side left' }, ...left),
-            el('div', { class: 'mm-center' }, inline(String(data.title || 'Schema'))),
-            el('div', { class: 'mm-side right' }, ...right));
+        const SVGNS = 'http://www.w3.org/2000/svg';
+        const links = document.createElementNS(SVGNS, 'svg');
+        links.setAttribute('class', 'mm-links');
+        links.setAttribute('aria-hidden', 'true');
+        const center = el('div', { class: 'mm-center' }, inline(String(data.title || 'Schema')));
+        const canvas = el('div', { class: 'mm-canvas' }, links,
+            el('div', { class: 'mm-side left' }, ...left), center, el('div', { class: 'mm-side right' }, ...right));
+        /** Position of an element inside the canvas (layout pixels, not affected by the zoom). */
+        const posIn = (node) => { let x = 0; let y = 0; for (let n = node; n && n !== canvas; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; } return { x, y, w: node.offsetWidth, h: node.offsetHeight }; };
+        /** A curve from the centre to every main branch, so that each branch is really connected to the main topic. */
+        function drawLinks() {
+            const W = canvas.offsetWidth; const H = canvas.offsetHeight;
+            if (!W || !H) return;
+            links.setAttribute('width', String(W)); links.setAttribute('height', String(H)); links.setAttribute('viewBox', `0 0 ${W} ${H}`);
+            const c = posIn(center);
+            const paths = [];
+            for (const [list, side] of [[left, -1], [right, 1]]) {
+                for (const b of list) {
+                    const n = posIn(b.querySelector(':scope > .mm-node'));
+                    const x1 = side > 0 ? c.x + c.w : c.x; const y1 = c.y + c.h / 2;
+                    const x2 = side > 0 ? n.x : n.x + n.w; const y2 = n.y + n.h / 2;
+                    const mid = (x1 + x2) / 2;
+                    const path = document.createElementNS(SVGNS, 'path');
+                    path.setAttribute('d', `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`);
+                    path.setAttribute('stroke', b.style.getPropertyValue('--c'));
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke-width', '3');
+                    path.setAttribute('stroke-linecap', 'round');
+                    paths.push(path);
+                }
+            }
+            links.replaceChildren(...paths);
+        }
         const map = el('div', { class: 'mm', tabIndex: 0, 'aria-label': 'Mappa dello schema: trascina per spostarti' }, canvas);
         let scale = 1;
         const zoom = (z) => { scale = Math.max(0.3, Math.min(2, z)); canvas.style.zoom = String(scale); };
-        const fit = () => { canvas.style.zoom = '1'; const w = canvas.scrollWidth || 1; zoom(Math.min(1, (map.clientWidth - 16) / w));
+        const fit = () => { canvas.style.zoom = '1'; drawLinks(); const w = canvas.scrollWidth || 1; zoom(Math.min(1, (map.clientWidth - 16) / w));
             map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2; };
         // drag to pan (mouse); touch screens scroll natively
         let moved = false;
@@ -640,6 +670,23 @@
         u.rate = Number(stored('vb_tts_rate')) || 1;
         speechSynthesis.speak(u);
     }
+
+    // The bar at the top (includes/appunti-top.php) on every page: the unread count on the gear, and no Archivio / Carica for who is in no class
+    (() => {
+        const run = async () => {
+            const badge = document.querySelector('#bell-count');
+            const needs = document.querySelectorAll('.needs-class');
+            if (!badge && !needs.length) return;
+            const count = async () => {
+                try { const r = await getJson('../api/notifiche.php?action=list'); badge.hidden = r.unread === 0; badge.textContent = r.unread > 9 ? '9+' : String(r.unread); } catch (e) { /* offline */ }
+            };
+            if (badge) { count(); setInterval(() => { if (document.visibilityState === 'visible') count(); }, 60000); }
+            if (needs.length) {
+                try { const m = await getJson('../api/classi.php?action=mine'); needs.forEach((x) => { x.hidden = m.classes.length === 0; }); } catch (e) { /* keep them */ }
+            }
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+    })();
 
     window.AppuntiCommon = { weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',

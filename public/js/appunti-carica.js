@@ -150,28 +150,21 @@
             : [el('option', { value: '', text: 'Nessuna verifica in calendario' })]));
         f.lesson_date.value = f.lesson_date.value || todayStr();
         toggleAiTarget();
-        // the "take the material" block uses the same lists
-        $('#aiget-event').replaceChildren(...[...f.event_id.options].map((o) => el('option', { value: o.value, text: o.textContent })));
-        $('#aiget-subject').replaceChildren(...current.subjects.map((s) => el('option', { value: s.id, text: s.name })));
-        $('#aiget-date').value = $('#aiget-date').value || todayStr();
-        toggleGetScope();
     }
-    function toggleGetScope() {
-        const sc = $('#aiget-scope').value;
-        $('#aiget-event-l').hidden = sc !== 'event';
-        $('#aiget-subject-l').hidden = sc === 'event';
-        $('#aiget-date-l').hidden = sc !== 'day';
-    }
-    $('#aiget-scope').addEventListener('change', toggleGetScope);
-    /** Downloads the material of the chosen scope: the .md for an AI (text + prompts) or the .zip of the original files. */
+    /** Downloads the material for what was chosen in step 1: a test (its material since the previous test) or one lesson day. */
     async function getMaterial(action, btn) {
-        const sc = $('#aiget-scope').value;
+        const f = $('#ai-form');
+        const lesson = f.kind.value === 'lezione';
         const asPdf = action === 'pdf';
         if (asPdf) action = 'ai_pack';
-        const q = new URLSearchParams({ action, class_id: current.id, scope: sc, ...(asPdf ? { format: 'pdf' } : {}) });
-        if (sc === 'event') { if (!$('#aiget-event').value) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; } q.set('event_id', $('#aiget-event').value); }
-        else q.set('subject_id', $('#aiget-subject').value);
-        if (sc === 'day') { if (!$('#aiget-date').value) { status('Scegli il giorno.', 'err'); return; } q.set('date', $('#aiget-date').value); }
+        const q = new URLSearchParams({ action, class_id: current.id, scope: lesson ? 'day' : 'event', ...(asPdf ? { format: 'pdf' } : {}) });
+        if (lesson) {
+            if (!f.lesson_date.value) { status('Scegli il giorno della lezione.', 'err'); return; }
+            q.set('date', f.lesson_date.value); q.set('subject_id', f.subject_id.value);
+        } else {
+            if (!f.event_id.value) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; }
+            q.set('event_id', f.event_id.value);
+        }
         if ($('#aiget-audio').checked) q.set('audio', '1');
         btn.disabled = true;
         status(action === 'zip' ? 'Preparo lo .zip…' : 'Preparo il file per l\'AI…');
@@ -193,10 +186,38 @@
     $('#aiget-zip').addEventListener('click', (ev) => getMaterial('zip', ev.currentTarget));
     function toggleAiTarget() {
         const lesson = $('#ai-form').kind.value === 'lezione';
-        $$('#ai-form .for-lesson').forEach((x) => { x.hidden = !lesson; });
-        $$('#ai-form .for-event').forEach((x) => { x.hidden = lesson; });
+        $$('#p-ai .for-lesson').forEach((x) => { x.hidden = !lesson; });
+        $$('#p-ai .for-event').forEach((x) => { x.hidden = lesson; });
+        showPrompt();
     }
-    $('#ai-form [name="kind"]').addEventListener('change', toggleAiTarget);
+    $('#p-ai [name="kind"]').addEventListener('change', toggleAiTarget);
+
+    /* Step 3: the exact text to give the AI for the chosen document (the same prompts that are inside the downloaded file) */
+    const promptCache = {};
+    async function promptFor(kind) {
+        if (!promptCache[kind]) promptCache[kind] = await getJson(`../api/appunti.php?action=ai_prompt&kind=${kind}`);
+        return promptCache[kind];
+    }
+    async function showPrompt() {
+        const kind = $('#ai-form').kind.value;
+        try {
+            const p = await promptFor(kind);
+            $('#aiw-prompt').textContent = p.prompt;
+            $('#aiw-note').textContent = p.note;
+            $('#aiw-note').hidden = !p.note;
+        } catch (e) { $('#aiw-prompt').textContent = 'Non riesco a caricare il prompt: è anche dentro il file che scarichi (PROMPT 1).'; }
+    }
+    $('#aiw-copy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText($('#aiw-prompt').textContent); status('Prompt copiato: incollalo nell\'AI insieme al file.', 'ok'); } catch (e) { status('Non riesco a copiare: seleziona il testo e copialo a mano.', 'err'); }
+    });
+    $('#aiget-audio').addEventListener('change', async () => {
+        const on = $('#aiget-audio').checked;
+        $('#aiw-audio').hidden = !on;
+        if (on) { try { $('#aiw-audio-prompt').textContent = (await promptFor('audio')).prompt; } catch (e) { /* the file has it too */ } }
+    });
+    $('#aiw-audio-copy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText($('#aiw-audio-prompt').textContent); status('Prompt copiato.', 'ok'); } catch (e) { status('Non riesco a copiare.', 'err'); }
+    });
     $('#ai-form').addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const f = ev.target;
@@ -285,6 +306,7 @@
             const pick = classes.find((c) => c.id === want) || classes[0];
             const select = $('#class-select');
             select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}`, selected: c.id === pick.id })));
+            select.hidden = classes.length < 2;
             select.addEventListener('change', () => openClass(Number(select.value)).catch((e) => status(e.message, 'err')));
             await openClass(pick.id);
             choose(['camera', 'files', 'text', 'ai'].includes(params.get('m')) ? params.get('m') : 'files');
@@ -299,7 +321,7 @@
             }
             if (params.get('drop')) { const dropped = await C.takeHandOff(); if (dropped.length) { choose('files'); addFiles(dropped); } history.replaceState(null, '', 'appunti-carica.php'); }
             const ev = params.get('event');
-            if (ev && [...$('#ai-form').event_id.options].some((o) => o.value === ev)) $('#ai-form').event_id.value = ev;
+            if (ev && [...$('#ai-form').elements.event_id.options].some((o) => o.value === ev)) $('#ai-form').elements.event_id.value = ev;
         } catch (e) { status(e.message, 'err'); }
     })();
 })();
