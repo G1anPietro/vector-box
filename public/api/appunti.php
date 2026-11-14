@@ -488,6 +488,18 @@ try {
             if (!in_array($type, ['day', 'subject', 'event'], true)) apFail('bad_scope', 'Unknown scope');
             if ($type === 'day' && !classValidDate($scope['date'])) apFail('bad_date', 'Date must be YYYY-MM-DD');
             if ($type === 'subject' && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
+            if (($_GET['format'] ?? '') === 'pdf') {
+                set_time_limit(120);
+                $built = packPdf($db, $class, $scope);
+                if (is_string($built)) apFail('nothing', $built, 404);
+                [$bytes, $name] = $built;
+                header('Content-Type: application/pdf');
+                header('Content-Length: ' . strlen($bytes));
+                header('Content-Disposition: attachment; filename="' . str_replace(['"', '\\'], '', $name) . '"; filename*=UTF-8\'\'' . rawurlencode($name));
+                header('X-Content-Type-Options: nosniff');
+                echo $bytes;
+                exit();
+            }
             $built = packBuild($db, $class, $scope);
             if (is_string($built)) apFail('nothing', $built, 404);
             [$md, $name] = $built;

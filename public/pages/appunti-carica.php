@@ -113,7 +113,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
             <h2>🤖 Documento fatto con un'altra AI</h2>
             <h3 class="step">1. Prendi il materiale e il prompt</h3>
             <p class="muted small">Il file <b>.md</b> contiene tutto il testo del materiale e i prompt da dare all'AI (comincia dal PROMPT 1).
-                Lo <b>.zip</b> ha i file originali (foto, PDF, audio) più <code>PROMPT.txt</code>, per le AI che li leggono.</p>
+                Il <b>PDF</b> è lo stesso in un solo file, con anche le foto originali (per le AI che leggono meglio i PDF). Lo <b>.zip</b> ha i file originali (foto, PDF, audio) più <code>PROMPT.txt</code>, per le AI che li leggono.</p>
             <div class="stack ai-get">
                 <label>Che materiale
                     <select id="aiget-scope">
@@ -128,6 +128,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                 <label class="switch"><input type="checkbox" id="aiget-audio"> Aggiungi il prompt per la registrazione audio (per le AI che sanno ascoltare, come Gemini)</label>
                 <div class="row">
                     <button type="button" id="aiget-md" class="ico-dl">Scarica per l'AI (.md)</button>
+                    <button type="button" id="aiget-pdf" class="ghost ico-dl">Scarica un PDF (con le foto)</button>
                     <button type="button" id="aiget-zip" class="ghost ico-dl">Scarica i file (.zip)</button>
                 </div>
             </div>

@@ -173,9 +173,11 @@
 
     /** Downloads a .zip of the material (and the AI documents, and PROMPT.txt) for a lesson day, a subject or a test. */
     async function downloadZip(params, btn, action = 'zip') {
-        const q = new URLSearchParams({ action, class_id: current.id, ...params });
+        const asPdf = action === 'pdf';          // one PDF with prompts, texts and the original photos
+        if (asPdf) action = 'ai_pack';
+        const q = new URLSearchParams({ action, class_id: current.id, ...params, ...(asPdf ? { format: 'pdf' } : {}) });
         if (btn) btn.disabled = true;
-        status(action === 'zip' ? 'Preparo lo .zip…' : 'Preparo il file per l\'AI…');
+        status(action === 'zip' ? 'Preparo lo .zip…' : asPdf ? 'Preparo il PDF…' : 'Preparo il file per l\'AI…');
         try {
             const r = await fetch('../api/appunti.php?' + q, { credentials: 'same-origin' });
             if (!r.ok) {
@@ -184,7 +186,7 @@
             }
             const cd = r.headers.get('content-disposition') || '';
             const m = /filename\*=UTF-8''([^;]+)/.exec(cd);
-            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : 'appunti-per-AI.md');
+            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : asPdf ? 'appunti-per-AI.pdf' : 'appunti-per-AI.md');
             const url = URL.createObjectURL(await r.blob());
             const a = el('a', { href: url, download: name });
             document.body.append(a);
@@ -215,6 +217,7 @@
                 el('div', { class: 'day-head' }, el('h3', { text: dayFmt.format(parseDate(d)) }),
                     C.menu([
                         { label: 'Per un\'altra AI (.md)', onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target, 'ai_pack') },
+                        { label: 'Per un\'altra AI (.pdf con le foto)', onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target, 'pdf') },
                         { label: 'Tutto il materiale (.zip)', onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target) }], 'Scarica questo giorno')),
                 ...list.map(renderItem))));
         } catch (e) {
@@ -225,6 +228,7 @@
         const sid = $('#filter-subject').value;
         $('#subject-menu').replaceChildren(...(sid ? [C.menu([
             { label: 'Tutta la materia per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'subject', subject_id: sid }, ev.target, 'ai_pack') },
+            { label: 'Tutta la materia per un\'altra AI (.pdf con le foto)', onclick: (ev) => downloadZip({ scope: 'subject', subject_id: sid }, ev.target, 'pdf') },
             { label: 'Tutta la materia (.zip)', onclick: (ev) => downloadZip({ scope: 'subject', subject_id: sid }, ev.target) }], 'Scarica la materia')] : []));
         loadItems();
     });
@@ -572,6 +576,7 @@ ${lines.join('\n')}
                         ` · ${shortDate(d)}`, e.title ? ` · ${e.title}` : ''),
                     C.menu([...docItems,
                         { label: 'Per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') },
+                        { label: 'Per un\'altra AI (.pdf con le foto)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'pdf') },
                         { label: 'Tutto il materiale (.zip)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) },
                         { label: 'Carica un documento fatto con un\'altra AI', onclick: () => { location.href = caricaUrl({ m: 'ai', event: e.id }); } },
                         ...delItems], 'Documenti e azioni')));

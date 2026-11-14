@@ -166,7 +166,9 @@
     /** Downloads the material of the chosen scope: the .md for an AI (text + prompts) or the .zip of the original files. */
     async function getMaterial(action, btn) {
         const sc = $('#aiget-scope').value;
-        const q = new URLSearchParams({ action, class_id: current.id, scope: sc });
+        const asPdf = action === 'pdf';
+        if (asPdf) action = 'ai_pack';
+        const q = new URLSearchParams({ action, class_id: current.id, scope: sc, ...(asPdf ? { format: 'pdf' } : {}) });
         if (sc === 'event') { if (!$('#aiget-event').value) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; } q.set('event_id', $('#aiget-event').value); }
         else q.set('subject_id', $('#aiget-subject').value);
         if (sc === 'day') { if (!$('#aiget-date').value) { status('Scegli il giorno.', 'err'); return; } q.set('date', $('#aiget-date').value); }
@@ -178,7 +180,7 @@
             if (!r.ok) { const j = await r.json().catch(() => null); throw new Error(j && j.error ? j.error : 'Download non riuscito.'); }
             const cd = r.headers.get('content-disposition') || '';
             const m = /filename\*=UTF-8''([^;]+)/.exec(cd);
-            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : 'appunti-per-AI.md');
+            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : asPdf ? 'appunti-per-AI.pdf' : 'appunti-per-AI.md');
             const url = URL.createObjectURL(await r.blob());
             const a = el('a', { href: url, download: name });
             document.body.append(a); a.click();
@@ -187,6 +189,7 @@
         } catch (e) { status(e.message, 'err'); } finally { btn.disabled = false; }
     }
     $('#aiget-md').addEventListener('click', (ev) => getMaterial('ai_pack', ev.currentTarget));
+    $('#aiget-pdf').addEventListener('click', (ev) => getMaterial('pdf', ev.currentTarget));
     $('#aiget-zip').addEventListener('click', (ev) => getMaterial('zip', ev.currentTarget));
     function toggleAiTarget() {
         const lesson = $('#ai-form').kind.value === 'lezione';

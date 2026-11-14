@@ -257,6 +257,52 @@ function packBuild(PDO $db, array $class, array $scope): array|string {
     return [$md, zipName("Per AI - Appunti {$class['name']} - $what", 100) . '.md'];
 }
 
+/**
+ * The same as packBuild but as ONE PDF: instructions, prompts, the texts and the original photos (JPEG/PNG) after their
+ * transcription. For AIs that read PDFs better than Markdown or zips. Returns [pdf bytes, download name] or an error string.
+ */
+function packPdf(PDO $db, array $class, array $scope): array|string {
+    require_once __DIR__ . '/pdf_lib.php';
+    $sel = zipSelect($db, $class, $scope);
+    if (is_string($sel)) return $sel;
+    ['items' => $items, 'files' => $filesOf, 'event' => $event] = $sel;
+    $what = zipWhat($scope, $items, $event);
+    $pdf = new SimplePdf();
+    $pdf->heading("Appunti di classe — {$class['name']} ({$class['school']})", 1);
+    $pdf->para($what);
+    $pdf->para("Questo file contiene tutto il materiale caricato dalla classe: i testi, le trascrizioni e le foto originali. Allegalo a una chat con un'AI e manda il PROMPT 1 qui sotto; gli altri prompt mandali dopo, nella stessa chat. Poi carica la risposta su vector-box (Appunti di classe, Carica, Documento da un'altra AI). L'AI può sbagliare: controlla sempre con il libro e gli appunti originali.");
+    if ($event && $event['topics'] !== '') $pdf->para("Argomenti annunciati dal prof: {$event['topics']}");
+    $prompts = $event
+        ? ['PROMPT 1 — dispensa completa' => zipPackPrompt(AI_PROMPT_COMPLETO),
+           'PROMPT 2 — riassunto' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_RIASSUNTO,
+           'PROMPT 3 — preparazione mirata' => "Dalla dispensa che hai appena scritto e dalle fonti di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE,
+           'PROMPT 4 — quiz (JSON)' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_QUIZ,
+           'PROMPT 5 — schema (JSON)' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_SCHEMA]
+        : ['PROMPT 1 — appunti completi' => zipPackPrompt(AI_PROMPT_LESSON), 'PROMPT 2 — schema (JSON)' => "Dagli appunti che hai appena scritto:\n" . AI_PROMPT_SCHEMA];
+    if (!empty($scope['audio'])) $prompts = ['PROMPT A — dalla registrazione audio (facoltativo)' => AI_PROMPT_AUDIO] + $prompts;
+    foreach ($prompts as $title => $text) { $pdf->heading($title, 2); $pdf->code(trim($text)); }
+    $pdf->heading('Materiale', 1);
+    $left = [];
+    foreach (array_values($items) as $n => $it) {
+        $pdf->heading('[' . ($n + 1) . '] ' . (AI_KIND_LABELS[$it['kind']] ?? $it['kind']) . ' di ' . ($it['author'] ?? '?') . ' — ' . $it['subject'] . ', '
+            . (new DateTimeImmutable($it['lesson_date']))->format('d/m/Y') . ($it['period'] ? ", {$it['period']}ª ora" : '') . ($it['title'] !== '' ? " — {$it['title']}" : ''), 3);
+        if (trim($it['body']) !== '') $pdf->para($it['body']);
+        foreach ($filesOf[$it['id']] as $f) {
+            $src = notesDir((int)$class['id']) . '/' . basename($f['stored_name']);
+            $pdf->para('File: ' . $f['original_name']);
+            if (str_starts_with((string)$f['mime'], 'image/') && is_file($src) && filesize($src) < 12 * 1048576) {
+                if (!$pdf->image((string)file_get_contents($src))) $left[] = $f['original_name'];
+            }
+            if ($f['text_status'] === 'done' && $f['text'] !== null) $pdf->para($f['text']);
+            elseif (!str_starts_with((string)$f['mime'], 'image/')) $left[] = $f['original_name'];
+        }
+    }
+    if ($left) $pdf->para('Nota: questi file non sono incorporati o trascritti (sono nello .zip): ' . implode(', ', array_slice($left, 0, 15)) . (count($left) > 15 ? ', …' : '') . '.');
+    $out = $pdf->output();
+    if (strlen($out) > ZIP_MAX_BYTES) return 'Troppo materiale per un solo PDF: scegli un giorno o una materia.';
+    return [$out, zipName("Per AI - Appunti {$class['name']} - $what", 100) . '.pdf'];
+}
+
 /** The site's prompts, reworded for an AI that reads the material from this same file. */
 function zipPackPrompt(string $prompt): string {
     return preg_replace('/Il materiale è tra <materiale> e <\/materiale>[.:]/u',
