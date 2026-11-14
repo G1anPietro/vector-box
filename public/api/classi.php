@@ -107,6 +107,17 @@ try {
             jsonResponse(['success' => true, 'class' => classDetail($db, $class, $me, $isAdmin)]);
         }
 
+        if ($action === 'log') {
+            // The change log: for who manages the class settings (the representative has the permission)
+            $id = (int)($_GET['id'] ?? 0);
+            clManaged($db, $id, $me, $isAdmin, 'settings');
+            $st = $db->prepare("SELECT l.id, l.action, l.detail, l.created_at, CASE WHEN LENGTH(m.display_name) > 0 THEN m.display_name ELSE a.username END AS who
+                                FROM class_log l LEFT JOIN accounts a ON a.id = l.user_id LEFT JOIN class_members m ON m.class_id = l.class_id AND m.user_id = l.user_id
+                                WHERE l.class_id = :c ORDER BY l.id DESC LIMIT 100");
+            $st->execute([':c' => $id]);
+            jsonResponse(['success' => true, 'log' => array_map(fn($r) => ['id' => (int)$r['id'], 'action' => $r['action'], 'detail' => $r['detail'], 'at' => (int)$r['created_at'], 'who' => $r['who'] ?? '?'], $st->fetchAll())]);
+        }
+
         if ($action === 'requests' || $action === 'all') {
             requireAdmin();
             $where = $action === 'requests' ? "WHERE c.status = 'pending'" : '';
@@ -248,6 +259,7 @@ try {
         clManaged($db, $id, $me, $isAdmin, 'members');
         $code = classNewInviteCode($db);
         $db->prepare('UPDATE school_classes SET invite_code = :c WHERE id = :id')->execute([':c' => $code, ':id' => $id]);
+        classLog($db, $id, $me, 'Nuovo codice d\'invito');
         jsonResponse(['success' => true, 'invite_code' => $code]);
     }
 
@@ -261,6 +273,7 @@ try {
         } else {
             $db->prepare('UPDATE school_classes SET manager_id = :u WHERE id = :id')->execute([':u' => $userId, ':id' => $id]);
         }
+        classLog($db, $id, $me, $action === 'remove_member' ? 'Compagno tolto dalla classe' : 'Nuovo rappresentante', 'utente ' . $userId);
         jsonResponse(['success' => true]);
     }
 
@@ -301,6 +314,7 @@ try {
                ->execute([':c' => $id, ':n' => $name, ':col' => $color, ':p' => $perms, ':t' => time()]);
             $roleId = (int)$db->lastInsertId();
         }
+        classLog($db, $id, $me, 'Ruolo salvato', $name);
         jsonResponse(['success' => true, 'role_id' => $roleId]);
     }
 
@@ -310,6 +324,7 @@ try {
         if (!clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
         $db->prepare('UPDATE class_members SET role_id = NULL WHERE class_id = :c AND role_id = :r')->execute([':c' => $id, ':r' => $roleId]);
         $db->prepare('DELETE FROM class_roles WHERE id = :r')->execute([':r' => $roleId]);
+        classLog($db, $id, $me, 'Ruolo eliminato', 'ruolo ' . $roleId);
         jsonResponse(['success' => true]);
     }
 
@@ -323,6 +338,7 @@ try {
         if ($roleId && !clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
         $db->prepare('UPDATE class_members SET role_id = :r, perms = :p WHERE class_id = :c AND user_id = :u')
            ->execute([':r' => $roleId ?: null, ':p' => json_encode(classCleanPerms($in['perms'] ?? [])), ':c' => $id, ':u' => $userId]);
+        classLog($db, $id, $me, 'Ruolo o permessi di un compagno cambiati', 'utente ' . $userId);
         jsonResponse(['success' => true]);
     }
 
@@ -374,6 +390,7 @@ try {
             $db->exec('ROLLBACK');
             throw $e;
         }
+        classLog($db, $id, $me, $action === 'merge_subject' ? 'Materie unite' : 'Materia eliminata', 'materia ' . $from);
         jsonResponse(['success' => true]);
     }
 
@@ -406,6 +423,7 @@ try {
         }
         $db->prepare('UPDATE school_classes SET summary_time = :s, timezone = :z, settings = :j WHERE id = :id')
            ->execute([':s' => $time, ':z' => $tz, ':j' => json_encode($settings), ':id' => $id]);
+        classLog($db, $id, $me, 'Impostazioni della classe cambiate');
         jsonResponse(['success' => true]);
     }
 
@@ -470,6 +488,7 @@ try {
             $db->exec('ROLLBACK');
             throw $e;
         }
+        classLog($db, $id, $me, 'Orario salvato');
         jsonResponse(['success' => true, 'valid_from' => $validFrom]);
     }
 

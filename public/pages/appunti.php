@@ -281,6 +281,13 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                         permessi dati a loro personalmente (dal menu ⋯ accanto al nome). Chi non ha un ruolo non ha etichette.</p>
                     <ul id="roles" class="plain roles"></ul>
                 </div>
+                <div class="card" id="log-card" hidden>
+                    <h3>Registro delle modifiche</h3>
+                    <details id="log-details">
+                        <summary>Chi ha cambiato o eliminato cosa (ultime 100)</summary>
+                        <ul id="log-list" class="plain log-list"></ul>
+                    </details>
+                </div>
                 <div class="card" id="subjects-card" hidden>
                     <h3>Materie</h3>
                     <p class="muted small">Due materie che sono la stessa cosa? Uniscile dal menu ⋯: il materiale, il calendario e le ore

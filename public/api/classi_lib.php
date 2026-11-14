@@ -71,6 +71,15 @@ function notesMissingSettings(array $class): array {
             'subjects_off' => array_values(array_map('intval', (array)($m['subjects_off'] ?? []))), 'skip' => array_values(array_map('strval', (array)($m['skip'] ?? [])))];
 }
 
+/** Writes a line in the class change log (the latest 500 are kept). Never throws: a log problem must not break the change itself. */
+function classLog(PDO $db, int $classId, ?int $userId, string $action, string $detail = ''): void {
+    try {
+        $db->prepare('INSERT INTO class_log (class_id, user_id, action, detail, created_at) VALUES (:c, :u, :a, :d, :t)')
+           ->execute([':c' => $classId, ':u' => $userId, ':a' => $action, ':d' => function_exists('mb_substr') ? mb_substr($detail, 0, 200) : substr($detail, 0, 200), ':t' => time()]);
+        $db->prepare('DELETE FROM class_log WHERE class_id = :c AND id <= (SELECT id FROM class_log WHERE class_id = :c ORDER BY id DESC LIMIT 1 OFFSET 500)')->execute([':c' => $classId]);
+    } catch (Throwable $e) { /* ignore */ }
+}
+
 /** The permissions of a user in a class: all for the representative and the site admin, else role + personal ones. */
 function classPerms(PDO $db, array $class, int $me, bool $isAdmin): array {
     if ($isAdmin || (int)$class['manager_id'] === $me) return array_keys(CLASS_PERMS);

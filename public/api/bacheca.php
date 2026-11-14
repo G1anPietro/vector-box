@@ -147,6 +147,7 @@ try {
         [, $perms] = bbClass($db, (int)$b['class_id'], $me, $isAdmin);
         if ((int)$b['author_id'] !== $me && !in_array('board', $perms, true)) bbFail('forbidden', 'You do not have the permission to do this', 403);
         $db->prepare('DELETE FROM class_board WHERE id = :id')->execute([':id' => $b['id']]);
+        classLog($db, (int)$b['class_id'], $me, 'Annuncio eliminato', $b['title'] ?? '');
         jsonResponse(['success' => true]);
     }
 

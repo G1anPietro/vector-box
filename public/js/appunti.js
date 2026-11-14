@@ -732,13 +732,27 @@ ${lines.join('\n')}
         renderMembers(c);
         renderRoles(c);
         renderSubjects(c);
-        $('#rep-panel').hidden = !can('roles') && !can('subjects');
+        $('#rep-panel').hidden = !can('roles') && !can('subjects') && !can('settings');
+        $('#log-card').hidden = !can('settings');
+        $('#log-details').open = false;
         $('#leave-btn').hidden = c.is_manager || !c.is_member;
 
         $$('.tt-manage').forEach((x) => { x.hidden = !can('timetable'); });
         if (can('timetable')) $('#tt-from').value = c.timetable ? c.timetable.valid_from : todayStr();
         renderTimetable();
     }
+
+    $('#log-details').addEventListener('toggle', async () => {
+        if (!$('#log-details').open || !current) return;
+        const box = $('#log-list');
+        box.replaceChildren(el('li', { class: 'muted', text: 'Carico…' }));
+        try {
+            const { log } = await getJson(`../api/classi.php?action=log&id=${current.id}`);
+            box.replaceChildren(...(log.length ? log.map((l) => el('li', {}, el('b', { text: l.action }), l.detail ? el('span', { text: ` · ${l.detail}` }) : null, el('br'),
+                el('span', { class: 'muted small', text: `${l.who} · ${new Date(l.at * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` })))
+                : [el('li', { class: 'muted', text: 'Ancora niente.' })]));
+        } catch (e) { box.replaceChildren(el('li', { class: 'err', text: e.message })); }
+    });
 
     const can = (perm) => !!current && (current.perms || []).includes(perm);
 

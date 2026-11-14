@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 21;
+const DB_SCHEMA_VERSION = 22;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,19 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV22(PDO $db): void {
+    // Change log of a class (who deleted, changed roles, removed members...): for the representative to look at
+    $db->exec("CREATE TABLE IF NOT EXISTS class_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        user_id INTEGER,
+        action TEXT NOT NULL,
+        detail TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_class_log ON class_log(class_id, id)');
+}
+
 function migrateV21(PDO $db): void {
     // "Quiz su misura": questions drawn from the class quizzes for one user; the answers stay on the server until the user answers
     $db->exec("CREATE TABLE IF NOT EXISTS custom_quizzes (
@@ -800,6 +813,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 21) {
             migrateV21($db);
+        }
+        if ($current < 22) {
+            migrateV22($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

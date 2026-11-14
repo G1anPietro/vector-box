@@ -712,7 +712,8 @@ try {
                 $db->exec('ROLLBACK');
                 throw $e;
             }
-            jsonResponse(['success' => true]);
+            classLog($db, (int)$item['class_id'], $me, 'Appunti eliminati', ($item['title'] ?? '') . ' ' . ($item['lesson_date'] ?? ''));
+        jsonResponse(['success' => true]);
         }
         $f = apItemFields($db, $class, $in);
         $db->prepare('UPDATE class_items SET subject_id = :s, kind = :k, lesson_date = :d, period = :p, title = :t, body = :b, updated_at = :now
@@ -814,6 +815,7 @@ try {
             $db->exec('ROLLBACK');
             throw $e;
         }
+        classLog($db, (int)$doc['class_id'], $me, $doc['author_id'] === null ? 'Documento dell\'AI eliminato' : 'Documento eliminato', $doc['title'] ?? '');
         jsonResponse(['success' => true]);
     }
 
@@ -837,6 +839,7 @@ try {
             throw $e;
         }
         @unlink(notesDir((int)$f['item_class']) . '/' . basename($f['stored_name']));
+        classLog($db, (int)$f['item_class'], $me, 'File eliminato', $f['original_name'] ?? '');
         jsonResponse(['success' => true]);
     }
 
