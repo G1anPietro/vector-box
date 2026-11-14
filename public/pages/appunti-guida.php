@@ -62,6 +62,7 @@ $login = 'login.php?next=appunti.php';
             <a href="#rappresentante">Per il rappresentante</a> ·
             <a href="#nuova">Chiedere una classe</a> ·
             <a href="#altra-ai">Usare un'altra AI</a> ·
+            <a href="#novita">Bacheca, classifica e ricerca</a> ·
             <a href="#notifiche">Notifiche</a> ·
             <a href="#privacy">Privacy</a> ·
             <a href="#domande">Domande</a>
@@ -84,9 +85,9 @@ $login = 'login.php?next=appunti.php';
                     (foto, PDF, testi, trascrizioni, documenti dell'AI) senza dover scorrere la pagina.</li>
                 <li><strong>Tutti vedono tutto</strong>, con il nome di chi l'ha caricato. Puoi modificare o cancellare solo quello che hai
                     caricato tu (il rappresentante può anche il resto).</li>
-                <li><strong>Scaricare:</strong> tocca una foto per aprirla intera; ogni giorno ha i pulsanti <em>Per AI</em> (un file di
-                    testo con tutto, per ChatGPT, Claude o Gemini) e <em>↓ .zip</em> (i file originali); con il filtro di una materia
-                    ci sono gli stessi per tutta la materia.</li>
+                <li><strong>Scaricare:</strong> tocca una foto per aprirla intera; ogni giorno ha un menu <em>⋯</em> con <em>Per un'altra AI</em> (un file di
+                    testo con tutto, per ChatGPT, Claude o Gemini) e <em>.zip</em> (i file originali); con il filtro di una materia
+                    ci sono gli stessi per tutta la materia. Nella pagina Carica trovi anche i prompt da copiare (studiare, tema, audio).</li>
             </ul>
             <h3>Calendario</h3>
             <p>Segna verifiche scritte e interrogazioni, con gli argomenti che ha detto il prof. Le date le aggiungono tutti; i
@@ -146,15 +147,39 @@ $login = 'login.php?next=appunti.php';
             </ol>
         </section>
 
+        <section id="novita" class="card">
+            <h2>Bacheca, classifica, ricerca e quiz su misura</h2>
+            <ul>
+                <li><strong>Bacheca:</strong> che materia c'è adesso e quale dopo (con l'aula), gli annunci del rappresentante, la settimana
+                    (verifiche, compiti, turni, giorni senza lezione), il ripasso di oggi e, se la classe lo accende, gli <em>appunti
+                    mancanti</em> (lezioni fatte per cui nessuno ha caricato niente).</li>
+                <li><strong>Calendario:</strong> sul computer la vista a mese, sul telefono l'agenda; si può filtrare per materia. Ci sono
+                    anche compiti, argomenti, giorni senza lezione e i <strong>turni delle interrogazioni</strong>.</li>
+                <li><strong>Cerca:</strong> nell'Archivio la casella <em>Cerca</em> trova una parola in tutti gli appunti, nei testi dei file e
+                    nei documenti. Dopo una risposta sbagliata in un quiz il link <em>Cerca nel materiale</em> ti porta dove studiarla.</li>
+                <li><strong>Quiz su misura</strong> (Studio): scegli quante domande, la materia, scelta multipla o vero/falso e da dove
+                    (tutte, quelle del prof, quelle che sbagli). Le domande sbagliate tornano nel ripasso di ogni giorno. In
+                    <em>Domande fatte in classe</em> vedi quante volte il prof ha chiesto la stessa domanda, le studi a carte, le
+                    esporti per Anki o le dai a un'altra AI che ti interroga.</li>
+                <li><strong>Classifica:</strong> 10 punti per ogni risposta giusta al primo tentativo in un quiz e 5 per ogni domanda giusta del
+                    ripasso. I punti li conta il sito, non si possono inventare. Puoi uscire quando vuoi: i tuoi punti vengono cancellati.</li>
+                <li><strong>Trascina i file</strong> da qualsiasi parte delle pagine Appunti: compare "Mettili qui" e si aprono nella pagina Carica.
+                    I caricamenti riprendono da soli se la connessione cade.</li>
+                <li><strong>Impostazioni</strong> (l'ingranaggio in alto): notifiche, il tuo nome in classe, cambio classe, codice della
+                    classe, riassunto automatico, riepilogo settimanale, voce che legge le domande, caricamenti.</li>
+            </ul>
+        </section>
+
         <section id="notifiche" class="card">
             <h2>Notifiche</h2>
-            <p>La campanella in alto nella pagina raccoglie i promemoria di ogni verifica e interrogazione: <strong>2 giorni prima</strong>
-                e <strong>il giorno prima</strong> alle 16:00, e <strong>la sera prima</strong> alle 21:00.</p>
+            <p>I promemoria di ogni verifica e interrogazione arrivano <strong>2 giorni prima</strong> e <strong>il giorno prima</strong> alle 16:00 e
+                <strong>la sera prima</strong> alle 21:00; la domenica alle 19:00 (a scelta della classe) il riepilogo della settimana. Quali
+                ricevere lo scegli in <em>Impostazioni</em> (l'ingranaggio), dove trovi anche l'elenco delle notifiche arrivate.</p>
             <ul>
-                <li><strong>Sul telefono anche a sito chiuso:</strong> campanella → <em>Attiva le notifiche su questo dispositivo</em> →
-                    consenti. Poi <em>Manda una prova</em> per controllare.</li>
+                <li><strong>Sul telefono anche a sito chiuso:</strong> Impostazioni → <em>Attiva le notifiche su questo dispositivo</em> →
+                    consenti. Poi <em>Manda una notifica di prova</em> per controllare.</li>
                 <li><strong>iPhone:</strong> prima, in Safari, Condividi → <em>Aggiungi alla schermata Home</em>; apri gli Appunti da
-                    quell'icona e attiva lì le notifiche (serve iOS 16.4 o successivo).</li>
+                    quell'icona e attiva lì le notifiche, da Impostazioni (serve iOS 16.4 o successivo).</li>
             </ul>
         </section>
 
