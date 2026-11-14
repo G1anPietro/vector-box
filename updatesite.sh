@@ -94,6 +94,12 @@ fi
 
 # ---------- 5. Permissions on data/ (DB, sessions, books) ----------
 if [ "$IS_ROOT" -eq 1 ]; then
+    # The web user only writes in data/: the code, .git and this script belong to root, so a bug in a PHP page cannot
+    # change the site's code nor what root runs at the next update (git config, hooks).
+    find . -mindepth 1 -maxdepth 1 ! -name data ! -name .env ! -name node_modules -exec chown -R root:root {} + \
+        -exec chmod -R go-w {} +
+    chown root:root . && chmod go-w .
+    chmod -R a+rX public bin tools 2>/dev/null || true
     mkdir -p data
     chown -R "$WEB_USER":"$WEB_USER" data
     chmod -R u+rwX,g+rwX,o-rwx data          # not world-readable (password hashes live there)

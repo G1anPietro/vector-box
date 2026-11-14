@@ -578,6 +578,7 @@ try {
     if ($action === 'review_answer') {
         // Leitner boxes: a wrong answer (in a quiz or in the review) puts the question back to tomorrow; a right one in
         // the review moves it to the next box; after the last box it is learned and leaves the review.
+        if (!checkRateLimit('review_answer', 1500, 3600, 'user:' . $me)) apFail('slow_down', 'Too many answers, try later', 429);
         $docId = (int)($in['doc_id'] ?? 0);
         $q = (int)($in['q'] ?? -1);
         $key = [':u' => $me, ':d' => $docId, ':q' => $q];

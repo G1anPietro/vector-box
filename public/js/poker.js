@@ -192,13 +192,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         box.innerHTML = `
                             <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.8rem;">
                                 <span style="color:${isCurrentTurn ? 'var(--accent-color)' : '#fff'};">
-                                    ${p.username} ${p.is_bot ? '[BOT]' : ''} ${p.is_folded ? '<small>(FOLDED)</small>' : ''}
+                                    <span class="pk-name"></span> ${p.is_bot ? '[BOT]' : ''} ${p.is_folded ? '<small>(FOLDED)</small>' : ''}
                                 </span>
-                                <span style="color:#ffaa00;">${p.chips} CR</span>
+                                <span style="color:#ffaa00;">${Number(p.chips) || 0} CR</span>
                             </div>
                             <div class="card-row" style="display:flex; gap:4px; margin-top:6px;"></div>
                         `;
 
+                        box.querySelector('.pk-name').textContent = p.username;   // names go in as text
                         const cardRow = box.querySelector('.card-row');
                         if (p.hole_cards && p.hole_cards.length > 0) {
                             p.hole_cards.forEach(c => cardRow.appendChild(renderCard(c)));

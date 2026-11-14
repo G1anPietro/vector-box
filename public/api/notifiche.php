@@ -85,6 +85,7 @@ try {
     }
 
     if ($action === 'bell_notify') {
+        if (!checkRateLimit('bell_notify', 60, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many changes, try later', 429);
         $st = $db->prepare('UPDATE class_members SET bell_notify = :on WHERE class_id = :c AND user_id = :u');
         $st->execute([':on' => empty($in['on']) ? 0 : 1, ':c' => (int)($in['class_id'] ?? 0), ':u' => $me]);
         if ($st->rowCount() === 0) ntFail('not_member', 'You are not in this class', 403);

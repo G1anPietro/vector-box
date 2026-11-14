@@ -268,7 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 printGuestLog(">> No commands in session history.", "#8ab4f8");
             } else {
                 cmdHistory.forEach((item, index) => {
-                    printGuestLog(` ${index + 1}  ${item}`, "#8ab4f8");
+                    printGuestLog(` ${index + 1}  ${item}`, "#8ab4f8", true);   // typed text: never parsed as HTML
                 });
             }
         } else if (rawVal.startsWith('/')) {

@@ -264,6 +264,11 @@ try {
         jsonResponse(['success' => true]);
     }
 
+    if (in_array($action, ['display_name', 'save_role', 'delete_role', 'set_member_access', 'merge_subject', 'delete_subject'], true)
+        && !checkRateLimit('class_manage', 120, 3600, 'user:' . $me)) {
+        clFail('slow_down', 'Too many changes, try later', 429);
+    }
+
     if ($action === 'display_name') {
         // My name in this class (or another member's, for whoever manages members)
         $class = clVisible($db, $id, $me, $isAdmin);
