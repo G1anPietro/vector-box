@@ -202,12 +202,22 @@
     }
     const weekEnd = () => { const d = C.parseDate(state.today); d.setDate(d.getDate() + WEEK_DAYS); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
+    /** "Da sistemare": topics the AI proposed, and what it found in the uploads (a doubtful type, subject or date; a test it heard about). Always the person decides. */
     function renderFix(ov) {
         const box = $('#bb-fix');
         const proposed = (P().current.perms || []).includes('topics') ? ov.topics.filter((t) => t.proposed) : [];
-        box.hidden = !proposed.length;
-        if (!proposed.length) return;
+        const reports = state.reports || [];
+        box.hidden = !proposed.length && !reports.length;
+        if (box.hidden) return;
+        const resolve = async (r, accept) => {
+            try { await board({ action: 'resolve_report', id: r.id, accept }); toast(accept ? 'Fatto.' : 'Lasciato com\'è.', 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
+        };
         set(box, el('h3', { text: 'Da sistemare' }),
+            ...reports.map((r) => el('div', { class: 'bb-fix-row' },
+                el('p', {}, el('b', { text: r.title }), el('br'), r.body),
+                el('span', { class: 'row-actions' },
+                    el('button', { type: 'button', class: 'mini', text: r.kind === 'proposta_verifica' ? 'Aggiungi al calendario' : 'Correggi come suggerito', onclick: () => resolve(r, true) }),
+                    el('button', { type: 'button', class: 'ghost mini', text: r.kind === 'proposta_verifica' ? 'Ignora' : 'Lascia com\'è', onclick: () => resolve(r, false) })))),
             ...proposed.map((t) => el('div', { class: 'bb-fix-row' },
                 el('p', {}, el('b', { text: t.name }), ` in ${t.subject}, dal ${shortDate.format(C.parseDate(t.start))}: l'AI pensa che sia un argomento nuovo.`),
                 el('span', { class: 'row-actions' },

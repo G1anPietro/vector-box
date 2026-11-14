@@ -86,7 +86,7 @@ test.before(async () => {
     envBase = {
         GEMINI_API_KEY: 'AQ.test-key-123',
         GEMINI_BASE_URL: `http://127.0.0.1:${gemini.address().port}/v1beta`,
-        GEMINI_FAST_RPM: 6000, GEMINI_SMART_RPM: 6000, GEMINI_RETRY_WAITS: '0.05,0.05',
+        GEMINI_FAST_RPM: 6000, GEMINI_SMART_RPM: 6000, GEMINI_RETRY_WAITS: '0.05,0.05', AI_CLASSIFY: 'false',
     };
     site = await startSite(envBase);
     admin = await makeAdmin(site, 'ai_admin');

@@ -60,6 +60,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                 <label>Giorno <input type="date" id="w-date"></label>
                 <label>Tipo
                     <select id="w-kind">
+                        <option value="auto">Lo decide l'AI</option>
                         <option value="appunti">Appunti</option>
                         <option value="slide">Slide / materiale del prof</option>
                         <option value="libro">Pagine del libro</option>

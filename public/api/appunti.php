@@ -70,6 +70,8 @@ function apItemFields(PDO $db, array $class, array $in): array {
     $subjectId = (int)($in['subject_id'] ?? 0);
     if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) apFail('bad_subject', 'Choose a subject of this class');
     $kind = (string)($in['kind'] ?? 'appunti');
+    $auto = $kind === 'auto';          // "let the AI decide": saved as 'altro', the AI picks the type after reading it
+    if ($auto) $kind = 'altro';
     if (!in_array($kind, NOTE_KINDS, true)) apFail('bad_kind', 'Unknown type of material');
     $date = (string)($in['lesson_date'] ?? '');
     if (!classValidDate($date)) apFail('bad_date', 'Date must be YYYY-MM-DD');
@@ -79,7 +81,7 @@ function apItemFields(PDO $db, array $class, array $in): array {
     if (textLength($body) > NOTE_BODY_MAX) apFail('too_long', 'Text is too long (max ' . NOTE_BODY_MAX . ' characters)');
     return [
         'subject_id' => $subjectId, 'kind' => $kind, 'lesson_date' => $date, 'period' => $period,
-        'title' => apText($in['title'] ?? '', NOTE_TITLE_MAX), 'body' => apText($body, NOTE_BODY_MAX, true),
+        'title' => apText($in['title'] ?? '', NOTE_TITLE_MAX), 'body' => apText($body, NOTE_BODY_MAX, true), 'auto' => $auto,
     ];
 }
 
@@ -234,11 +236,11 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
 
         $now = time();
         $db->exec('BEGIN IMMEDIATE');
-        $db->prepare('INSERT INTO class_items (class_id, subject_id, kind, lesson_date, period, title, body, author_id, source, created_at, updated_at)
-                      VALUES (:c, :s, :k, :d, :p, :t, :b, :a, :src, :now, :now)')
+        $db->prepare('INSERT INTO class_items (class_id, subject_id, kind, lesson_date, period, title, body, author_id, source, created_at, updated_at, ai_state)
+                      VALUES (:c, :s, :k, :d, :p, :t, :b, :a, :src, :now, :now, :ais)')
            ->execute([':c' => $classId, ':s' => $fields['subject_id'], ':k' => $fields['kind'], ':d' => $fields['lesson_date'],
                       ':p' => $fields['period'], ':t' => $fields['title'], ':b' => $fields['body'], ':a' => $me,
-                      ':src' => 'site', ':now' => $now]);
+                      ':src' => 'site', ':now' => $now, ':ais' => !empty($fields['auto']) ? 'auto' : '']);
         $itemId = (int)$db->lastInsertId();
         $ins = $db->prepare('INSERT INTO class_item_files (item_id, class_id, stored_name, original_name, mime, size, text, text_status, created_at, sha256)
                              VALUES (:i, :c, :n, :o, :m, :sz, :tx, :ts, :now, :h)');

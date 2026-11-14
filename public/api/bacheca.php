@@ -37,6 +37,19 @@ function bbText($v, int $max, bool $multiline = false): string {
     return textCut(trim($s ?? ''), $max);
 }
 
+/** What the AI found that someone should look at: for who has the "reports" permission, and for the uploader of an upload it doubts. */
+function bbReports(PDO $db, int $classId, int $me, array $perms): array {
+    $all = in_array('reports', $perms, true);
+    $st = $db->prepare("SELECT id, kind, title, body, data, user_id, created_at FROM class_board WHERE class_id = :c AND kind IN ('segnalazione', 'proposta_verifica') AND status = 'open' ORDER BY id DESC LIMIT 20");
+    $st->execute([':c' => $classId]);
+    $out = [];
+    foreach ($st->fetchAll() as $r) {
+        if (!$all && !($r['kind'] === 'segnalazione' && (int)$r['user_id'] === $me)) continue;
+        $out[] = ['id' => (int)$r['id'], 'kind' => $r['kind'], 'title' => $r['title'], 'body' => $r['body'], 'data' => json_decode($r['data'], true) ?: new stdClass(), 'at' => (int)$r['created_at']];
+    }
+    return $out;
+}
+
 try {
     $db = getDbConnection();
 
@@ -78,7 +91,7 @@ try {
 
         jsonResponse(['success' => true, 'today' => $today, 'now' => $local->format('H:i:s'), 'lessons' => $lessons, 'next_day' => $nextDay,
             'day_off' => $dayOff ? ($dayOff['reason'] !== '' ? $dayOff['reason'] : 'Niente lezione') : null,
-            'announcements' => $announcements, 'can_post' => $canBoard,
+            'announcements' => $announcements, 'can_post' => $canBoard, 'reports' => bbReports($db, $classId, $me, $perms),
             'missing' => array_slice(notesMissing($db, $class), 0, 12), 'can_skip' => $canBoard || in_array('material', $perms, true) || in_array('settings', $perms, true)]);
     }
 
@@ -121,6 +134,38 @@ try {
                 '/pages/appunti.php?class=' . $classId . '&tab=board');
         }
         jsonResponse(['success' => true, 'id' => $id, 'pushed' => $sent]);
+    }
+
+    if ($action === 'resolve_report') {
+        // An AI report: accept (apply what it suggests: change the upload, add the test to the calendar) or dismiss. Never automatic.
+        $st = $db->prepare("SELECT * FROM class_board WHERE id = :id AND kind IN ('segnalazione', 'proposta_verifica') AND status = 'open'");
+        $st->execute([':id' => (int)($in['id'] ?? 0)]);
+        $b = $st->fetch();
+        if (!$b) bbFail('not_found', 'Not found', 404);
+        [$class, $perms] = bbClass($db, (int)$b['class_id'], $me, $isAdmin);
+        $mayAll = in_array('reports', $perms, true);
+        if (!$mayAll && !($b['kind'] === 'segnalazione' && (int)$b['user_id'] === $me)) bbFail('forbidden', 'You do not have the permission to do this', 403);
+        $d = json_decode($b['data'], true) ?: [];
+        $accept = !empty($in['accept']);
+        $classId = (int)$class['id'];
+        if ($accept && $b['kind'] === 'segnalazione') {
+            $it = $db->prepare('SELECT * FROM class_items WHERE id = :id AND class_id = :c');
+            $it->execute([':id' => (int)($d['item_id'] ?? 0), ':c' => $classId]);
+            if ($it->fetch()) {
+                if (($d['field'] ?? '') === 'kind' && in_array($d['value'] ?? '', NOTE_KINDS, true)) $db->prepare('UPDATE class_items SET kind = :v WHERE id = :id')->execute([':v' => $d['value'], ':id' => $d['item_id']]);
+                elseif (($d['field'] ?? '') === 'subject' && notesSubjectOf($db, $classId, (int)$d['value'])) $db->prepare('UPDATE class_items SET subject_id = :v WHERE id = :id')->execute([':v' => (int)$d['value'], ':id' => $d['item_id']]);
+                elseif (($d['field'] ?? '') === 'date' && classValidDate((string)($d['value'] ?? ''))) $db->prepare('UPDATE class_items SET lesson_date = :v WHERE id = :id')->execute([':v' => $d['value'], ':id' => $d['item_id']]);
+            }
+        } elseif ($accept && $b['kind'] === 'proposta_verifica') {
+            if (notesSubjectOf($db, $classId, (int)($d['subject_id'] ?? 0)) && classValidDate((string)($d['date'] ?? '')) && in_array($d['kind'] ?? '', ['verifica', 'interrogazione'], true)) {
+                $db->prepare("INSERT INTO class_events (class_id, subject_id, kind, event_date, title, topics, period_from, period_to, topics_off, author_id, created_at, updated_at)
+                              VALUES (:c, :s, :k, :d, '', '', NULL, NULL, '[]', :a, :t, :t)")
+                   ->execute([':c' => $classId, ':s' => (int)$d['subject_id'], ':k' => $d['kind'], ':d' => $d['date'], ':a' => $me, ':t' => time()]);
+            }
+        }
+        $db->prepare("UPDATE class_board SET status = :s WHERE id = :id")->execute([':s' => $accept ? 'done' : 'dismissed', ':id' => $b['id']]);
+        classLog($db, $classId, $me, $accept ? 'Segnalazione dell\'AI accettata' : 'Segnalazione dell\'AI ignorata', $b['title']);
+        jsonResponse(['success' => true]);
     }
 
     if ($action === 'skip_missing') {
