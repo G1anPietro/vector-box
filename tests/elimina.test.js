@@ -67,3 +67,14 @@ test('AI documents: only who has the docs permission, and their review cards go 
     assert.equal((await ap(luigi, { action: 'delete_doc', id })).status, 200);
     assert.equal((await docs(mario)).length, 0);
 });
+
+test('the "Per AI" file can include the optional audio prompt', async () => {
+    const r = await upload(mario, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: '2026-10-06', body: 'Napoleone nasce nel 1769' }, []);
+    assert.equal(r.status, 200);
+    const q = (extra) => `/api/appunti.php?action=ai_pack&class_id=${classId}&scope=day&date=2026-10-06${extra}`;
+    const plain = await mario.get(q(''));
+    assert.ok(plain.text.includes('PROMPT 1') && !plain.text.includes('PROMPT A'));
+    const withAudio = await mario.get(q('&audio=1'));
+    assert.ok(withAudio.text.includes('PROMPT A') && withAudio.text.includes('registrazione di una lezione'));
+    assert.ok(withAudio.text.indexOf('## PROMPT A') < withAudio.text.indexOf('## PROMPT 1'), 'the audio prompt comes first');
+});

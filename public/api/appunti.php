@@ -333,7 +333,7 @@ try {
             if (!checkRateLimit('notes_zip', 20, 3600, 'user:' . $me)) apFail('slow_down', 'Too many downloads, try later', 429);
             $type = (string)($_GET['scope'] ?? '');
             $scope = ['type' => $type, 'subject_id' => (int)($_GET['subject_id'] ?? 0), 'date' => (string)($_GET['date'] ?? ''),
-                      'event_id' => (int)($_GET['event_id'] ?? 0)];
+                      'event_id' => (int)($_GET['event_id'] ?? 0), 'audio' => !empty($_GET['audio'])];
             if (!in_array($type, ['day', 'subject', 'event'], true)) apFail('bad_scope', 'Unknown scope');
             if ($type === 'day' && !classValidDate($scope['date'])) apFail('bad_date', 'Date must be YYYY-MM-DD');
             if ($type === 'subject' && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
@@ -352,7 +352,7 @@ try {
             if (!checkRateLimit('notes_zip', 20, 3600, 'user:' . $me)) apFail('slow_down', 'Too many downloads, try later', 429);
             $type = (string)($_GET['scope'] ?? '');
             $scope = ['type' => $type, 'subject_id' => (int)($_GET['subject_id'] ?? 0), 'date' => (string)($_GET['date'] ?? ''),
-                      'event_id' => (int)($_GET['event_id'] ?? 0)];
+                      'event_id' => (int)($_GET['event_id'] ?? 0), 'audio' => !empty($_GET['audio'])];
             if ($type === 'day' && !classValidDate($scope['date'])) apFail('bad_date', 'Date must be YYYY-MM-DD');
             if ($type === 'subject' && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
             if (!in_array($type, ['day', 'subject', 'event'], true)) apFail('bad_scope', 'Unknown scope');

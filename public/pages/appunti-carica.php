@@ -123,18 +123,12 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                 <label id="aiget-event-l">Verifica o interrogazione <select id="aiget-event"></select></label>
                 <label id="aiget-subject-l" hidden>Materia <select id="aiget-subject"></select></label>
                 <label id="aiget-date-l" hidden>Giorno <input type="date" id="aiget-date"></label>
+                <label class="switch"><input type="checkbox" id="aiget-audio"> Aggiungi il prompt per la registrazione audio (per le AI che sanno ascoltare, come Gemini)</label>
                 <div class="row">
                     <button type="button" id="aiget-md" class="ico-dl">Scarica per l'AI (.md)</button>
                     <button type="button" id="aiget-zip" class="ghost ico-dl">Scarica i file (.zip)</button>
                 </div>
             </div>
-            <details class="audio-box">
-                <summary>Hai una registrazione audio? Il prompt per l'AI che sa ascoltare (per esempio Gemini)</summary>
-                <p class="muted small">Allega la registrazione all'AI e incolla questo prompt: ti restituisce la trascrizione e gli appunti della lezione.
-                    Poi carica qui la risposta come <b>Appunti di una lezione</b>.</p>
-                <pre id="audio-prompt" class="prompt-box"></pre>
-                <button type="button" id="audio-copy" class="ghost mini">Copia il prompt</button>
-            </details>
             <h3 class="step">2. Carica la risposta dell'AI</h3>
             <form id="ai-form" class="stack">
                 <div class="grid2">

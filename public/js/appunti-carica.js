@@ -190,6 +190,7 @@
         if (sc === 'event') { if (!$('#aiget-event').value) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; } q.set('event_id', $('#aiget-event').value); }
         else q.set('subject_id', $('#aiget-subject').value);
         if (sc === 'day') { if (!$('#aiget-date').value) { status('Scegli il giorno.', 'err'); return; } q.set('date', $('#aiget-date').value); }
+        if ($('#aiget-audio').checked) q.set('audio', '1');
         btn.disabled = true;
         status(action === 'zip' ? 'Preparo lo .zip…' : 'Preparo il file per l\'AI…');
         try {
@@ -256,22 +257,6 @@
                 bad_event: 'Scegli una verifica: aggiungila prima nel Calendario.', bad_file: 'Per un documento di studio usa un file .md, .txt o .json (massimo 2 MB); PDF, Word e immagini si caricano come materiale.' };
             status((e.json && msg[e.json.code]) || e.message, 'err');
         }
-    });
-
-    /* ---------- the prompt for an AI that can hear: recording in, lesson notes out ---------- */
-    const AUDIO_PROMPT = `Ti allego la registrazione di una lezione di scuola superiore.
-1) Ascolta tutta la registrazione e trascrivi fedelmente quello che dice il professore, senza inventare nulla. Se una parola non si capisce scrivi [non chiaro].
-2) Poi scrivi, in italiano e in Markdown, gli APPUNTI COMPLETI della lezione:
-- un titolo per ogni argomento e, sotto, elenchi chiari;
-- le definizioni, i nomi e le date importanti in grassetto;
-- formule, codice e comandi in blocchi di codice, esattamente come detti;
-- gli esempi fatti dal professore;
-- alla fine "Domande del prof" (le domande che ha fatto agli studenti, con la risposta se la dice) e "Compiti assegnati".
-Non aggiungere cose che il professore non ha detto. Rispondi solo con gli appunti in Markdown.`;
-    $('#audio-prompt').textContent = AUDIO_PROMPT;
-    $('#audio-copy').addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(AUDIO_PROMPT); status('Prompt copiato: incollalo nell\'AI insieme alla registrazione.', 'ok'); }
-        catch (e) { const r = document.createRange(); r.selectNodeContents($('#audio-prompt')); getSelection().removeAllRanges(); getSelection().addRange(r); status('Selezionato: copialo a mano.', 'err'); }
     });
 
     /* ---------- start ---------- */

@@ -701,3 +701,7 @@ label:has(> .dp-native) { position: relative; }
 .audio-box { margin: 10px 0 4px; }
 .audio-box summary { cursor: pointer; color: var(--accent); }
 .prompt-box { white-space: pre-wrap; background: #11131a; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; margin: 8px 0; max-height: 260px; overflow: auto; }
+.code-actions { justify-content: flex-start; gap: 8px; }
+.set-pair { display: grid; gap: 12px; margin: 12px 0; }
+.set-pair .set-sec { margin: 0; }
+@media (min-width: 880px) { .set-pair { grid-template-columns: 1fr 1fr; align-items: start; } }

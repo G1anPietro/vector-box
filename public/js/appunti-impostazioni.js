@@ -105,7 +105,9 @@
             return d;
         }) : [el('p', { class: 'muted', text: 'Nessuna notifica ancora.' })]));
         if (r.notifications.length > 1) list.append(el('button', { type: 'button', class: 'ghost mini', text: 'Cancella tutte', onclick: () => { if (confirm('Cancellare tutte le notifiche?')) remove({ all: true }); } }));
-        box.replaceChildren(device, list);
+        box.replaceChildren(list);
+        const slot = document.querySelector('#push-slot');
+        if (slot) slot.replaceChildren(device);
         pushBox(device, r.devices);
         if (r.unread) { try { await post('../api/notifiche.php', { action: 'read_all' }); } catch (e) { /* ignore */ } }
     }
@@ -200,11 +202,12 @@
             mineInfo && (mineInfo.requests_open || mineInfo.is_admin) ? askClass : el('p', { class: 'muted small', text: 'Le richieste di nuove classi sono chiuse in questo momento.' }));
 
         $('#settings-root').replaceChildren(
-            Object.assign(section('Notifiche', 'Su questo dispositivo, e quelle che ti sono arrivate.', el('div', { id: 'notifs-box' })), { id: 'notifiche' }),
+            Object.assign(section('Notifiche ricevute', 'Quelle che ti sono arrivate, per tipo.', el('div', { id: 'notifs-box' })), { id: 'notifiche' }),
             classesSection,
             section(`${c.name} · ${c.school}`, 'Queste scelte valgono solo per te.', nameForm,
                 el('p', { class: 'muted small', text: 'Lo vedono solo i compagni di questa classe; nel resto del sito resta il tuo nome utente.' })),
-            section('Cosa ricevere', 'Per questa classe. Sul telefono a sito chiuso arrivano solo se hai attivato le notifiche qui sopra.',
+            section('Cosa ricevere', 'Per questa classe. Per averle anche a sito chiuso attiva le notifiche su questo dispositivo.',
+                el('div', { id: 'push-slot' }),
                 el('div', { class: 'row test-row' }, el('button', { type: 'button', class: 'ghost mini', text: 'Manda una notifica di prova', onclick: async () => {
                     try { const r = await post('../api/notifiche.php', { action: 'test' }); status(r.delivered ? 'Prova inviata: dovrebbe arrivare tra pochi secondi.' : 'La prova non è partita: attiva prima le notifiche su questo dispositivo.', r.delivered ? 'ok' : 'err'); drawNotifs(); } catch (e) { fail(e); }
                 } })),
@@ -217,9 +220,10 @@
             section('Come lo vedo', 'Su questo dispositivo.',
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),
+            el('div', { class: 'set-pair' },
             section('Codice della classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox,
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
-            section('Riassunto automatico', null, summaryBox));
+            section('Riassunto automatico', null, summaryBox)));
     }
 
     window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });

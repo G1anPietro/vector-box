@@ -7,6 +7,19 @@ require_once __DIR__ . '/appunti_ai.php';
 
 const ZIP_MAX_BYTES = 300 * 1048576;
 
+/** Optional prompt for an AI that can hear: from a lesson recording to the transcript and the notes (ticked on the upload page). */
+const AI_PROMPT_AUDIO = <<<'TXT'
+Ti allego la registrazione di una lezione di scuola superiore.
+1) Ascolta tutta la registrazione e trascrivi fedelmente quello che dice il professore, senza inventare nulla. Se una parola non si capisce scrivi [non chiaro].
+2) Poi scrivi, in italiano e in Markdown, gli APPUNTI COMPLETI della lezione:
+- un titolo per ogni argomento e, sotto, elenchi chiari;
+- le definizioni, i nomi e le date importanti in grassetto;
+- formule, codice e comandi in blocchi di codice, esattamente come detti;
+- gli esempi fatti dal professore;
+- alla fine "Domande del prof" (le domande che ha fatto agli studenti, con la risposta se la dice) e "Compiti assegnati".
+Non aggiungere cose che il professore non ha detto. Rispondi solo con gli appunti in Markdown.
+TXT;
+
 /** File/folder name safe for every system. */
 function zipName(string $s, int $max = 60): string {
     $s = preg_replace('/[\\\\\/:*?"<>|\x00-\x1F]+/u', '-', $s) ?? '';
@@ -146,14 +159,15 @@ function zipWrite(PDO $db, array $class, array $scope, array $items, array $file
     // Index and prompt
     $what = zipWhat($scope, $items, $event);
     $zip->addFromString('INDICE.txt', "Classe {$class['name']} ({$class['school']}) — $what\nFonti:\n\n" . implode("\n\n", $index) . "\n");
-    $zip->addFromString('PROMPT.txt', zipPromptText($class, $what, $event));
+    $zip->addFromString('PROMPT.txt', zipPromptText($class, $what, $event, !empty($scope['audio'])));
     $zip->close();
 
     $download = zipName("Appunti {$class['name']} - $what", 100) . '.zip';
     return [$path, $download];
 }
 
-function zipPromptText(array $class, string $what, ?array $event): string {
+function zipPromptText(array $class, string $what, ?array $event, bool $audio = false): string {
+    $audioBlock = $audio ? "\n===== PROMPT A — dalla registrazione audio (facoltativo) =====\n\nSe hai la registrazione della lezione, allegala all'AI e manda questo; poi continua con il PROMPT 1.\n\n" . AI_PROMPT_AUDIO . "\n" : '';
     $intro = "COME USARLO\n"
         . "1. Apri un'AI che accetta file (ChatGPT, Claude, Gemini, Copilot...).\n"
         . "2. Molte AI (per esempio l'app di Gemini) non leggono gli zip: estrai lo zip e allega i file della cartella\n"
@@ -165,10 +179,10 @@ function zipPromptText(array $class, string $what, ?array $event): string {
         . "Classe {$class['name']} ({$class['school']}). $what.\n"
         . ($event && $event['topics'] !== '' ? "Argomenti annunciati dal prof: {$event['topics']}\n" : '');
     if (!$event) {
-        return $intro . "\n===== PROMPT 1 — appunti completi =====\n\n" . zipPrompt(AI_PROMPT_LESSON)
+        return $intro . $audioBlock . "\n===== PROMPT 1 — appunti completi =====\n\n" . zipPrompt(AI_PROMPT_LESSON)
             . "\n\n===== PROMPT 2 — schema (JSON) =====\n\n" . "Dagli appunti che hai appena scritto:\n" . AI_PROMPT_SCHEMA . "\n";
     }
-    return $intro
+    return $intro . $audioBlock
         . "\n===== PROMPT 1 — dispensa completa =====\n\n" . zipPrompt(AI_PROMPT_COMPLETO)
         . "\n\n===== PROMPT 2 — riassunto =====\n\n" . "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_RIASSUNTO
         . "\n\n===== PROMPT 3 — preparazione mirata =====\n\n" . "Dalla dispensa che hai appena scritto e dai file di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE
@@ -202,6 +216,7 @@ function packBuild(PDO $db, array $class, array $scope): array|string {
            'PROMPT 5 — schema (JSON)' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_SCHEMA]
         : ['PROMPT 1 — appunti completi' => zipPackPrompt(AI_PROMPT_LESSON),
            'PROMPT 2 — schema (JSON)' => "Dagli appunti che hai appena scritto:\n" . AI_PROMPT_SCHEMA];
+    if (!empty($scope['audio'])) $prompts = ['PROMPT A — dalla registrazione audio (facoltativo: allega la registrazione e mandalo prima del PROMPT 1)' => AI_PROMPT_AUDIO] + $prompts;
     foreach ($prompts as $title => $text) {
         $out[] = '';
         $out[] = "## $title";
