@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 19;
+const DB_SCHEMA_VERSION = 20;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,47 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV20(PDO $db): void {
+    // Full-text search (SQLite FTS5, no AI) over the typed notes, the text of files (transcriptions, Word, slides) and the written
+    // study documents. Triggers keep it up to date, so the code that writes the material does not have to know about it.
+    $db->exec("CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(title, body, class_id UNINDEXED, kind UNINDEXED, ref UNINDEXED,
+               subject_id UNINDEXED, lesson_date UNINDEXED, tokenize = 'unicode61 remove_diacritics 2')");
+    $docKinds = "('lezione', 'completo', 'riassunto', 'preparazione', 'domande')";
+    $db->exec("DROP TRIGGER IF EXISTS fts_items_ai"); $db->exec("DROP TRIGGER IF EXISTS fts_items_au"); $db->exec("DROP TRIGGER IF EXISTS fts_items_ad");
+    $db->exec("DROP TRIGGER IF EXISTS fts_files_ai"); $db->exec("DROP TRIGGER IF EXISTS fts_files_au"); $db->exec("DROP TRIGGER IF EXISTS fts_files_ad");
+    $db->exec("DROP TRIGGER IF EXISTS fts_docs_ai"); $db->exec("DROP TRIGGER IF EXISTS fts_docs_au"); $db->exec("DROP TRIGGER IF EXISTS fts_docs_ad");
+    // typed notes of an item
+    $db->exec("CREATE TRIGGER fts_items_ai AFTER INSERT ON class_items WHEN LENGTH(TRIM(new.body)) > 0 BEGIN
+        INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date) VALUES (new.title, new.body, new.class_id, 'item', 'i:' || new.id, new.subject_id, new.lesson_date); END");
+    $db->exec("CREATE TRIGGER fts_items_au AFTER UPDATE ON class_items BEGIN
+        DELETE FROM notes_fts WHERE ref = 'i:' || old.id;
+        INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date) SELECT new.title, new.body, new.class_id, 'item', 'i:' || new.id, new.subject_id, new.lesson_date WHERE LENGTH(TRIM(new.body)) > 0;
+        UPDATE notes_fts SET subject_id = new.subject_id, lesson_date = new.lesson_date WHERE ref IN (SELECT 'f:' || id FROM class_item_files WHERE item_id = new.id); END");
+    $db->exec("CREATE TRIGGER fts_items_ad AFTER DELETE ON class_items BEGIN DELETE FROM notes_fts WHERE ref = 'i:' || old.id; END");
+    // text of a file
+    $db->exec("CREATE TRIGGER fts_files_ai AFTER INSERT ON class_item_files WHEN new.text IS NOT NULL AND LENGTH(TRIM(new.text)) > 0 BEGIN
+        INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date)
+        SELECT new.original_name, new.text, new.class_id, 'file', 'f:' || new.id, i.subject_id, i.lesson_date FROM class_items i WHERE i.id = new.item_id; END");
+    $db->exec("CREATE TRIGGER fts_files_au AFTER UPDATE OF text ON class_item_files BEGIN
+        DELETE FROM notes_fts WHERE ref = 'f:' || old.id;
+        INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date)
+        SELECT new.original_name, new.text, new.class_id, 'file', 'f:' || new.id, i.subject_id, i.lesson_date FROM class_items i WHERE i.id = new.item_id AND new.text IS NOT NULL AND LENGTH(TRIM(new.text)) > 0; END");
+    $db->exec("CREATE TRIGGER fts_files_ad AFTER DELETE ON class_item_files BEGIN DELETE FROM notes_fts WHERE ref = 'f:' || old.id; END");
+    // written study documents
+    $db->exec("CREATE TRIGGER fts_docs_ai AFTER INSERT ON class_docs WHEN new.kind IN $docKinds AND new.status = 'ok' BEGIN
+        INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date) VALUES (new.title, new.content, new.class_id, 'doc', 'd:' || new.id, new.subject_id, new.lesson_date); END");
+    $db->exec("CREATE TRIGGER fts_docs_au AFTER UPDATE ON class_docs BEGIN
+        DELETE FROM notes_fts WHERE ref = 'd:' || old.id;
+        INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date) SELECT new.title, new.content, new.class_id, 'doc', 'd:' || new.id, new.subject_id, new.lesson_date WHERE new.kind IN $docKinds AND new.status = 'ok'; END");
+    $db->exec("CREATE TRIGGER fts_docs_ad AFTER DELETE ON class_docs BEGIN DELETE FROM notes_fts WHERE ref = 'd:' || old.id; END");
+    // what exists already
+    $db->exec("DELETE FROM notes_fts");
+    $db->exec("INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date) SELECT title, body, class_id, 'item', 'i:' || id, subject_id, lesson_date FROM class_items WHERE LENGTH(TRIM(body)) > 0");
+    $db->exec("INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date) SELECT f.original_name, f.text, f.class_id, 'file', 'f:' || f.id, i.subject_id, i.lesson_date
+               FROM class_item_files f JOIN class_items i ON i.id = f.item_id WHERE f.text IS NOT NULL AND LENGTH(TRIM(f.text)) > 0");
+    $db->exec("INSERT INTO notes_fts (title, body, class_id, kind, ref, subject_id, lesson_date) SELECT title, content, class_id, 'doc', 'd:' || id, subject_id, lesson_date FROM class_docs WHERE kind IN $docKinds AND status = 'ok'");
+}
+
 function migrateV19(PDO $db): void {
     // Scoreboard. The answers of a quiz are judged by the server and kept (first try only); points go in score_events so
     // that a member who leaves the scoreboard can have all of theirs deleted in one go.
@@ -739,6 +780,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 19) {
             migrateV19($db);
+        }
+        if ($current < 20) {
+            migrateV20($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

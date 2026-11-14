@@ -45,6 +45,12 @@ $v = filemtime(__DIR__ . '/../js/appunti-archivio.js') . '-' . filemtime(__DIR__
         <button type="button" id="view-btn" class="ghost mini view-btn" aria-label="Cambia vista">Elenco</button>
     </div>
 
+    <form class="arch-search" id="search-form" role="search">
+        <input type="search" id="search-input" placeholder="Cerca negli appunti, nei file e nei documenti" aria-label="Cerca" maxlength="80" autocomplete="off">
+        <button class="ghost mini" type="submit">Cerca</button>
+    </form>
+    <section class="search-results" id="search-results" hidden aria-live="polite"></section>
+
     <main class="arch" id="arch" data-level="0">
         <section class="col" id="col-subjects" aria-label="Materie"></section>
         <section class="col" id="col-folders" aria-label="Cartelle"></section>

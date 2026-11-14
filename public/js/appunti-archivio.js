@@ -344,6 +344,45 @@
     $('#view-btn').addEventListener('click', () => { C.store(VIEW_KEY, C.stored(VIEW_KEY) === 'list' ? 'tiles' : 'list'); paintView(); });
     paintView();
     window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });
+    /* ---------- search (FTS5 on the server) ---------- */
+    const highlight = (text) => {
+        const out = [];
+        String(text).split(/(\[\[.*?\]\])/).forEach((part) => {
+            if (part.startsWith('[[') && part.endsWith(']]')) out.push(el('mark', { text: part.slice(2, -2) })); else if (part) out.push(part);
+        });
+        return out;
+    };
+    function closeSearch() { $('#search-results').hidden = true; $('#arch').hidden = false; }
+    async function goToResult(r) {
+        closeSearch();
+        sel.subject = r.subject_id; sel.folder = null; sel.entry = null;
+        renderAll(); setLevel(1);
+        const folder = r.lesson_date;
+        if (folder && tree.find((x) => x.id === r.subject_id).days.some((d) => d.date === folder)) {
+            await openFolder(folder);
+            const key = r.file ? 'f' + r.file.id : r.kind === 'doc' ? 'd' + r.id : r.item ? 't' + r.item.id : null;
+            const en = entries.find((x) => entryKey(x) === key);
+            if (en && !en.disabled) await openEntry(en);
+        }
+    }
+    async function runSearch(q) {
+        const box = $('#search-results');
+        if (!q.trim()) { closeSearch(); return; }
+        $('#arch').hidden = true;
+        box.hidden = false;
+        box.replaceChildren(el('p', { class: 'empty', text: 'Cerco…' }));
+        try {
+            const { results } = await getJson(`../api/appunti.php?action=search&class_id=${classId}&q=${encodeURIComponent(q)}`);
+            const label = (r) => r.kind === 'doc' ? (C.DOC_KINDS[r.doc_kind] || 'Documento') + (r.manual ? ' (caricato)' : ' dell\'AI') : r.kind === 'file' ? 'File' : 'Appunti scritti';
+            box.replaceChildren(el('div', { class: 'sr-head' }, el('b', { text: results.length ? `${results.length} risultat${results.length === 1 ? 'o' : 'i'}` : 'Nessun risultato' }),
+                el('button', { type: 'button', class: 'ghost mini', text: 'Chiudi la ricerca', onclick: () => { $('#search-input').value = ''; closeSearch(); } })),
+                ...results.map((r) => el('button', { type: 'button', class: 'sr-item', onclick: () => goToResult(r) },
+                    el('span', { class: 'sr-title' }, el('b', { text: r.file ? r.file.name : r.title || label(r) }), el('span', { class: 'muted small', text: ` · ${label(r)} · ${r.subject}${r.lesson_date ? ' · ' + shortDay.format(C.parseDate(r.lesson_date)) : ''}` })),
+                    el('span', { class: 'sr-snip' }, ...highlight(r.snippet)))));
+            if (!results.length) box.append(el('p', { class: 'empty', text: 'Prova con meno parole o con l\'inizio di una parola (per esempio "rivoluz").' }));
+        } catch (e) { box.replaceChildren(el('p', { class: 'empty', text: e.message })); }
+    }
+    $('#search-form').addEventListener('submit', (ev) => { ev.preventDefault(); runSearch($('#search-input').value); });
     $('#back-btn').addEventListener('click', goBack);
     history.replaceState({ level: 0 }, '');
 
@@ -362,6 +401,8 @@
             const wantSubject = Number(new URLSearchParams(location.search).get('subject'));
             if (wantSubject && tree.some((x) => x.id === wantSubject)) { sel.subject = wantSubject; sel.folder = null; sel.entry = null; renderAll(); setLevel(1); }
             else await restoreState();
+            const wantQ = new URLSearchParams(location.search).get('q');
+            if (wantQ) { $('#search-input').value = wantQ; runSearch(wantQ); }
             restoring = false;
             saveState();
         } catch (e) { status(e.message, 'err'); }

@@ -545,6 +545,11 @@
                 why.hidden = !res.explanation;
                 if (res.points) { points += res.points; why.textContent += (why.textContent ? ' ' : '') + `+${res.points} punti.`; why.hidden = false; }
                 else if (res.too_fast) { why.textContent += (why.textContent ? ' ' : '') + 'Risposta troppo veloce: niente punti.'; why.hidden = false; }
+                // a wrong answer: where to look in the class material (the site's own search, no AI)
+                if (!res.correct) {
+                    const words = (q.question || '').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 3).slice(0, 6).join(' ');
+                    if (words && current) { why.append(' ', el('a', { href: `appunti-archivio.php?class=${current.id}&q=${encodeURIComponent(words)}`, text: 'Cerca nel materiale' })); why.hidden = false; }
+                }
                 paintScore();
             };
             const choose = async (k) => {

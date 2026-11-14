@@ -737,3 +737,13 @@ html, body { overflow-x: clip; }
     .top, .top-right { min-width: 0; }
     .top-right { gap: 6px; }
 }
+
+/* Archive search */
+.arch-search { display: flex; gap: 8px; padding: 6px 12px; }
+.arch-search input { flex: 1; min-width: 0; min-height: 40px; }
+.search-results { padding: 4px 12px 40px; overflow-y: auto; flex: 1; min-height: 0; }
+.sr-head { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; }
+.sr-item { display: grid; gap: 4px; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 6px 0; color: var(--text); font-weight: 400; }
+.sr-item:hover { border-color: var(--accent); }
+.sr-snip { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.sr-snip mark { background: rgba(245, 200, 76, 0.28); color: var(--text); border-radius: 3px; padding: 0 2px; }

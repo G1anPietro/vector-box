@@ -28,6 +28,7 @@
 //      {action:"delete_doc", id}  -> a document: the AI's ones need the "docs" permission, hand-made ones also their author
 //      resumable: {upload_begin, class_id, name, size, sha256?} -> {upload_id, chunk} | {duplicate}; multipart {upload_chunk, upload_id, offset, chunk};
 //                 GET ?action=upload_status&upload_id; {upload_commit, class_id, upload_ids[], + item fields}; {upload_cancel, upload_id}
+//      GET ?action=search&class_id&q&subject_id? -> full-text results (FTS5) with snippets ([[match]])
 //      {action:"delete_file", id}  -> one file of an item (author or "material" permission)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
@@ -516,6 +517,50 @@ try {
             readfile($path);
             @unlink($path);
             exit();
+        }
+
+        if ($action === 'search') {
+            // Full-text search in the material of the class (typed notes, text of files, study documents): SQLite FTS5, no AI
+            preg_match_all('/[\p{L}\p{N}]{2,}/u', (string)($_GET['q'] ?? ''), $m);
+            $tokens = array_slice(array_values(array_unique($m[0])), 0, 8);
+            if (!$tokens) jsonResponse(['success' => true, 'results' => []]);
+            if (!checkRateLimit('notes_search', 120, 600, 'user:' . $me)) apFail('slow_down', 'Too many searches, try later', 429);
+            $match = implode(' ', array_map(fn($t) => '"' . $t . '"*', $tokens));
+            $sql = "SELECT ref, kind, subject_id, lesson_date, title, snippet(notes_fts, 1, '[[', ']]', '…', 18) AS snip
+                    FROM notes_fts WHERE CAST(class_id AS INTEGER) = :c AND notes_fts MATCH :m" . (!empty($_GET['subject_id']) ? ' AND CAST(subject_id AS INTEGER) = :s' : '') . ' ORDER BY rank LIMIT 40';
+            $st = $db->prepare($sql);
+            $params = [':c' => $classId, ':m' => $match];
+            if (!empty($_GET['subject_id'])) $params[':s'] = (int)$_GET['subject_id'];
+            $st->execute($params);
+            $names = array_column(classSubjects($db, $classId), 'name', 'id');
+            $out = [];
+            foreach ($st->fetchAll() as $r) {
+                [$t, $id] = explode(':', (string)$r['ref'], 2);
+                $row = ['kind' => $r['kind'], 'id' => (int)$id, 'title' => $r['title'], 'subject_id' => (int)$r['subject_id'], 'subject' => $names[(int)$r['subject_id']] ?? '?',
+                        'lesson_date' => $r['lesson_date'], 'snippet' => $r['snip']];
+                if ($t === 'f') {
+                    $f = $db->prepare('SELECT f.id, f.original_name AS name, f.mime, f.size, f.text_status, f.item_id FROM class_item_files f WHERE f.id = :id');
+                    $f->execute([':id' => $id]);
+                    $row['file'] = $f->fetch() ?: null;
+                    if (!$row['file']) continue;
+                } elseif ($t === 'i') {
+                    $i = $db->prepare('SELECT i.id, i.kind, i.title, i.body, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_items i LEFT JOIN accounts a ON a.id = i.author_id
+                                       LEFT JOIN class_members cm ON cm.class_id = i.class_id AND cm.user_id = i.author_id WHERE i.id = :id');
+                    $i->execute([':id' => $id]);
+                    $row['item'] = $i->fetch() ?: null;
+                    if (!$row['item']) continue;
+                } else {
+                    $row['doc_kind'] = null;
+                    $d = $db->prepare('SELECT kind, author_id FROM class_docs WHERE id = :id');
+                    $d->execute([':id' => $id]);
+                    $dd = $d->fetch();
+                    if (!$dd) continue;
+                    $row['doc_kind'] = $dd['kind'];
+                    $row['manual'] = $dd['author_id'] !== null;
+                }
+                $out[] = $row;
+            }
+            jsonResponse(['success' => true, 'results' => $out]);
         }
 
         if ($action === 'usage') {
