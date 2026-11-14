@@ -610,7 +610,21 @@
         return null;
     }
 
-    window.AppuntiCommon = { el, addIndex, mediaTime, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    /* ---------- reading questions aloud (the browser's own speech synthesis; voice and speed are chosen in Impostazioni) ---------- */
+    const canSpeak = () => 'speechSynthesis' in window && typeof SpeechSynthesisUtterance === 'function';
+    function speak(text) {
+        if (!canSpeak()) return;
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'it-IT';
+        const uri = stored('vb_tts_voice');
+        const voice = speechSynthesis.getVoices().find((v) => v.voiceURI === uri);
+        if (voice) { u.voice = voice; u.lang = voice.lang; }
+        u.rate = Number(stored('vb_tts_rate')) || 1;
+        speechSynthesis.speak(u);
+    }
+
+    window.AppuntiCommon = { el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

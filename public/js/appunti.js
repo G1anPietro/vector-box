@@ -330,7 +330,90 @@
             loadReview();
             renderStudyTests(ev.events.filter((e) => e.date >= ev.today && e.kind !== 'altro'), d.ai);
             renderStudyLessons();
+            fillCustomQuiz();
         } catch (e) { status(e.message, 'err'); }
+    }
+
+    /* ---------- quiz made to measure, and the questions asked in class ---------- */
+
+    const CQ_KEY = 'vb_custom_quiz';
+    function fillCustomQuiz() {
+        const f = $('#cq-form');
+        const subjects = [el('option', { value: '', text: 'Tutte le materie' }), ...current.subjects.map((s) => el('option', { value: s.id, text: s.name }))];
+        f.subject_id.replaceChildren(...subjects);
+        $('#asked-subject').replaceChildren(...current.subjects.map((s) => el('option', { value: s.id, text: s.name })));
+        let saved = {};
+        try { saved = JSON.parse(stored(CQ_KEY) || '{}') || {}; } catch (e) { saved = {}; }
+        for (const k of ['n', 'type', 'from']) if (saved[k]) f[k].value = saved[k];
+        if (saved.subject_id && current.subjects.some((s) => String(s.id) === String(saved.subject_id))) f.subject_id.value = saved.subject_id;
+    }
+    $('#cq-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const f = ev.target;
+        const choice = { subject_id: f.subject_id.value, n: f.n.value, type: f.type.value, from: f.from.value };
+        store(CQ_KEY, JSON.stringify(choice));   // the choices are remembered
+        try {
+            const r = await notes_({ action: 'custom_quiz_create', class_id: current.id, subject_id: Number(choice.subject_id) || 0, n: Number(choice.n), type: choice.type, from: choice.from });
+            openDoc = null;
+            $('#study-list').hidden = true;
+            $('#doc-view').hidden = false;
+            $('#doc-title').textContent = 'Quiz su misura';
+            $('#doc-meta').textContent = `${r.questions.length} domande${r.questions.length < Number(choice.n) ? ` (tutte quelle disponibili: ${r.pool})` : ''}. Allenamento: niente punti.`;
+            $('#doc-download').hidden = true;
+            $('#doc-sources').hidden = true;
+            $('#doc-body').replaceChildren(renderQuiz({ questions: r.questions }, (n, k) => C.rawPost('../api/appunti.php', { action: 'custom_quiz_answer', id: r.id, i: n, choice: k }), { practice: true, noRestart: true }));
+            window.scrollTo(0, 0);
+        } catch (e) {
+            status(e.json && e.json.code === 'empty_pool' ? (choice.from === 'wrong' ? 'Non hai domande sbagliate da ripassare: bravo!' : 'Per questa scelta non ci sono ancora domande: arrivano con i quiz delle verifiche.') : e.message, 'err');
+        }
+    });
+
+    let askedLoaded = null;
+    async function loadAsked() {
+        const sid = Number($('#asked-subject').value) || 0;
+        const box = $('#asked-list');
+        box.replaceChildren(el('p', { class: 'muted', text: 'Carico…' }));
+        try {
+            const { questions } = await getJson(`../api/appunti.php?action=question_pool&class_id=${current.id}&subject_id=${sid}`);
+            askedLoaded = { sid, questions };
+            $('#asked-menu').replaceChildren(...(questions.length ? [C.menu([
+                { label: 'Scarica il prompt per farti interrogare da un\'altra AI', onclick: () => downloadAskedPrompt() },
+                { label: 'Copia il prompt', onclick: () => copyAskedPrompt() }], 'Domande aperte')] : []));
+            box.replaceChildren(...(questions.length ? questions.map((q) => el('div', { class: 'asked' },
+                el('div', { class: 'asked-q' }, el('span', { class: 'qa-badge ' + (q.origine === 'prof' ? 'prof' : 'ai'), text: q.origine === 'prof' ? (q.count > 1 ? `Chiesta ${q.count} volte` : 'Fatta dal prof') : 'Probabile' }), ' ', q.domanda),
+                q.risposta ? el('details', {}, el('summary', { text: 'Risposta' }), el('div', { class: 'md' }, md(q.risposta))) : null))
+                : [el('p', { class: 'empty', text: 'Ancora nessuna domanda: arrivano con i riassunti delle lezioni.' })]));
+        } catch (e) { box.replaceChildren(el('p', { class: 'empty', text: e.message })); }
+    }
+    $('#asked-box').addEventListener('toggle', () => { if ($('#asked-box').open) loadAsked(); });
+    $('#asked-subject').addEventListener('change', loadAsked);
+
+    /** A prompt that turns another AI into an examiner: one open question at a time, correction, final summary. */
+    function askedPrompt() {
+        const subject = (current.subjects.find((s) => s.id === askedLoaded.sid) || {}).name || 'questa materia';
+        const lines = askedLoaded.questions.map((q, i) => `${i + 1}. ${q.domanda}${q.origine === 'prof' ? (q.count > 1 ? ` (chiesta dal prof ${q.count} volte)` : ' (chiesta dal prof)') : ' (probabile)'}${q.risposta ? `\n   Risposta di riferimento: ${q.risposta}` : ''}`);
+        return `Fai l'esaminatore: devi interrogarmi in ${subject}, come farebbe il mio professore.
+Qui sotto trovi le domande che il professore ha fatto in classe (le più chieste per prime) e alcune probabili, con la risposta di riferimento.
+
+Come si fa:
+1) Fammi UNA domanda alla volta e aspetta la mia risposta. Non dire la risposta prima che io abbia risposto.
+2) Dopo la mia risposta dimmi cosa era giusto, cosa mancava e cosa era sbagliato; poi dai la risposta corretta in parole semplici.
+3) Parti dalle più chieste. Le domande che sbaglio rifalle alla fine.
+4) Alla fine fai il riepilogo: un voto indicativo, gli argomenti da ripassare e le domande più deboli.
+5) Usa solo queste domande e quello che sai con certezza sulla materia; se non sei sicuro dillo.
+
+DOMANDE
+${lines.join('\n')}
+`;
+    }
+    function downloadAskedPrompt() {
+        const a = el('a', { href: URL.createObjectURL(new Blob([askedPrompt()], { type: 'text/plain;charset=utf-8' })), download: 'interrogazione-con-un-altra-AI.txt' });
+        document.body.append(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        status('Scaricato: incolla il testo in ChatGPT, Gemini o Claude e rispondi a voce o per iscritto.', 'ok');
+    }
+    async function copyAskedPrompt() {
+        try { await navigator.clipboard.writeText(askedPrompt()); status('Prompt copiato: incollalo nell\'AI.', 'ok'); } catch (e) { status('Non riesco a copiare: usa "Scarica".', 'err'); }
     }
 
     function renderAiBar(ai) {
@@ -520,7 +603,7 @@
      * {correct, answer, explanation, points, too_fast}. Questions answered in an earlier visit (my_choice) come back answered, so an
      * interrupted quiz continues where it stopped; "Ricomincia" is practice (no new points).
      */
-    function renderQuiz(quiz, grade, { practice = false } = {}) {
+    function renderQuiz(quiz, grade, { practice = false, noRestart = false } = {}) {
         const qs = quiz.questions || [];
         let answered = 0;
         let right = 0;
@@ -559,20 +642,22 @@
                 catch (e) { status(e.message, 'err'); }
                 finally { delete opts.dataset.busy; }
             };
-            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: `${'ABCD'[k]}. ${o}`, onclick: () => choose(k) })));
+            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: q.type === 'tf' ? o : `${'ABCD'[k]}. ${o}`, onclick: () => choose(k) })));
             // answered in an earlier visit: the server sent the answer for this question only
             if (!practice && Number.isInteger(q.my_choice) && Number.isInteger(q.answer)) show(q.my_choice, { correct: q.my_choice === q.answer, answer: q.answer, explanation: q.explanation });
             else if (firstOpen < 0) firstOpen = n;
             box.append(el('div', { class: 'quiz-q', id: `quiz-q-${n}` },
                 q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
-                el('div', {}, el('b', { text: `${n + 1}. ` }), q.question), opts, why));
+                el('div', { class: 'quiz-qtext' }, el('b', { text: `${n + 1}. ` }), q.question,
+                    C.canSpeak() ? el('button', { type: 'button', class: 'ghost mini speak-btn', text: 'Leggi', 'aria-label': 'Leggi la domanda a voce', onclick: () => C.speak(`${q.question}. ${q.type === 'tf' ? 'Vero o falso?' : q.options.map((o, k) => `${'ABCD'[k]}: ${o}`).join('. ')}`) }) : null),
+                opts, why));
         });
         points = 0;   // the points shown are the ones of this visit
         if (answered && answered < qs.length) {
             box.insertBefore(el('p', { class: 'muted small', text: `Quiz ripreso: hai già risposto a ${answered} domande.` }), score.nextSibling);
             setTimeout(() => { const t = box.querySelector('#quiz-q-' + firstOpen); if (t) t.scrollIntoView({ block: 'center' }); }, 50);
         }
-        if (answered === qs.length || practice) box.append(el('button', { class: 'ghost', text: 'Ricomincia (allenamento, senza punti)',
+        if (!noRestart && (answered === qs.length || practice)) box.append(el('button', { class: 'ghost', text: 'Ricomincia (allenamento, senza punti)',
             onclick: () => $('#doc-body').replaceChildren(renderQuiz(blank(quiz), grade, { practice: true })) }));
         return box;
     }

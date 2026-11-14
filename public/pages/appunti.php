@@ -143,6 +143,35 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
             <div id="study-list">
                 <div class="card ai-bar" id="ai-bar"></div>
                 <div class="card review-box" id="review-box" hidden></div>
+                <details class="card fold" id="custom-quiz">
+                    <summary>Quiz su misura</summary>
+                    <form id="cq-form" class="stack">
+                        <div class="grid2">
+                            <label>Materia <select name="subject_id"></select></label>
+                            <label>Quante domande
+                                <select name="n"><option>10</option><option>20</option><option>30</option><option>50</option></select>
+                            </label>
+                        </div>
+                        <div class="grid2">
+                            <label>Tipo
+                                <select name="type"><option value="mc">Scelta multipla</option><option value="tf">Vero o falso</option><option value="mix">Tutti e due</option></select>
+                            </label>
+                            <label>Da dove
+                                <select name="from"><option value="all">Tutte le domande</option><option value="prof">Quelle fatte dal prof</option><option value="wrong">Quelle che sbagli</option></select>
+                            </label>
+                        </div>
+                        <p class="muted small">Pesca a caso dai quiz della classe, più spesso le domande del prof e quelle che sbagli. Le risposte sbagliate finiscono nel ripasso di ogni giorno.</p>
+                        <button>Crea il quiz</button>
+                    </form>
+                </details>
+                <details class="card fold" id="asked-box">
+                    <summary>Domande fatte in classe</summary>
+                    <div class="row asked-tools">
+                        <select id="asked-subject" aria-label="Materia"></select>
+                        <span id="asked-menu"></span>
+                    </div>
+                    <div id="asked-list"></div>
+                </details>
                 <h2 class="section-title">Verifiche e interrogazioni in arrivo</h2>
                 <div id="study-tests"></div>
                 <div class="card cta-card">

@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 20;
+const DB_SCHEMA_VERSION = 21;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,20 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV21(PDO $db): void {
+    // "Quiz su misura": questions drawn from the class quizzes for one user; the answers stay on the server until the user answers
+    $db->exec("CREATE TABLE IF NOT EXISTS custom_quizzes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        class_id INTEGER NOT NULL,
+        subject_id INTEGER,
+        items TEXT NOT NULL,
+        answered TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_custom_quizzes ON custom_quizzes(user_id, created_at)');
+}
+
 function migrateV20(PDO $db): void {
     // Full-text search (SQLite FTS5, no AI) over the typed notes, the text of files (transcriptions, Word, slides) and the written
     // study documents. Triggers keep it up to date, so the code that writes the material does not have to know about it.
@@ -783,6 +797,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 20) {
             migrateV20($db);
+        }
+        if ($current < 21) {
+            migrateV21($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

@@ -112,6 +112,24 @@
         if (r.unread) { try { await post('../api/notifiche.php', { action: 'read_all' }); } catch (e) { /* ignore */ } }
     }
 
+    /** The voice that reads the quiz questions aloud (the browser's own: on Linux and Windows PCs it can sound robotic; phones are better). */
+    function voiceSection() {
+        const sel = el('select', { 'aria-label': 'Voce', onchange: () => { C.store('vb_tts_voice', sel.value); saved(); } });
+        const fill = () => {
+            const voices = speechSynthesis.getVoices().filter((v) => /^it/i.test(v.lang));
+            sel.replaceChildren(el('option', { value: '', text: 'Predefinita del dispositivo' }), ...voices.map((v) => el('option', { value: v.voiceURI, text: `${v.name} (${v.lang})` })));
+            sel.value = C.stored('vb_tts_voice') || '';
+        };
+        fill();
+        speechSynthesis.onvoiceschanged = fill;
+        const rate = el('select', { 'aria-label': 'Velocità', onchange: () => { C.store('vb_tts_rate', rate.value); saved(); } },
+            ...[['0.8', 'Lenta'], ['1', 'Normale'], ['1.2', 'Veloce'], ['1.5', 'Molto veloce']].map(([v, t]) => el('option', { value: v, text: t })));
+        rate.value = C.stored('vb_tts_rate') || '1';
+        return section('Voce per le domande', 'Nei quiz il pulsante "Leggi" legge la domanda e le risposte. Su computer con Linux o Windows la voce può essere robotica: sui telefoni di solito è migliore.',
+            el('label', { text: 'Voce' }, sel), el('label', { text: 'Velocità' }, rate),
+            el('button', { type: 'button', class: 'ghost mini', text: 'Prova la voce', onclick: () => C.speak('Qual è la capitale d\'Italia? A: Roma. B: Milano.') }));
+    }
+
     /** Scoreboard: I take part or not (leaving deletes my points); who manages settings also switches it on/off and chooses who sees it. */
     function scoreSection(sc, c) {
         const canSettings = (c.perms || []).includes('settings');
@@ -244,6 +262,7 @@
                 sw('Carica solo con il Wi-Fi (funziona solo su Android con Chrome: altrove carica sempre)', up.wifi, (on) => { window.AppuntiUpload.setSetting('wifi', on); saved(); }),
                 sw('Riduci le foto grandi prima di inviarle (più veloce, la scrittura resta leggibile)', up.shrink, (on) => { window.AppuntiUpload.setSetting('shrink', on); saved(); })),
             ...(sc ? [scoreSection(sc, c)] : []),
+            ...(C.canSpeak() ? [voiceSection()] : []),
             section('Come lo vedo', 'Su questo dispositivo.',
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),

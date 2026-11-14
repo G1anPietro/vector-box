@@ -29,6 +29,7 @@
 //      resumable: {upload_begin, class_id, name, size, sha256?} -> {upload_id, chunk} | {duplicate}; multipart {upload_chunk, upload_id, offset, chunk};
 //                 GET ?action=upload_status&upload_id; {upload_commit, class_id, upload_ids[], + item fields}; {upload_cancel, upload_id}
 //      GET ?action=search&class_id&q&subject_id? -> full-text results (FTS5) with snippets ([[match]])
+//      custom quiz: {custom_quiz_create, class_id, subject_id?, n, type: mc|tf|mix, from: all|prof|wrong}; {custom_quiz_answer, id, i, choice}; GET ?action=question_pool
 //      {action:"delete_file", id}  -> one file of an item (author or "material" permission)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
@@ -563,6 +564,11 @@ try {
             jsonResponse(['success' => true, 'results' => $out]);
         }
 
+        if ($action === 'question_pool') {
+            // The open questions asked in class, with how many times each came up (the teacher's first)
+            jsonResponse(['success' => true, 'questions' => notesAskedQuestions($db, $classId, (int)($_GET['subject_id'] ?? 0))]);
+        }
+
         if ($action === 'usage') {
             jsonResponse(['success' => true, 'used_bytes' => notesUsedBytes($db, $classId), 'limits_mb' => classLimits($db, $class)]);
         }
@@ -832,6 +838,95 @@ try {
         }
         @unlink(notesDir((int)$f['item_class']) . '/' . basename($f['stored_name']));
         jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'custom_quiz_create') {
+        // A quiz made to measure from the class quizzes: how many questions, which subject, multiple choice / true-false / both, and from where
+        // (all, the teacher's questions, the ones I get wrong). Questions are drawn at random, the ones I get wrong and the teacher's more often.
+        [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        if (!checkRateLimit('custom_quiz', 60, 3600, 'user:' . $me)) apFail('slow_down', 'Too many quizzes, try later', 429);
+        $classId = (int)$class['id'];
+        $subjectId = (int)($in['subject_id'] ?? 0);
+        if ($subjectId && !notesSubjectOf($db, $classId, $subjectId)) apFail('bad_subject', 'Choose a subject');
+        $n = max(5, min(50, (int)($in['n'] ?? 10)));
+        $type = in_array($in['type'] ?? '', ['mc', 'tf', 'mix'], true) ? $in['type'] : 'mc';
+        $from = in_array($in['from'] ?? '', ['all', 'prof', 'wrong'], true) ? $in['from'] : 'all';
+        $pool = notesQuizPool($db, $classId, $subjectId);
+        $wrong = [];
+        foreach ($db->query("SELECT doc_id, q_index FROM review_cards WHERE user_id = $me AND class_id = $classId")->fetchAll() as $r) $wrong[$r['doc_id'] . ':' . $r['q_index']] = true;
+        $right = [];
+        foreach ($db->query("SELECT doc_id, q_index FROM quiz_answers WHERE user_id = $me AND class_id = $classId AND correct = 1")->fetchAll() as $r) $right[$r['doc_id'] . ':' . $r['q_index']] = true;
+        if ($from === 'prof') $pool = array_values(array_filter($pool, fn($q) => $q['prof']));
+        if ($from === 'wrong') $pool = array_values(array_filter($pool, fn($q) => isset($wrong[$q['doc_id'] . ':' . $q['q']])));
+        if (!$pool) apFail('empty_pool', $from === 'wrong' ? 'You have no wrong questions to practise' : 'There are no quiz questions yet for this choice', 404);
+        // weighted draw without repeats
+        $weights = array_map(function ($q) use ($wrong, $right) {
+            $k = $q['doc_id'] . ':' . $q['q'];
+            return (isset($wrong[$k]) ? 3.0 : 1.0) * ($q['prof'] ? 2.0 : 1.0) * (isset($right[$k]) ? 0.5 : 1.0);
+        }, $pool);
+        $picked = [];
+        for ($k = 0; $k < min($n, count($pool)); $k++) {
+            $sum = array_sum($weights);
+            $r = random_int(0, 1000000) / 1000000 * $sum;
+            foreach ($weights as $i => $w) { $r -= $w; if ($r <= 0 || $i === array_key_last($weights)) { $picked[] = $pool[$i]; unset($weights[$i]); break; } }
+        }
+        $items = [];
+        foreach ($picked as $q) {
+            $asTf = $type === 'tf' || ($type === 'mix' && random_int(0, 1) === 1);
+            if ($asTf) {
+                // "<question> — <option>": true when the option is the right one, otherwise one of the wrong ones
+                $isTrue = random_int(0, 1) === 1;
+                $wrongs = array_values(array_diff(array_keys($q['options']), [$q['answer']]));
+                $opt = $isTrue ? $q['answer'] : $wrongs[random_int(0, count($wrongs) - 1)];
+                $items[] = ['type' => 'tf', 'question' => $q['question'] . ' — ' . $q['options'][$opt], 'options' => ['Vero', 'Falso'], 'answer' => $isTrue ? 0 : 1,
+                            'explanation' => 'La risposta giusta a «' . $q['question'] . '» è «' . $q['options'][$q['answer']] . '».' . ($q['explanation'] !== '' ? ' ' . $q['explanation'] : ''),
+                            'topic' => $q['topic'], 'prof' => $q['prof'], 'src' => [$q['doc_id'], $q['q']]];
+            } else {
+                $items[] = ['type' => 'mc', 'question' => $q['question'], 'options' => $q['options'], 'answer' => $q['answer'], 'explanation' => $q['explanation'],
+                            'topic' => $q['topic'], 'prof' => $q['prof'], 'src' => [$q['doc_id'], $q['q']]];
+            }
+        }
+        $db->prepare('INSERT INTO custom_quizzes (user_id, class_id, subject_id, items, created_at) VALUES (:u, :c, :s, :i, :t)')
+           ->execute([':u' => $me, ':c' => $classId, ':s' => $subjectId ?: null, ':i' => json_encode($items, JSON_UNESCAPED_UNICODE), ':t' => time()]);
+        $quizId = (int)$db->lastInsertId();
+        // keep the latest 30 of each user
+        $db->exec("DELETE FROM custom_quizzes WHERE user_id = $me AND id NOT IN (SELECT id FROM custom_quizzes WHERE user_id = $me ORDER BY id DESC LIMIT 30)");
+        jsonResponse(['success' => true, 'id' => $quizId, 'pool' => count($pool), 'questions' => array_map(
+            fn($q) => ['type' => $q['type'], 'question' => $q['question'], 'options' => $q['options'], 'topic' => $q['topic'], 'prof' => $q['prof']], $items)]);
+    }
+
+    if ($action === 'custom_quiz_answer') {
+        if (!checkRateLimit('custom_answer', 1500, 3600, 'user:' . $me)) apFail('slow_down', 'Too many answers, try later', 429);
+        $st = $db->prepare('SELECT * FROM custom_quizzes WHERE id = :id AND user_id = :u');
+        $st->execute([':id' => (int)($in['id'] ?? 0), ':u' => $me]);
+        $quiz = $st->fetch();
+        if (!$quiz) apFail('not_found', 'Quiz not found', 404);
+        [$class, ] = apClass($db, (int)$quiz['class_id'], $me, $isAdmin);
+        $items = json_decode($quiz['items'], true) ?: [];
+        $i = (int)($in['i'] ?? -1);
+        $choice = (int)($in['choice'] ?? -1);
+        if (!isset($items[$i]) || $choice < 0 || $choice >= count($items[$i]['options'])) apFail('bad_question', 'Unknown question');
+        $item = $items[$i];
+        $correct = $choice === (int)$item['answer'];
+        $answered = json_decode($quiz['answered'], true) ?: [];
+        $first = !isset($answered[$i]);
+        if ($first) {
+            $answered[$i] = $choice;
+            $db->prepare('UPDATE custom_quizzes SET answered = :a WHERE id = :id')->execute([':a' => json_encode($answered), ':id' => $quiz['id']]);
+            // a wrong answer puts the original question in the daily review (no points in a custom quiz: it is practice)
+            if (!$correct && !empty($item['src'])) {
+                [$docId, $qi] = $item['src'];
+                $orig = $db->prepare("SELECT content FROM class_docs WHERE id = :id AND kind = 'quiz'");
+                $orig->execute([':id' => $docId]);
+                $oq = json_decode((string)$orig->fetchColumn(), true)['questions'][$qi] ?? null;
+                if (is_array($oq)) {
+                    $cur = $db->prepare('SELECT box, class_id FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q');
+                    $cur->execute([':u' => $me, ':d' => $docId, ':q' => $qi]);
+                    apLeitner($db, $class, $me, (int)$docId, (int)$qi, $cur->fetch() ?: null, $oq, false);
+                }
+            }
+        }
+        jsonResponse(['success' => true, 'correct' => $correct, 'answer' => (int)$item['answer'], 'explanation' => (string)$item['explanation'], 'first' => $first, 'points' => 0]);
     }
 
     if ($action === 'quiz_answer') {

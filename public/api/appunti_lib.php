@@ -292,3 +292,68 @@ function notesFormatEvent(array $e, int $me, bool $canManage): array {
         'author' => $e['author'] ?? null, 'can_edit' => $canManage || (int)$e['author_id'] === $me,
     ];
 }
+
+
+/* ---------- question pools: custom quizzes and the questions asked in class ---------- */
+
+/** The multiple-choice questions of the class quizzes: [{doc_id, q, question, options, answer, explanation, prof, topic, subject_id}]. */
+function notesQuizPool(PDO $db, int $classId, int $subjectId = 0): array {
+    $st = $db->prepare("SELECT id, subject_id, content FROM class_docs WHERE class_id = :c AND kind = 'quiz' AND status = 'ok'" . ($subjectId ? ' AND subject_id = :s' : ''));
+    $st->execute($subjectId ? [':c' => $classId, ':s' => $subjectId] : [':c' => $classId]);
+    $pool = [];
+    foreach ($st->fetchAll() as $d) {
+        $qs = json_decode($d['content'], true)['questions'] ?? [];
+        foreach ($qs as $i => $q) {
+            if (!is_array($q) || !isset($q['question'], $q['options'], $q['answer']) || !is_array($q['options']) || count($q['options']) < 2) continue;
+            $pool[] = ['doc_id' => (int)$d['id'], 'q' => (int)$i, 'question' => (string)$q['question'], 'options' => array_map('strval', array_values($q['options'])),
+                       'answer' => (int)$q['answer'], 'explanation' => (string)($q['explanation'] ?? ''), 'prof' => !empty($q['prof']),
+                       'topic' => (string)($q['topic'] ?? ''), 'subject_id' => (int)$d['subject_id']];
+        }
+    }
+    return $pool;
+}
+
+/** Meaningful words of a question (3+ letters, no filler words), to recognise the same question asked in other words. */
+function notesWords(string $s): array {
+    static $stop = ['che', 'per', 'del', 'della', 'delle', 'dei', 'degli', 'come', 'cosa', 'qual', 'quale', 'quali', 'sono', 'nel', 'nella', 'nelle', 'alla', 'alle', 'allo',
+                    'con', 'una', 'uno', 'gli', 'fra', 'tra', 'spiega', 'spiegare', 'dimmi', 'dici', 'parla', 'perché', 'perche', 'cos', 'più', 'sul', 'sulla', 'dal', 'dalla', 'questo', 'questa'];
+    preg_match_all('/[\p{L}\p{N}]{3,}/u', function_exists('mb_strtolower') ? mb_strtolower($s) : strtolower($s), $m);
+    return array_values(array_diff(array_unique($m[0]), $stop));
+}
+
+/**
+ * The open questions asked in class (documents "domande"), the same question asked on different days counted together:
+ * [{domanda, risposta, origine, count, dates[], subject_id}] with the most asked first (the teacher's before the AI's).
+ */
+function notesAskedQuestions(PDO $db, int $classId, int $subjectId = 0): array {
+    $st = $db->prepare("SELECT subject_id, lesson_date, content FROM class_docs WHERE class_id = :c AND kind = 'domande' AND status = 'ok'" . ($subjectId ? ' AND subject_id = :s' : '') . ' ORDER BY lesson_date');
+    $st->execute($subjectId ? [':c' => $classId, ':s' => $subjectId] : [':c' => $classId]);
+    $groups = [];
+    foreach ($st->fetchAll() as $d) {
+        foreach ((json_decode($d['content'], true)['domande'] ?? []) as $q) {
+            if (!is_array($q) || trim((string)($q['domanda'] ?? '')) === '') continue;
+            $w = notesWords((string)$q['domanda']);
+            $hit = null;
+            foreach ($groups as $k => $g) {
+                if ($g['subject_id'] !== (int)$d['subject_id']) continue;
+                $common = count(array_intersect($w, $g['words']));
+                $small = min(count($w), count($g['words']));
+                // the same question in other words: most of the shorter one's words are in the other (a very short one must match almost fully)
+                if ($small > 0 && $common >= min(2, $small) && $common / $small >= ($small <= 3 ? 0.8 : 0.6)) { $hit = $k; break; }
+            }
+            $prof = ($q['origine'] ?? '') === 'prof';
+            if ($hit === null) {
+                $groups[] = ['domanda' => (string)$q['domanda'], 'risposta' => (string)($q['risposta'] ?? ''), 'origine' => $prof ? 'prof' : 'ai', 'words' => $w,
+                             'count' => $prof ? 1 : 0, 'dates' => $d['lesson_date'] ? [$d['lesson_date']] : [], 'subject_id' => (int)$d['subject_id']];
+            } else {
+                $g = &$groups[$hit];
+                if ($prof) { $g['count']++; $g['origine'] = 'prof'; }
+                if ($d['lesson_date'] && !in_array($d['lesson_date'], $g['dates'], true)) $g['dates'][] = $d['lesson_date'];
+                if ($g['risposta'] === '' && !empty($q['risposta'])) $g['risposta'] = (string)$q['risposta'];
+                unset($g);
+            }
+        }
+    }
+    usort($groups, fn($a, $b) => ($b['origine'] === 'prof') <=> ($a['origine'] === 'prof') ?: $b['count'] <=> $a['count'] ?: strcmp($a['domanda'], $b['domanda']));
+    return array_map(function ($g) { unset($g['words']); return $g; }, $groups);
+}

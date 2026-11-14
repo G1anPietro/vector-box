@@ -747,3 +747,11 @@ html, body { overflow-x: clip; }
 .sr-item:hover { border-color: var(--accent); }
 .sr-snip { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .sr-snip mark { background: rgba(245, 200, 76, 0.28); color: var(--text); border-radius: 3px; padding: 0 2px; }
+
+/* Custom quiz, questions asked in class, voice */
+.asked { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.asked-q { overflow-wrap: anywhere; }
+.asked-tools { justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.asked-tools select { flex: 1; min-width: 0; }
+.quiz-qtext { display: flex; gap: 8px; align-items: flex-start; }
+.quiz-qtext .speak-btn { margin-left: auto; flex: none; }
