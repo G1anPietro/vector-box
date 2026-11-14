@@ -233,11 +233,70 @@
         const toggle = el('button', { type: 'button', class: 'ghost mini', text: 'Apri tutto', onclick: () => {
             opened = !opened;
             tree.querySelectorAll('details').forEach((d) => { d.open = opened; });
+            map.querySelectorAll('.mm-branch.has-kids').forEach((b) => b.classList.toggle('collapsed', !opened));
             toggle.textContent = opened ? 'Chiudi tutto' : 'Apri tutto';
         } });
-        return el('div', { class: 'schema' },
-            el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || 'Schema'))), toggle),
-            tree);
+
+        /* The same data as a two-dimensional map: the main topic in the centre, branches to the right and to the left,
+           one colour per branch. Drag to move, +/- to zoom, tap a node to close or open its branch. */
+        const HUES = [8, 32, 150, 200, 265, 320, 95, 230];
+        const branch = (n, depth) => {
+            const kids = Array.isArray(n.children) ? n.children : [];
+            const box = el('div', { class: 'mm-node d' + Math.min(depth, 3) }, el('span', { class: 'mm-label' }, inline(String(n.label || ''))),
+                n.note ? el('span', { class: 'mm-note' }, inline(String(n.note))) : null);
+            const b = el('div', { class: 'mm-branch' + (kids.length ? ' has-kids' : '') + (kids.length && depth >= 2 ? ' collapsed' : '') }, box,
+                kids.length ? el('div', { class: 'mm-kids' }, ...kids.map((c) => branch(c, depth + 1))) : null);
+            if (kids.length) box.addEventListener('click', () => { if (!moved) b.classList.toggle('collapsed'); });
+            return b;
+        };
+        const tops = data.children.map((c, i) => { const b = branch(c, 1); b.style.setProperty('--c', `hsl(${HUES[i % HUES.length]} 70% 60%)`); return b; });
+        // more branches on the right; the left side takes the rest (balanced by number of nodes)
+        const weight = (n) => 1 + (Array.isArray(n.children) ? n.children.reduce((a, c) => a + weight(c), 0) : 0);
+        const total = data.children.reduce((a, c) => a + weight(c), 0);
+        let acc = 0;
+        const right = [];
+        const left = [];
+        data.children.forEach((c, i) => { (acc < total / 2 || data.children.length < 3 ? right : left).push(tops[i]); acc += weight(c); });
+        const canvas = el('div', { class: 'mm-canvas' },
+            el('div', { class: 'mm-side left' }, ...left),
+            el('div', { class: 'mm-center' }, inline(String(data.title || 'Schema'))),
+            el('div', { class: 'mm-side right' }, ...right));
+        const map = el('div', { class: 'mm', tabIndex: 0, 'aria-label': 'Mappa dello schema: trascina per spostarti' }, canvas);
+        let scale = 1;
+        const zoom = (z) => { scale = Math.max(0.3, Math.min(2, z)); canvas.style.zoom = String(scale); };
+        const fit = () => { canvas.style.zoom = '1'; const w = canvas.scrollWidth || 1; zoom(Math.min(1, (map.clientWidth - 16) / w));
+            map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2; };
+        // drag to pan (mouse); touch screens scroll natively
+        let moved = false;
+        let drag = null;
+        map.addEventListener('pointerdown', (ev) => { if (ev.pointerType === 'mouse') { drag = { x: ev.clientX, y: ev.clientY, l: map.scrollLeft, t: map.scrollTop }; moved = false; } });
+        map.addEventListener('pointermove', (ev) => {
+            if (!drag) return;
+            if (Math.abs(ev.clientX - drag.x) + Math.abs(ev.clientY - drag.y) > 5) { moved = true; map.classList.add('dragging'); }
+            map.scrollLeft = drag.l - (ev.clientX - drag.x);
+            map.scrollTop = drag.t - (ev.clientY - drag.y);
+        });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach((n) => map.addEventListener(n, () => { drag = null; map.classList.remove('dragging'); setTimeout(() => { moved = false; }, 0); }));
+
+        const VIEW_KEY = 'vb_schema_view';
+        const wrap = el('div', { class: 'schema' });
+        const setView = (v) => {
+            wrap.dataset.view = v;
+            store(VIEW_KEY, v);
+            viewBtn.textContent = v === 'map' ? 'Elenco' : 'Mappa';
+            if (v === 'map') requestAnimationFrame(fit);
+        };
+        const viewBtn = el('button', { type: 'button', class: 'ghost mini', onclick: () => setView(wrap.dataset.view === 'map' ? 'list' : 'map') });
+        const zoomBtns = el('span', { class: 'mm-zoom' },
+            el('button', { type: 'button', class: 'ghost mini', text: '−', 'aria-label': 'Rimpicciolisci', onclick: () => zoom(scale - 0.15) }),
+            el('button', { type: 'button', class: 'ghost mini', text: '+', 'aria-label': 'Ingrandisci', onclick: () => zoom(scale + 0.15) }),
+            el('button', { type: 'button', class: 'ghost mini', text: 'Adatta', onclick: fit }));
+        wrap.append(
+            el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || 'Schema'))),
+                el('span', { class: 'schema-tools' }, zoomBtns, toggle, viewBtn)),
+            map, tree);
+        setView(stored(VIEW_KEY) || (window.innerWidth >= 700 ? 'map' : 'list'));
+        return wrap;
     }
 
     /**
