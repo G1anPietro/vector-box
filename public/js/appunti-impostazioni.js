@@ -112,12 +112,33 @@
         if (r.unread) { try { await post('../api/notifiche.php', { action: 'read_all' }); } catch (e) { /* ignore */ } }
     }
 
+    /** Scoreboard: I take part or not (leaving deletes my points); who manages settings also switches it on/off and chooses who sees it. */
+    function scoreSection(sc, c) {
+        const canSettings = (c.perms || []).includes('settings');
+        const me = sw('Compaio nella classifica', sc.in, async (on, box) => {
+            if (!on && !confirm('Se esci dalla classifica i tuoi punti vengono cancellati e non si contano più. Continuare?')) { box.checked = true; return; }
+            try { await post('../api/classifica.php', { action: 'set_in', class_id: classId, in: on }); saved(); } catch (e) { box.checked = !on; fail(e); }
+        });
+        const who = el('select', { 'aria-label': 'Chi vede la classifica', disabled: !canSettings, onchange: () => saveClass() },
+            el('option', { value: 'all', text: 'Tutta la classe' }), el('option', { value: 'perm', text: 'Solo il rappresentante e chi ha il permesso' }));
+        who.value = sc.who || 'all';
+        let on = sc.on;
+        const saveClass = async () => { try { await post('../api/classifica.php', { action: 'settings', class_id: classId, on, who: who.value }); saved(); } catch (e) { fail(e); } };
+        return section('Classifica', 'Punti per le risposte giuste al primo tentativo nei quiz (10) e per il ripasso di ogni giorno (5). I punti li conta il server.',
+            me,
+            el('div', { class: 'set-sub-block' },
+                sw('Classifica accesa per la classe', on, (v) => { on = v; saveClass(); }, !canSettings),
+                el('label', { text: 'Chi la vede' }, who),
+                canSettings ? null : el('p', { class: 'muted small', text: 'La accende e la spegne il rappresentante (o chi ha il permesso).' })));
+    }
+
     async function draw() {
         const root = $('#settings-root');
         root.replaceChildren(el('p', { class: 'muted', text: 'Carico…' }));
-        let cls, prefs;
+        let cls, prefs, sc;
         try {
-            [cls, prefs] = await Promise.all([getJson(`../api/classi.php?action=class&id=${classId}`), getJson(`../api/notifiche.php?action=prefs&class_id=${classId}`)]);
+            [cls, prefs, sc] = await Promise.all([getJson(`../api/classi.php?action=class&id=${classId}`), getJson(`../api/notifiche.php?action=prefs&class_id=${classId}`),
+                getJson(`../api/classifica.php?action=board&class_id=${classId}`).catch(() => null)]);
         } catch (e) {
             root.replaceChildren(section('Impostazioni', 'Per cambiare le impostazioni devi far parte della classe.', el('a', { class: 'ghost-link', href: 'appunti.php', text: 'Torna agli Appunti' })));
             return;
@@ -222,6 +243,7 @@
                 sw('Riprendi da solo i caricamenti rimasti a metà', up.auto, (on) => { window.AppuntiUpload.setSetting('auto', on); saved(); }),
                 sw('Carica solo con il Wi-Fi (funziona solo su Android con Chrome: altrove carica sempre)', up.wifi, (on) => { window.AppuntiUpload.setSetting('wifi', on); saved(); }),
                 sw('Riduci le foto grandi prima di inviarle (più veloce, la scrittura resta leggibile)', up.shrink, (on) => { window.AppuntiUpload.setSetting('shrink', on); saved(); })),
+            ...(sc ? [scoreSection(sc, c)] : []),
             section('Come lo vedo', 'Su questo dispositivo.',
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),

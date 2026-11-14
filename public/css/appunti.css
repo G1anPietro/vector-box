@@ -715,3 +715,13 @@ label:has(> .dp-native) { position: relative; }
 .up-bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
 .up-actions { display: flex; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .up-bar i { transition: none; } }
+
+/* Scoreboard in the board */
+.bb-seg { display: inline-flex; gap: 4px; }
+.bb-seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.bb-score { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
+.bb-score li { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 8px; background: #11131a; }
+.bb-score li.me { box-shadow: inset 3px 0 0 var(--accent); background: #1c2029; }
+.bb-score .rk { color: var(--muted); font-variant-numeric: tabular-nums; }
+.bb-score .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-sub-block { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }

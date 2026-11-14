@@ -391,14 +391,16 @@ test('spaced review: wrong quiz answers come back after 1, 3, 7, 14, 30 days unt
     site.db(`INSERT INTO class_docs (class_id, doc_key, subject_id, kind, title, content, sources, input_hash, model, status, created_at, updated_at)
              VALUES (?, 'quiz:test', ?, 'quiz', 'Storia — Quiz', ?, '[]', 'h', 'test', 'ok', ?, ?)`, [classId, subj.Storia, JSON.stringify(quiz), now, now]);
     const docId = site.db("SELECT id FROM class_docs WHERE doc_key = 'quiz:test'")[0].id;
-    const answer = (c, q, correct) => ap(c, { action: 'review_answer', doc_id: docId, q, correct });
+    const first = (c, q, choice) => ap(c, { action: 'quiz_answer', doc_id: docId, q, choice });          // in the quiz
+    const answer = (c, q, choice) => ap(c, { action: 'review_answer', doc_id: docId, q, choice });       // in the daily review (right = 1)
     const review = async (c) => (await c.get(`/api/appunti.php?action=review&class_id=${classId}`)).json;
 
-    assert.equal((await answer(peach, 0, false)).status, 404, 'members only');
-    assert.equal((await answer(luigi, 9, false)).json.code, 'bad_question');
-    assert.equal((await answer(luigi, 0, true)).json.state, 'known', 'right at the first try: not in the review');
-    const w = (await answer(luigi, 1, false)).json;
-    assert.equal(w.box, 0);
+    assert.equal((await first(peach, 0, 1)).status, 404, 'members only');
+    assert.equal((await first(luigi, 9, 1)).json.code, 'bad_question');
+    assert.equal((await first(luigi, 0, 7)).json.code, 'bad_question', 'a choice that does not exist');
+    assert.equal((await first(luigi, 0, 1)).json.state, 'known', 'right at the first try: not in the review');
+    const w = (await first(luigi, 1, 0)).json;
+    assert.deepEqual([w.correct, w.answer, w.state], [false, 1, 'review'], 'the server tells the right answer after the answer');
     let r = await review(luigi);
     assert.deepEqual([r.due.length, r.later], [0, 1], 'tomorrow, not today');
     assert.equal((await review(toad)).later, 0, 'each student has their own');
@@ -412,11 +414,13 @@ test('spaced review: wrong quiz answers come back after 1, 3, 7, 14, 30 days unt
     assert.equal(r.due[0].from, 'Storia — Quiz');
     const days = [];
     for (let i = 0; i < 4; i++) {
-        const a = (await answer(luigi, 1, true)).json;
+        const a = (await answer(luigi, 1, 1)).json;
         days.push(Math.round((Date.parse(a.due) - Date.parse(r.today)) / 86400000));
     }
     assert.deepEqual(days, [3, 7, 14, 30]);
-    assert.equal((await answer(luigi, 1, true)).json.state, 'learned');
+    assert.equal((await answer(luigi, 1, 0)).json.correct, false, 'a wrong answer in the review puts it back');
+    site.db('UPDATE review_cards SET due_date = ?, box = 4', [r.today]);
+    assert.equal((await answer(luigi, 1, 1)).json.state, 'learned');
     assert.equal((await review(luigi)).later, 0);
     site.db("DELETE FROM class_docs WHERE id = ?", [docId]);
 });

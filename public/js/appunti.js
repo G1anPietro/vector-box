@@ -411,7 +411,7 @@
         $('#doc-download').hidden = true;
         $('#doc-sources').hidden = true;
         $('#doc-body').replaceChildren(renderQuiz({ questions: due.map((q) => ({ ...q, topic: q.topic || q.from })) },
-            (n, ok) => reviewAnswer(due[n].doc_id, due[n].q, ok)));
+            (n, choice) => C.rawPost('../api/appunti.php', { action: 'review_answer', doc_id: due[n].doc_id, q: due[n].q, choice })));
         window.scrollTo(0, 0);
     }
 
@@ -481,7 +481,7 @@
             if (doc.kind === 'quiz') {
                 let quiz = null;
                 try { quiz = JSON.parse(doc.content); } catch (e) { /* shown as text below */ }
-                body.replaceChildren(quiz ? renderQuiz(quiz, (n, ok) => reviewAnswer(doc.id, n, ok), doc.id) : el('p', { text: 'Quiz non leggibile.' }));
+                body.replaceChildren(quiz ? renderQuiz(quiz, (n, choice) => C.rawPost('../api/appunti.php', { action: 'quiz_answer', doc_id: doc.id, q: n, choice })) : el('p', { text: 'Quiz non leggibile.' }));
             } else if (doc.kind === 'schema') {
                 body.replaceChildren(window.AppuntiCommon.renderSchema(doc.content));
             } else if (doc.kind === 'domande') {
@@ -513,55 +513,65 @@
     // Markdown of AI documents and notes: the shared safe renderer (js/appunti-common.js)
     const md = (text) => window.AppuntiCommon.md(text);
 
-    /** Records a quiz answer for the spaced review (wrong ones come back); silent, it must not disturb the quiz. */
-    async function reviewAnswer(docId, q, correct) {
-        try {
-            const r = await window.AppuntiCommon.rawPost('../api/appunti.php', { action: 'review_answer', doc_id: docId, q, correct });
-            return r.state;
-        } catch (e) { return null; }
-    }
-
-    /** The quiz keeps what you answered on this device, so an interrupted quiz picks up where it stopped (also after a reload). */
-    function renderQuiz(quiz, onAnswer, docId) {
+    /**
+     * A quiz. Every answer is judged by the SERVER, which also keeps the first answer of each question, gives the points and
+     * sends back the right answer and the explanation: the page never has them before the answer. `grade(n, k)` returns
+     * {correct, answer, explanation, points, too_fast}. Questions answered in an earlier visit (my_choice) come back answered, so an
+     * interrupted quiz continues where it stopped; "Ricomincia" is practice (no new points).
+     */
+    function renderQuiz(quiz, grade, { practice = false } = {}) {
         const qs = quiz.questions || [];
-        const key = docId ? 'vb_quiz_' + docId : null;
-        let saved = {};
-        try { saved = key ? JSON.parse(stored(key) || '{}') || {} : {}; } catch (e) { saved = {}; }
-        if (saved.n !== qs.length) saved = { n: qs.length, a: {} };
-        const remember = () => { if (key) store(key, JSON.stringify(saved)); };
         let answered = 0;
         let right = 0;
+        let points = 0;
         const score = el('p', { class: 'quiz-score', text: `0 / ${qs.length}` });
         const box = el('div', {}, score);
-        const paintScore = () => { score.textContent = `${right} / ${qs.length}` + (answered === qs.length ? ` · ${Math.round(100 * right / qs.length)}%` : answered ? ` · domanda ${Math.min(answered + 1, qs.length)} di ${qs.length}` : ''); };
-        const firstOpen = qs.findIndex((q, n) => saved.a[n] === undefined);
+        const paintScore = () => {
+            score.textContent = `${right} / ${qs.length}` + (answered === qs.length ? ` · ${Math.round(100 * right / qs.length)}%` : answered ? ` · domanda ${Math.min(answered + 1, qs.length)} di ${qs.length}` : '')
+                + (points ? ` · +${points} punti` : '');
+        };
+        let firstOpen = -1;
         qs.forEach((q, n) => {
-            const why = el('p', { class: 'why', hidden: true, text: q.explanation });
+            const why = el('p', { class: 'why', hidden: true, text: q.explanation || '' });
             const opts = el('div', { class: 'opts' });
-            const choose = (k, replay) => {
-                if (opts.dataset.done) return;
+            const show = (k, res) => {
                 opts.dataset.done = '1';
                 answered++;
-                if (k === q.answer) right++;
-                if (!replay) { saved.a[n] = k; remember(); if (onAnswer) onAnswer(n, k === q.answer); }
-                opts.children[k].classList.add(k === q.answer ? 'right' : 'wrong');
-                opts.children[q.answer].classList.add('right');
-                why.hidden = !q.explanation;
+                if (res.correct) right++;
+                opts.children[k].classList.add(res.correct ? 'right' : 'wrong');
+                if (opts.children[res.answer]) opts.children[res.answer].classList.add('right');
+                why.textContent = res.explanation || '';
+                why.hidden = !res.explanation;
+                if (res.points) { points += res.points; why.textContent += (why.textContent ? ' ' : '') + `+${res.points} punti.`; why.hidden = false; }
+                else if (res.too_fast) { why.textContent += (why.textContent ? ' ' : '') + 'Risposta troppo veloce: niente punti.'; why.hidden = false; }
                 paintScore();
             };
-            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: `${'ABCD'[k]}. ${o}`, onclick: () => choose(k, false) })));
-            if (saved.a[n] !== undefined && saved.a[n] < q.options.length) choose(saved.a[n], true);
+            const choose = async (k) => {
+                if (opts.dataset.done || opts.dataset.busy) return;
+                opts.dataset.busy = '1';
+                try { show(k, await grade(n, k)); }
+                catch (e) { status(e.message, 'err'); }
+                finally { delete opts.dataset.busy; }
+            };
+            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: `${'ABCD'[k]}. ${o}`, onclick: () => choose(k) })));
+            // answered in an earlier visit: the server sent the answer for this question only
+            if (!practice && Number.isInteger(q.my_choice) && Number.isInteger(q.answer)) show(q.my_choice, { correct: q.my_choice === q.answer, answer: q.answer, explanation: q.explanation });
+            else if (firstOpen < 0) firstOpen = n;
             box.append(el('div', { class: 'quiz-q', id: `quiz-q-${n}` },
                 q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
                 el('div', {}, el('b', { text: `${n + 1}. ` }), q.question), opts, why));
         });
+        points = 0;   // the points shown are the ones of this visit
         if (answered && answered < qs.length) {
             box.insertBefore(el('p', { class: 'muted small', text: `Quiz ripreso: hai già risposto a ${answered} domande.` }), score.nextSibling);
             setTimeout(() => { const t = box.querySelector('#quiz-q-' + firstOpen); if (t) t.scrollIntoView({ block: 'center' }); }, 50);
         }
-        box.append(el('button', { class: 'ghost', text: 'Ricomincia', onclick: () => { saved = { n: qs.length, a: {} }; remember(); $('#doc-body').replaceChildren(renderQuiz(quiz, onAnswer, docId)); } }));
+        if (answered === qs.length || practice) box.append(el('button', { class: 'ghost', text: 'Ricomincia (allenamento, senza punti)',
+            onclick: () => $('#doc-body').replaceChildren(renderQuiz(blank(quiz), grade, { practice: true })) }));
         return box;
     }
+    /** The same quiz without what was answered, for practising again. */
+    const blank = (quiz) => ({ ...quiz, questions: quiz.questions.map((q) => { const c = { ...q }; delete c.my_choice; return c; }) });
 
     /* ---------- calendar ---------- */
 

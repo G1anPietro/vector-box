@@ -123,6 +123,40 @@
                 : el('p', { class: 'bb-empty', text: state.can_post ? 'Nessun annuncio. Scrivi qui le cose che la classe deve sapere: uscite, cambi d\'orario, scadenze.' : 'Nessun annuncio per ora.' }));
     }
 
+    /* ---------- scoreboard (points are given by the server for quiz answers at the first try and for the daily review) ---------- */
+
+    let scoreView = 'week';
+    let scoreAll = false;
+    function renderScore(sc) {
+        const box = $('#bb-score');
+        box.hidden = !sc || sc.on === false;
+        if (box.hidden) return;
+        const join = async (on) => { try { await C.post('../api/classifica.php', { action: 'set_in', class_id: P().current.id, in: on }); load(); } catch (e) { toast(e.message, 'err'); } };
+        if (!sc.in) {
+            set(box, el('div', { class: 'bb-head' }, el('h3', { text: 'Classifica' })),
+                el('p', { class: 'bb-empty', text: 'Non partecipi alla classifica: i tuoi punti non si contano e non compari.' }),
+                el('button', { type: 'button', class: 'ghost mini', text: 'Partecipa', onclick: () => join(true) }));
+            return;
+        }
+        const mine = sc.mine || {};
+        if (!sc.can_see) {
+            set(box, el('div', { class: 'bb-head' }, el('h3', { text: 'Classifica' })),
+                el('p', { class: 'bb-empty', text: `Hai ${mine.week || 0} punti questa settimana e ${mine.total || 0} in tutto. La classifica la vede solo chi ha il permesso.` }));
+            return;
+        }
+        const rows = (scoreView === 'week' ? sc.week : sc.total);
+        const shown = scoreAll ? rows : rows.slice(0, 5).concat(rows.slice(5).filter((r) => r.me));
+        set(box,
+            el('div', { class: 'bb-head' }, el('h3', { text: 'Classifica' }),
+                el('span', { class: 'bb-seg' },
+                    ...[['week', 'Settimana'], ['total', 'Sempre']].map(([k, t]) => el('button', { type: 'button', class: 'ghost mini', 'aria-pressed': String(scoreView === k), text: t, onclick: () => { scoreView = k; renderScore(sc); } })))),
+            rows.length ? el('ol', { class: 'bb-score' }, ...shown.map((r) => el('li', { class: r.me ? 'me' : '' },
+                el('span', { class: 'rk', text: String(rows.indexOf(r) + 1) }), el('span', { class: 'nm', text: r.name + (r.me ? ' (tu)' : '') }), el('b', { text: String(r.points) }))))
+                : el('p', { class: 'bb-empty', text: 'Ancora nessuno.' }),
+            rows.length > shown.length || scoreAll ? el('button', { type: 'button', class: 'ghost mini', text: scoreAll ? 'Mostra meno' : 'Mostra tutti', onclick: () => { scoreAll = !scoreAll; renderScore(sc); } }) : null,
+            el('p', { class: 'muted small', text: 'Punti per le risposte giuste al primo tentativo nei quiz e per il ripasso di ogni giorno.' }));
+    }
+
     /* ---------- the week as a diary ---------- */
 
     function weekRows(events, ov) {
@@ -205,17 +239,19 @@
         if (!c) return;
         clearInterval(timer);
         try {
-            const [bb, ev, ov, rv] = await Promise.all([
+            const [bb, ev, ov, rv, sc] = await Promise.all([
                 getJson(`../api/bacheca.php?action=overview&class_id=${c.id}`),
                 getJson(`../api/appunti.php?action=events&class_id=${c.id}`),
                 getJson(`../api/calendario.php?action=overview&class_id=${c.id}`),
                 getJson(`../api/appunti.php?action=review&class_id=${c.id}`).catch(() => ({ due: [], later: 0 })),
+                getJson(`../api/classifica.php?action=board&class_id=${c.id}`).catch(() => null),
             ]);
             state = bb;
             const [h, m, s] = bb.now.split(':').map(Number);
             clock = { base: h * 3600 + m * 60 + s, at: performance.now() };
             renderNow();
             renderNotes();
+            renderScore(sc);
             renderWeek(ev.events, ov);
             renderYou(rv, ov);
             renderFix(ov);

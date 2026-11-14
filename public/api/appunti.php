@@ -32,6 +32,7 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/appunti_lib.php';
+require_once __DIR__ . '/classifica_lib.php';
 require_once __DIR__ . '/gemini.php';
 
 const AI_MANUAL_EVERY_SEC = 3600;   // "Genera ora": once an hour per class
@@ -117,6 +118,46 @@ function apDeleteFiles(PDO $db, int $itemId): void {
     $st->execute([':i' => $itemId]);
     foreach ($st->fetchAll() as $f) @unlink(notesDir((int)$f['class_id']) . '/' . basename($f['stored_name']));
     $db->prepare('DELETE FROM class_item_files WHERE item_id = :i')->execute([':i' => $itemId]);
+}
+
+/** A quiz as the page may see it: the right answer and the explanation only for the questions this user already answered. */
+function apQuizForUser(PDO $db, int $me, int $docId, string $content): string {
+    $quiz = json_decode($content, true);
+    if (!is_array($quiz) || !is_array($quiz['questions'] ?? null)) return $content;
+    $st = $db->prepare('SELECT q_index, choice FROM quiz_answers WHERE user_id = :u AND doc_id = :d');
+    $st->execute([':u' => $me, ':d' => $docId]);
+    $mine = array_column($st->fetchAll(), 'choice', 'q_index');
+    foreach ($quiz['questions'] as $i => &$q) {
+        if (isset($mine[$i])) { $q['my_choice'] = (int)$mine[$i]; continue; }
+        unset($q['answer'], $q['explanation']);
+    }
+    unset($q);
+    $db->prepare('INSERT INTO quiz_seen (user_id, doc_id, seen_at) VALUES (:u, :d, :t) ON CONFLICT(user_id, doc_id) DO UPDATE SET seen_at = :t')
+       ->execute([':u' => $me, ':d' => $docId, ':t' => time()]);
+    return json_encode($quiz, JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * Spaced review (Leitner boxes) for one question: a wrong answer puts it back to tomorrow, a right one in the review moves it to
+ * the next box, after the last box it is learned. $card is the existing review card row or null. Returns [state, extra].
+ */
+function apLeitner(PDO $db, array $class, int $me, int $docId, int $q, ?array $card, ?array $question, bool $correct): array {
+    $key = [':u' => $me, ':d' => $docId, ':q' => $q];
+    if ($correct && !$card) return ['known', []];   // right at the first try
+    $newBox = $correct ? (int)$card['box'] + 1 : 0;
+    if ($newBox >= count(REVIEW_DAYS)) {
+        $db->prepare('DELETE FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q')->execute($key);
+        return ['learned', []];
+    }
+    $due = (new DateTimeImmutable(classToday($class)))->modify('+' . REVIEW_DAYS[$newBox] . ' days')->format('Y-m-d');
+    if ($card) {
+        $db->prepare('UPDATE review_cards SET box = :b, due_date = :due, updated_at = :t WHERE user_id = :u AND doc_id = :d AND q_index = :q')
+           ->execute($key + [':b' => $newBox, ':due' => $due, ':t' => time()]);
+    } else {
+        $db->prepare('INSERT INTO review_cards (user_id, doc_id, q_index, class_id, box, due_date, question, updated_at) VALUES (:u, :d, :q, :c, :b, :due, :qq, :t)')
+           ->execute($key + [':c' => (int)$class['id'], ':b' => $newBox, ':due' => $due, ':qq' => json_encode($question, JSON_UNESCAPED_UNICODE), ':t' => time()]);
+    }
+    return ['review', ['box' => $newBox, 'due' => $due]];
 }
 
 /* ---------- resumable uploads: a file is sent in pieces into a temporary folder and kept until it is committed ---------- */
@@ -274,10 +315,12 @@ try {
                 $a->execute([':id' => $doc['author_id']]);
                 $by = $a->fetchColumn() ?: '?';
             }
+            $content = $doc['content'];
+            if ($doc['kind'] === 'quiz' && $doc['status'] === 'ok') $content = apQuizForUser($db, $me, (int)$doc['id'], $content);
             jsonResponse(['success' => true, 'doc' => [
                 'id' => (int)$doc['id'], 'kind' => $doc['kind'], 'author' => $by, 'manual' => $doc['author_id'] !== null, 'subject_id' => (int)$doc['subject_id'], 'subject' => $doc['subject'],
                 'lesson_date' => $doc['lesson_date'], 'event_id' => $doc['event_id'] !== null ? (int)$doc['event_id'] : null,
-                'title' => $doc['title'], 'content' => $doc['content'], 'sources' => json_decode($doc['sources'], true) ?: [],
+                'title' => $doc['title'], 'content' => $content, 'sources' => json_decode($doc['sources'], true) ?: [],
                 'status' => $doc['status'], 'updated_at' => (int)$doc['updated_at'],
             ]]);
         }
@@ -337,6 +380,7 @@ try {
                 if ($r['due_date'] > $today) { $later++; continue; }
                 $q = json_decode($r['question'], true);
                 if (!is_array($q) || count($due) >= 30) continue;
+                unset($q['answer'], $q['explanation']);   // the answer is given by the server when the question is answered
                 $due[] = ['doc_id' => (int)$r['doc_id'], 'q' => (int)$r['q_index'], 'box' => (int)$r['box'], 'from' => $r['title'] ?? 'Quiz'] + $q;
             }
             jsonResponse(['success' => true, 'today' => $today, 'due' => $due, 'later' => $later]);
@@ -745,45 +789,77 @@ try {
         jsonResponse(['success' => true]);
     }
 
+    if ($action === 'quiz_answer') {
+        // One answer to a question of a quiz. The server judges it. The FIRST answer ever to that question is kept and can give
+        // points; later ones (practising again) only move the spaced review. Answers given too fast after opening the quiz or
+        // after the previous answer give no points.
+        if (!checkRateLimit('quiz_answer', 1500, 3600, 'user:' . $me)) apFail('slow_down', 'Too many answers, try later', 429);
+        $docId = (int)($in['doc_id'] ?? 0);
+        $q = (int)($in['q'] ?? -1);
+        $choice = (int)($in['choice'] ?? -1);
+        $st = $db->prepare("SELECT class_id, content FROM class_docs WHERE id = :id AND kind = 'quiz' AND status = 'ok'");
+        $st->execute([':id' => $docId]);
+        $doc = $st->fetch();
+        if (!$doc) apFail('not_found', 'Quiz not found', 404);
+        [$class, ] = apClass($db, (int)$doc['class_id'], $me, $isAdmin);
+        $question = json_decode($doc['content'], true)['questions'][$q] ?? null;
+        if ($q < 0 || !is_array($question) || $choice < 0 || $choice >= count($question['options'] ?? [])) apFail('bad_question', 'Unknown question');
+        $correct = $choice === (int)$question['answer'];
+        $now = time();
+
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            $had = $db->prepare('SELECT choice FROM quiz_answers WHERE user_id = :u AND doc_id = :d AND q_index = :q');
+            $had->execute([':u' => $me, ':d' => $docId, ':q' => $q]);
+            $first = $had->fetchColumn() === false;
+            $points = 0; $fast = false;
+            if ($first) {
+                $ref = $db->prepare('SELECT MAX(t) FROM (SELECT seen_at AS t FROM quiz_seen WHERE user_id = :u AND doc_id = :d UNION ALL SELECT MAX(answered_at) FROM quiz_answers WHERE user_id = :u)');
+                $ref->execute([':u' => $me, ':d' => $docId]);
+                $fast = $now - (int)$ref->fetchColumn() < SCORE_MIN_GAP;
+                if ($correct && !$fast) $points = scoreAward($db, $class, $me, 'quiz', SCORE_QUIZ, "quiz:$docId:$q");
+                $db->prepare('INSERT INTO quiz_answers (user_id, doc_id, q_index, class_id, choice, correct, points, answered_at) VALUES (:u, :d, :q, :c, :ch, :ok, :p, :t)')
+                   ->execute([':u' => $me, ':d' => $docId, ':q' => $q, ':c' => $class['id'], ':ch' => $choice, ':ok' => $correct ? 1 : 0, ':p' => $points, ':t' => $now]);
+            }
+            $cur = $db->prepare('SELECT box, class_id FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q');
+            $cur->execute([':u' => $me, ':d' => $docId, ':q' => $q]);
+            $card = $cur->fetch() ?: null;
+            [$state] = apLeitner($db, $class, $me, $docId, $q, $card, $question, $correct);
+            $db->exec('COMMIT');
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->exec('ROLLBACK');
+            throw $e;
+        }
+        jsonResponse(['success' => true, 'correct' => $correct, 'answer' => (int)$question['answer'], 'explanation' => (string)($question['explanation'] ?? ''),
+                      'first' => $first, 'points' => $points, 'too_fast' => $first && $correct && $fast, 'state' => $state]);
+    }
+
     if ($action === 'review_answer') {
-        // Leitner boxes: a wrong answer (in a quiz or in the review) puts the question back to tomorrow; a right one in
-        // the review moves it to the next box; after the last box it is learned and leaves the review.
+        // An answer in the daily review. The server judges it from its own copy of the question (the page only sends the choice).
         if (!checkRateLimit('review_answer', 1500, 3600, 'user:' . $me)) apFail('slow_down', 'Too many answers, try later', 429);
         $docId = (int)($in['doc_id'] ?? 0);
         $q = (int)($in['q'] ?? -1);
-        $key = [':u' => $me, ':d' => $docId, ':q' => $q];
-        $cur = $db->prepare('SELECT box, class_id FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q');
-        $cur->execute($key);
-        $card = $cur->fetch();
-        $question = null;
-        if ($card) {
-            $classIdOf = (int)$card['class_id'];   // the copy in the card is used: the quiz may have changed since
-        } else {
-            $st = $db->prepare("SELECT class_id, content FROM class_docs WHERE id = :id AND kind = 'quiz' AND status = 'ok'");
-            $st->execute([':id' => $docId]);
-            $doc = $st->fetch();
-            if (!$doc) apFail('not_found', 'Quiz not found', 404);
-            $question = json_decode($doc['content'], true)['questions'][$q] ?? null;
-            if ($q < 0 || !is_array($question)) apFail('bad_question', 'Unknown question');
-            $classIdOf = (int)$doc['class_id'];
+        $choice = (int)($in['choice'] ?? -1);
+        $cur = $db->prepare('SELECT box, class_id, due_date, question FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q');
+        $cur->execute([':u' => $me, ':d' => $docId, ':q' => $q]);
+        $card = $cur->fetch() ?: null;
+        if (!$card) apFail('not_found', 'This question is not in your review', 404);
+        [$class, ] = apClass($db, (int)$card['class_id'], $me, $isAdmin);
+        $question = json_decode($card['question'], true);
+        if (!is_array($question) || $choice < 0 || $choice >= count($question['options'] ?? [])) apFail('bad_question', 'Unknown question');
+        $correct = $choice === (int)$question['answer'];
+        $wasDue = $card['due_date'] <= classToday($class);
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            $points = $correct && $wasDue ? scoreAward($db, $class, $me, 'review', SCORE_REVIEW, "review:$docId:$q:" . (int)$card['box']) : 0;
+            [$state, $extra] = apLeitner($db, $class, $me, $docId, $q, $card, $question, $correct);
+            $db->exec('COMMIT');
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->exec('ROLLBACK');
+            throw $e;
         }
-        [$class, ] = apClass($db, $classIdOf, $me, $isAdmin);
-        $correct = !empty($in['correct']);
-        if ($correct && !$card) jsonResponse(['success' => true, 'state' => 'known']);   // right at the first try
-        $newBox = $correct ? (int)$card['box'] + 1 : 0;
-        if ($newBox >= count(REVIEW_DAYS)) {
-            $db->prepare('DELETE FROM review_cards WHERE user_id = :u AND doc_id = :d AND q_index = :q')->execute($key);
-            jsonResponse(['success' => true, 'state' => 'learned']);
-        }
-        $due = (new DateTimeImmutable(classToday($class)))->modify('+' . REVIEW_DAYS[$newBox] . ' days')->format('Y-m-d');
-        if ($card) {
-            $db->prepare('UPDATE review_cards SET box = :b, due_date = :due, updated_at = :t WHERE user_id = :u AND doc_id = :d AND q_index = :q')
-               ->execute($key + [':b' => $newBox, ':due' => $due, ':t' => time()]);
-        } else {
-            $db->prepare('INSERT INTO review_cards (user_id, doc_id, q_index, class_id, box, due_date, question, updated_at) VALUES (:u, :d, :q, :c, :b, :due, :qq, :t)')
-               ->execute($key + [':c' => $classIdOf, ':b' => $newBox, ':due' => $due, ':qq' => json_encode($question, JSON_UNESCAPED_UNICODE), ':t' => time()]);
-        }
-        jsonResponse(['success' => true, 'state' => 'review', 'box' => $newBox, 'due' => $due]);
+        jsonResponse(['success' => true, 'correct' => $correct, 'answer' => (int)$question['answer'], 'explanation' => (string)($question['explanation'] ?? ''),
+                      'points' => $points, 'state' => $state] + $extra);
     }
 
     if ($action === 'add_event') {

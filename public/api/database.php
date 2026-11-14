@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 18;
+const DB_SCHEMA_VERSION = 19;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,39 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV19(PDO $db): void {
+    // Scoreboard. The answers of a quiz are judged by the server and kept (first try only); points go in score_events so
+    // that a member who leaves the scoreboard can have all of theirs deleted in one go.
+    $db->exec("CREATE TABLE IF NOT EXISTS quiz_answers (
+        user_id INTEGER NOT NULL,
+        doc_id INTEGER NOT NULL,
+        q_index INTEGER NOT NULL,
+        class_id INTEGER NOT NULL,
+        choice INTEGER NOT NULL,
+        correct INTEGER NOT NULL,
+        points INTEGER NOT NULL DEFAULT 0,
+        answered_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, doc_id, q_index)
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS quiz_seen (
+        user_id INTEGER NOT NULL,
+        doc_id INTEGER NOT NULL,
+        seen_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, doc_id)
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS score_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        points INTEGER NOT NULL,
+        ref TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_score_class ON score_events(class_id, created_at)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_score_user ON score_events(class_id, user_id)');
+}
+
 function migrateV18(PDO $db): void {
     // Fingerprint (sha256) of each uploaded file: the same file sent twice to a class is recognised and not stored again
     addColumnIfMissing($db, 'class_item_files', 'sha256', "TEXT NOT NULL DEFAULT ''");
@@ -703,6 +736,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 18) {
             migrateV18($db);
+        }
+        if ($current < 19) {
+            migrateV19($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
