@@ -377,6 +377,8 @@
             const { questions } = await getJson(`../api/appunti.php?action=question_pool&class_id=${current.id}&subject_id=${sid}`);
             askedLoaded = { sid, questions };
             $('#asked-menu').replaceChildren(...(questions.length ? [C.menu([
+                { label: 'Studia a carte (ripasso a intervalli)', accent: true, onclick: () => startCards() },
+                { label: 'Esporta per Anki (.txt)', onclick: () => exportAnki() },
                 { label: 'Scarica il prompt per farti interrogare da un\'altra AI', onclick: () => downloadAskedPrompt() },
                 { label: 'Copia il prompt', onclick: () => copyAskedPrompt() }], 'Domande aperte')] : []));
             box.replaceChildren(...(questions.length ? questions.map((q) => el('div', { class: 'asked' },
@@ -387,6 +389,59 @@
     }
     $('#asked-box').addEventListener('toggle', () => { if ($('#asked-box').open) loadAsked(); });
     $('#asked-subject').addEventListener('change', loadAsked);
+
+    /* ---------- flashcards from the open questions: say the answer aloud, look, say if you knew it (spaced, on this device) ---------- */
+
+    const FC_DAYS = [1, 3, 7, 14, 30];
+    const fcKey = () => `vb_cards_${current.id}`;
+    const fcLoad = () => { try { return JSON.parse(stored(fcKey()) || '{}') || {}; } catch (e) { return {}; } };
+    const hashOf = (t) => { let h = 5381; for (const c of t) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return h.toString(36); };
+    const dayPlus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+    function startCards() {
+        const state = fcLoad();
+        const today = todayStr();
+        const cards = askedLoaded.questions.filter((q) => q.risposta).map((q) => ({ q, id: hashOf(q.domanda), st: state[hashOf(q.domanda)] || { box: 0, due: today } }))
+            .filter((c) => c.st.due <= today).sort((a, b) => b.q.count - a.q.count);
+        openDoc = null;
+        $('#study-list').hidden = true;
+        $('#doc-view').hidden = false;
+        $('#doc-title').textContent = 'Carte da ripassare';
+        $('#doc-meta').textContent = cards.length ? `${cards.length} carte oggi: pensa la risposta, poi guardala.` : 'Per oggi hai finito. Le carte tornano dopo 1, 3, 7, 14, 30 giorni.';
+        $('#doc-download').hidden = true;
+        $('#doc-sources').hidden = true;
+        const body = $('#doc-body');
+        let i = 0;
+        const next = () => {
+            if (i >= cards.length) { body.replaceChildren(el('p', { class: 'empty', text: 'Fatto! Torna domani per le carte in scadenza.' })); return; }
+            const c = cards[i];
+            const answer = el('div', { class: 'fc-answer md', hidden: true }, md(c.q.risposta));
+            const know = (yes) => {
+                const box = yes ? Math.min(c.st.box + 1, FC_DAYS.length) : 0;
+                const all = fcLoad();
+                all[c.id] = box >= FC_DAYS.length ? { box: FC_DAYS.length, due: dayPlus(60) } : { box, due: dayPlus(FC_DAYS[box]) };
+                store(fcKey(), JSON.stringify(all));
+                i++; next();
+            };
+            const show = el('button', { type: 'button', text: 'Mostra la risposta', onclick: () => { answer.hidden = false; show.hidden = true; row.hidden = false; } });
+            const row = el('div', { class: 'row', hidden: true }, el('button', { type: 'button', text: 'La sapevo', onclick: () => know(true) }), el('button', { type: 'button', class: 'ghost', text: 'Da rivedere', onclick: () => know(false) }));
+            body.replaceChildren(el('p', { class: 'muted small', text: `Carta ${i + 1} di ${cards.length}${c.q.count > 1 ? ` · chiesta ${c.q.count} volte` : ''}` }),
+                el('div', { class: 'fc-card' }, el('div', { class: 'fc-q' }, c.q.domanda,
+                    C.canSpeak() ? el('button', { type: 'button', class: 'ghost mini speak-btn', text: 'Leggi', onclick: () => C.speak(c.q.domanda) }) : null), answer), show, row);
+        };
+        next();
+        window.scrollTo(0, 0);
+    }
+
+    /** Anki: a text file with "front<TAB>back" per line (import it with File > Import). */
+    function exportAnki() {
+        const clean = (t) => String(t).replace(/[\t\r\n]+/g, ' ').trim();
+        const lines = ['#separator:tab', '#html:false', ...askedLoaded.questions.filter((q) => q.risposta).map((q) => `${clean(q.domanda)}\t${clean(q.risposta)}`)];
+        const a = el('a', { href: URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' })), download: 'domande-anki.txt' });
+        document.body.append(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        status('Scaricato: in Anki scegli File › Importa e questo file; ogni riga è una carta (domanda, risposta).', 'ok');
+    }
 
     /** A prompt that turns another AI into an examiner: one open question at a time, correction, final summary. */
     function askedPrompt() {

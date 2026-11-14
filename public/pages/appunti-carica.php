@@ -11,7 +11,7 @@ if (empty($_SESSION['user_id'])) {
     exit();
 }
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../js/appunti-upload.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
+$v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../js/appunti-upload.js') . '-' . filemtime(__DIR__ . '/../js/appunti-prompts.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -29,6 +29,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/dropzone.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-upload.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/appunti-prompts.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-carica.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
@@ -130,6 +131,16 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                     <button type="button" id="aiget-zip" class="ghost ico-dl">Scarica i file (.zip)</button>
                 </div>
             </div>
+            <details class="prompt-lib" id="prompt-lib">
+                <summary>Altri prompt da copiare (studiare, tema, verifica da foto)</summary>
+                <div class="stack">
+                    <label>Che prompt <select id="pl-key"></select></label>
+                    <label id="pl-ai-l">Per quale AI <select id="pl-ai"><option value="gemini">Gemini</option><option value="chatgpt">ChatGPT</option><option value="claude">Claude</option></select></label>
+                    <label id="pl-essay-l" class="switch"><input type="checkbox" id="pl-essay"> Aggiungi la parte per allenarmi sul tema</label>
+                    <pre id="pl-text" class="prompt-box"></pre>
+                    <div class="row"><button type="button" id="pl-copy" class="ghost mini">Copia il prompt</button><button type="button" id="pl-save" class="ghost mini ico-dl">Scarica .txt</button></div>
+                </div>
+            </details>
             <h3 class="step">2. Carica la risposta dell'AI</h3>
             <form id="ai-form" class="stack">
                 <div class="grid2">

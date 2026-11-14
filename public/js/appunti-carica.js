@@ -239,6 +239,28 @@
         }
     });
 
+    /* ---------- prompts to copy ---------- */
+    (() => {
+        const P = window.AppuntiPrompts;
+        const key = $('#pl-key');
+        key.replaceChildren(...P.list.map((p) => el('option', { value: p.key, text: p.title })));
+        const draw = () => {
+            const p = P.list.find((x) => x.key === key.value);
+            $('#pl-ai-l').hidden = !p.hasAi;
+            $('#pl-essay-l').hidden = !p.hasEssay;
+            $('#pl-text').textContent = p.text({ ai: $('#pl-ai').value, essay: $('#pl-essay').checked });
+        };
+        ['pl-key', 'pl-ai', 'pl-essay'].forEach((id) => $('#' + id).addEventListener('change', draw));
+        $('#pl-copy').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText($('#pl-text').textContent); status('Prompt copiato.', 'ok'); } catch (e) { status('Non riesco a copiare: usa "Scarica .txt".', 'err'); }
+        });
+        $('#pl-save').addEventListener('click', () => {
+            const a = el('a', { href: URL.createObjectURL(new Blob([$('#pl-text').textContent], { type: 'text/plain;charset=utf-8' })), download: `prompt-${key.value}.txt` });
+            document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        });
+        draw();
+    })();
+
     /* ---------- start ---------- */
 
     async function openClass(id) {
