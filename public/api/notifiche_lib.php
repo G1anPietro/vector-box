@@ -179,7 +179,7 @@ function reminderText(PDO $db, array $ev, string $slot): array {
     $date = (new DateTimeImmutable($ev['event_date']))->format('d/m');
     $st = $db->prepare("SELECT kind FROM class_docs WHERE event_id = :e AND status = 'ok'");
     $st->execute([':e' => $ev['id']]);
-    $names = ['completo' => 'dispensa', 'riassunto' => 'riassunto', 'preparazione' => 'preparazione', 'quiz' => 'quiz'];
+    $names = ['completo' => 'dispensa', 'riassunto' => 'riassunto', 'scheda' => 'scheda', 'preparazione' => 'preparazione', 'quiz' => 'quiz'];
     $docs = array_values(array_intersect_key($names, array_flip($st->fetchAll(PDO::FETCH_COLUMN))));
     $body = $date . ($ev['title'] !== '' ? ' · ' . $ev['title'] : '')
           . ($ev['topics'] !== '' ? '. Argomenti: ' . textCut($ev['topics'], 120) : '')

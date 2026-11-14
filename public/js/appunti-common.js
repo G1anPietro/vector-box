@@ -212,6 +212,97 @@
     }
 
     /**
+     * The schema as a picture file: a tidy tree drawn left to right, in plain SVG (text stays text, boxes stay shapes: it opens and
+     * can be edited in Inkscape, Illustrator, Figma, Affinity or LibreOffice Draw). `mono` = black on white, for printing.
+     */
+    function schemaSvg(data, mono) {
+        const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const plain = (t) => String(t || '').replace(/[*_`]/g, '');
+        const wrap = (t, max) => {
+            const lines = []; let cur = '';
+            for (const w of plain(t).split(/\s+/).filter(Boolean)) {
+                if (cur && (cur + ' ' + w).length > max) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;
+            }
+            if (cur) lines.push(cur);
+            return lines.slice(0, 6);
+        };
+        const CW = 7.4; const CN = 6.4; const LH = 18; const NH = 15; const PAD = 10; const GAPY = 12; const GAPX = 46;
+        const HUES = [8, 32, 150, 200, 265, 320, 95, 230];
+        const mk = (n, depth, hue) => {
+            const label = wrap(n.label, 26); const note = wrap(n.note, 34);
+            const w = Math.max(60, Math.max(...label.map((l) => l.length * CW), ...note.map((l) => l.length * CN), 0) + PAD * 2);
+            const h = label.length * LH + note.length * NH + PAD * 2 - (note.length ? 0 : 2);
+            return { label, note, w, h, depth, hue, kids: (Array.isArray(n.children) ? n.children : []).map((c, i) => mk(c, depth + 1, depth === 0 ? HUES[i % HUES.length] : hue)) };
+        };
+        const root = mk({ label: data.title || 'Schema', children: data.children }, 0, 0);
+        const colW = []; (function widths(n) { colW[n.depth] = Math.max(colW[n.depth] || 0, n.w); n.kids.forEach(widths); })(root);
+        const colX = []; colW.reduce((x, w, i) => { colX[i] = x; return x + w + GAPX; }, 20);
+        let cursor = 20;
+        (function place(n) {
+            if (!n.kids.length) { n.y = cursor; cursor += n.h + GAPY; return; }
+            n.kids.forEach(place);
+            const mid = (n.kids[0].y + n.kids[0].h / 2 + n.kids[n.kids.length - 1].y + n.kids[n.kids.length - 1].h / 2) / 2;
+            n.y = mid - n.h / 2;
+        })(root);
+        const W = colX[colX.length - 1] + colW[colW.length - 1] + 20; const H = cursor + 8;
+        const out = [];
+        const color = (n, what) => {
+            if (mono) return what === 'fill' ? '#ffffff' : what === 'stroke' ? '#000000' : '#000000';
+            if (n.depth === 0) return what === 'fill' ? '#23304a' : what === 'stroke' ? '#23304a' : '#ffffff';
+            return what === 'fill' ? `hsl(${n.hue} 75% ${n.depth === 1 ? 86 : 94}%)` : what === 'stroke' ? `hsl(${n.hue} 60% 42%)` : '#1b1b1b';
+        };
+        (function draw(n) {
+            const x = colX[n.depth];
+            for (const k of n.kids) {
+                const kx = colX[k.depth]; const x1 = x + n.w; const y1 = n.y + n.h / 2; const y2 = k.y + k.h / 2; const mid = (x1 + kx) / 2;
+                out.push(`<path d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${kx} ${y2}" fill="none" stroke="${mono ? '#000' : `hsl(${k.hue} 60% 48%)`}" stroke-width="${mono ? 1.5 : 2.5}" stroke-linecap="round"/>`);
+            }
+            n.kids.forEach(draw);
+        })(root);
+        (function boxes(n) {
+            const x = colX[n.depth];
+            out.push(`<g><rect x="${x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="10" fill="${color(n, 'fill')}" stroke="${color(n, 'stroke')}" stroke-width="${mono ? 1.5 : 1.5}"/>`);
+            let ty = n.y + PAD + 13;
+            for (const l of n.label) { out.push(`<text x="${x + PAD}" y="${ty}" font-size="14" font-weight="700" fill="${color(n, 'text')}">${esc(l)}</text>`); ty += LH; }
+            for (const l of n.note) { out.push(`<text x="${x + PAD}" y="${ty - 2}" font-size="12" fill="${mono ? '#000' : n.depth === 0 ? '#dfe6f5' : '#444'}">${esc(l)}</text>`); ty += NH; }
+            out.push('</g>');
+            n.kids.forEach(boxes);
+        })(root);
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(W)}" height="${Math.ceil(H)}" viewBox="0 0 ${Math.ceil(W)} ${Math.ceil(H)}" font-family="Arial, Helvetica, sans-serif"><title>${esc(plain(data.title || 'Schema'))}</title><rect width="100%" height="100%" fill="#ffffff"/>${out.join('')}</svg>`;
+    }
+
+    /** Saves a Blob as a file (works on phones too: the browser's own download). */
+    function saveBlob(blob, name) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+
+    /** Downloads the schema as SVG (editable) or PNG (to share), in colour or black and white. */
+    async function downloadSchema(data, format, mono, name) {
+        const svg = schemaSvg(data, mono);
+        const base = (String(name || 'schema').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'schema') + (mono ? '-bn' : '-colori');
+        if (format === 'svg') { saveBlob(new Blob([svg], { type: 'image/svg+xml' }), base + '.svg'); return; }
+        const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+        try {
+            const img = new Image();
+            await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; img.src = url; });
+            const k = Math.min(3, 6000 / Math.max(img.width, img.height, 1));   // sharp, but never a huge canvas
+            const cv = document.createElement('canvas');
+            cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+            const cx = cv.getContext('2d');
+            cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+            cx.drawImage(img, 0, 0, cv.width, cv.height);
+            const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
+            if (blob) saveBlob(blob, base + '.png');
+        } finally { URL.revokeObjectURL(url); }
+    }
+
+    /**
      * A schema (concept map) written by the AI as JSON {title, children:[{label, note, children}]}: drawn as a tree with
      * branches that open and close. Text only (light, fast, readable without the picture).
      */
@@ -325,6 +416,14 @@
             el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || 'Schema'))),
                 el('span', { class: 'schema-tools' }, zoomBtns, toggle, viewBtn)),
             map, tree);
+        const dl = el('details', { class: 'schema-dl' }, el('summary', { class: 'ghost mini', text: 'Scarica' }),
+            el('div', { class: 'schema-dl-menu' },
+                ...[['svg', false, 'SVG a colori', 'modificabile'], ['svg', true, 'SVG bianco e nero', 'modificabile'], ['png', false, 'PNG a colori', 'immagine'], ['png', true, 'PNG bianco e nero', 'immagine']].map(([f, m, label, hint]) =>
+                    el('button', { type: 'button', class: 'ghost', onclick: async (ev) => {
+                        dl.open = false;
+                        try { await downloadSchema(data, f, m, data.title); } catch (e) { alert('Non sono riuscito a creare il file.'); }
+                    } }, label, el('small', { class: 'muted', text: ' · ' + hint })))));
+        wrap.querySelector('.schema-tools').append(dl);
         setView(stored(VIEW_KEY) || (window.innerWidth >= 700 ? 'map' : 'list'));
         return wrap;
     }
@@ -691,5 +790,5 @@
     window.AppuntiCommon = { weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
-        DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };
+        DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', scheda: 'Scheda', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };
 })();

@@ -115,3 +115,18 @@ test('when the choice matches, or the AI is not sure, there is no report; short 
     assert.equal(calls.length, 2, 'the three-letter note was not sent');
     assert.equal((await board(mario)).reports.length, before);
 });
+
+test('the AI sees the topics the class already wrote down, and an upload goes under the one it names (no duplicate proposal)', async () => {
+    const t = Math.floor(Date.now() / 1000);
+    const old = site.db("INSERT INTO class_topics (class_id, subject_id, name, start_date, end_date, status, created_at, updated_at) VALUES (?, ?, 'Unità d''Italia', '2020-01-01', '2020-02-01', 'ok', ?, ?) RETURNING id", [classId, storia, t, t])[0].id;
+    answer = { 'moti del Quarantotto': { tipo: 'appunti', materia: 'Storia', data: '', argomento: 'Unità d\'Italia', sicuro: false, verifica: null } };
+    calls.length = 0;
+    const up = await upload(luigi, { class_id: classId, subject_id: storia, kind: 'appunti', lesson_date: ymd(-2), body: 'Appunti sui moti del Quarantotto, le cinque giornate di Milano e la prima guerra d\'indipendenza' });
+    await worker();
+    const sent = calls.map((c) => c.systemInstruction && c.systemInstruction.parts[0].text).filter((x) => x && x.includes('ARGOMENTI GIÀ SVOLTI'));
+    assert.ok(sent.some((x) => x.includes('Unità d\'Italia')), 'the prompt lists the topics already done');
+    const it = site.db('SELECT topic_id, topic_manual FROM class_items WHERE id = ?', [up.id])[0];
+    assert.equal(it.topic_id, old);
+    assert.equal(it.topic_manual, 1);
+    assert.equal(site.db("SELECT COUNT(*) AS n FROM class_topics WHERE class_id = ? AND name = 'Unità d''Italia'", [classId])[0].n, 1, 'no new proposal with the same name');
+});

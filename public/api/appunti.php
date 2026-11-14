@@ -285,6 +285,7 @@ try {
             $map = [
                 'completo' => [zipPackPrompt(AI_PROMPT_COMPLETO), ''],
                 'riassunto' => [$after . AI_PROMPT_RIASSUNTO, 'Mandalo nella stessa chat, dopo che l\'AI ha scritto la dispensa completa (fai prima "Dispensa completa").'],
+                'scheda' => [$after . AI_PROMPT_SCHEDA, 'Mandalo nella stessa chat, dopo la dispensa completa. Serve per chi può consultare gli appunti durante la verifica.'],
                 'preparazione' => ["Dalla dispensa che hai appena scritto e dalle fonti di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE, 'Mandalo nella stessa chat, dopo la dispensa completa.'],
                 'quiz' => [$after . AI_PROMPT_QUIZ, 'Mandalo nella stessa chat, dopo la dispensa completa. L\'AI risponde con un testo in formato JSON: caricalo così com\'è, senza modificarlo.'],
                 'schema' => [$after . AI_PROMPT_SCHEMA, 'Mandalo nella stessa chat, dopo la dispensa completa. L\'AI risponde con un testo in formato JSON: caricalo così com\'è.'],
@@ -831,7 +832,7 @@ try {
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         if (!checkRateLimit('notes_doc_upload', 30, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
         $kind = (string)($in['kind'] ?? '');
-        if (!in_array($kind, ['lezione', 'completo', 'riassunto', 'preparazione', 'quiz', 'schema'], true)) apFail('bad_kind', 'Unknown type of document');
+        if (!in_array($kind, ['lezione', 'completo', 'riassunto', 'scheda', 'preparazione', 'quiz', 'schema'], true)) apFail('bad_kind', 'Unknown type of document');
         $content = (string)($in['content'] ?? '');
         $file = $_FILES['file'] ?? null;
         if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
@@ -863,7 +864,7 @@ try {
             if (!classValidDate($date)) apFail('bad_date', 'Date must be YYYY-MM-DD');
         }
         $subject = notesSubjectOf($db, (int)$class['id'], $subjectId)['name'];
-        $labels = ['lezione' => 'Lezione', 'completo' => 'Completo', 'riassunto' => 'Riassunto', 'preparazione' => 'Preparazione mirata', 'quiz' => 'Quiz', 'schema' => 'Schema'];
+        $labels = ['lezione' => 'Lezione', 'completo' => 'Completo', 'riassunto' => 'Riassunto', 'scheda' => 'Scheda da tenere sotto mano', 'preparazione' => 'Preparazione mirata', 'quiz' => 'Quiz', 'schema' => 'Schema'];
         $title = apText($in['title'] ?? '', NOTE_TITLE_MAX);
         if ($title === '') $title = "$subject — {$labels[$kind]} del " . (new DateTimeImmutable($date))->format('d/m/Y');
         $now = time();

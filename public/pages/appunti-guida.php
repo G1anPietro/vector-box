@@ -105,8 +105,12 @@ $login = 'login.php?next=appunti.php';
                     all'interrogazione</strong> su quella lezione.</li>
                 <li><strong>Per ogni verifica</strong> dei prossimi 30 giorni, con tutto il materiale dalla verifica precedente:
                     <strong>Completo</strong> (la dispensa divisa per argomento, con le lezioni di cui mancano gli appunti),
-                    <strong>Riassunto</strong>, <strong>Preparazione mirata</strong> (come interroga il prof, domande probabili con le
+                    <strong>Riassunto</strong>, <strong>Scheda da tenere sotto mano</strong> (una pagina di soli punti chiave, senza spiegazioni:
+                    per chi può consultare gli appunti durante la verifica), <strong>Preparazione mirata</strong> (come interroga il prof, domande probabili con le
                     risposte, verifica di prova svolta) e <strong>Quiz</strong> da fare lì sul telefono.</li>
+                <li><strong>Schemi:</strong> col pulsante <em>Scarica</em> sopra lo schema li prendi come <strong>SVG</strong> (si modifica con Inkscape,
+                    Illustrator, Figma, LibreOffice Draw: testi e riquadri restano separati) o come <strong>PNG</strong> (immagine da mandare), a colori o in
+                    bianco e nero per stamparli.</li>
                 <li><strong>Genera ora:</strong> se non vuoi aspettare la sera, una volta l'ora per classe.</li>
                 <li>Ogni documento si scarica o si stampa in PDF. <strong>L'AI può sbagliare:</strong> controlla sempre con il libro e
                     con gli appunti originali (ogni parte dice da quali appunti viene).</li>
@@ -124,7 +128,8 @@ $login = 'login.php?next=appunti.php';
                     dell'orario e, se ce l'hai, la foto degli orari della campanella. L'AI riempie la tabella: controllala e premi
                     <em>Salva l'orario</em>. Gli orari possono essere diversi da un giorno all'altro; "Lab TPSIT" e "TPSIT" sono la
                     stessa materia (cambia solo l'etichetta). Quando arriva l'orario definitivo, salvalo con la nuova data
-                    "Valido dal": gli appunti vecchi restano sulle lezioni giuste.</li>
+                    "Valido dal": gli appunti vecchi restano sulle lezioni giuste. Le ore di fila della stessa materia si vedono come un
+                    unico blocco, e ogni materia ha un colore diverso.</li>
                 <li><strong>Riassunto automatico, riepilogo della settimana, appunti mancanti e classifica</strong> si accendono, spengono e
                     regolano in <em>Impostazioni</em> (il riassunto parte alle 18:00 se non cambi l'ora).</li>
                 <li><strong>Pannello del rappresentante</strong> (scheda <em>Classe</em>): ruoli e permessi, unire o eliminare materie e il

@@ -120,6 +120,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                             <optgroup label="Per una verifica o interrogazione">
                                 <option value="completo">Dispensa completa</option>
                                 <option value="riassunto">Riassunto</option>
+                                <option value="scheda">Scheda da tenere sotto mano</option>
                                 <option value="preparazione">Preparazione mirata</option>
                                 <option value="quiz">Quiz</option>
                                 <option value="schema">Schema</option>

@@ -407,11 +407,12 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
     assert.match(prompt, /\[L1\] Lezione del/);
     assert.match(bySystem('PREPARAZIONE MIRATA')[0].body.contents[0].parts[0].text, /date delle battaglie/);
     assert.equal(bySystem('RIASSUNTO').length, 1);
+    assert.equal(bySystem('SCHEDA DA TENERE').length, 1, 'the key-points sheet for the test is written too');
     assert.match(bySystem('quiz')[0].url, /flash-lite/);
     assert.match(bySystem('quiz')[0].body.contents[0].parts[0].text, /DOMANDE DEL PROF:\n- Dove nasce Napoleone\? → Ad Ajaccio/, 'the quiz starts from the teacher\'s questions');
 
     const docs = (await luigi.get(`/api/appunti.php?action=docs&class_id=${classId}`)).json.docs.filter((d) => d.event_id === id);
-    assert.deepEqual(docs.map((d) => d.kind).sort(), ['completo', 'preparazione', 'quiz', 'riassunto', 'schema']);
+    assert.deepEqual(docs.map((d) => d.kind).sort(), ['completo', 'preparazione', 'quiz', 'riassunto', 'scheda', 'schema']);
     const get = async (kind) => (await luigi.get(`/api/appunti.php?action=doc&id=${docs.find((d) => d.kind === kind).id}`)).json.doc;
     const c = await get('completo');
     assert.match(c.content, /^> Materiale dal .* lezioni riordinate/);
@@ -444,7 +445,7 @@ test('tests: complete handout, summary, targeted prep and quiz from the material
     mode = 'ok';
     assert.match(bySystem('DISPENSA COMPLETA')[0].url, /flash-lite/);
     const status = Object.fromEntries(site.db('SELECT kind, status FROM class_docs WHERE event_id = ?', [id]).map((r) => [r.kind, r.status]));
-    assert.deepEqual(status, { completo: 'ok', riassunto: 'ok', preparazione: 'ok', quiz: 'error', schema: 'ok' });
+    assert.deepEqual(status, { completo: 'ok', riassunto: 'ok', scheda: 'ok', preparazione: 'ok', quiz: 'error', schema: 'ok' });
     site.db('DELETE FROM ai_usage');
 
     // deleting the test deletes its documents
