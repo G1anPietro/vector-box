@@ -108,6 +108,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 <div class="bb-col-side">
                     <div id="bb-you" class="bb-block" hidden></div>
                     <div id="bb-notes" class="bb-block"></div>
+                    <div id="bb-missing" class="bb-block" hidden></div>
                     <div id="bb-fix" class="bb-block" hidden></div>
                 </div>
             </div>

@@ -63,6 +63,14 @@ function digestSettings(array $class): array {
     return ['on' => ($d['on'] ?? true) !== false, 'day' => max(0, min(6, (int)($d['day'] ?? 0))), 'hour' => max(0, min(23, (int)($d['hour'] ?? 19)))];
 }
 
+/** Settings of "appunti mancanti" of a class: on/off, from-to dates, subjects left out, single lessons marked "not needed". */
+function notesMissingSettings(array $class): array {
+    $s = json_decode((string)($class['settings'] ?? '{}'), true);
+    $m = is_array($s) && is_array($s['missing'] ?? null) ? $s['missing'] : [];
+    return ['on' => !empty($m['on']), 'from' => (string)($m['from'] ?? ''), 'to' => (string)($m['to'] ?? ''),
+            'subjects_off' => array_values(array_map('intval', (array)($m['subjects_off'] ?? []))), 'skip' => array_values(array_map('strval', (array)($m['skip'] ?? [])))];
+}
+
 /** The permissions of a user in a class: all for the representative and the site admin, else role + personal ones. */
 function classPerms(PDO $db, array $class, int $me, bool $isAdmin): array {
     if ($isAdmin || (int)$class['manager_id'] === $me) return array_keys(CLASS_PERMS);
@@ -337,6 +345,7 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'summary_time' => $class['summary_time'],
         'summary_on' => (json_decode((string)($class['settings'] ?? '{}'), true)['summary_on'] ?? true) !== false,
         'digest' => digestSettings($class),
+        'missing' => notesMissingSettings($class),
         'periods' => classPeriods($class),
         'subjects' => $subjects,
         'timetable' => $timetable,

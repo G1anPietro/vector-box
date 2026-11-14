@@ -269,6 +269,14 @@
             await openClass(pick.id);
             choose(['camera', 'files', 'text', 'ai'].includes(params.get('m')) ? params.get('m') : 'files');
             // Coming from a test in the Study tab: that test is already selected
+            // coming from "Appunti mancanti": that lesson is already chosen
+            if (/^\d{4}-\d\d-\d\d$/.test(params.get('date') || '') && params.get('subject')) {
+                $('#w-date').value = params.get('date');
+                await fillLessons(params.get('date'), null);
+                const opt = [...$('#w-lesson').options].find((o) => o.value.startsWith(params.get('subject') + '|'));
+                if (opt) $('#w-lesson').value = opt.value;
+                choose('files');
+            }
             if (params.get('drop')) { const dropped = await C.takeHandOff(); if (dropped.length) { choose('files'); addFiles(dropped); } history.replaceState(null, '', 'appunti-carica.php'); }
             const ev = params.get('event');
             if (ev && [...$('#ai-form').event_id.options].some((o) => o.value === ev)) $('#ai-form').event_id.value = ev;

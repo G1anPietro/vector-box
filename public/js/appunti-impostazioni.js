@@ -219,6 +219,26 @@
             el('p', { class: 'muted small', text: 'Una volta al giorno l\'AI rifà gli appunti delle materie con il materiale nuovo. Spento, lo fa solo quando premi "Genera ora" nella scheda Studio.' + (canSettings ? '' : ' Lo cambia il rappresentante (o chi ha il permesso).') }));
         sumForm.hidden = !summaryOn;
 
+        // missing notes: the class chooses from when to when, and which subjects do not count
+        const mi = c.missing || { on: false, from: '', to: '', subjects_off: [] };
+        let missingOn = mi.on;
+        const fromIn = el('input', { type: 'date', value: mi.from, disabled: !canSettings });
+        const toIn = el('input', { type: 'date', value: mi.to, disabled: !canSettings });
+        const offs = new Set(mi.subjects_off);
+        const sendMissing = async () => {
+            try { await post('../api/classi.php', { action: 'settings', id: classId, summary_time: c.summary_time, timezone: c.timezone, missing_on: missingOn, missing_from: fromIn.value, missing_to: toIn.value, missing_subjects_off: [...offs] }); saved(); } catch (e) { fail(e); }
+        };
+        fromIn.addEventListener('change', sendMissing); toIn.addEventListener('change', sendMissing);
+        const missingBody = el('div', { class: 'set-sub-block' },
+            el('div', { class: 'grid2' }, el('label', { text: 'Dal' }, fromIn), el('label', { text: 'Al (facoltativo)' }, toIn)),
+            el('p', { class: 'muted small', text: 'Quali materie contano:' }),
+            ...c.subjects.map((s) => sw(s.name, !offs.has(s.id), (on) => { if (on) offs.delete(s.id); else offs.add(s.id); sendMissing(); }, !canSettings)));
+        missingBody.hidden = !missingOn;
+        const missingBox = el('div', {},
+            sw('Segnala gli appunti mancanti nella Bacheca', missingOn, (on) => { missingOn = on; missingBody.hidden = !on; if (on && !fromIn.value) fromIn.value = new Date().toISOString().slice(0, 10); sendMissing(); }, !canSettings),
+            missingBody,
+            el('p', { class: 'muted small', text: 'Mostra le lezioni già fatte per cui nessuno ha caricato niente. I giorni senza lezione non contano; una lezione si può togliere dal menu ⋯ della Bacheca.' + (canSettings ? '' : ' Lo sceglie il rappresentante (o chi ha il permesso).') }));
+
         // weekly digest: chosen by who manages the class settings (default Sunday 19:00)
         const dg = c.digest || { on: true, day: 0, hour: 19 };
         let digestOn = dg.on;
@@ -289,7 +309,8 @@
             section('Codice della classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox,
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
             section('Riassunto automatico', null, summaryBox)),
-            section('Riepilogo settimanale', null, digestBox));
+            section('Riepilogo settimanale', null, digestBox),
+            section('Appunti mancanti', null, missingBox));
     }
 
     window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });

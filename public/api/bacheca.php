@@ -78,7 +78,8 @@ try {
 
         jsonResponse(['success' => true, 'today' => $today, 'now' => $local->format('H:i:s'), 'lessons' => $lessons, 'next_day' => $nextDay,
             'day_off' => $dayOff ? ($dayOff['reason'] !== '' ? $dayOff['reason'] : 'Niente lezione') : null,
-            'announcements' => $announcements, 'can_post' => $canBoard]);
+            'announcements' => $announcements, 'can_post' => $canBoard,
+            'missing' => array_slice(notesMissing($db, $class), 0, 12), 'can_skip' => $canBoard || in_array('material', $perms, true) || in_array('settings', $perms, true)]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') bbFail('method', 'Method not allowed', 405);
@@ -120,6 +121,22 @@ try {
                 '/pages/appunti.php?class=' . $classId . '&tab=board');
         }
         jsonResponse(['success' => true, 'id' => $id, 'pushed' => $sent]);
+    }
+
+    if ($action === 'skip_missing') {
+        // "Not needed" for one lesson: it stops appearing in the missing notes (who may manage material or settings)
+        [$class, $perms] = bbClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        if (!in_array('material', $perms, true) && !in_array('settings', $perms, true) && !in_array('board', $perms, true)) bbFail('forbidden', 'You do not have the permission to do this', 403);
+        $date = (string)($in['date'] ?? '');
+        $sid = (int)($in['subject_id'] ?? 0);
+        if (!classValidDate($date) || !notesSubjectOf($db, (int)$class['id'], $sid)) bbFail('bad_request', 'Unknown lesson');
+        $cfg = json_decode((string)($class['settings'] ?? '{}'), true);
+        if (!is_array($cfg)) $cfg = [];
+        $m = notesMissingSettings($class);
+        $m['skip'] = array_slice(array_values(array_unique(array_merge($m['skip'], ["$date:$sid"]))), -300);
+        $cfg['missing'] = $m;
+        $db->prepare('UPDATE school_classes SET settings = :s WHERE id = :id')->execute([':s' => json_encode($cfg), ':id' => $class['id']]);
+        jsonResponse(['success' => true]);
     }
 
     if ($action === 'delete_announcement') {

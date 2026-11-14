@@ -357,3 +357,35 @@ function notesAskedQuestions(PDO $db, int $classId, int $subjectId = 0): array {
     usort($groups, fn($a, $b) => ($b['origine'] === 'prof') <=> ($a['origine'] === 'prof') ?: $b['count'] <=> $a['count'] ?: strcmp($a['domanda'], $b['domanda']));
     return array_map(function ($g) { unset($g['words']); return $g; }, $groups);
 }
+
+
+/**
+ * Lessons already held (days before today, inside the chosen dates, at most 60 days back) for which nobody uploaded anything:
+ * [{date, subject_id, subject}], newest first. Empty when the option is off. Days without lessons are not counted.
+ */
+function notesMissing(PDO $db, array $class): array {
+    $set = notesMissingSettings($class);
+    if (!$set['on'] || !classValidDate($set['from'])) return [];
+    $today = classToday($class);
+    $last = (new DateTimeImmutable($today))->modify('-1 day')->format('Y-m-d');
+    if (classValidDate($set['to']) && $set['to'] < $last) $last = $set['to'];
+    $first = max($set['from'], (new DateTimeImmutable($today))->modify('-60 days')->format('Y-m-d'));
+    if ($first > $last) return [];
+    $st = $db->prepare('SELECT DISTINCT subject_id, lesson_date FROM class_items WHERE class_id = :c AND lesson_date BETWEEN :f AND :t');
+    $st->execute([':c' => $class['id'], ':f' => $first, ':t' => $last]);
+    $have = [];
+    foreach ($st->fetchAll() as $r) $have[$r['lesson_date'] . ':' . $r['subject_id']] = true;
+    $names = array_column(classSubjects($db, (int)$class['id']), 'name', 'id');
+    $out = [];
+    for ($d = new DateTimeImmutable($last); $d->format('Y-m-d') >= $first; $d = $d->modify('-1 day')) {
+        $date = $d->format('Y-m-d');
+        $seen = [];
+        foreach (notesLessonsOn($db, $class, $date) as $l) {
+            $sid = (int)$l['subject_id'];
+            if (isset($seen[$sid]) || in_array($sid, $set['subjects_off'], true) || in_array("$date:$sid", $set['skip'], true) || isset($have["$date:$sid"])) continue;
+            $seen[$sid] = true;
+            $out[] = ['date' => $date, 'subject_id' => $sid, 'subject' => $names[$sid] ?? '?'];
+        }
+    }
+    return $out;
+}

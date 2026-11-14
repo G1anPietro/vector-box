@@ -123,6 +123,25 @@
                 : el('p', { class: 'bb-empty', text: state.can_post ? 'Nessun annuncio. Scrivi qui le cose che la classe deve sapere: uscite, cambi d\'orario, scadenze.' : 'Nessun annuncio per ora.' }));
     }
 
+    /* ---------- notes still missing: lessons already held with nothing uploaded (the class turns this on in the settings) ---------- */
+
+    function renderMissing() {
+        const box = $('#bb-missing');
+        const list = state.missing || [];
+        box.hidden = !list.length;
+        if (!list.length) return;
+        const c = P().current;
+        set(box, el('div', { class: 'bb-head' }, el('h3', { text: 'Appunti mancanti' })),
+            el('p', { class: 'muted small', text: 'Lezioni già fatte per cui nessuno ha caricato niente.' }),
+            el('ul', { class: 'plain bb-miss' }, ...list.map((m) => el('li', {},
+                el('span', { text: `${m.subject} · ${shortDate.format(C.parseDate(m.date))}` }),
+                el('span', { class: 'row-actions' },
+                    el('a', { class: 'ghost-link', href: `appunti-carica.php?class=${c.id}&date=${m.date}&subject=${m.subject_id}`, text: 'Carica' }),
+                    state.can_skip ? C.menu([{ label: 'Non serve per questa lezione', onclick: async () => {
+                        try { await board({ action: 'skip_missing', class_id: c.id, date: m.date, subject_id: m.subject_id }); load(); } catch (e) { toast(e.message, 'err'); }
+                    } }]) : null)))));
+    }
+
     /* ---------- the week as a diary ---------- */
 
     function weekRows(events, ov) {
@@ -216,6 +235,7 @@
             clock = { base: h * 3600 + m * 60 + s, at: performance.now() };
             renderNow();
             renderNotes();
+            renderMissing();
             renderWeek(ev.events, ov);
             renderYou(rv, ov);
             renderFix(ov);

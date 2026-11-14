@@ -387,6 +387,16 @@ try {
         $settings = json_decode((string)($class['settings'] ?? '{}'), true);
         if (!is_array($settings)) $settings = [];
         if (array_key_exists('summary_on', $in)) $settings['summary_on'] = !empty($in['summary_on']);
+        if (array_key_exists('missing_on', $in)) {
+            // "Appunti mancanti": on/off, dates, subjects left out (the lessons marked "not needed" are kept)
+            $m = notesMissingSettings($class);
+            $m['on'] = !empty($in['missing_on']);
+            if (array_key_exists('missing_from', $in)) $m['from'] = classValidDate((string)$in['missing_from']) ? (string)$in['missing_from'] : '';
+            if (array_key_exists('missing_to', $in)) $m['to'] = classValidDate((string)$in['missing_to']) ? (string)$in['missing_to'] : '';
+            if (array_key_exists('missing_subjects_off', $in)) $m['subjects_off'] = array_values(array_filter(array_map('intval', (array)$in['missing_subjects_off']), fn($i) => in_array($i, array_map('intval', array_column(classSubjects($db, (int)$class['id']), 'id')), true)));
+            if ($m['on'] && $m['from'] === '') $m['from'] = classToday($class);
+            $settings['missing'] = $m;
+        }
         if (array_key_exists('digest_on', $in) || array_key_exists('digest_day', $in) || array_key_exists('digest_hour', $in)) {
             $d = is_array($settings['digest'] ?? null) ? $settings['digest'] : [];
             if (array_key_exists('digest_on', $in)) $d['on'] = !empty($in['digest_on']);
