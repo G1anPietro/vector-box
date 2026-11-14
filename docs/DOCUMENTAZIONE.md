@@ -524,3 +524,13 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
   rifiutate.
 - Biblioteca: i PDF non hanno una copertina finché qualcuno che può caricare libri non apre la biblioteca: allora il browser
   disegna la prima pagina con pdf.js e la manda al server (`books.php?action=set_cover`, solo PDF senza copertina).
+
+## Appunti di classe — aggiunte della notte del 14–15/11 (schema v25, 214 test)
+- **Caricamenti a pezzi** (`api/appunti.php`: `upload_begin`, `upload_chunk`, `upload_status`, `upload_commit`, `upload_cancel`; `js/appunti-upload.js`; cartella temporanea `data/appunti-tmp/<utente>/<id>` ripulita dopo 24 h). Colonna `class_item_files.sha256` per i file doppi.
+- **Classifica** (`api/classifica.php`, `classifica_lib.php`; tabelle `quiz_answers`, `quiz_seen`, `score_events`). Il server giudica: `quiz_answer`, `review_answer` con `choice`; `apQuizForUser` toglie risposte e spiegazioni dal quiz inviato alla pagina.
+- **Ricerca** FTS5 (`notes_fts`, trigger su `class_items`, `class_item_files`, `class_docs`; GET `search`).
+- **Quiz su misura** (`custom_quizzes`; `custom_quiz_create` / `custom_quiz_answer`), `question_pool` (domande aperte con conteggio), `fails` nelle carte del ripasso.
+- **Riepilogo settimanale** (`digestRun`), **ripasso** (`reviewRemindRun`), promemoria verifiche `d7`/`d3`/`d2`/`d1`/`sera` (`REMINDER_SLOTS`, `REMINDER_DEFAULT`), tutti nel worker `bin/appunti-ai.php` (anche `--bells-only`).
+- **Appunti mancanti** (`notesMissing`, impostazioni in `school_classes.settings.missing`), **registro** (`class_log`, `classLog`), **segnalazioni dell'AI** (`aiClassifyItems`, `class_board` kind `segnalazione` / `proposta_verifica`, `class_items.ai_state`, `AI_CLASSIFY` nel .env), **avanzamento di lettura** (`read_progress`).
+- **PDF unico** (`api/pdf_lib.php` `SimplePdf`, `packPdf`, `ai_pack&format=pdf`), prompt per l'audio (`audio=1`).
+- Interfaccia: schede Classe, Bacheca, Calendario, Studio, Classifica, Materiale; pagina Impostazioni (`appunti-impostazioni.php`); trascinamento ovunque (`js/dropzone.js`); lettore PDF (`js/appunti-pdf.js`); modalità mancini (`html.lefty`).

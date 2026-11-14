@@ -122,7 +122,9 @@ function recordVisit(string $page): void {
             curl_close($ch);
         });
     } catch (Throwable $e) {
-        // A visit counter must never break a page
+        // A visit counter must never break a page. A busy database (a burst of scanners while something else writes) only
+        // loses one count: not worth a line in the error log.
+        if (stripos($e->getMessage(), 'database is locked') !== false) return;
         require_once __DIR__ . '/debug_logger.php';
         logSystemError('VISITS', $e->getMessage());
     }
