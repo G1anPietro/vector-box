@@ -234,35 +234,59 @@
             const h = label.length * LH + note.length * NH + PAD * 2 - (note.length ? 0 : 2);
             return { label, note, w, h, depth, hue, kids: (Array.isArray(n.children) ? n.children : []).map((c, i) => mk(c, depth + 1, depth === 0 ? HUES[i % HUES.length] : hue)) };
         };
-        const root = mk({ label: data.title || 'Schema', children: data.children }, 0, 0);
-        const colW = []; (function widths(n) { colW[n.depth] = Math.max(colW[n.depth] || 0, n.w); n.kids.forEach(widths); })(root);
-        const colX = []; colW.reduce((x, w, i) => { colX[i] = x; return x + w + GAPX; }, 20);
-        let cursor = 20;
-        (function place(n) {
-            if (!n.kids.length) { n.y = cursor; cursor += n.h + GAPY; return; }
-            n.kids.forEach(place);
-            const mid = (n.kids[0].y + n.kids[0].h / 2 + n.kids[n.kids.length - 1].y + n.kids[n.kids.length - 1].h / 2) / 2;
-            n.y = mid - n.h / 2;
-        })(root);
-        const W = colX[colX.length - 1] + colW[colW.length - 1] + 20; const H = cursor + 8;
+        const root = mk({ label: data.title || 'Schema', children: [] }, 0, 0);
+        const tops = (Array.isArray(data.children) ? data.children : []).map((c, i) => mk(c, 1, HUES[i % HUES.length]));
+        // same balance as on the site: about half of the nodes on each side
+        const weight = (n) => 1 + n.kids.reduce((x, k) => x + weight(k), 0);
+        const total = tops.reduce((x, n) => x + weight(n), 0);
+        let acc = 0; const right = []; const left = [];
+        tops.forEach((n) => { (acc < total / 2 || tops.length < 3 ? right : left).push(n); acc += weight(n); });
+        // the pseudo root has no box: place its children directly
+        const placeSide = (list, dir) => {
+            const colW = [];
+            const walk = (n) => { colW[n.depth] = Math.max(colW[n.depth] || 0, n.w); n.kids.forEach(walk); };
+            list.forEach(walk);
+            const edge = []; let e = 0;
+            for (let d = 1; d < colW.length; d++) { edge[d] = e + GAPX; e = edge[d] + colW[d]; }
+            let cursor = 0;
+            const place = (n) => {
+                n.x = dir > 0 ? root.w / 2 + edge[n.depth] : -root.w / 2 - edge[n.depth] - n.w;
+                if (!n.kids.length) { n.y = cursor; cursor += n.h + GAPY; return; }
+                n.kids.forEach(place);
+                n.y = (n.kids[0].y + n.kids[n.kids.length - 1].y + n.kids[n.kids.length - 1].h) / 2 - n.h / 2;
+            };
+            list.forEach(place);
+            return Math.max(0, cursor - GAPY);
+        };
+        const hR = placeSide(right, 1); const hL = placeSide(left, -1);
+        const HH = Math.max(hR, hL, root.h);
+        const shift = (list, h) => { const off = (HH - h) / 2; const mv = (n) => { n.y += off; n.kids.forEach(mv); }; list.forEach(mv); };
+        shift(right, hR); shift(left, hL);
+        root.x = -root.w / 2; root.y = (HH - root.h) / 2;
+        root.kids = [...right, ...left];
+        let minX = Infinity; let maxX = -Infinity;
+        (function bounds(n) { minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x + n.w); n.kids.forEach(bounds); })(root);
+        const dx = 20 - minX; const dy = 20;
+        const W = maxX - minX + 40; const H = HH + 40;
         const out = [];
         const color = (n, what) => {
-            if (mono) return what === 'fill' ? '#ffffff' : what === 'stroke' ? '#000000' : '#000000';
+            if (mono) return what === 'fill' ? '#ffffff' : '#000000';
             if (n.depth === 0) return what === 'fill' ? '#23304a' : what === 'stroke' ? '#23304a' : '#ffffff';
             return what === 'fill' ? `hsl(${n.hue} 75% ${n.depth === 1 ? 86 : 94}%)` : what === 'stroke' ? `hsl(${n.hue} 60% 42%)` : '#1b1b1b';
         };
-        (function draw(n) {
-            const x = colX[n.depth];
+        (function links(n) {
             for (const k of n.kids) {
-                const kx = colX[k.depth]; const x1 = x + n.w; const y1 = n.y + n.h / 2; const y2 = k.y + k.h / 2; const mid = (x1 + kx) / 2;
-                out.push(`<path d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${kx} ${y2}" fill="none" stroke="${mono ? '#000' : `hsl(${k.hue} 60% 48%)`}" stroke-width="${mono ? 1.5 : 2.5}" stroke-linecap="round"/>`);
+                const dir = k.x > n.x ? 1 : -1;
+                const x1 = dir > 0 ? n.x + n.w : n.x; const x2 = dir > 0 ? k.x : k.x + k.w;
+                const y1 = n.y + n.h / 2; const y2 = k.y + k.h / 2; const mid = (x1 + x2) / 2;
+                out.push(`<path d="M ${x1 + dx} ${y1 + dy} C ${mid + dx} ${y1 + dy}, ${mid + dx} ${y2 + dy}, ${x2 + dx} ${y2 + dy}" fill="none" stroke="${mono ? '#000' : `hsl(${k.hue} 60% 48%)`}" stroke-width="${mono ? 1.5 : 2.5}" stroke-linecap="round"/>`);
+                links(k);
             }
-            n.kids.forEach(draw);
         })(root);
         (function boxes(n) {
-            const x = colX[n.depth];
-            out.push(`<g><rect x="${x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="10" fill="${color(n, 'fill')}" stroke="${color(n, 'stroke')}" stroke-width="${mono ? 1.5 : 1.5}"/>`);
-            let ty = n.y + PAD + 13;
+            const x = n.x + dx; const y = n.y + dy;
+            out.push(`<g><rect x="${x}" y="${y}" width="${n.w}" height="${n.h}" rx="10" fill="${color(n, 'fill')}" stroke="${color(n, 'stroke')}" stroke-width="1.5"/>`);
+            let ty = y + PAD + 13;
             for (const l of n.label) { out.push(`<text x="${x + PAD}" y="${ty}" font-size="14" font-weight="700" fill="${color(n, 'text')}">${esc(l)}</text>`); ty += LH; }
             for (const l of n.note) { out.push(`<text x="${x + PAD}" y="${ty - 2}" font-size="12" fill="${mono ? '#000' : n.depth === 0 ? '#dfe6f5' : '#444'}">${esc(l)}</text>`); ty += NH; }
             out.push('</g>');
@@ -282,11 +306,11 @@
         setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     }
 
-    /** Downloads the schema as SVG (editable) or PNG (to share), in colour or black and white. */
-    async function downloadSchema(data, format, mono, name) {
+    /** The schema as a file: SVG (editable) or PNG (an image), in colour or black and white. Returns {blob, name}. */
+    async function schemaBlob(data, format, mono, name) {
         const svg = schemaSvg(data, mono);
         const base = (String(name || 'schema').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'schema') + (mono ? '-bn' : '-colori');
-        if (format === 'svg') { saveBlob(new Blob([svg], { type: 'image/svg+xml' }), base + '.svg'); return; }
+        if (format === 'svg') return { blob: new Blob([svg], { type: 'image/svg+xml' }), name: base + '.svg' };
         const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
         try {
             const img = new Image();
@@ -298,9 +322,62 @@
             cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
             cx.drawImage(img, 0, 0, cv.width, cv.height);
             const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
-            if (blob) saveBlob(blob, base + '.png');
+            if (!blob) throw new Error('png');
+            return { blob, name: base + '.png' };
         } finally { URL.revokeObjectURL(url); }
     }
+    async function downloadSchema(data, format, mono, name) {
+        const f = await schemaBlob(data, format, mono, name);
+        saveBlob(f.blob, f.name);
+    }
+
+    /**
+     * Sends something out with the phone's own share sheet (Gmail, WhatsApp, Drive...: the person's own account, not the site's).
+     * {blob, name, title} shares a file; {text, title} shares text (it becomes the body of an e-mail). Without a share sheet (a computer):
+     * a file is downloaded to attach, a text opens the e-mail program with the text already in it.
+     */
+    async function shareOut({ blob, name, title, text }) {
+        try {
+            if (blob && navigator.canShare) {
+                const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
+                if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: title || name }); return 'shared'; }
+            }
+            if (text && navigator.share) { await navigator.share({ title: title || '', text }); return 'shared'; }
+        } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+        if (blob) { saveBlob(blob, name); toast('Scaricato: allegalo alla tua e-mail o a WhatsApp.', 'ok'); return 'saved'; }
+        if (text) {
+            window.open('mailto:?subject=' + encodeURIComponent(title || '') + '&body=' + encodeURIComponent(text.slice(0, 1800)), '_self');
+            return 'mailto';
+        }
+        return 'none';
+    }
+    const markdownFile = (title, content) => ({ blob: new Blob([`# ${title}\n\n${content}\n`], { type: 'text/plain;charset=utf-8' }), name: String(title).replace(/[\\/:*?"<>|]+/g, '-') + '.md' });
+
+    /**
+     * Full screen for a block (a document, a schema, a preview): the browser's own full screen when there is one (not on iPhone),
+     * otherwise the block just covers the page. A "Chiudi" button is always there.
+     */
+    let fsOn = null;
+    function toggleFull(target, onChange) {
+        const exit = () => {
+            if (!fsOn) return;
+            const { t, cb, btn } = fsOn; fsOn = null;
+            t.classList.remove('is-fs'); btn.remove();
+            document.documentElement.classList.remove('has-fs');
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+            if (cb) cb(false);
+        };
+        if (fsOn) { exit(); return; }
+        const btn = el('button', { type: 'button', class: 'fs-close', text: 'Chiudi', onclick: exit });
+        target.classList.add('is-fs'); target.append(btn);
+        document.documentElement.classList.add('has-fs');
+        fsOn = { t: target, cb: onChange, btn, exit };
+        if (target.requestFullscreen) target.requestFullscreen().catch(() => {});
+        if (onChange) onChange(true);
+    }
+    document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && fsOn) fsOn.exit(); });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && fsOn) fsOn.exit(); });
+    const fullButton = (getTarget, onChange) => el('button', { type: 'button', class: 'ghost mini fs-btn', text: 'Schermo intero', onclick: () => toggleFull(getTarget(), onChange) });
 
     /**
      * A schema (concept map) written by the AI as JSON {title, children:[{label, note, children}]}: drawn as a tree with
@@ -416,14 +493,19 @@
             el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || 'Schema'))),
                 el('span', { class: 'schema-tools' }, zoomBtns, toggle, viewBtn)),
             map, tree);
-        const dl = el('details', { class: 'schema-dl' }, el('summary', { class: 'ghost mini', text: 'Scarica' }),
-            el('div', { class: 'schema-dl-menu' },
-                ...[['svg', false, 'SVG a colori', 'modificabile'], ['svg', true, 'SVG bianco e nero', 'modificabile'], ['png', false, 'PNG a colori', 'immagine'], ['png', true, 'PNG bianco e nero', 'immagine']].map(([f, m, label, hint]) =>
-                    el('button', { type: 'button', class: 'ghost', onclick: async (ev) => {
-                        dl.open = false;
-                        try { await downloadSchema(data, f, m, data.title); } catch (e) { alert('Non sono riuscito a creare il file.'); }
-                    } }, label, el('small', { class: 'muted', text: ' · ' + hint })))));
-        wrap.querySelector('.schema-tools').append(dl);
+        const closeMenu = () => { menu.hidden = true; dlBtn.setAttribute('aria-expanded', 'false'); };
+        const run = (fn) => async () => { closeMenu(); try { await fn(); } catch (e) { toast('Non sono riuscito a creare il file.', 'err'); } };
+        const item = (label, hint, fn) => el('button', { type: 'button', class: 'ghost', onclick: run(fn) }, el('span', { text: label }), el('small', { class: 'muted', text: hint }));
+        const menu = el('div', { class: 'schema-dl-menu', hidden: true },
+            item('PNG a colori', 'immagine', () => downloadSchema(data, 'png', false, data.title)),
+            item('PNG bianco e nero', 'immagine', () => downloadSchema(data, 'png', true, data.title)),
+            item('SVG a colori', 'modificabile', () => downloadSchema(data, 'svg', false, data.title)),
+            item('SVG bianco e nero', 'modificabile', () => downloadSchema(data, 'svg', true, data.title)),
+            item('Condividi…', 'Gmail, WhatsApp…', async () => { const f = await schemaBlob(data, 'png', false, data.title); await shareOut({ blob: f.blob, name: f.name, title: String(data.title || 'Schema') }); }));
+        const dlBtn = el('button', { type: 'button', class: 'mini dl-btn', text: 'Scarica', 'aria-expanded': 'false', onclick: (ev) => { ev.stopPropagation(); const open = menu.hidden; menu.hidden = !open; dlBtn.setAttribute('aria-expanded', String(open)); } });
+        document.addEventListener('click', (ev) => { if (!menu.hidden && !menu.contains(ev.target)) closeMenu(); });
+        const dl = el('span', { class: 'schema-dl' }, dlBtn, menu);
+        wrap.querySelector('.schema-tools').append(fullButton(() => wrap, () => requestAnimationFrame(() => { if (wrap.dataset.view === 'map') fit(); })), dl);
         setView(stored(VIEW_KEY) || (window.innerWidth >= 700 ? 'map' : 'list'));
         return wrap;
     }
@@ -787,7 +869,7 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
     })();
 
-    window.AppuntiCommon = { weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    window.AppuntiCommon = { shareOut, markdownFile, schemaBlob, toggleFull, fullButton, weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', scheda: 'Scheda', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

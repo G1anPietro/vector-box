@@ -183,6 +183,8 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                 <div class="doc-tools no-print">
                     <button id="doc-back" class="ghost mini back-btn">Indietro</button>
                     <span class="spacer"></span>
+                    <button id="doc-full" class="ghost mini">Schermo intero</button>
+                    <button id="doc-share" class="ghost mini">Condividi</button>
                     <button id="doc-download" class="ghost mini">Scarica</button>
                     <button id="doc-print" class="ghost mini">Stampa / PDF</button>
                 </div>

@@ -108,6 +108,9 @@ $login = 'login.php?next=appunti.php';
                     <strong>Riassunto</strong>, <strong>Scheda da tenere sotto mano</strong> (una pagina di soli punti chiave, senza spiegazioni:
                     per chi può consultare gli appunti durante la verifica), <strong>Preparazione mirata</strong> (come interroga il prof, domande probabili con le
                     risposte, verifica di prova svolta) e <strong>Quiz</strong> da fare lì sul telefono.</li>
+                <li><strong>Schermo intero e Condividi:</strong> documenti, schemi e file hanno il pulsante <em>Schermo intero</em> (con <em>Chiudi</em> in basso) e <em>Condividi</em>:
+                    si apre il menu del telefono e scegli Gmail, WhatsApp, Drive… con il tuo account, non quello del sito. Su computer il file si scarica
+                    (da allegare) o si apre la tua posta con il testo già scritto.</li>
                 <li><strong>Schemi:</strong> col pulsante <em>Scarica</em> sopra lo schema li prendi come <strong>SVG</strong> (si modifica con Inkscape,
                     Illustrator, Figma, LibreOffice Draw: testi e riquadri restano separati) o come <strong>PNG</strong> (immagine da mandare), a colori o in
                     bianco e nero per stamparli.</li>

@@ -658,6 +658,7 @@ ${lines.join('\n')}
             }
             store(DOC_KEY, String(doc.id));
             $('#doc-download').hidden = ['quiz', 'schema', 'domande'].includes(doc.kind);
+            $('#doc-share').hidden = ['quiz', 'domande'].includes(doc.kind);
             $('#doc-sources').hidden = !doc.sources.length;
             const kinds = { appunti: 'appunti', slide: 'slide del prof', libro: 'libro', domande: 'domande del prof', prova: 'verifica di prova', altro: 'altro' };
             $('#doc-sources-list').replaceChildren(...doc.sources.map((s) => el('li', { value: s.n,
@@ -667,6 +668,18 @@ ${lines.join('\n')}
     }
     $('#doc-back').addEventListener('click', () => { store(DOC_KEY, ''); $('#doc-view').hidden = true; $('#study-list').hidden = false; if (!openDoc) loadReview(); });
     $('#doc-print').addEventListener('click', () => window.print());
+    $('#doc-full').addEventListener('click', () => C.toggleFull($('#doc-view')));
+    $('#doc-share').addEventListener('click', async () => {
+        if (!openDoc) return;
+        if (openDoc.kind === 'schema') {
+            let data = null; try { data = JSON.parse(openDoc.content); } catch (e) { return; }
+            const f = await C.schemaBlob(data, 'png', false, data.title || openDoc.title);
+            await C.shareOut({ blob: f.blob, name: f.name, title: openDoc.title });
+        } else {
+            const f = C.markdownFile(openDoc.title, openDoc.content);
+            await C.shareOut({ blob: f.blob, name: f.name, title: openDoc.title, text: `${openDoc.title}\n\n${openDoc.content}` });
+        }
+    });
     $('#doc-download').addEventListener('click', () => {
         if (!openDoc) return;
         const blob = new Blob([`# ${openDoc.title}\n\n${openDoc.content}\n`], { type: 'text/markdown;charset=utf-8' });
@@ -989,11 +1002,12 @@ ${lines.join('\n')}
         const t = Math.min(23 * 60 + 59, h * 60 + m + min);
         return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
     };
-    /** One colour per subject of the timetable, as far apart as possible on the colour wheel (golden angle), alternating two lightness levels. */
+    /** One colour per subject of the timetable, taken in turn from a short hand-picked palette (a lighter variant after 12 subjects). */
     function ttColors() {
         const names = [...new Set(Object.values(tt).flat().map((h) => (h.subject || '').trim().toLowerCase()).filter(Boolean))].sort();
         const map = new Map();
-        names.forEach((n, i) => map.set(n, { h: Math.round((i * 137.508 + 12) % 360), l: i % 2 ? 30 : 21 }));
+        const PALETTE = [212, 8, 152, 42, 276, 184, 334, 92, 24, 244, 62, 308];   // hand-picked, calm and far apart
+        names.forEach((n, i) => map.set(n, { h: PALETTE[i % PALETTE.length], l: i < PALETTE.length ? 25 : 31 }));
         return (subject) => map.get((subject || '').trim().toLowerCase());
     }
     /** Consecutive hours of the same subject in a day are shown as one block: [{idx, n}]. */
