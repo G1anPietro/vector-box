@@ -13,9 +13,13 @@
     const EVENT_KINDS = { verifica: 'Verifica', interrogazione: 'Interrogazione', altro: 'Altro' };
     const DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
     const STORE_KEY = 'vb_appunti_class';
+    const TAB_KEY = 'vb_appunti_tab';
+    const DOC_KEY = 'vb_appunti_doc';
 
     let classes = [];
     let current = null;          // class detail from api/classi.php
+    // the tab you were on, read before anything can overwrite it (opening a class shows the board first)
+    const startTab = (() => { try { return localStorage.getItem('vb_appunti_tab'); } catch (e) { return null; } })();
     let currentTab = 'board';
 
     /* ---------- helpers ---------- */
@@ -148,6 +152,7 @@
 
     function showTab(name) {
         currentTab = name;
+        if (name !== 'admin') store(TAB_KEY, name);
         $$('#tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
         $$('.tab').forEach((t) => { t.hidden = t.id !== 'tab-' + name; });
         status('');
@@ -155,7 +160,7 @@
         if (name === 'material' && current) { $('#upload-link').href = caricaUrl(); loadItems(); }
         if (name === 'calendar' && current) loadEvents();
         if (name === 'study' && current) loadStudy();
-        if (name === 'class' && current) renderClass();
+        if (name === 'class' && current) { renderClass(); centerTimetable(); }
         if (name === 'admin') loadAdmin();
     }
 
@@ -477,14 +482,16 @@
             if (doc.kind === 'quiz') {
                 let quiz = null;
                 try { quiz = JSON.parse(doc.content); } catch (e) { /* shown as text below */ }
-                body.replaceChildren(quiz ? renderQuiz(quiz, (n, ok) => reviewAnswer(doc.id, n, ok)) : el('p', { text: 'Quiz non leggibile.' }));
+                body.replaceChildren(quiz ? renderQuiz(quiz, (n, ok) => reviewAnswer(doc.id, n, ok), doc.id) : el('p', { text: 'Quiz non leggibile.' }));
             } else if (doc.kind === 'schema') {
                 body.replaceChildren(window.AppuntiCommon.renderSchema(doc.content));
             } else if (doc.kind === 'domande') {
                 body.replaceChildren(window.AppuntiCommon.renderQuestions(doc.content));
             } else {
                 body.replaceChildren(md(doc.content));
+                C.addIndex(body, 'doc' + doc.id);
             }
+            store(DOC_KEY, String(doc.id));
             $('#doc-download').hidden = ['quiz', 'schema', 'domande'].includes(doc.kind);
             $('#doc-sources').hidden = !doc.sources.length;
             const kinds = { appunti: 'appunti', slide: 'slide del prof', libro: 'libro', domande: 'domande del prof', prova: 'verifica di prova', altro: 'altro' };
@@ -493,7 +500,7 @@
             window.scrollTo(0, 0);
         } catch (e) { status(e.message, 'err'); }
     }
-    $('#doc-back').addEventListener('click', () => { $('#doc-view').hidden = true; $('#study-list').hidden = false; if (!openDoc) loadReview(); });
+    $('#doc-back').addEventListener('click', () => { store(DOC_KEY, ''); $('#doc-view').hidden = true; $('#study-list').hidden = false; if (!openDoc) loadReview(); });
     $('#doc-print').addEventListener('click', () => window.print());
     $('#doc-download').addEventListener('click', () => {
         if (!openDoc) return;
@@ -515,31 +522,45 @@
         } catch (e) { return null; }
     }
 
-    function renderQuiz(quiz, onAnswer) {
+    /** The quiz keeps what you answered on this device, so an interrupted quiz picks up where it stopped (also after a reload). */
+    function renderQuiz(quiz, onAnswer, docId) {
         const qs = quiz.questions || [];
+        const key = docId ? 'vb_quiz_' + docId : null;
+        let saved = {};
+        try { saved = key ? JSON.parse(stored(key) || '{}') || {} : {}; } catch (e) { saved = {}; }
+        if (saved.n !== qs.length) saved = { n: qs.length, a: {} };
+        const remember = () => { if (key) store(key, JSON.stringify(saved)); };
         let answered = 0;
         let right = 0;
         const score = el('p', { class: 'quiz-score', text: `0 / ${qs.length}` });
         const box = el('div', {}, score);
+        const paintScore = () => { score.textContent = `${right} / ${qs.length}` + (answered === qs.length ? ` · ${Math.round(100 * right / qs.length)}%` : answered ? ` · domanda ${Math.min(answered + 1, qs.length)} di ${qs.length}` : ''); };
+        const firstOpen = qs.findIndex((q, n) => saved.a[n] === undefined);
         qs.forEach((q, n) => {
             const why = el('p', { class: 'why', hidden: true, text: q.explanation });
             const opts = el('div', { class: 'opts' });
-            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: `${'ABCD'[k]}. ${o}`, onclick: (ev) => {
+            const choose = (k, replay) => {
                 if (opts.dataset.done) return;
                 opts.dataset.done = '1';
                 answered++;
                 if (k === q.answer) right++;
-                if (onAnswer) onAnswer(n, k === q.answer);
-                ev.target.classList.add(k === q.answer ? 'right' : 'wrong');
+                if (!replay) { saved.a[n] = k; remember(); if (onAnswer) onAnswer(n, k === q.answer); }
+                opts.children[k].classList.add(k === q.answer ? 'right' : 'wrong');
                 opts.children[q.answer].classList.add('right');
                 why.hidden = !q.explanation;
-                score.textContent = `${right} / ${qs.length}` + (answered === qs.length ? ` · ${Math.round(100 * right / qs.length)}%` : '');
-            } })));
-            box.append(el('div', { class: 'quiz-q' },
+                paintScore();
+            };
+            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: `${'ABCD'[k]}. ${o}`, onclick: () => choose(k, false) })));
+            if (saved.a[n] !== undefined && saved.a[n] < q.options.length) choose(saved.a[n], true);
+            box.append(el('div', { class: 'quiz-q', id: `quiz-q-${n}` },
                 q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
                 el('div', {}, el('b', { text: `${n + 1}. ` }), q.question), opts, why));
         });
-        box.append(el('button', { class: 'ghost', text: 'Ricomincia', onclick: () => $('#doc-body').replaceChildren(renderQuiz(quiz, onAnswer)) }));
+        if (answered && answered < qs.length) {
+            box.insertBefore(el('p', { class: 'muted small', text: `Quiz ripreso: hai già risposto a ${answered} domande.` }), score.nextSibling);
+            setTimeout(() => { const t = box.querySelector('#quiz-q-' + firstOpen); if (t) t.scrollIntoView({ block: 'center' }); }, 50);
+        }
+        box.append(el('button', { class: 'ghost', text: 'Ricomincia', onclick: () => { saved = { n: qs.length, a: {} }; remember(); $('#doc-body').replaceChildren(renderQuiz(quiz, onAnswer, docId)); } }));
         return box;
     }
 
@@ -811,7 +832,7 @@
         const grid = el('div', { class: 'tt-grid', style: `grid-template-columns: 34px repeat(${days.length}, minmax(96px, 1fr))` });
         grid.append(el('div', { class: 'tt-corner' }));
         for (const d of days) {
-            grid.append(el('div', { class: 'tt-head' }, el('b', { text: DAYS[d - 1] }),
+            grid.append(el('div', { class: 'tt-head' + (d === String(focusDay(days)) ? ' today' : ''), 'data-day': d }, el('b', { text: DAYS[d - 1] }),
                 !edit ? null : el('span', { class: 'tt-head-actions' },
                     el('button', { type: 'button', class: 'ghost mini', text: '+ ora', title: 'Aggiungi un\'ora in fondo', onclick: () => {
                         const last = tt[d][tt[d].length - 1];
@@ -850,6 +871,24 @@
             el('datalist', { id: 'tt-subjects' }, ...current.subjects.map((s) => el('option', { value: s.name }))),
             days.length ? el('div', { class: 'tt-scroll' }, grid) : el('p', { class: 'empty', text: edit ? 'Nessun giorno: aggiungine uno.' : 'L\'orario non c\'è ancora: lo inserisce il rappresentante della classe.' }),
             ...(add ? [add] : []));
+        centerTimetable();
+    }
+
+    /** The weekday (1 = Monday) the timetable opens on: today, or the next day that has lessons (Sunday -> Monday). */
+    function focusDay(days) {
+        const today = (new Date().getDay() + 6) % 7 + 1;
+        for (let i = 0; i < 7; i++) { const d = (today - 1 + i) % 7 + 1; if (days.includes(String(d))) return d; }
+        return 0;
+    }
+
+    /** Scrolls the timetable sideways so that today's column is in the middle: no hunting for it on a phone. */
+    function centerTimetable() {
+        requestAnimationFrame(() => {
+            const box = document.querySelector('#tt-days .tt-scroll');
+            const head = box && box.querySelector('.tt-head.today');
+            if (!box || !head || !box.clientWidth) return;
+            box.scrollLeft = head.offsetLeft - (box.clientWidth - head.offsetWidth) / 2;
+        });
     }
 
     /** The small editor of one hour: subject, room, times; or remove the hour. */
@@ -1144,12 +1183,18 @@
     /** ?class=ID&tab=study (links from notifications) */
     async function applyParams(params) {
         const cid = Number(params.get('class'));
-        const tab = params.get('tab');
+        const tab = params.get('tab') || startTab;
         if (cid && classes.some((c) => c.id === cid) && (!current || current.id !== cid)) {
             $('#class-select').value = String(cid);
             await openClass(cid);
         }
         if (tab && ['board', 'material', 'study', 'calendar', 'class'].includes(tab) && current) showTab(tab);
+        // a reload (or coming back from another page) reopens the document you were reading
+        const lastDoc = Number(stored(DOC_KEY));
+        if (!params.get('tab') && tab === 'study' && lastDoc && current) {
+            try { await showDoc(lastDoc); } catch (e) { store(DOC_KEY, ''); }
+            if ($('#doc-view').hidden) store(DOC_KEY, '');
+        }
     }
 
     /* ---------- start ---------- */

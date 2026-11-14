@@ -30,7 +30,7 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
 </head>
 <body>
     <header class="top">
-        <a class="home" href="appunti.php">← Appunti</a>
+        <a class="home back-link" href="appunti.php">Appunti</a>
         <span class="top-right">
             <a class="ghost-link" href="appunti-archivio.php">Archivio</a>
             <select id="class-select" aria-label="Classe" class="top-select"></select>

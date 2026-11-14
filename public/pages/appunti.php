@@ -165,7 +165,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
             </div>
             <article id="doc-view" class="doc-view" hidden>
                 <div class="doc-tools no-print">
-                    <button id="doc-back" class="ghost mini">← Indietro</button>
+                    <button id="doc-back" class="ghost mini back-btn">Indietro</button>
                     <span class="spacer"></span>
                     <button id="doc-download" class="ghost mini">Scarica</button>
                     <button id="doc-print" class="ghost mini">Stampa / PDF</button>

@@ -458,7 +458,43 @@
         return dlg;
     }
 
-    window.AppuntiCommon = { el, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    /* ---------- reading index: headings of a long document and where you got to ---------- */
+    let readStop = null;
+    /**
+     * Puts a collapsible index at the top of a rendered document (the headings h2/h3 inside `box`) and remembers how far the
+     * reader scrolled, per document, on this device: the headings already passed are ticked, "Riprendi" jumps to the last one.
+     */
+    function addIndex(box, key) {
+        if (readStop) { readStop(); readStop = null; }
+        const heads = [...box.querySelectorAll('h2, h3')];
+        if (heads.length < 3) return;
+        const k = 'vb_read_' + key;
+        let furthest = Number(stored(k));
+        if (!Number.isInteger(furthest) || furthest < -1 || furthest >= heads.length) furthest = -1;
+        const links = heads.map((h, i) => el('button', { type: 'button', class: 'idx-link' + (h.tagName === 'H3' ? ' sub' : ''), text: h.textContent,
+            onclick: () => { h.scrollIntoView({ behavior: 'smooth', block: 'start' }); idx.open = false; } }));
+        const paint = () => links.forEach((l, i) => l.classList.toggle('read', i <= furthest));
+        const resume = furthest >= 0 && furthest < heads.length - 1
+            ? el('button', { type: 'button', class: 'idx-resume', text: `Riprendi da «${heads[furthest].textContent}»`,
+                onclick: () => { heads[furthest].scrollIntoView({ behavior: 'smooth', block: 'start' }); } }) : null;
+        const idx = el('details', { class: 'doc-index' },
+            el('summary', { text: `Indice (${heads.length})` }), ...links);
+        box.insertBefore(el('div', { class: 'doc-index-wrap' }, idx, resume), box.firstChild);
+        paint();
+        let queued = false;
+        const check = () => {
+            queued = false;
+            let now = -1;
+            heads.forEach((h, i) => { if (h.getBoundingClientRect().top < window.innerHeight * 0.45) now = i; });
+            // only forwards, so that scrolling up to re-read does not lose the place
+            if (now > furthest) { furthest = now; store(k, String(furthest)); paint(); }
+        };
+        const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(check); } };
+        document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+        readStop = () => document.removeEventListener('scroll', onScroll, { capture: true });
+    }
+
+    window.AppuntiCommon = { el, addIndex, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

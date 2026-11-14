@@ -26,6 +26,7 @@
         $('#arch').dataset.level = String(n);
         $('#back-btn').hidden = n === 0;
         renderCrumbs();
+        saveState();
         if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0);
     }
     window.addEventListener('popstate', (ev) => {
@@ -39,6 +40,29 @@
         if (n < 3) renderPreview(null);
         setLevel(n, true);
     });
+    // Where you are (subject, folder, file) is remembered on this device: a reload or coming back from another page lands on the same file
+    const PATH_KEY = 'vb_arch_path';
+    const entryKey = (en) => !en ? null : en.type === 'file' ? 'f' + en.file.id : en.type === 'doc' ? 'd' + en.id : en.item ? 't' + en.item.id : null;
+    function saveState() {
+        if (restoring) return;
+        C.store(PATH_KEY, JSON.stringify({ c: classId, s: sel.subject, f: sel.folder, e: entryKey(sel.entry) }));
+    }
+    let restoring = true;   // true while the page starts, so that the empty first view does not overwrite the saved place
+    async function restoreState() {
+        let st = null;
+        try { st = JSON.parse(C.stored(PATH_KEY) || 'null'); } catch (e) { st = null; }
+        if (!st || st.c !== classId || !tree.some((x) => x.id === st.s)) return;
+        restoring = true;
+        try {
+            sel.subject = st.s; sel.folder = null; sel.entry = null; renderAll(); setLevel(1);
+            if (st.f) {
+                await openFolder(st.f);
+                const en = st.e && entries.find((x) => entryKey(x) === st.e);
+                if (en && !en.disabled) await openEntry(en);
+            }
+        } finally { restoring = false; saveState(); }
+    }
+
     function goBack() {
         if (level > 0 && history.state && history.state.level === level) history.back();
         else { const n = Math.max(0, level - 1); window.dispatchEvent(new PopStateEvent('popstate', { state: { level: n } })); }
@@ -226,7 +250,7 @@
                 } else if (f.mime.startsWith('audio/')) {
                     pv.replaceChildren(head(f.name, dl), meta, el('audio', { class: 'pv-audio', controls: true, preload: 'metadata', src: fileUrl(f.id) }), await textBlock(f, true));
                 } else if (f.mime === 'application/pdf') {
-                    pv.replaceChildren(head(f.name, open, dl), meta, el('iframe', { class: 'pv-frame', src: fileUrl(f.id), title: f.name }));
+                    pv.replaceChildren(head(f.name, open, dl), meta, window.AppuntiPdf.view(fileUrl(f.id), f.name));
                 } else {
                     pv.replaceChildren(head(f.name, dl), meta, await textBlock(f, false));
                 }
@@ -241,6 +265,8 @@
                 pv.replaceChildren(head(doc.title, el('a', { class: 'ghost-link', href: `appunti.php?class=${classId}&tab=study`, text: 'Apri in Studio' })),
                     el('p', { class: 'muted small', text: doc.manual ? `Fatto con un'altra AI, caricato da ${doc.author || '?'}` : 'Scritto dall\'AI dal materiale della classe: può sbagliare, controlla.' }),
                     body);
+                const mdBox = pv.querySelector('.md');
+                if (mdBox && doc.kind !== 'quiz') C.addIndex(mdBox, 'doc' + doc.id);
             }
             pv.scrollTop = 0;
         } catch (e) { pv.replaceChildren(el('p', { class: 'empty', text: e.message })); }
@@ -310,6 +336,9 @@
             // a link from the calendar: straight into a subject
             const wantSubject = Number(new URLSearchParams(location.search).get('subject'));
             if (wantSubject && tree.some((x) => x.id === wantSubject)) { sel.subject = wantSubject; sel.folder = null; sel.entry = null; renderAll(); setLevel(1); }
+            else await restoreState();
+            restoring = false;
+            saveState();
         } catch (e) { status(e.message, 'err'); }
     })();
 })();

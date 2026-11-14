@@ -28,7 +28,7 @@ $login = 'login.php?next=appunti.php';
     <header class="top">
         <a class="home" href="../index.php">vector-box</a>
         <span class="top-right">
-            <?php if ($logged): ?><a class="ghost-link" href="appunti.php">Apri i tuoi appunti →</a>
+            <?php if ($logged): ?><a class="ghost-link" href="appunti.php">Apri i tuoi appunti</a>
             <?php else: ?><a class="ghost-link" href="<?= $e($login) ?>">Accedi</a><?php endif; ?>
         </span>
     </header>

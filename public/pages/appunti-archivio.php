@@ -11,7 +11,7 @@ if (empty($_SESSION['user_id'])) {
     exit();
 }
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti-archivio.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
+$v = filemtime(__DIR__ . '/../js/appunti-archivio.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../js/appunti-pdf.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -26,17 +26,18 @@ $v = filemtime(__DIR__ . '/../js/appunti-archivio.js') . '-' . filemtime(__DIR__
     <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/appunti-pdf.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-archivio.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body class="archive">
     <header class="arch-top">
-        <a class="home" href="appunti.php">← Appunti</a>
+        <a class="home back-link" href="appunti.php">Appunti</a>
         <b class="arch-title">Archivio</b>
         <select id="class-select" aria-label="Classe"></select>
         <a class="btn-link ico-up top-cta" href="appunti-carica.php">Carica</a>
     </header>
     <div class="arch-bar">
-        <button type="button" id="back-btn" class="ghost mini back-btn" hidden>‹ Indietro</button>
+        <button type="button" id="back-btn" class="ghost mini back-btn" hidden>Indietro</button>
         <nav class="arch-crumbs" id="crumbs" aria-label="Percorso"></nav>
     </div>
 
