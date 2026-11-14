@@ -86,9 +86,9 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         <nav id="tabs" class="tabs" hidden>
             <button data-tab="class">Classe</button>
             <button data-tab="board" aria-selected="true">Bacheca</button>
-            <button data-tab="material">Materiale</button>
-            <button data-tab="study">Studio</button>
             <button data-tab="calendar">Calendario</button>
+            <button data-tab="study">Studio</button>
+            <button data-tab="material">Materiale</button>
             <button data-tab="admin" hidden>Admin</button>
         </nav>
 
@@ -123,8 +123,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
             <div class="filters row">
                 <select id="filter-subject" aria-label="Materia"><option value="">Tutte le materie</option></select>
                 <select id="filter-kind" aria-label="Tipo"><option value="">Tutti i tipi</option></select>
-                <button id="ai-subject" class="ghost" type="button" hidden>↓ Materia per AI (.md)</button>
-                <button id="zip-subject" class="ghost" type="button" hidden>↓ Tutta la materia (.zip)</button>
+                <span id="subject-menu"></span>
             </div>
             <div id="items"></div>
         </section>
@@ -226,39 +225,28 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
                 </details>
                 </div>
             </div>
-            <label class="pick card" id="class-pick" hidden>
-                <span>Classe</span>
-                <select id="class-select" aria-label="Classe"></select>
-            </label>
-            <details class="card fold" id="class-more">
-            <summary>Compagni, ruoli, materie e codice della classe</summary>
-            <div id="class-info"></div>
-            <div class="card">
-                <h2>Compagni</h2>
+            <div class="card" id="class-info"></div>
+            <details class="card fold" id="members-fold">
+                <summary>Compagni</summary>
                 <ul id="members" class="plain members"></ul>
                 <button id="leave-btn" class="ghost">Esci dalla classe</button>
-            </div>
-            <div class="card" id="roles-card" hidden>
-                <div class="card-head"><h2>Ruoli</h2><button type="button" id="role-new" class="ghost mini">+ Nuovo ruolo</button></div>
-                <p class="muted small">Il rappresentante può fare tutto. Gli altri fanno quello che permette il loro ruolo, più i
-                    permessi dati a loro personalmente (dal menu ⋯ accanto al nome). Chi non ha un ruolo non ha etichette.</p>
-                <ul id="roles" class="plain roles"></ul>
-            </div>
-            <div class="card" id="subjects-card" hidden>
-                <h2>Materie</h2>
-                <p class="muted small">Due materie che sono la stessa (per esempio "Lab Informatica" e "Informatica")? Uniscile: il
-                    materiale, il calendario e le ore dell'orario passano all'altra. Una materia vuota si può eliminare.</p>
-                <ul id="subjects" class="plain subjects-list"></ul>
-            </div>
-            <div class="card">
-                <h2>Altre classi</h2>
-                <form id="join-form-2" class="row">
-                    <input name="code" placeholder="Codice d'invito" autocomplete="off" required maxlength="20">
-                    <button>Entra</button>
-                </form>
-                <button id="show-request" class="ghost">Chiedi una nuova classe</button>
-            </div>
             </details>
+            <details class="card fold" id="rep-panel" hidden>
+                <summary>Pannello del rappresentante</summary>
+                <div class="card" id="roles-card" hidden>
+                    <div class="card-head"><h3>Ruoli</h3><button type="button" id="role-new" class="ghost mini">+ Nuovo ruolo</button></div>
+                    <p class="muted small">Il rappresentante può fare tutto. Gli altri fanno quello che permette il loro ruolo, più i
+                        permessi dati a loro personalmente (dal menu ⋯ accanto al nome). Chi non ha un ruolo non ha etichette.</p>
+                    <ul id="roles" class="plain roles"></ul>
+                </div>
+                <div class="card" id="subjects-card" hidden>
+                    <h3>Materie</h3>
+                    <p class="muted small">Due materie che sono la stessa cosa? Uniscile dal menu ⋯: il materiale, il calendario e le ore
+                        dell'orario passano all'altra. Una materia vuota si può eliminare.</p>
+                    <ul id="subjects" class="plain subjects-list"></ul>
+                </div>
+            </details>
+            <select id="class-select" aria-label="Classe" hidden></select>
         </section>
 
         <!-- Admin: requests, switch, limits -->

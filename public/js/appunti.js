@@ -108,7 +108,6 @@
         isAdmin = mine.is_admin;
         const sel = $('#class-select');
         sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}${c.is_member ? '' : ' (admin)'}` })));
-        $('#class-pick').hidden = classes.length < 2;
         $('[data-tab="admin"]').hidden = !mine.is_admin;
 
         $('#request-form').hidden = !mine.requests_open && !mine.is_admin;
@@ -212,22 +211,21 @@
             const sid = $('#filter-subject').value;
             box.replaceChildren(...[...days].map(([d, list]) => el('section', { class: 'day' },
                 el('div', { class: 'day-head' }, el('h3', { text: dayFmt.format(parseDate(d)) }),
-                    el('span', { class: 'row-actions' },
-                        el('button', { class: 'ghost mini ico-dl', type: 'button', text: 'Per AI', title: 'Un file .md con tutto il testo e i prompt, da dare a un\'altra AI',
-                            onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target, 'ai_pack') }),
-                        el('button', { class: 'ghost mini ico-dl', type: 'button', text: '.zip', title: 'Scarica tutto il materiale originale di questo giorno',
-                            onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target) }))),
+                    C.menu([
+                        { label: 'Per un\'altra AI (.md)', onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target, 'ai_pack') },
+                        { label: 'Tutto il materiale (.zip)', onclick: (ev) => downloadZip(sid ? { scope: 'day', date: d, subject_id: sid } : { scope: 'day', date: d }, ev.target) }], 'Scarica questo giorno')),
                 ...list.map(renderItem))));
         } catch (e) {
             box.replaceChildren(el('p', { class: 'empty', text: e.message }));
         }
     }
     $('#filter-subject').addEventListener('change', () => {
-        $('#zip-subject').hidden = $('#ai-subject').hidden = !$('#filter-subject').value;
+        const sid = $('#filter-subject').value;
+        $('#subject-menu').replaceChildren(...(sid ? [C.menu([
+            { label: 'Tutta la materia per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'subject', subject_id: sid }, ev.target, 'ai_pack') },
+            { label: 'Tutta la materia (.zip)', onclick: (ev) => downloadZip({ scope: 'subject', subject_id: sid }, ev.target) }], 'Scarica la materia')] : []));
         loadItems();
     });
-    $('#zip-subject').addEventListener('click', (ev) => downloadZip({ scope: 'subject', subject_id: $('#filter-subject').value }, ev.target));
-    $('#ai-subject').addEventListener('click', (ev) => downloadZip({ scope: 'subject', subject_id: $('#filter-subject').value }, ev.target, 'ai_pack'));
     $('#filter-kind').addEventListener('change', loadItems);
 
     /** Long notes show a few lines and a "Mostra tutto" button (no box scrolling inside the page). */
@@ -332,7 +330,6 @@
         const now = Date.now() / 1000;
         const wait = ai.next_manual_at > now;
         const at = new Date(ai.next_manual_at * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        const btn = el('button', { text: ai.requested ? 'In coda…' : 'Genera ora', disabled: ai.requested || wait, onclick: generateNow });
         const lr = ai.last_run;
         let last = null;
         if (lr && lr.at) {
@@ -346,15 +343,14 @@
             last = el('span', { class: 'muted small', text: `Ultimo giro (${lr.manual ? '"Genera ora"' : 'automatico'}, ${when}): `
                 + (made ? `${made} document${made === 1 ? 'o' : 'i'} nuov${made === 1 ? 'o' : 'i'}${why ? '; ' + why : '.'}` : why) });
         }
-        bar.replaceChildren(
-            el('div', { class: 'ai-bar-row' },
-            el('p', {}, el('b', { text: `Riassunto automatico ogni giorno alle ${ai.summary_time} (tutte le materie).` }),
-                el('br'), el('span', { class: 'muted small', text:
-                    (ai.pending_files ? `${ai.pending_files} file da trascrivere. ` : '')
-                    + (ai.requested ? 'Richiesta in coda: ci vuole qualche minuto.' : wait ? `"Genera ora" di nuovo alle ${at}.` : 'Puoi chiedere di farlo subito (una volta l\'ora).') }),
-                last ? el('br') : null, last),
-            btn),
-            rangeBox(ai.requested || wait));
+        const state = ai.summary_on === false ? 'Riassunto automatico spento.' : `Riassunto automatico ogni giorno alle ${ai.summary_time}.`;
+        const sub = (ai.pending_files ? `${ai.pending_files} file da trascrivere. ` : '')
+            + (ai.requested ? 'Richiesta in coda: ci vuole qualche minuto.' : wait ? `Si può chiedere di nuovo alle ${at}.` : '');
+        bar.replaceChildren(el('div', { class: 'ai-bar-row' },
+            el('p', {}, el('b', { text: state }), sub ? el('br') : null, sub ? el('span', { class: 'muted small', text: sub }) : null, last ? el('br') : null, last),
+            C.menu([
+                { label: ai.requested ? 'Già in coda' : wait ? `Genera ora (dalle ${at})` : 'Genera ora', onclick: () => { if (!ai.requested && !wait) generateNow(); } },
+                { label: 'Genera su giorni scelti…', onclick: () => rangeDialog() }], 'Genera i documenti')));
     }
 
     async function generateNow(range = null) {
@@ -371,19 +367,12 @@
     const fmtDay = (iso) => parseDate(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 
     /** "Genera ora" on chosen days: when a topic spans weeks, or notes were caught up late. */
-    function rangeBox(disabled) {
-        const from = el('input', { type: 'date', required: true, 'aria-label': 'Dal giorno' });
-        const to = el('input', { type: 'date', required: true, 'aria-label': 'Al giorno' });
-        to.value = todayStr();
-        const form = el('form', { class: 'range-form' },
-            el('label', { text: 'Dal' }, from), el('label', { text: 'Al' }, to),
-            el('button', { class: 'ghost', text: 'Genera su questi giorni', disabled }));
-        form.addEventListener('submit', (ev) => {
-            ev.preventDefault();
-            if (!from.value || !to.value) { status('Scegli i due giorni.', 'err'); return; }
-            generateNow({ from: from.value, to: to.value });
-        });
-        return el('details', { class: 'range-box' }, el('summary', { text: 'Scegli i giorni (appunti, domande e schemi di quelle lezioni)' }), form);
+    function rangeDialog() {
+        C.dialogForm('Genera su giorni scelti', (form) => {
+            form.append(el('p', { class: 'muted small', text: 'Rifà appunti, domande e schemi delle lezioni di quei giorni (al massimo 4 mesi, niente giorni futuri).' }),
+                el('label', { text: 'Dal' }, el('input', { type: 'date', name: 'from', required: true })),
+                el('label', { text: 'Al' }, el('input', { type: 'date', name: 'to', required: true, value: todayStr() })));
+        }, async (form) => { await generateNow({ from: form.from.value, to: form.to.value }); }, 'Genera');
     }
 
     /* ---------- spaced review ---------- */
@@ -436,12 +425,10 @@
                     : el('p', { class: 'muted small', text: ai.configured
                         ? `I documenti arrivano con il prossimo riassunto (alle ${ai.summary_time}) o con "Genera ora", se c'è materiale caricato.`
                         : 'I documenti arriveranno quando l\'AI sarà attiva.' }),
-                el('div', { class: 'row' },
-                    el('button', { class: 'ghost mini ico-dl', type: 'button', text: 'Per un\'altra AI (.md)',
-                        onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') }),
-                    el('button', { class: 'ghost mini ico-dl', type: 'button', text: 'Tutto il materiale (.zip)',
-                        onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) }),
-                    el('a', { class: 'ghost-link mini-link', href: caricaUrl({ m: 'ai', event: e.id }), text: '+ Carica un documento fatto con un\'altra AI' })));
+                el('div', { class: 'row' }, C.menu([
+                    { label: 'Per un\'altra AI (.md)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target, 'ai_pack') },
+                    { label: 'Tutto il materiale (.zip)', onclick: (ev) => downloadZip({ scope: 'event', event_id: e.id }, ev.target) },
+                    { label: 'Carica un documento fatto con un\'altra AI', onclick: () => { location.href = caricaUrl({ m: 'ai', event: e.id }); } }], 'Altre azioni')));
         }));
     }
 
@@ -630,12 +617,13 @@
         const info = $('#class-info');
         info.replaceChildren(
             el('h2', { text: `${c.name} · ${c.school}` }),
-            el('p', {}, el('a', { class: 'ghost-link', href: 'appunti-impostazioni.php?class=' + c.id, text: 'Codice della classe, riassunto automatico, notifiche, nome e PDF: Impostazioni' })),
-            c.is_member ? myNameForm(c) : el('p', { class: 'admin-note', text: 'Stai guardando questa classe come amministratore del sito: non ne fai parte.' }));
+            el('p', { class: 'small' }, el('a', { href: 'appunti-impostazioni.php?class=' + c.id, text: 'Cambia classe, codice d\'invito, nome, notifiche e riassunto automatico: Impostazioni' })),
+            ...(c.is_member ? [] : [el('p', { class: 'admin-note', text: 'Stai guardando questa classe come amministratore del sito: non ne fai parte.' })]));
 
         renderMembers(c);
         renderRoles(c);
         renderSubjects(c);
+        $('#rep-panel').hidden = !can('roles') && !can('subjects');
         $('#leave-btn').hidden = c.is_manager || !c.is_member;
 
         $$('.tt-manage').forEach((x) => { x.hidden = !can('timetable'); });
@@ -719,7 +707,7 @@
     function editRole(c, r = null) {
         C.dialogForm(r ? `Ruolo: ${r.name}` : 'Nuovo ruolo', (form) => {
             form.append(el('div', { class: 'row' },
-                el('label', { text: 'Nome' }, el('input', { name: 'name', maxLength: 30, required: true, value: r ? r.name : '', placeholder: 'es. Vice, Informatica' })),
+                el('label', { text: 'Nome' }, el('input', { name: 'name', maxLength: 30, required: true, value: r ? r.name : '', placeholder: 'Il nome del ruolo, come lo chiamate voi' })),
                 el('label', { text: 'Colore' }, el('input', { type: 'color', name: 'color', value: r ? r.color : '#5b8def' }))),
             el('p', { class: 'muted small', text: 'Cosa può fare chi ha questo ruolo:' }), ...permBoxes(c, r ? r.perms : []));
         }, async (form) => {
@@ -903,7 +891,7 @@
         dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });   // tap outside closes
         document.body.append(dlg);
         dlg.showModal();
-        form.subject.focus();
+        if (!window.matchMedia('(pointer: coarse)').matches) form.subject.focus();
     }
 
     $('#tt-read').addEventListener('click', async () => {
@@ -961,7 +949,6 @@
         } catch (e) { status(e.message, 'err'); }
     }
     $('#join-form').addEventListener('submit', join);
-    $('#join-form-2').addEventListener('submit', join);
 
     $('#request-form').addEventListener('submit', async (ev) => {
         ev.preventDefault();
@@ -973,11 +960,6 @@
             await loadMine(current && current.id);
             $('#welcome').hidden = false;
         } catch (e) { status(e.message, 'err'); }
-    });
-    $('#show-request').addEventListener('click', () => {
-        $('#welcome').hidden = false;
-        $('#request-box').open = true;
-        $('#welcome').scrollIntoView({ behavior: 'smooth' });
     });
 
     /* ---------- admin ---------- */

@@ -276,6 +276,7 @@ try {
                     'next_manual_at' => $lastManual ? $lastManual + AI_MANUAL_EVERY_SEC : 0,
                     'pending_files' => (int)$pending->fetchColumn(),
                     'summary_time' => $class['summary_time'],
+                    'summary_on' => (json_decode((string)($class['settings'] ?? '{}'), true)['summary_on'] ?? true) !== false,
                     'last_run' => json_decode((string)appSetting($db, 'ai_last_run:' . $classId, 'null'), true),
                 ],
             ]);

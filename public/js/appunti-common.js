@@ -424,6 +424,7 @@
     /* ---------- "⋯" menu: the actions of an element without a row of big buttons ---------- */
     function closeMenus() { document.querySelectorAll('.kebab-list:not([hidden])').forEach((l) => { l.hidden = true; }); }
     document.addEventListener('click', closeMenus);
+    window.addEventListener('scroll', closeMenus, { passive: true });
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeMenus(); });
     /** items: [{label, onclick, danger?}] (falsy entries are skipped). Returns null when there is nothing to do. */
     function menu(items, label = 'Altre azioni') {
@@ -433,7 +434,19 @@
             type: 'button', role: 'menuitem', class: i.danger ? 'danger-item' : '', text: i.label,
             onclick: (ev) => { ev.stopPropagation(); box.hidden = true; i.onclick(ev); } })));
         const btn = el('button', { type: 'button', class: 'kebab-btn', text: '⋯', title: label, 'aria-label': label, 'aria-haspopup': 'menu',
-            onclick: (ev) => { ev.stopPropagation(); const was = box.hidden; closeMenus(); box.hidden = !was; } });
+            onclick: (ev) => {
+                ev.stopPropagation();
+                const was = box.hidden; closeMenus(); box.hidden = !was;
+                if (box.hidden) return;
+                // the list is placed on screen from the button's position, so that it never runs off the edge of a phone
+                const r = btn.getBoundingClientRect();
+                const w = Math.min(box.offsetWidth || 220, window.innerWidth - 16);
+                box.style.position = 'fixed';
+                box.style.left = `${Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))}px`;
+                box.style.right = 'auto';
+                const h = box.offsetHeight;
+                box.style.top = `${r.bottom + 4 + h > window.innerHeight - 8 ? Math.max(8, r.top - h - 4) : r.bottom + 4}px`;
+            } });
         return el('span', { class: 'kebab' }, btn, box);
     }
 
@@ -453,8 +466,9 @@
         dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
         document.body.append(dlg);
         dlg.showModal();
+        // on a phone the keyboard must not pop up by itself: it would hide the form and the user has not chosen a field yet
         const first = form.querySelector('input, select, textarea');
-        if (first) first.focus();
+        if (first && !window.matchMedia('(pointer: coarse)').matches) first.focus();
         return dlg;
     }
 

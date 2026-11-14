@@ -60,3 +60,25 @@ test('the automatic summary can be switched off by who manages settings; the cla
     await mario.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '20:00', summary_on: true });
     assert.equal((await get()).summary_on, true);
 });
+
+test('notifications can be deleted by id, by kind or all, and only my own', async () => {
+    const id = (u) => site.db('SELECT id FROM accounts WHERE username = ?', [u])[0].id;
+    const add = (u, kind, title) => site.db('INSERT INTO notifications (user_id, class_id, kind, title, body, url, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?)', [id(u), kind, title, '', '/', 1]);
+    add('im_luigi', 'annuncio', 'a1'); add('im_luigi', 'annuncio', 'a2'); add('im_luigi', 'turno', 't1'); add('im_mario', 'annuncio', 'm1');
+    const mine = async () => (await luigi.get('/api/notifiche.php?action=list')).json.notifications;
+    const all = await mine();
+    assert.ok(all.length >= 3);
+    const a1 = all.find((n) => n.title === 'a1');
+    assert.equal((await nt(luigi, { action: 'delete', ids: [a1.id] })).status, 200);
+    assert.ok(!(await mine()).some((n) => n.title === 'a1'));
+    // someone else's id is ignored
+    const m1 = site.db("SELECT id FROM notifications WHERE title = 'm1'")[0].id;
+    await nt(luigi, { action: 'delete', ids: [m1] });
+    assert.equal(site.db("SELECT COUNT(*) AS n FROM notifications WHERE title = 'm1'")[0].n, 1);
+    await nt(luigi, { action: 'delete', kind: 'annuncio' });
+    assert.deepEqual((await mine()).map((n) => n.kind).filter((k) => k === 'annuncio'), []);
+    assert.equal((await nt(luigi, { action: 'delete' })).json.code, 'nothing');
+    await nt(luigi, { action: 'delete', all: true });
+    assert.equal((await mine()).length, 0);
+    assert.equal(site.db("SELECT COUNT(*) AS n FROM notifications WHERE title = 'm1'")[0].n, 1, 'mario still has his');
+});

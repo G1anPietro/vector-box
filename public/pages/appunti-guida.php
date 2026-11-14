@@ -76,7 +76,7 @@ $login = 'login.php?next=appunti.php';
                     libro, le <strong>domande che il prof fa alle interrogazioni</strong>, le verifiche di preparazione. Più materiale c'è, più
                     i documenti sono completi.</li>
                 <li><strong>La lezione giusta:</strong> scegliendo le foto, il sito guarda l'ora in cui le hai scattate e l'orario della
-                    classe, e propone la lezione (per esempio "3ª-4ª ora · Lab SISI"). Se sbaglia, cambiala.</li>
+                    classe, e propone la lezione (con le ore e la materia dell'orario della tua classe). Se sbaglia, cambiala.</li>
                 <li><strong>Pagina Carica</strong> (in alto, <em>Carica</em>): tutti i modi per caricare in un posto solo, cioè fotocamera,
                     file (anche trascinandoli), testo scritto o copiato da un'AI (il <b>**grassetto**</b> di ChatGPT e Gemini viene mostrato
                     formattato) e documenti fatti con un'altra AI, con la barra di avanzamento.</li>

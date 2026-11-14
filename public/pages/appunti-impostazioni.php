@@ -30,7 +30,6 @@ $v = filemtime(__DIR__ . '/../js/appunti-impostazioni.js') . '-' . filemtime(__D
 <body>
     <header class="top">
         <a class="home back-link" href="appunti.php">Appunti</a>
-        <span class="top-right"><select id="class-select" aria-label="Classe" class="top-select"></select></span>
     </header>
     <main class="wrap settings-page">
         <h1>Impostazioni</h1>

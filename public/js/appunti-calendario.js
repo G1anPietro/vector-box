@@ -78,7 +78,7 @@
         C.dialogForm(t ? 'Modifica l\'argomento' : 'Nuovo argomento', (f) => {
             f.append(
                 el('label', { text: 'Materia' }, el('select', { name: 'subject_id', required: true }, ...subjectOptions(t && t.subject_id))),
-                el('label', { text: 'Nome dell\'argomento' }, el('input', { name: 'name', required: true, maxLength: 80, value: t ? t.name : '', placeholder: 'es. Napoleone' })),
+                el('label', { text: 'Nome dell\'argomento' }, el('input', { name: 'name', required: true, maxLength: 80, value: t ? t.name : '', placeholder: 'Come lo chiama il prof' })),
                 el('div', { class: 'grid2' },
                     el('label', { text: 'Iniziato il' }, el('input', { type: 'date', name: 'start', required: true, value: t ? t.start : today })),
                     el('label', { text: 'Finito il (vuoto = in corso)' }, el('input', { type: 'date', name: 'end', value: t && t.end ? t.end : '' }))),
@@ -98,7 +98,7 @@
                 el('div', { class: 'grid2' },
                     el('label', { text: 'Materia' }, el('select', { name: 'subject_id', required: true }, ...subjectOptions(h && h.subject_id))),
                     el('label', { text: 'Per il giorno' }, el('input', { type: 'date', name: 'due', required: true, value: h ? h.due : '' }))),
-                el('label', { text: 'Cosa c\'è da fare' }, el('textarea', { name: 'body', rows: 4, maxLength: 2000, required: true, value: h ? h.body : '', placeholder: 'es. Esercizi 12-18 pag. 240; finire il programma sulle liste' })),
+                el('label', { text: 'Cosa c\'è da fare' }, el('textarea', { name: 'body', rows: 4, maxLength: 2000, required: true, value: h ? h.body : '', placeholder: 'Cosa devi fare e fino a quando, come lo ha detto il prof' })),
                 el('p', { class: 'muted small', text: 'L\'AI usa i compiti per capire cosa chiede il prof: domande, esercizi, codice.' }));
         }, async (f) => {
             await cal({ action: 'save_homework', class_id: P().current.id, id: h ? h.id : 0, subject_id: Number(f.subject_id.value), due: f.due.value, body: f.body.value });

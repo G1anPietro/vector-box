@@ -11,6 +11,7 @@
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
     let classId = null;
     let classes = [];
+    let mineInfo = null;
 
     const status = (text, kind = '') => { const s = $('#status'); s.textContent = text; s.className = 'status ' + kind; };
     const saved = (m) => { status(typeof m === 'string' ? m : 'Salvato.', 'ok'); setTimeout(() => status(''), 2000); };
@@ -85,11 +86,25 @@
         let r;
         try { r = await getJson('../api/notifiche.php?action=list'); } catch (e) { return; }
         const device = el('div', { class: 'push-box' });
-        const list = el('ul', { class: 'plain notif-list' }, ...(r.notifications.length ? r.notifications.map((n) => el('li', { class: n.read ? '' : 'unread', onclick: () => {
-            const u = new URL(n.url || '/pages/appunti.php', location.origin);
-            if (u.origin === location.origin) location.href = u.href;
-        } }, el('b', { text: n.title }), el('br'), n.body ? el('span', { text: n.body }) : null, el('br'), el('span', { class: 'when', text: when(n.created_at) })))
-            : [el('li', { class: 'muted', text: 'Nessuna notifica ancora.' })]));
+        const KINDS = { promemoria: 'Verifiche e interrogazioni', annuncio: 'Annunci', turno: 'Turni di interrogazione', prova: 'Prove' };
+        const groups = new Map();
+        for (const n of r.notifications) { if (!groups.has(n.kind)) groups.set(n.kind, []); groups.get(n.kind).push(n); }
+        const remove = async (body) => { try { await post('../api/notifiche.php', { action: 'delete', ...body }); drawNotifs(); } catch (e) { fail(e); } };
+        const open = new Set(JSON.parse(C.stored('vb_notif_open') || '[]'));
+        const list = el('div', { class: 'n-groups' }, ...(groups.size ? [...groups].map(([kind, items]) => {
+            const d = el('details', { class: 'n-group', open: open.has(kind) },
+                el('summary', {}, el('span', { class: 'n-title', text: KINDS[kind] || 'Altro' }), el('span', { class: 'n-count', text: String(items.length) }),
+                    el('button', { type: 'button', class: 'ghost mini', text: 'Cancella', onclick: (ev) => { ev.preventDefault(); remove({ kind }); } })),
+                ...items.map((n) => el('div', { class: 'n-item' + (n.read ? '' : ' unread'), onclick: () => {
+                    const u = new URL(n.url || '/pages/appunti.php', location.origin);
+                    if (u.origin === location.origin) location.href = u.href;
+                } }, el('div', { class: 'n-text' }, el('b', { text: n.title }), n.body ? el('span', { text: n.body }) : null, el('span', { class: 'when', text: when(n.created_at) })),
+                    el('button', { type: 'button', class: 'ghost mini n-x', text: '✕', title: 'Togli questa notifica', 'aria-label': 'Togli questa notifica',
+                        onclick: (ev) => { ev.stopPropagation(); remove({ ids: [n.id] }); } }))));
+            d.addEventListener('toggle', () => { d.open ? open.add(kind) : open.delete(kind); C.store('vb_notif_open', JSON.stringify([...open])); });
+            return d;
+        }) : [el('p', { class: 'muted', text: 'Nessuna notifica ancora.' })]));
+        if (r.notifications.length > 1) list.append(el('button', { type: 'button', class: 'ghost mini', text: 'Cancella tutte', onclick: () => { if (confirm('Cancellare tutte le notifiche?')) remove({ all: true }); } }));
         box.replaceChildren(device, list);
         pushBox(device, r.devices);
         if (r.unread) { try { await post('../api/notifiche.php', { action: 'read_all' }); } catch (e) { /* ignore */ } }
@@ -158,13 +173,37 @@
             el('p', { class: 'muted small', text: 'Una volta al giorno l\'AI rifà gli appunti delle materie con il materiale nuovo. Spento, lo fa solo quando premi "Genera ora" nella scheda Studio.' + (canSettings ? '' : ' Lo cambia il rappresentante (o chi ha il permesso).') }));
         sumForm.hidden = !summaryOn;
 
+        // which class the app shows; another class by code, or ask for a new one
+        const picker = el('select', { 'aria-label': 'Classe', onchange: () => { classId = Number(picker.value); C.store(C.CLASS_KEY, String(classId)); draw().then(drawNotifs); } },
+            ...classes.map((k) => el('option', { value: k.id, text: `${k.name} · ${k.school}`, selected: k.id === classId })));
+        const codeIn = el('input', { name: 'code', placeholder: 'Codice d\'invito', autocomplete: 'off', required: true, maxLength: 20 });
+        const joinForm = el('form', { class: 'row' }, codeIn, el('button', { text: 'Entra' }));
+        joinForm.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            try { const j = await post('../api/classi.php', { action: 'join', code: codeIn.value }); C.store(C.CLASS_KEY, String(j.id)); classes = (await getJson('../api/classi.php?action=mine')).classes; classId = j.id; await draw(); drawNotifs(); saved(`Sei entrato in ${j.name}.`); }
+            catch (e) { fail(e); }
+        });
+        const askClass = el('button', { type: 'button', class: 'ghost', text: 'Chiedi una nuova classe', onclick: () => C.dialogForm('Chiedi una nuova classe', (form) => {
+            form.append(el('label', { text: 'Classe' }, el('input', { name: 'name', required: true, maxLength: 40 })),
+                el('label', { text: 'Scuola' }, el('input', { name: 'school', required: true, maxLength: 100 })),
+                el('label', { text: 'Note per l\'amministratore (facoltative)' }, el('textarea', { name: 'note', rows: 2, maxLength: 300 })));
+        }, async (form) => {
+            await post('../api/classi.php', { action: 'request', name: form.name.value, school: form.school.value, note: form.note.value });
+            saved('Richiesta inviata: la vedrai attiva quando l\'amministratore la approva.');
+        }, 'Invia la richiesta') });
+        const classesSection = section('Le tue classi', 'La classe che vedi negli Appunti e nell\'archivio.',
+            classes.length > 1 ? el('label', { text: 'Classe attiva' }, picker) : null,
+            el('p', { class: 'muted small', text: 'Hai il codice di un\'altra classe?' }), joinForm,
+            mineInfo && (mineInfo.requests_open || mineInfo.is_admin) ? askClass : el('p', { class: 'muted small', text: 'Le richieste di nuove classi sono chiuse in questo momento.' }));
+
         $('#settings-root').replaceChildren(
             Object.assign(section('Notifiche', 'Su questo dispositivo, e quelle che ti sono arrivate.', el('div', { id: 'notifs-box' })), { id: 'notifiche' }),
+            classesSection,
             section(`${c.name} · ${c.school}`, 'Queste scelte valgono solo per te.', nameForm,
                 el('p', { class: 'muted small', text: 'Lo vedono solo i compagni di questa classe; nel resto del sito resta il tuo nome utente.' })),
             section('Cosa ricevere', 'Per questa classe. Sul telefono a sito chiuso arrivano solo se hai attivato le notifiche qui sopra.',
                 sw('Promemoria di verifiche e interrogazioni', p.promemoria, (on) => { p.promemoria = on; slotBox.hidden = !on; sendPrefs(); }), slotBox,
-                sw('Quando sono io a essere interrogato (il pomeriggio prima)', p.turno, (on) => { p.turno = on; sendPrefs(); }),
+                sw('Avvisami il pomeriggio prima se sono di turno per l\'interrogazione', p.turno, (on) => { p.turno = on; sendPrefs(); }),
                 sw('Annunci della bacheca', p.annuncio, (on) => { p.annuncio = on; sendPrefs(); }),
                 sw('5 minuti prima della fine di ogni ora: materia e aula dopo', prefs.bell, async (on, box) => {
                     try { await post('../api/notifiche.php', { action: 'bell_notify', class_id: classId, on }); saved(); } catch (e) { box.checked = !on; fail(e); }
@@ -184,10 +223,7 @@
             const want = Number(new URLSearchParams(location.search).get('class') || C.stored(C.CLASS_KEY));
             const pick = classes.find((c) => c.id === want) || classes[0];
             classId = pick.id;
-            const sel = $('#class-select');
-            sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}`, selected: c.id === pick.id })));
-            sel.hidden = classes.length < 2;
-            sel.addEventListener('change', () => { classId = Number(sel.value); C.store(C.CLASS_KEY, String(classId)); draw().then(drawNotifs); });
+            mineInfo = mine;
             await draw();
             drawNotifs();
             if (location.hash === '#notifiche') document.getElementById('notifiche').scrollIntoView();

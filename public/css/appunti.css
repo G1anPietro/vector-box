@@ -638,3 +638,35 @@ label:has(> .dp-native) { position: relative; }
     .arch.tiles .arow.active { box-shadow: inset 0 -3px 0 var(--accent); }
 }
 .status:empty { min-height: 0; margin: 0; }
+
+/* Layout round 4 */
+#tt-card .tt-manage label { display: block; margin-top: 12px; }
+#tt-save { margin-top: 16px; }
+.ai-bar-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.ai-bar-row p { margin: 0; min-width: 0; }
+.ai-bar { padding: 10px 14px; }
+.kebab-list { max-width: calc(100vw - 16px); }
+.kebab-list button { white-space: normal; }
+.switch input[type="checkbox"], .settings-page input[type="checkbox"] { flex: none; width: 22px; height: 22px; margin: 0; }
+.switch { align-items: flex-start; }
+.switch > input { margin-top: 1px; }
+
+/* Notifications grouped by kind, like on Android */
+.n-groups { display: grid; gap: 8px; margin-top: 8px; }
+.n-group { border: 1px solid var(--line); border-radius: 10px; background: #11131a; padding: 0 12px; }
+.n-group > summary { display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer; font-weight: 700; list-style: none; }
+.n-group > summary::-webkit-details-marker { display: none; }
+.n-group > summary::before { content: ''; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; flex: none; }
+.n-group[open] > summary::before { transform: rotate(45deg); }
+.n-title { flex: 1; min-width: 0; }
+.n-count { background: var(--accent); color: #14161b; border-radius: 99px; padding: 0 8px; font-size: 13px; min-width: 22px; text-align: center; }
+.n-item { display: flex; gap: 8px; align-items: flex-start; border-top: 1px solid var(--line); padding: 8px 0; cursor: pointer; }
+.n-item .n-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.n-item.unread b::before { content: "● "; color: var(--accent); }
+.n-item .when { color: var(--muted); font-size: 13px; }
+.n-x { flex: none; }
+@media (prefers-reduced-motion: reduce) { .n-group > summary::before { transition: none; } }
+/* Subjects as tiles, on a computer and on a phone */
+.subjects-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.subjects-list li { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 6px 4px 6px 12px; border: 1px solid var(--line); border-radius: 10px; background: #11131a; min-width: 0; }
+.subjects-list li > span:first-child { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }

@@ -6,6 +6,7 @@
 // GET  ?action=vapid          -> the public key the browser needs to subscribe
 // POST {action:"read", ids:[...]} | {action:"read_all"}
 //      {action:"subscribe", endpoint, keys:{p256dh, auth}} | {action:"unsubscribe", endpoint}
+//      {action:"delete", ids:[..]} | {action:"delete", kind} | {action:"delete", all:true}
 //      {action:"save_prefs", class_id, prefs:{promemoria, turno, annuncio, slots:[d2,d1,sera]}}; GET ?action=prefs&class_id
 //      {action:"test"}         -> sends a test push to my devices
 //      {action:"bell_notify", class_id, on} -> push 5 minutes before the end of each lesson: next subject and room
@@ -36,7 +37,7 @@ try {
                           'slots' => array_map(fn($k) => ['key' => $k, 'days' => REMINDER_SLOTS[$k][0], 'from' => REMINDER_SLOTS[$k][1]], array_keys(REMINDER_SLOTS))]);
         }
         if ($action === 'list') {
-            $st = $db->prepare('SELECT id, class_id, kind, title, body, url, created_at, read_at FROM notifications WHERE user_id = :u ORDER BY id DESC LIMIT 30');
+            $st = $db->prepare('SELECT id, class_id, kind, title, body, url, created_at, read_at FROM notifications WHERE user_id = :u ORDER BY id DESC LIMIT 100');
             $st->execute([':u' => $me]);
             $unread = $db->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :u AND read_at IS NULL');
             $unread->execute([':u' => $me]);
@@ -98,6 +99,22 @@ try {
         $st = $db->prepare('UPDATE class_members SET bell_notify = :on WHERE class_id = :c AND user_id = :u');
         $st->execute([':on' => empty($in['on']) ? 0 : 1, ':c' => (int)($in['class_id'] ?? 0), ':u' => $me]);
         if ($st->rowCount() === 0) ntFail('not_member', 'You are not in this class', 403);
+        jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'delete') {
+        // Remove my notifications: some ids, a whole kind, or all of them (only ever my own)
+        if (!checkRateLimit('notify_delete', 120, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many changes, try later', 429);
+        if (is_array($in['ids'] ?? null)) {
+            $ids = array_values(array_filter(array_map('intval', array_slice($in['ids'], 0, 200)), fn($i) => $i > 0));
+            if ($ids) $db->prepare('DELETE FROM notifications WHERE user_id = ? AND id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')')->execute(array_merge([$me], $ids));
+        } elseif (isset($in['kind'])) {
+            $db->prepare('DELETE FROM notifications WHERE user_id = :u AND kind = :k')->execute([':u' => $me, ':k' => (string)$in['kind']]);
+        } elseif (!empty($in['all'])) {
+            $db->prepare('DELETE FROM notifications WHERE user_id = :u')->execute([':u' => $me]);
+        } else {
+            ntFail('nothing', 'Nothing to delete');
+        }
         jsonResponse(['success' => true]);
     }
 
