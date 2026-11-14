@@ -10,7 +10,7 @@ if (empty($_SESSION['user_id'])) {
     exit();
 }
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti-impostazioni.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
+$v = filemtime(__DIR__ . '/../js/appunti-impostazioni.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css');
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -21,10 +21,12 @@ $v = filemtime(__DIR__ . '/../js/appunti-impostazioni.js') . '-' . filemtime(__D
     <meta name="robots" content="noindex">
     <title>Impostazioni — Appunti di classe</title>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
+    <link rel="stylesheet" href="../css/dropzone.css?v=<?= $e($v) ?>">
     <link rel="manifest" href="../assets/appunti/manifest.json?v=1">
     <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/dropzone.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-impostazioni.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>

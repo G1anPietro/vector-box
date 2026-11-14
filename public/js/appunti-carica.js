@@ -94,6 +94,8 @@
     ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (ev) => { ev.preventDefault(); drop.classList.add('over'); }));
     ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (ev) => { ev.preventDefault(); drop.classList.remove('over'); }));
     drop.addEventListener('drop', (ev) => addFiles(ev.dataTransfer.files));
+    // files can be dropped anywhere on the page: they go to the queue (the "Scegli file" way), whatever the way chosen before
+    window.VBDrop.attach({ label: 'Mettili qui', hint: 'foto, audio, PDF, Word, PowerPoint', onFiles: (files) => { if (!['camera', 'files'].includes(method)) choose('files'); addFiles(files); } });
 
     $('#text-input').addEventListener('input', () => { $('#text-preview').replaceChildren(C.md($('#text-input').value)); });
 
@@ -155,12 +157,14 @@
 
     /* ---------- AI document ---------- */
 
+    let aiEvents = [];
     async function fillAiForm() {
         const f = $('#ai-form');
         f.subject_id.replaceChildren(...current.subjects.map((s) => el('option', { value: s.id, text: s.name })));
         let events = [];
         try { events = (await getJson(`../api/appunti.php?action=events&class_id=${current.id}`)).events.filter((e) => e.kind !== 'altro'); } catch (e) { /* none */ }
         events.sort((a, b) => (a.date < b.date ? 1 : -1));
+        aiEvents = events;
         f.event_id.replaceChildren(...(events.length
             ? events.map((e) => el('option', { value: e.id, text: `${EVENT_KINDS[e.kind]} di ${e.subject} · ${C.dayFmt.format(C.parseDate(e.date))}` }))
             : [el('option', { value: '', text: 'Nessuna verifica in calendario' })]));
@@ -213,6 +217,27 @@
         ev.preventDefault();
         const f = ev.target;
         const lesson = f.kind.value === 'lezione';
+        const picked = f.file.files[0];
+        // A PDF, Word, slides or an image from the AI cannot be shown as a study document: it is saved as material of that
+        // lesson or test (the site reads it like any file) and the .md / .txt / .json ones stay documents
+        if (picked && !/\.(md|txt|json)$/i.test(picked.name) && !f.content.value.trim()) {
+            const e = lesson ? null : aiEvents.find((x) => String(x.id) === f.event_id.value);
+            if (!lesson && !e) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; }
+            const up = new FormData();
+            up.set('action', 'upload');
+            up.set('class_id', current.id);
+            up.set('subject_id', lesson ? f.subject_id.value : e.subject_id);
+            up.set('lesson_date', lesson ? f.lesson_date.value : e.date);
+            up.set('kind', 'altro');
+            up.set('title', f.title.value || `${f.kind.selectedOptions[0].textContent} fatto con un'altra AI`);
+            up.append('files[]', picked, picked.name);
+            try {
+                await post('../api/appunti.php', up);
+                f.title.value = ''; f.file.value = '';
+                status('File caricato come materiale: il sito lo legge e lo trovi nell\'Archivio, nella cartella del giorno.', 'ok');
+            } catch (er) { status(er.message, 'err'); }
+            return;
+        }
         const fd = new FormData();
         fd.set('action', 'upload_doc');
         fd.set('class_id', current.id);
@@ -228,9 +253,25 @@
             status('Documento caricato: lo trovi in Studio e nell\'Archivio, con il tuo nome.', 'ok');
         } catch (e) {
             const msg = { bad_quiz: 'Il quiz deve essere il JSON scritto dall\'AI (PROMPT 4).', bad_schema: 'Lo schema deve essere il JSON scritto dall\'AI (l\'ultimo PROMPT del file "Per AI").', empty: 'Incolla il testo o scegli un file.',
-                bad_event: 'Scegli una verifica: aggiungila prima nel Calendario.', bad_file: 'Usa un file .md, .txt o .json (massimo 2 MB).' };
+                bad_event: 'Scegli una verifica: aggiungila prima nel Calendario.', bad_file: 'Per un documento di studio usa un file .md, .txt o .json (massimo 2 MB); PDF, Word e immagini si caricano come materiale.' };
             status((e.json && msg[e.json.code]) || e.message, 'err');
         }
+    });
+
+    /* ---------- the prompt for an AI that can hear: recording in, lesson notes out ---------- */
+    const AUDIO_PROMPT = `Ti allego la registrazione di una lezione di scuola superiore.
+1) Ascolta tutta la registrazione e trascrivi fedelmente quello che dice il professore, senza inventare nulla. Se una parola non si capisce scrivi [non chiaro].
+2) Poi scrivi, in italiano e in Markdown, gli APPUNTI COMPLETI della lezione:
+- un titolo per ogni argomento e, sotto, elenchi chiari;
+- le definizioni, i nomi e le date importanti in grassetto;
+- formule, codice e comandi in blocchi di codice, esattamente come detti;
+- gli esempi fatti dal professore;
+- alla fine "Domande del prof" (le domande che ha fatto agli studenti, con la risposta se la dice) e "Compiti assegnati".
+Non aggiungere cose che il professore non ha detto. Rispondi solo con gli appunti in Markdown.`;
+    $('#audio-prompt').textContent = AUDIO_PROMPT;
+    $('#audio-copy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(AUDIO_PROMPT); status('Prompt copiato: incollalo nell\'AI insieme alla registrazione.', 'ok'); }
+        catch (e) { const r = document.createRange(); r.selectNodeContents($('#audio-prompt')); getSelection().removeAllRanges(); getSelection().addRange(r); status('Selezionato: copialo a mano.', 'err'); }
     });
 
     /* ---------- start ---------- */
@@ -263,6 +304,7 @@
             await openClass(pick.id);
             choose(['camera', 'files', 'text', 'ai'].includes(params.get('m')) ? params.get('m') : 'files');
             // Coming from a test in the Study tab: that test is already selected
+            if (params.get('drop')) { const dropped = await C.takeHandOff(); if (dropped.length) { choose('files'); addFiles(dropped); } history.replaceState(null, '', 'appunti-carica.php'); }
             const ev = params.get('event');
             if (ev && [...$('#ai-form').event_id.options].some((o) => o.value === ev)) $('#ai-form').event_id.value = ev;
         } catch (e) { status(e.message, 'err'); }

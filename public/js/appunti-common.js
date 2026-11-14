@@ -508,7 +508,41 @@
         readStop = () => document.removeEventListener('scroll', onScroll, { capture: true });
     }
 
-    window.AppuntiCommon = { el, addIndex, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    /* ---------- files dropped on a page that is not the upload page: handed over through IndexedDB ---------- */
+    const idb = () => new Promise((resolve, reject) => {
+        const r = indexedDB.open('vb-appunti-drop', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('files', { autoIncrement: true });
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+    });
+    /** Keeps the dropped files and opens the upload page, which queues them. */
+    async function handOff(files) {
+        try {
+            const db = await idb();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readwrite');
+                tx.objectStore('files').clear();
+                files.forEach((f) => tx.objectStore('files').add(f));
+                tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+            });
+            location.href = 'appunti-carica.php?m=files&drop=1';
+        } catch (e) { toast('Non riesco a passare i file alla pagina Carica: usa il pulsante Carica.', 'err'); }
+    }
+    /** On the upload page: the files that were dropped elsewhere (and forgets them). */
+    async function takeHandOff() {
+        try {
+            const db = await idb();
+            const files = await new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readwrite');
+                const all = tx.objectStore('files').getAll();
+                tx.objectStore('files').clear();
+                tx.oncomplete = () => resolve(all.result || []); tx.onerror = () => reject(tx.error);
+            });
+            return files;
+        } catch (e) { return []; }
+    }
+
+    window.AppuntiCommon = { el, addIndex, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

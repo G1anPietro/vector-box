@@ -11,7 +11,7 @@ if (empty($_SESSION['user_id'])) {
     exit();
 }
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
+$v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -22,10 +22,12 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
     <meta name="robots" content="noindex">
     <title>Carica — Appunti di classe</title>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
+    <link rel="stylesheet" href="../css/dropzone.css?v=<?= $e($v) ?>">
     <link rel="manifest" href="../assets/appunti/manifest.json?v=1">
     <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/dropzone.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-carica.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
@@ -126,6 +128,13 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                     <button type="button" id="aiget-zip" class="ghost ico-dl">Scarica i file (.zip)</button>
                 </div>
             </div>
+            <details class="audio-box">
+                <summary>Hai una registrazione audio? Il prompt per l'AI che sa ascoltare (per esempio Gemini)</summary>
+                <p class="muted small">Allega la registrazione all'AI e incolla questo prompt: ti restituisce la trascrizione e gli appunti della lezione.
+                    Poi carica qui la risposta come <b>Appunti di una lezione</b>.</p>
+                <pre id="audio-prompt" class="prompt-box"></pre>
+                <button type="button" id="audio-copy" class="ghost mini">Copia il prompt</button>
+            </details>
             <h3 class="step">2. Carica la risposta dell'AI</h3>
             <form id="ai-form" class="stack">
                 <div class="grid2">
@@ -145,7 +154,8 @@ $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ .
                 <label class="for-lesson" hidden>Giorno della lezione <input type="date" name="lesson_date"></label>
                 <label>Titolo (facoltativo) <input name="title" maxlength="120"></label>
                 <label>Testo <textarea name="content" rows="8" placeholder="Incolla qui la risposta dell'AI"></textarea></label>
-                <label>…oppure un file .md, .txt o .json <input type="file" name="file" accept=".md,.txt,.json,text/plain,text/markdown,application/json"></label>
+                <label>…oppure un file dell'AI: .md, .txt, .json, PDF, Word, PowerPoint o immagine <input type="file" name="file" accept=".md,.txt,.json,.pdf,.doc,.docx,.odt,.ppt,.pptx,.rtf,image/*,text/plain,text/markdown,application/json,application/pdf"></label>
+                <p class="muted small">I file .md, .txt e .json diventano un documento di studio. PDF, Word, PowerPoint e immagini vengono salvati come materiale della lezione o della verifica, e il sito li legge.</p>
                 <button>Carica il documento</button>
             </form>
         </section>

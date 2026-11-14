@@ -222,6 +222,7 @@
             section('Riassunto automatico', null, summaryBox));
     }
 
+    window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });
     (async () => {
         try {
             const mine = await getJson('../api/classi.php?action=mine');

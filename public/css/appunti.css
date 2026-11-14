@@ -696,3 +696,8 @@ label:has(> .dp-native) { position: relative; }
 .top-btn[hidden] { display: none; }
 .ai-get { margin-bottom: 8px; }
 .step { margin: 14px 0 6px; font-size: 17px; }
+.top-btn { min-width: 92px; }
+.settings-page .set-sec > a.ghost-link { display: inline-block; margin-top: 16px; }
+.audio-box { margin: 10px 0 4px; }
+.audio-box summary { cursor: pointer; color: var(--accent); }
+.prompt-box { white-space: pre-wrap; background: #11131a; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; margin: 8px 0; max-height: 260px; overflow: auto; }

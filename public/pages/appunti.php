@@ -19,7 +19,7 @@ $isAdmin = !empty($_SESSION['is_admin']);
 session_write_close();
 
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css')
+$v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css')
     . '-' . filemtime(__DIR__ . '/../js/appunti-calendario.js') . '-' . filemtime(__DIR__ . '/../js/appunti-bacheca.js');
 ?>
 <!DOCTYPE html>
@@ -31,6 +31,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <meta name="robots" content="noindex">
     <title>Appunti di classe — vector-box</title>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
+    <link rel="stylesheet" href="../css/dropzone.css?v=<?= $e($v) ?>">
     <link rel="manifest" href="../assets/appunti/manifest.json?v=1">
     <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
     <link rel="apple-touch-icon" href="../assets/appunti/apple-touch-icon.png?v=1">
@@ -38,6 +39,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <meta name="apple-mobile-web-app-title" content="Appunti">
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/dropzone.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-calendario.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-bacheca.js?v=<?= $e($v) ?>" defer></script>

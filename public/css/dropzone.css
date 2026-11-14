@@ -1,0 +1,10 @@
+/* Layer shown while files are dragged over the page (js/dropzone.js) */
+.vbd { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: stretch; padding: 14px; pointer-events: none;
+    background: rgba(12, 14, 19, 0.62); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    opacity: 0; visibility: hidden; transition: opacity .12s ease, visibility .12s; }
+.vbd.on { opacity: 1; visibility: visible; }
+.vbd-frame { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center;
+    border: 3px dashed #f5c84c; border-radius: 22px; background: rgba(245, 200, 76, 0.07); color: #fff; padding: 24px; }
+.vbd-frame b { font-size: clamp(24px, 5vw, 40px); }
+.vbd-frame span { font-size: 17px; opacity: 0.85; }
+@media (prefers-reduced-motion: reduce) { .vbd { transition: none; } }

@@ -343,6 +343,7 @@
     }
     $('#view-btn').addEventListener('click', () => { C.store(VIEW_KEY, C.stored(VIEW_KEY) === 'list' ? 'tiles' : 'list'); paintView(); });
     paintView();
+    window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });
     $('#back-btn').addEventListener('click', goBack);
     history.replaceState({ level: 0 }, '');
 

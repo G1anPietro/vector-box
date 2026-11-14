@@ -144,22 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         // Choosing the files is enough: no second button to press
         uploadInput.addEventListener('change', () => { uploadFiles(uploadInput.files); uploadInput.value = ''; });
-        // Drag the files onto the upload box
-        const dropZone = uploadForm.parentElement;
-        ['dragenter', 'dragover'].forEach((t) => dropZone.addEventListener(t, (e) => {
-            if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes('Files')) return;
-            e.preventDefault();
-            dropZone.classList.add('drop-target');
-        }));
-        ['dragleave', 'drop'].forEach((t) => dropZone.addEventListener(t, (e) => {
-            if (t === 'dragleave' && dropZone.contains(e.relatedTarget)) return;
-            dropZone.classList.remove('drop-target');
-        }));
-        dropZone.addEventListener('drop', (e) => {
-            if (!e.dataTransfer || !e.dataTransfer.files.length) return;
-            e.preventDefault();
-            uploadFiles(e.dataTransfer.files);
-        });
+        // Drag the books anywhere on the page: a see-through layer says where to let go (js/dropzone.js)
+        if (window.VBDrop) window.VBDrop.attach({ label: 'Mettili qui', hint: 'EPUB o PDF, anche più di uno', onFiles: uploadFiles });
     }
 
     if (closeViewerBtn) closeViewerBtn.addEventListener('click', () => closeViewer());

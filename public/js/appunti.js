@@ -1053,6 +1053,8 @@
     window.AppuntiPage = { get current() { return current; }, editEvent, deleteEvent, hue, showTab,
         me: () => { const m = current && current.members.find((x) => x.is_me); return m ? m.id : 0; } };
 
+    // files dropped anywhere on the page go to the upload page (only for who is in a class)
+    window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => { if (current) C.handOff(files); else C.toast('Per caricare devi far parte di una classe.', 'err'); } });
     loadMine(Number(startParams.get('class')) || null)
         .then(() => applyParams(startParams))
         .catch((e) => status(e.message, 'err'));
