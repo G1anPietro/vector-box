@@ -262,7 +262,7 @@
                 const b = ev.currentTarget; b.disabled = true;
                 try {
                     if (en.type === 'file') {
-                        C.shareDialog(en.file.name, [{ label: 'Il file', hint: en.file.name, get: async () => {
+                        C.shareDialog(en.file.name, [{ file: true, label: 'Il file', hint: en.file.name, get: async () => {
                             const r = await fetch(fileUrl(en.file.id), { credentials: 'same-origin' });
                             if (!r.ok) throw new Error('Non riesco a leggere il file.');
                             return { blob: await r.blob(), name: en.file.name };

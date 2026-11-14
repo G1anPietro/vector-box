@@ -697,61 +697,99 @@ ${lines.join('\n')}
      * interrupted quiz continues where it stopped; "Ricomincia" is practice (no new points).
      */
     function renderQuiz(quiz, grade, { practice = false, noRestart = false } = {}) {
+        // Laid out like a Moodle quiz: a "Navigazione del quiz" block with numbered squares, and for each question a grey box on the
+        // left (number, state, max score, flag) and the question with its answers on the right.
         const qs = quiz.questions || [];
+        const MAXPTS = '10,00';
         let answered = 0;
         let right = 0;
         let points = 0;
         const score = el('p', { class: 'quiz-score', text: `0 / ${qs.length}` });
-        const box = el('div', {}, score);
+        const navBtns = qs.map((q, n) => el('button', { type: 'button', class: 'qnbutton', 'aria-label': `Vai alla domanda ${n + 1}`, onclick: () => {
+            const t = document.getElementById('quiz-q-' + n);
+            if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } }, el('span', { class: 'qnnum', text: String(n + 1) }), el('span', { class: 'qnflag', hidden: true, text: '⚑' })));
+        const nav = el('aside', { class: 'quiz-nav', 'aria-label': 'Navigazione del quiz' },
+            el('h3', { text: 'Navigazione del quiz' }), el('div', { class: 'qngrid' }, ...navBtns), score);
+        const list = el('div', { class: 'quiz-list' });
+        const box = el('div', { class: 'quiz-moodle' }, list, nav);
         const paintScore = () => {
-            score.textContent = `${right} / ${qs.length}` + (answered === qs.length ? ` · ${Math.round(100 * right / qs.length)}%` : answered ? ` · domanda ${Math.min(answered + 1, qs.length)} di ${qs.length}` : '')
-                + (points ? ` · +${points} punti` : '');
+            score.textContent = answered === qs.length
+                ? `Tentativo completato: ${right} su ${qs.length} (${Math.round(100 * right / qs.length)}%)`
+                : `Risposte date: ${answered} su ${qs.length}`;
+            if (points) score.textContent += ` · +${points} punti`;
         };
         let firstOpen = -1;
         qs.forEach((q, n) => {
-            const why = el('p', { class: 'why', hidden: true, text: q.explanation || '' });
+            const state = el('div', { class: 'state', text: 'Risposta non ancora data' });
+            const got = el('div', { class: 'grade', text: practice ? 'Allenamento: senza punti' : `Punteggio max.: ${MAXPTS}` });
+            const flag = el('button', { type: 'button', class: 'qflag', 'aria-pressed': 'false', onclick: () => {
+                const on = card.classList.toggle('flagged');
+                flag.setAttribute('aria-pressed', String(on));
+                flag.textContent = on ? '⚑ Domanda contrassegnata' : '⚐ Contrassegna domanda';
+                navBtns[n].querySelector('.qnflag').hidden = !on;
+            }, text: '⚐ Contrassegna domanda' });
+            const why = el('div', { class: 'outcome why', hidden: true });
             const opts = el('div', { class: 'opts' });
             const show = (k, res) => {
                 opts.dataset.done = '1';
                 answered++;
                 if (res.correct) right++;
-                opts.children[k].classList.add(res.correct ? 'right' : 'wrong');
-                if (opts.children[res.answer]) opts.children[res.answer].classList.add('right');
-                why.textContent = res.explanation || '';
-                why.hidden = !res.explanation;
-                if (res.points) { points += res.points; why.textContent += (why.textContent ? ' ' : '') + `+${res.points} punti.`; why.hidden = false; }
-                else if (res.too_fast) { why.textContent += (why.textContent ? ' ' : '') + 'Risposta troppo veloce: niente punti.'; why.hidden = false; }
+                [...opts.children].forEach((b) => { b.disabled = true; });
+                const mark = (i, ok) => { const b = opts.children[i]; if (!b) return; b.classList.add(ok ? 'right' : 'wrong'); b.querySelector('.qmark').textContent = ok ? '✓' : '✗'; };
+                mark(k, res.correct);
+                if (!res.correct) mark(res.answer, true);
+                opts.children[k].querySelector('input').checked = true;
+                card.classList.add(res.correct ? 'correct' : 'incorrect');
+                navBtns[n].classList.add(res.correct ? 'correct' : 'incorrect');
+                state.textContent = res.correct ? 'Risposta corretta' : 'Risposta errata';
+                if (!practice && Number.isFinite(res.points)) got.textContent = `Punteggio ottenuto ${String(res.points).replace('.', ',')}${res.points % 1 ? '' : ',00'} su ${MAXPTS}`;
+                why.replaceChildren();
+                if (!res.correct && q.options[res.answer] !== undefined) why.append(el('p', { class: 'rightanswer' }, 'La risposta corretta è: ', el('b', { text: q.options[res.answer] })));
+                if (res.explanation) why.append(el('p', { text: res.explanation }));
+                if (res.points) { points += res.points; why.append(el('p', { class: 'muted small', text: `+${res.points} punti.` })); }
+                else if (res.too_fast) why.append(el('p', { class: 'muted small', text: 'Risposta troppo veloce: niente punti.' }));
                 // a wrong answer: where to look in the class material (the site's own search, no AI)
                 if (!res.correct) {
                     const words = (q.question || '').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 3).slice(0, 6).join(' ');
-                    if (words && current) { why.append(' ', el('a', { href: `appunti-archivio.php?class=${current.id}&q=${encodeURIComponent(words)}`, text: 'Cerca nel materiale' })); why.hidden = false; }
+                    if (words && current) why.append(el('p', {}, el('a', { href: `appunti-archivio.php?class=${current.id}&q=${encodeURIComponent(words)}`, text: 'Cerca nel materiale' })));
                 }
+                why.hidden = !why.childNodes.length;
                 paintScore();
             };
             const choose = async (k) => {
                 if (opts.dataset.done || opts.dataset.busy) return;
                 opts.dataset.busy = '1';
                 try { show(k, await grade(n, k)); }
-                catch (e) { status(e.message, 'err'); }
+                catch (e) { status(e.message, 'err'); [...opts.querySelectorAll('input')].forEach((i) => { i.checked = false; }); }
                 finally { delete opts.dataset.busy; }
             };
-            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', text: q.type === 'tf' ? o : `${'ABCD'[k]}. ${o}`, onclick: () => choose(k) })));
+            q.options.forEach((o, k) => opts.append(el('button', { type: 'button', class: 'qopt ' + (k % 2 ? 'r1' : 'r0'), onclick: () => choose(k) },
+                el('input', { type: 'radio', name: `quiz-${n}-${Math.random().toString(36).slice(2, 6)}`, tabIndex: -1, 'aria-hidden': 'true' }),
+                el('span', { class: 'qlabel', text: q.type === 'tf' ? o : `${'abcd'[k]}. ${o}` }), el('span', { class: 'qmark', 'aria-hidden': 'true' }))));
+            const card = el('div', { class: 'quiz-q que', id: `quiz-q-${n}` },
+                el('div', { class: 'info' }, el('h4', { class: 'no' }, 'Domanda ', el('span', { class: 'qno', text: String(n + 1) })), state, got, flag),
+                el('div', { class: 'content' },
+                    el('div', { class: 'formulation' },
+                        q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
+                        q.fails >= 2 ? el('div', { class: 'fails-note', text: `La stai sbagliando da un po' (${q.fails} volte): rileggi la parte degli appunti, poi riprova.` }) : null,
+                        el('div', { class: 'quiz-qtext' }, el('div', { class: 'qtext', text: q.question }),
+                            C.canSpeak() ? el('button', { type: 'button', class: 'ghost mini speak-btn', text: 'Leggi', 'aria-label': 'Leggi la domanda a voce', onclick: () => C.speak(`${q.question}. ${q.type === 'tf' ? 'Vero o falso?' : q.options.map((o, k) => `${'ABCD'[k]}: ${o}`).join('. ')}`) }) : null),
+                        el('div', { class: 'prompt', text: q.type === 'tf' ? 'Scegli una risposta:' : 'Seleziona una risposta:' }),
+                        opts),
+                    why));
             // answered in an earlier visit: the server sent the answer for this question only
             if (!practice && Number.isInteger(q.my_choice) && Number.isInteger(q.answer)) show(q.my_choice, { correct: q.my_choice === q.answer, answer: q.answer, explanation: q.explanation });
             else if (firstOpen < 0) firstOpen = n;
-            box.append(el('div', { class: 'quiz-q', id: `quiz-q-${n}` },
-                q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
-                q.fails >= 2 ? el('div', { class: 'fails-note', text: `La stai sbagliando da un po' (${q.fails} volte): rileggi la parte degli appunti, poi riprova.` }) : null,
-                el('div', { class: 'quiz-qtext' }, el('b', { text: `${n + 1}. ` }), q.question,
-                    C.canSpeak() ? el('button', { type: 'button', class: 'ghost mini speak-btn', text: 'Leggi', 'aria-label': 'Leggi la domanda a voce', onclick: () => C.speak(`${q.question}. ${q.type === 'tf' ? 'Vero o falso?' : q.options.map((o, k) => `${'ABCD'[k]}: ${o}`).join('. ')}`) }) : null),
-                opts, why));
+            list.append(card);
         });
         points = 0;   // the points shown are the ones of this visit
+        paintScore();
         if (answered && answered < qs.length) {
-            box.insertBefore(el('p', { class: 'muted small', text: `Quiz ripreso: hai già risposto a ${answered} domande.` }), score.nextSibling);
+            list.insertBefore(el('p', { class: 'muted small', text: `Quiz ripreso: hai già risposto a ${answered} domande.` }), list.firstChild);
             setTimeout(() => { const t = box.querySelector('#quiz-q-' + firstOpen); if (t) t.scrollIntoView({ block: 'center' }); }, 50);
         }
-        if (!noRestart && (answered === qs.length || practice)) box.append(el('button', { class: 'ghost', text: 'Ricomincia (allenamento, senza punti)',
+        if (!noRestart && (answered === qs.length || practice)) list.append(el('button', { class: 'ghost', text: 'Ricomincia (allenamento, senza punti)',
             onclick: () => $('#doc-body').replaceChildren(renderQuiz(blank(quiz), grade, { practice: true })) }));
         return box;
     }

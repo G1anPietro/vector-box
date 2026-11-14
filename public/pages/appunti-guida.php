@@ -108,6 +108,7 @@ $login = 'login.php?next=appunti.php';
                     <strong>Riassunto</strong>, <strong>Scheda da tenere sotto mano</strong> (una pagina di soli punti chiave, senza spiegazioni:
                     per chi può consultare gli appunti durante la verifica), <strong>Preparazione mirata</strong> (come interroga il prof, domande probabili con le
                     risposte, verifica di prova svolta) e <strong>Quiz</strong> da fare lì sul telefono.</li>
+                <li><strong>I quiz sono fatti come quelli di Moodle:</strong> a sinistra di ogni domanda c'è il riquadro grigio (numero, stato, punteggio, <em>Contrassegna domanda</em>), a destra la domanda con le risposte a, b, c, d; dopo aver risposto vedi <em>Risposta corretta</em> o <em>Risposta errata</em> e la spiegazione. Il blocco <em>Navigazione del quiz</em> ha un quadratino per ogni domanda (verde giusta, rosso sbagliata).</li>
                 <li><strong>Link temporaneo:</strong> in <em>Condividi</em> scegli <em>Manda il link</em> (vale 1, 7 o 30 giorni): chi lo apre vede il file o il
                     documento in una pagina, senza account, e può ingrandire, scaricare e condividere (gli schemi anche in PNG e SVG). Nelle <em>Impostazioni</em>
                     vedi i tuoi link e puoi revocarli. Chi ha il link vede solo quel materiale.</li>

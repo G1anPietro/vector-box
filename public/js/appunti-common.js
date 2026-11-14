@@ -377,21 +377,29 @@
      * [{label, hint, get: async () => ({blob, name, text})}]. With `ref` ({kind: 'file'|'doc'|'item', id}) there is also the temporary link
      * (opens the material in a page, no login needed), valid 1, 7 or 30 days, to send or copy.
      */
+    const canShareFiles = () => { try { return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [new File(['x'], 'a.txt', { type: 'text/plain' })] })); } catch (e) { return false; } };
     function shareDialog(title, choices, ref) {
         const dlg = el('dialog', { class: 'tt-dialog share-dialog' });
         const fail = (e) => toast(e && e.message && !/^Failed|NetworkError|Load failed/.test(e.message) ? e.message : 'Non sono riuscito a preparare la condivisione.', 'err');
         const go = (fn) => async () => { dlg.close(); try { await fn(); } catch (e) { fail(e); } };
         const days = el('select', { 'aria-label': 'Quanto vale il link' }, el('option', { value: '1', text: '1 giorno' }), el('option', { value: '7', text: '7 giorni', selected: true }), el('option', { value: '30', text: '30 giorni' }));
         const opt = (label, hint, fn) => el('button', { type: 'button', class: 'ghost share-opt', onclick: go(fn) }, el('b', { text: label }), el('small', { class: 'muted', text: hint }));
+        // Firefox on a phone (and some others) cannot hand a FILE to the share sheet: there the link works everywhere, and files are downloaded
+        const noFiles = !canShareFiles();
+        const fileChoice = (c) => (noFiles && c.file)
+            ? opt(c.label, 'questo browser non condivide i file: si scarica', async () => { const f = await c.get(); saveBlob(f.blob, f.name); toast('Scaricato: lo trovi nei file del telefono.', 'ok'); })
+            : opt(c.label, c.hint || '', async () => { await shareOut({ ...(await c.get()), title }); });
+        const linkPart = ref ? [el('h3', { text: 'Link temporaneo' }),
+            el('p', { class: 'muted small', text: noFiles ? 'È il modo che funziona con questo browser: chi apre il link vede il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere.' : 'Chi ha il link apre il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere. Si può revocare dalle Impostazioni.' }),
+            el('label', { text: 'Il link vale' }, days),
+            opt('Manda il link', 'menu del telefono', async () => { await shareOut({ title, text: title, url: await makeShareLink(ref, Number(days.value)) }); }),
+            opt('Copia il link', 'da incollare dove vuoi', async () => { await navigator.clipboard.writeText(await makeShareLink(ref, Number(days.value))); toast('Link copiato.', 'ok'); })] : [];
         dlg.append(el('div', { class: 'stack' },
             el('h3', { text: 'Condividi' }),
-            el('p', { class: 'muted small', text: 'Scegli cosa mandare: poi si apre il menu del telefono con le tue app (Gmail, WhatsApp, Drive…).' }),
-            ...choices.map((c) => opt(c.label, c.hint || '', async () => { await shareOut({ ...(await c.get()), title }); })),
-            ...(ref ? [el('h3', { text: 'Link temporaneo' }),
-                el('p', { class: 'muted small', text: 'Chi ha il link apre il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere. Si può revocare dalle Impostazioni.' }),
-                el('label', { text: 'Il link vale' }, days),
-                opt('Manda il link', 'menu del telefono', async () => { await shareOut({ title, text: title, url: await makeShareLink(ref, Number(days.value)) }); }),
-                opt('Copia il link', 'da incollare dove vuoi', async () => { await navigator.clipboard.writeText(await makeShareLink(ref, Number(days.value))); toast('Link copiato.', 'ok'); })] : []),
+            el('p', { class: 'muted small', text: noFiles && ref ? 'Questo browser non può mandare file con il menu del telefono: usa il link. (Con Chrome i file escono allegati.)' : 'Scegli cosa mandare: poi si apre il menu del telefono con le tue app (Gmail, WhatsApp, Drive…).' }),
+            ...(noFiles && ref ? [...linkPart, el('h3', { text: 'Oppure scarica' })] : []),
+            ...choices.map(fileChoice),
+            ...(noFiles && ref ? [] : linkPart),
             el('button', { type: 'button', class: 'ghost', text: 'Annulla', onclick: () => dlg.close() })));
         dlg.addEventListener('close', () => dlg.remove());
         dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
@@ -400,14 +408,14 @@
     }
     /** The formats a schema can be sent in. */
     const schemaChoices = (data) => [
-        { label: 'Immagine PNG a colori', hint: 'per chat e social', get: async () => { const f = await schemaBlob(data, 'png', false, data.title); return { blob: f.blob, name: f.name }; } },
-        { label: 'Immagine PNG bianco e nero', hint: 'per stampare', get: async () => { const f = await schemaBlob(data, 'png', true, data.title); return { blob: f.blob, name: f.name }; } },
-        { label: 'SVG modificabile (colori)', hint: 'per Inkscape, Figma…', get: async () => { const f = await schemaBlob(data, 'svg', false, data.title); return { blob: f.blob, name: f.name }; } },
-        { label: 'SVG modificabile (bianco e nero)', hint: '', get: async () => { const f = await schemaBlob(data, 'svg', true, data.title); return { blob: f.blob, name: f.name }; } },
+        { file: true, label: 'Immagine PNG a colori', hint: 'per chat e social', get: async () => { const f = await schemaBlob(data, 'png', false, data.title); return { blob: f.blob, name: f.name }; } },
+        { file: true, label: 'Immagine PNG bianco e nero', hint: 'per stampare', get: async () => { const f = await schemaBlob(data, 'png', true, data.title); return { blob: f.blob, name: f.name }; } },
+        { file: true, label: 'SVG modificabile (colori)', hint: 'per Inkscape, Figma…', get: async () => { const f = await schemaBlob(data, 'svg', false, data.title); return { blob: f.blob, name: f.name }; } },
+        { file: true, label: 'SVG modificabile (bianco e nero)', hint: '', get: async () => { const f = await schemaBlob(data, 'svg', true, data.title); return { blob: f.blob, name: f.name }; } },
         { label: 'Solo testo (elenco dei punti)', hint: 'nel corpo del messaggio', get: async () => ({ text: schemaText(data) }) }];
     /** The formats of a written document / note. */
     const textChoices = (title, content) => [
-        { label: 'File .md', hint: 'allegato, con la formattazione', get: async () => markdownFile(title, content) },
+        { file: true, label: 'File .md', hint: 'allegato, con la formattazione', get: async () => markdownFile(title, content) },
         { label: 'Solo testo', hint: 'nel corpo del messaggio', get: async () => ({ text: `${title}\n\n${content}` }) }];
 
     /**
@@ -569,9 +577,16 @@
         const map = el('div', { class: 'mm', tabIndex: 0, 'aria-label': 'Mappa dello schema: trascina per spostarti' }, canvas);
         let scale = 1;
         const zoom = (z) => { scale = Math.max(0.3, Math.min(3, z)); canvas.style.zoom = String(scale); return scale; };
-        const fit = () => { canvas.style.zoom = '1'; drawLinks(); const w = canvas.scrollWidth || 1; const h = canvas.scrollHeight || 1; const big = wrap.classList.contains('is-fs');
-            zoom(big ? Math.min(2, (map.clientWidth - 32) / w, (map.clientHeight - 32) / h) : Math.min(1, (map.clientWidth - 16) / w));
-            map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2; };
+        const fit = () => {
+            canvas.style.zoom = '1'; drawLinks();
+            const w = canvas.scrollWidth || 1; const h = canvas.scrollHeight || 1;
+            const big = wrap.classList.contains('is-fs'); const phone = window.innerWidth < 700;
+            const fitW = (map.clientWidth - 32) / w; const fitH = (map.clientHeight - 32) / h;
+            // a phone never shrinks the map below a readable size (it scrolls instead); full screen may also enlarge it
+            zoom(big ? (phone ? Math.max(0.9, Math.min(2, fitW, fitH)) : Math.min(2, fitW, fitH)) : (phone ? Math.max(0.75, Math.min(1, fitW)) : Math.min(1, fitW)));
+            map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2;
+            map.scrollTop = Math.max(0, (map.scrollHeight - map.clientHeight) / 2);
+        };
         // phone: two fingers zoom, double tap on the background fits / enlarges (no need to reach the buttons)
         pinchZoom(map, { getScale: () => scale, setScale: zoom, onDouble: () => { if (scale < 0.95 || scale > 1.05) { canvas.style.zoom = '1'; scale = 1; } else fit(); } });
         // drag to pan (mouse); touch screens scroll natively
