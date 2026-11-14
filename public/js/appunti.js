@@ -659,6 +659,7 @@ ${lines.join('\n')}
             store(DOC_KEY, String(doc.id));
             $('#doc-download').hidden = ['quiz', 'schema', 'domande'].includes(doc.kind);
             $('#doc-share').hidden = ['quiz', 'domande'].includes(doc.kind);
+            $('#doc-full-slot').hidden = doc.kind === 'schema';
             $('#doc-sources').hidden = !doc.sources.length;
             const kinds = { appunti: 'appunti', slide: 'slide del prof', libro: 'libro', domande: 'domande del prof', prova: 'verifica di prova', altro: 'altro' };
             $('#doc-sources-list').replaceChildren(...doc.sources.map((s) => el('li', { value: s.n,
@@ -668,13 +669,13 @@ ${lines.join('\n')}
     }
     $('#doc-back').addEventListener('click', () => { store(DOC_KEY, ''); $('#doc-view').hidden = true; $('#study-list').hidden = false; if (!openDoc) loadReview(); });
     $('#doc-print').addEventListener('click', () => window.print());
-    $('#doc-full').addEventListener('click', () => C.toggleFull($('#doc-view')));
+    $('#doc-full-slot').append(C.fullButton(() => $('#doc-view')));
     $('#doc-share').addEventListener('click', async () => {
         if (!openDoc) return;
         if (openDoc.kind === 'schema') {
             let data = null; try { data = JSON.parse(openDoc.content); } catch (e) { return; }
             const f = await C.schemaBlob(data, 'png', false, data.title || openDoc.title);
-            await C.shareOut({ blob: f.blob, name: f.name, title: openDoc.title });
+            await C.shareOut({ blob: f.blob, name: f.name, title: openDoc.title, text: C.schemaText(data) });
         } else {
             const f = C.markdownFile(openDoc.title, openDoc.content);
             await C.shareOut({ blob: f.blob, name: f.name, title: openDoc.title, text: `${openDoc.title}\n\n${openDoc.content}` });

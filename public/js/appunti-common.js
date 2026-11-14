@@ -336,20 +336,33 @@
      * {blob, name, title} shares a file; {text, title} shares text (it becomes the body of an e-mail). Without a share sheet (a computer):
      * a file is downloaded to attach, a text opens the e-mail program with the text already in it.
      */
-    async function shareOut({ blob, name, title, text }) {
-        try {
-            if (blob && navigator.canShare) {
-                const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
-                if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: title || name }); return 'shared'; }
+    async function shareOut({ blob, name, title, text, url }) {
+        let why = '';
+        if (blob) {
+            if (!navigator.share) why = 'no-share';
+            else if (!navigator.canShare) why = 'no-files';
+            else {
+                try {
+                    const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
+                    if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: title || name }); return 'shared'; }
+                    why = 'no-files';
+                } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; why = 'no-files'; }
             }
-            if (text && navigator.share) { await navigator.share({ title: title || '', text }); return 'shared'; }
-        } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
-        if (blob) { saveBlob(blob, name); toast('Scaricato: allegalo alla tua e-mail o a WhatsApp.', 'ok'); return 'saved'; }
-        if (text) {
-            window.open('mailto:?subject=' + encodeURIComponent(title || '') + '&body=' + encodeURIComponent(text.slice(0, 1800)), '_self');
-            return 'mailto';
         }
+        // no file sharing in this browser (e.g. Firefox on Android): the share sheet still opens, with the text (and the link)
+        if ((text || url) && navigator.share) {
+            try { await navigator.share({ title: title || '', ...(text ? { text } : {}), ...(url ? { url } : {}) }); return 'shared'; } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+        }
+        if (blob) { saveBlob(blob, name); toast(why === 'no-share' ? 'Qui non c\'è il menu di condivisione: ho scaricato il file, allegalo alla tua e-mail.' : 'Questo browser non condivide i file: l\'ho scaricato. Prova con Chrome per il menu di condivisione.', 'ok', 6000); return 'saved'; }
+        if (text) { window.open('mailto:?subject=' + encodeURIComponent(title || '') + '&body=' + encodeURIComponent(text.slice(0, 1800)), '_self'); return 'mailto'; }
         return 'none';
+    }
+    /** A schema as plain indented text (for a share sheet that cannot take a picture). */
+    function schemaText(data) {
+        const out = [String(data.title || 'Schema')];
+        const walk = (list, d) => (Array.isArray(list) ? list : []).forEach((n) => { out.push('  '.repeat(d) + '- ' + String(n.label || '') + (n.note ? ': ' + n.note : '')); walk(n.children, d + 1); });
+        walk(data.children, 1);
+        return out.join('\n');
     }
     const markdownFile = (title, content) => ({ blob: new Blob([`# ${title}\n\n${content}\n`], { type: 'text/plain;charset=utf-8' }), name: String(title).replace(/[\\/:*?"<>|]+/g, '-') + '.md' });
 
@@ -377,7 +390,17 @@
     }
     document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && fsOn) fsOn.exit(); });
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && fsOn) fsOn.exit(); });
-    const fullButton = (getTarget, onChange) => el('button', { type: 'button', class: 'ghost mini fs-btn', text: 'Schermo intero', onclick: () => toggleFull(getTarget(), onChange) });
+    /** The classic "four corners" full screen icon (as on video players): a small square button with an SVG, no text. */
+    function fullButton(getTarget, onChange, cls = '') {
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '20'); svg.setAttribute('height', '20'); svg.setAttribute('aria-hidden', 'true');
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5');
+        for (const [k, v] of Object.entries({ fill: 'none', stroke: 'currentColor', 'stroke-width': '2.2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) path.setAttribute(k, v);
+        svg.append(path);
+        return el('button', { type: 'button', class: 'fs-icon ' + cls, title: 'Schermo intero', 'aria-label': 'Schermo intero', onclick: () => toggleFull(getTarget(), onChange) }, svg);
+    }
 
     /**
      * A schema (concept map) written by the AI as JSON {title, children:[{label, note, children}]}: drawn as a tree with
@@ -462,7 +485,8 @@
         const map = el('div', { class: 'mm', tabIndex: 0, 'aria-label': 'Mappa dello schema: trascina per spostarti' }, canvas);
         let scale = 1;
         const zoom = (z) => { scale = Math.max(0.3, Math.min(2, z)); canvas.style.zoom = String(scale); };
-        const fit = () => { canvas.style.zoom = '1'; drawLinks(); const w = canvas.scrollWidth || 1; zoom(Math.min(1, (map.clientWidth - 16) / w));
+        const fit = () => { canvas.style.zoom = '1'; drawLinks(); const w = canvas.scrollWidth || 1; const h = canvas.scrollHeight || 1; const big = wrap.classList.contains('is-fs');
+            zoom(big ? Math.min(2, (map.clientWidth - 32) / w, (map.clientHeight - 32) / h) : Math.min(1, (map.clientWidth - 16) / w));
             map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2; };
         // drag to pan (mouse); touch screens scroll natively
         let moved = false;
@@ -492,7 +516,7 @@
         wrap.append(
             el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || 'Schema'))),
                 el('span', { class: 'schema-tools' }, zoomBtns, toggle, viewBtn)),
-            map, tree);
+            el('div', { class: 'mm-frame' }, map, fullButton(() => wrap, () => requestAnimationFrame(() => { if (wrap.dataset.view === 'map') fit(); }), 'on-map')), tree);
         const closeMenu = () => { menu.hidden = true; dlBtn.setAttribute('aria-expanded', 'false'); };
         const run = (fn) => async () => { closeMenu(); try { await fn(); } catch (e) { toast('Non sono riuscito a creare il file.', 'err'); } };
         const item = (label, hint, fn) => el('button', { type: 'button', class: 'ghost', onclick: run(fn) }, el('span', { text: label }), el('small', { class: 'muted', text: hint }));
@@ -501,11 +525,11 @@
             item('PNG bianco e nero', 'immagine', () => downloadSchema(data, 'png', true, data.title)),
             item('SVG a colori', 'modificabile', () => downloadSchema(data, 'svg', false, data.title)),
             item('SVG bianco e nero', 'modificabile', () => downloadSchema(data, 'svg', true, data.title)),
-            item('Condividi…', 'Gmail, WhatsApp…', async () => { const f = await schemaBlob(data, 'png', false, data.title); await shareOut({ blob: f.blob, name: f.name, title: String(data.title || 'Schema') }); }));
+            item('Condividi…', 'Gmail, WhatsApp…', async () => { const f = await schemaBlob(data, 'png', false, data.title); await shareOut({ blob: f.blob, name: f.name, title: String(data.title || 'Schema'), text: schemaText(data) }); }));
         const dlBtn = el('button', { type: 'button', class: 'mini dl-btn', text: 'Scarica', 'aria-expanded': 'false', onclick: (ev) => { ev.stopPropagation(); const open = menu.hidden; menu.hidden = !open; dlBtn.setAttribute('aria-expanded', String(open)); } });
         document.addEventListener('click', (ev) => { if (!menu.hidden && !menu.contains(ev.target)) closeMenu(); });
         const dl = el('span', { class: 'schema-dl' }, dlBtn, menu);
-        wrap.querySelector('.schema-tools').append(fullButton(() => wrap, () => requestAnimationFrame(() => { if (wrap.dataset.view === 'map') fit(); })), dl);
+        wrap.querySelector('.schema-tools').append(dl);
         setView(stored(VIEW_KEY) || (window.innerWidth >= 700 ? 'map' : 'list'));
         return wrap;
     }
@@ -869,7 +893,7 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
     })();
 
-    window.AppuntiCommon = { shareOut, markdownFile, schemaBlob, toggleFull, fullButton, weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
+    window.AppuntiCommon = { schemaText, shareOut, markdownFile, schemaBlob, toggleFull, fullButton, weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
         KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
         DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', scheda: 'Scheda', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };

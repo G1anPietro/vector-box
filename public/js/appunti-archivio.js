@@ -255,7 +255,7 @@
     async function renderPreview(en) {
         const pv = $('#preview');
         if (!en) { pv.replaceChildren(el('p', { class: 'empty', text: sel.folder ? 'Scegli un file.' : 'Scegli una materia, poi un giorno: qui vedi il file senza uscire dalla pagina.' })); return; }
-        const head = (title, ...actions) => el('div', { class: 'pv-head' }, el('h2', { text: title }), el('div', { class: 'row-actions' }, ...actions, shareBtn(en, title), C.fullButton(() => pv), deleteMenu(en)));
+        const head = (title, ...actions) => el('div', { class: 'pv-head' }, el('h2', { text: title }), el('div', { class: 'row-actions' }, ...actions, shareBtn(en, title), en.type === 'doc' && en.kind === 'schema' ? null : C.fullButton(() => pv), deleteMenu(en)));
         /** "Condividi": the phone's share sheet with the person's own mail/WhatsApp (a file is fetched first; a document goes as text or picture). */
         function shareBtn(en, title) {
             return el('button', { type: 'button', class: 'ghost mini', text: 'Condividi', onclick: async (ev) => {
@@ -264,12 +264,12 @@
                     if (en.type === 'file') {
                         const r = await fetch(fileUrl(en.file.id), { credentials: 'same-origin' });
                         if (!r.ok) throw new Error('file');
-                        await C.shareOut({ blob: await r.blob(), name: en.file.name, title: en.file.name });
+                        await C.shareOut({ blob: await r.blob(), name: en.file.name, title: en.file.name, url: new URL(fileUrl(en.file.id), location.href).href });
                     } else if (en.type === 'text') {
                         await C.shareOut({ title, text: `${title}\n\n${en.item.body}` });
                     } else {
                         const { doc } = await getJson(`../api/appunti.php?action=doc&id=${en.id}`);
-                        if (doc.kind === 'schema') { const d = JSON.parse(doc.content); const f = await C.schemaBlob(d, 'png', false, d.title || doc.title); await C.shareOut({ blob: f.blob, name: f.name, title: doc.title }); }
+                        if (doc.kind === 'schema') { const d = JSON.parse(doc.content); const f = await C.schemaBlob(d, 'png', false, d.title || doc.title); await C.shareOut({ blob: f.blob, name: f.name, title: doc.title, text: C.schemaText(d) }); }
                         else { const f = C.markdownFile(doc.title, doc.content); await C.shareOut({ blob: f.blob, name: f.name, title: doc.title, text: `${doc.title}\n\n${doc.content}` }); }
                     }
                 } catch (e) { C.toast('Non riesco a condividerlo: usa "Scarica".', 'err'); } finally { b.disabled = false; }
