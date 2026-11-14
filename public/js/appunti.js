@@ -630,14 +630,7 @@
         const info = $('#class-info');
         info.replaceChildren(
             el('h2', { text: `${c.name} · ${c.school}` }),
-            c.invite_code ? el('div', {},
-                el('p', { class: 'muted small', text: 'Codice d\'invito (dallo solo ai compagni):' }),
-                el('div', { class: 'row' }, el('span', { class: 'code', text: c.invite_code }),
-                    el('button', { class: 'ghost mini', text: 'Copia', onclick: () => navigator.clipboard && navigator.clipboard.writeText(c.invite_code).then(() => status('Codice copiato.', 'ok')) }),
-                    el('button', { class: 'ghost mini', text: 'Nuovo codice', onclick: regenCode })))
-                : el('p', { class: 'muted small', text: 'Il codice d\'invito lo ha il rappresentante della classe.' }),
-            el('p', { class: 'muted small', text: `Riassunto automatico ogni giorno alle ${c.summary_time}.` }),
-            el('p', {}, el('a', { class: 'ghost-link', href: 'appunti-impostazioni.php?class=' + c.id, text: 'Le tue impostazioni: notifiche, nome, PDF' })),
+            el('p', {}, el('a', { class: 'ghost-link', href: 'appunti-impostazioni.php?class=' + c.id, text: 'Codice della classe, riassunto automatico, notifiche, nome e PDF: Impostazioni' })),
             c.is_member ? myNameForm(c) : el('p', { class: 'admin-note', text: 'Stai guardando questa classe come amministratore del sito: non ne fai parte.' }));
 
         renderMembers(c);
@@ -645,9 +638,7 @@
         renderSubjects(c);
         $('#leave-btn').hidden = c.is_manager || !c.is_member;
 
-        $('#manage-box').hidden = !can('settings');
         $$('.tt-manage').forEach((x) => { x.hidden = !can('timetable'); });
-        $('#settings-form').summary_time.value = c.summary_time;
         if (can('timetable')) $('#tt-from').value = c.timetable ? c.timetable.valid_from : todayStr();
         renderTimetable();
     }
@@ -770,10 +761,6 @@
         catch (e) { status(e.json && e.json.code === 'not_empty' ? 'Questa materia ha del materiale: usa "Unisci a…".' : e.message, 'err'); }
     }
 
-    async function regenCode() {
-        if (!confirm('Il codice vecchio smetterà di funzionare. Continuare?')) return;
-        try { await classes_({ action: 'regen_code', id: current.id }); await openClass(current.id); status('Nuovo codice creato.', 'ok'); } catch (e) { status(e.message, 'err'); }
-    }
     async function setManager(m) {
         if (!confirm(`Far diventare ${m.name} rappresentante della classe? Tu perdi il ruolo.`)) return;
         try { await classes_({ action: 'set_manager', id: current.id, user_id: m.id }); await openClass(current.id); } catch (e) { status(e.message, 'err'); }
@@ -785,15 +772,6 @@
     $('#leave-btn').addEventListener('click', async () => {
         if (!confirm('Uscire dalla classe? Per rientrare servirà di nuovo il codice.')) return;
         try { await classes_({ action: 'leave', id: current.id }); await loadMine(); } catch (e) { status(e.message, 'err'); }
-    });
-
-    $('#settings-form').addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        try {
-            await classes_({ action: 'settings', id: current.id, summary_time: ev.target.summary_time.value, timezone: current.timezone });
-            await openClass(current.id);
-            status('Salvato.', 'ok');
-        } catch (e) { status(e.message, 'err'); }
     });
 
     /* Timetable editor: a grid like the printed timetable (days in columns, hours in rows); a cell opens a small editor */

@@ -42,3 +42,21 @@ test('an announcement is not sent to who switched announcements off; the others 
     await mario.post('/api/bacheca.php', { action: 'save_announcement', class_id: classId, title: 'Gita 2', notify: true });
     assert.equal(site.db("SELECT COUNT(*) AS n FROM notifications WHERE kind = 'annuncio' AND user_id = ?", [luigiId])[0].n, 1);
 });
+
+test('the automatic summary can be switched off by who manages settings; the class says so; the worker skips it', async () => {
+    const get = async () => (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class;
+    assert.equal((await get()).summary_on, true);
+    assert.equal((await luigi.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '19:00', summary_on: false })).status, 403);
+    const r = await mario.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '19:30', summary_on: false });
+    assert.equal(r.status, 200, r.text);
+    const c = await get();
+    assert.deepEqual([c.summary_on, c.summary_time], [false, '19:30']);
+    // changing only the time keeps the switch
+    await mario.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '20:00' });
+    assert.equal((await get()).summary_on, false);
+    const row = site.db('SELECT * FROM school_classes WHERE id = ?', [classId])[0];
+    const due = require('node:child_process').execFileSync('php', ['-r', "require $argv[1] . '/public/api/appunti_ai.php'; echo json_encode(aiClassDue(json_decode($argv[2], true), time()));", require('node:path').join(__dirname, '..'), JSON.stringify(row)]).toString();
+    assert.equal(due, 'false', 'switched off: not due (unless someone pressed Genera ora)');
+    await mario.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '20:00', summary_on: true });
+    assert.equal((await get()).summary_on, true);
+});

@@ -233,15 +233,6 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
             <details class="card fold" id="class-more">
             <summary>Compagni, ruoli, materie e codice della classe</summary>
             <div id="class-info"></div>
-            <div class="card" id="manage-box" hidden>
-                <h2>Gestione</h2>
-                <form id="settings-form" class="row">
-                    <label>Riassunto automatico ogni giorno alle <input type="time" name="summary_time" required></label>
-                    <button>Salva</button>
-                </form>
-                <p class="muted small">Una volta al giorno l'AI rifà gli appunti di tutte le materie con il materiale nuovo. "Genera ora", nella
-                    scheda Studio, lo fa subito, anche su giorni scelti.</p>
-            </div>
             <div class="card">
                 <h2>Compagni</h2>
                 <ul id="members" class="plain members"></ul>

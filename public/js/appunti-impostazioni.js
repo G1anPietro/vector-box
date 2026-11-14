@@ -13,7 +13,7 @@
     let classes = [];
 
     const status = (text, kind = '') => { const s = $('#status'); s.textContent = text; s.className = 'status ' + kind; };
-    const saved = () => { status('Salvato.', 'ok'); setTimeout(() => status(''), 2000); };
+    const saved = (m) => { status(typeof m === 'string' ? m : 'Salvato.', 'ok'); setTimeout(() => status(''), 2000); };
     const fail = (e) => status(e.message, 'err');
 
     function section(title, hint, ...children) {
@@ -134,6 +134,30 @@
             el('option', { value: 'auto', text: 'Testo sul telefono, pagine sul computer' }), el('option', { value: 'text', text: 'Sempre il testo' }), el('option', { value: 'pages', text: 'Sempre le pagine' }));
         pdf.value = C.stored('vb_pdf_mode') || 'auto';
 
+        // class code and the automatic summary (who may manage settings changes the summary; the code is for who manages members)
+        const canSettings = (c.perms || []).includes('settings');
+        const codeBox = c.invite_code ? el('div', {},
+            el('p', { class: 'muted small', text: 'Codice d\'invito (dallo solo ai compagni):' }),
+            el('div', { class: 'row' }, el('span', { class: 'code', text: c.invite_code }),
+                el('button', { class: 'ghost mini', text: 'Copia', onclick: () => navigator.clipboard && navigator.clipboard.writeText(c.invite_code).then(() => saved('Codice copiato.')) }),
+                el('button', { class: 'ghost mini', text: 'Nuovo codice', onclick: async () => {
+                    if (!confirm('Il codice vecchio smetterà di funzionare. Continuare?')) return;
+                    try { await post('../api/classi.php', { action: 'regen_code', id: classId }); await draw(); drawNotifs(); saved('Nuovo codice creato.'); } catch (e) { fail(e); }
+                } })))
+            : el('p', { class: 'muted small', text: 'Il codice d\'invito lo ha il rappresentante della classe.' });
+        const time = el('input', { type: 'time', name: 'summary_time', value: c.summary_time, required: true, disabled: !canSettings });
+        const sumForm = el('form', { class: 'row' }, el('label', { text: 'Ogni giorno alle' }, time), canSettings ? el('button', { class: 'ghost', text: 'Salva l\'ora' }) : null);
+        const sendSummary = async (on) => post('../api/classi.php', { action: 'settings', id: classId, summary_time: time.value, timezone: c.timezone, summary_on: on });
+        let summaryOn = c.summary_on;
+        sumForm.addEventListener('submit', async (ev) => { ev.preventDefault(); try { await sendSummary(summaryOn); saved(); } catch (e) { fail(e); } });
+        const summaryBox = el('div', {},
+            sw('Riassunto automatico degli appunti', summaryOn, async (on, box) => {
+                try { await sendSummary(on); summaryOn = on; sumForm.hidden = !on; saved(); } catch (e) { box.checked = !on; fail(e); }
+            }, !canSettings),
+            sumForm,
+            el('p', { class: 'muted small', text: 'Una volta al giorno l\'AI rifà gli appunti delle materie con il materiale nuovo. Spento, lo fa solo quando premi "Genera ora" nella scheda Studio.' + (canSettings ? '' : ' Lo cambia il rappresentante (o chi ha il permesso).') }));
+        sumForm.hidden = !summaryOn;
+
         $('#settings-root').replaceChildren(
             Object.assign(section('Notifiche', 'Su questo dispositivo, e quelle che ti sono arrivate.', el('div', { id: 'notifs-box' })), { id: 'notifiche' }),
             section(`${c.name} · ${c.school}`, 'Queste scelte valgono solo per te.', nameForm,
@@ -148,7 +172,7 @@
             section('Come lo vedo', 'Su questo dispositivo.',
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),
-            section('Classe', 'Ruoli, permessi, materie, orario e compagni li gestisce il rappresentante (e chi ha il permesso) dalla scheda Classe.',
+            section('Classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox, summaryBox,
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })));
     }
 

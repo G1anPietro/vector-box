@@ -15,7 +15,7 @@
 //      {action:"delete_class", id}                    (admin)
 //      {action:"join", code} | {action:"leave", id}
 //      {action:"regen_code", id} | {action:"remove_member", id, user_id} | {action:"set_manager", id, user_id}
-//      {action:"settings", id, summary_time, timezone}
+//      {action:"settings", id, summary_time, timezone, summary_on?}
 //      multipart {action:"read_timetable", id, files[]}: the AI reads a photo/PDF of the timetable (and of the bell
 //                times) and returns {periods, slots} to review in the editor; nothing is saved
 //      {action:"save_timetable", id, valid_from, periods:{"1":[{start,end}],...,"6":[...]} (or one list for Mon-Fri),
@@ -378,13 +378,17 @@ try {
     }
 
     if ($action === 'settings') {
-        clManaged($db, $id, $me, $isAdmin, 'settings');
+        $class = clManaged($db, $id, $me, $isAdmin, 'settings');
         $time = (string)($in['summary_time'] ?? '');
         if (!classValidTime($time)) clFail('bad_time', 'Time must be HH:MM');
         $tz = (string)($in['timezone'] ?? 'Europe/Rome');
         if (!in_array($tz, timezone_identifiers_list(), true)) clFail('bad_timezone', 'Unknown time zone');
-        $db->prepare('UPDATE school_classes SET summary_time = :s, timezone = :z WHERE id = :id')
-           ->execute([':s' => $time, ':z' => $tz, ':id' => $id]);
+        // the automatic daily summary can be switched off (kept in the class settings; "Genera ora" still works)
+        $settings = json_decode((string)($class['settings'] ?? '{}'), true);
+        if (!is_array($settings)) $settings = [];
+        if (array_key_exists('summary_on', $in)) $settings['summary_on'] = !empty($in['summary_on']);
+        $db->prepare('UPDATE school_classes SET summary_time = :s, timezone = :z, settings = :j WHERE id = :id')
+           ->execute([':s' => $time, ':z' => $tz, ':j' => json_encode($settings), ':id' => $id]);
         jsonResponse(['success' => true]);
     }
 

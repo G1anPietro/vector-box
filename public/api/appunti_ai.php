@@ -605,6 +605,8 @@ Domande del prof e verifiche di preparazione:
 /** True when the class should be processed now: someone pressed "Genera ora", or its daily time has come. */
 function aiClassDue(array $class, int $now): bool {
     if (!empty($class['ai_requested_at'])) return true;
+    $cfg = json_decode((string)($class['settings'] ?? '{}'), true);
+    if (is_array($cfg) && ($cfg['summary_on'] ?? true) === false) return false;   // the automatic summary is switched off
     $local = (new DateTimeImmutable('@' . $now))->setTimezone(classTimezone($class));
     return $local->format('H:i') >= $class['summary_time'] && ($class['ai_last_auto'] ?? '') !== $local->format('Y-m-d');
 }

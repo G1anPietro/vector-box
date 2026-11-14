@@ -328,6 +328,7 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'invite_code' => in_array('members', $perms, true) ? $class['invite_code'] : null,
         'timezone' => $class['timezone'],
         'summary_time' => $class['summary_time'],
+        'summary_on' => (json_decode((string)($class['settings'] ?? '{}'), true)['summary_on'] ?? true) !== false,
         'periods' => classPeriods($class),
         'subjects' => $subjects,
         'timetable' => $timetable,
