@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-13 (schema del database **v17**, 176 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-13 (schema del database **v17**, 180 test). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -152,6 +152,13 @@ con il percorso in alto.
 - **Orario:** nella scheda Classe è una griglia come l'orario stampato (giorni in colonna, ore in riga, orari dentro
   ogni casella); tocca una casella per materia, aula e orari ("stessi orari per tutti i giorni"), "✕" toglie un giorno,
   "+ ora" aggiunge un'ora, "Aggiungi giorno" rimette un giorno tolto. Le modifiche valgono dopo "Salva l'orario".
+- **Bacheca** (prima scheda, quella che si apre di solito): in alto **Adesso**, con la materia in corso, l'aula, quanto manca alla
+  fine e una barra lungo l'ora, poi "Poi: ..." con la lezione dopo (di sera dice come comincia domani; nei giorni di sciopero
+  o vacanza dice perché non c'è lezione). Sotto: **Per te** (ripasso di oggi, i tuoi turni di interrogazione), **Annunci** (li
+  scrive il rappresentante o chi ha il permesso "bacheca"; si può fissarli in alto e avvisare tutti con una notifica),
+  **Questa settimana** come diario a righe (verifiche, compiti, turni, giorni senza lezione) e **Da sistemare** (argomenti
+  proposti dall'AI da confermare). Sul telefono l'ordine è: per te, annunci, settimana, da sistemare. API: `api/bacheca.php`,
+  modulo `js/appunti-bacheca.js`, test `tests/bacheca.test.js`.
 - **Ruoli e permessi:** chi chiede la classe è il **rappresentante** e può fare tutto (anche l'admin del sito, che nel
   selettore vede tutte le classi). Il rappresentante crea **ruoli** (nome, colore, permessi) e li assegna; può dare
   permessi anche a una sola persona. Permessi: orario, calendario (date degli altri), materiale degli altri, documenti
@@ -462,7 +469,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 176 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # 180 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 

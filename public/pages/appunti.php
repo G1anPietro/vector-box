@@ -20,7 +20,7 @@ session_write_close();
 
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css')
-    . '-' . filemtime(__DIR__ . '/../js/appunti-calendario.js');
+    . '-' . filemtime(__DIR__ . '/../js/appunti-calendario.js') . '-' . filemtime(__DIR__ . '/../js/appunti-bacheca.js');
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -40,6 +40,7 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-calendario.js?v=<?= $e($v) ?>" defer></script>
+    <script src="../js/appunti-bacheca.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
     <header class="top">
@@ -97,7 +98,8 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         </section>
 
         <nav id="tabs" class="tabs" hidden>
-            <button data-tab="material" aria-selected="true">Materiale</button>
+            <button data-tab="board" aria-selected="true">Bacheca</button>
+            <button data-tab="material">Materiale</button>
             <button data-tab="study">Studio</button>
             <button data-tab="calendar">Calendario</button>
             <button data-tab="class">Classe</button>
@@ -105,6 +107,21 @@ $v = filemtime(__DIR__ . '/../js/appunti.js') . '-' . filemtime(__DIR__ . '/../j
         </nav>
 
         <!-- Material -->
+        <!-- Board: now, announcements, the week, what is waiting for you -->
+        <section id="tab-board" class="tab" hidden>
+            <div id="bb-now" aria-live="polite"></div>
+            <div class="bb-cols">
+                <div class="bb-col-main">
+                    <div id="bb-week" class="bb-block"></div>
+                </div>
+                <div class="bb-col-side">
+                    <div id="bb-you" class="bb-block" hidden></div>
+                    <div id="bb-notes" class="bb-block"></div>
+                    <div id="bb-fix" class="bb-block" hidden></div>
+                </div>
+            </div>
+        </section>
+
         <section id="tab-material" class="tab" hidden>
             <div class="card cta-card">
                 <div>

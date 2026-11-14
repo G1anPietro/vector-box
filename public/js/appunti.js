@@ -16,7 +16,7 @@
 
     let classes = [];
     let current = null;          // class detail from api/classi.php
-    let currentTab = 'material';
+    let currentTab = 'board';
 
     /* ---------- helpers ---------- */
     const C = window.AppuntiCommon;
@@ -151,6 +151,7 @@
         $$('#tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
         $$('.tab').forEach((t) => { t.hidden = t.id !== 'tab-' + name; });
         status('');
+        if (name === 'board' && current && window.AppuntiBoard) window.AppuntiBoard.load();
         if (name === 'material' && current) { $('#upload-link').href = caricaUrl(); loadItems(); }
         if (name === 'calendar' && current) loadEvents();
         if (name === 'study' && current) loadStudy();
@@ -1148,7 +1149,7 @@
             $('#class-select').value = String(cid);
             await openClass(cid);
         }
-        if (tab && ['material', 'study', 'calendar', 'class'].includes(tab) && current) showTab(tab);
+        if (tab && ['board', 'material', 'study', 'calendar', 'class'].includes(tab) && current) showTab(tab);
     }
 
     /* ---------- start ---------- */
@@ -1157,7 +1158,7 @@
     $('#class-select').addEventListener('change', (ev) => { openClass(Number(ev.target.value)).catch((e) => status(e.message, 'err')); });
     const startParams = new URLSearchParams(location.search);
     // For the calendar module (js/appunti-calendario.js)
-    window.AppuntiPage = { get current() { return current; }, editEvent, deleteEvent, hue,
+    window.AppuntiPage = { get current() { return current; }, editEvent, deleteEvent, hue, showTab,
         me: () => { const m = current && current.members.find((x) => x.is_me); return m ? m.id : 0; } };
 
     loadMine(Number(startParams.get('class')) || null)
