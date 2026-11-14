@@ -779,3 +779,4 @@ html, body { overflow-x: clip; }
 .fc-answer { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
 .prompt-lib { margin: 10px 0 4px; }
 .prompt-lib summary { cursor: pointer; color: var(--accent); }
+.fails-note { font-size: 13px; color: var(--accent); margin: 2px 0 4px; }

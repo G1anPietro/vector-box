@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 22;
+const DB_SCHEMA_VERSION = 23;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,11 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+function migrateV23(PDO $db): void {
+    // How many times a question of the review was answered wrongly ("you have been getting this one wrong for a while")
+    addColumnIfMissing($db, 'review_cards', 'fails', 'INTEGER NOT NULL DEFAULT 0');
+}
+
 function migrateV22(PDO $db): void {
     // Change log of a class (who deleted, changed roles, removed members...): for the representative to look at
     $db->exec("CREATE TABLE IF NOT EXISTS class_log (
@@ -816,6 +821,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 22) {
             migrateV22($db);
+        }
+        if ($current < 23) {
+            migrateV23($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

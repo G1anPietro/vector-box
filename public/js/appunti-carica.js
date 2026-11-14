@@ -204,18 +204,13 @@
         if (picked && !/\.(md|txt|json)$/i.test(picked.name) && !f.content.value.trim()) {
             const e = lesson ? null : aiEvents.find((x) => String(x.id) === f.event_id.value);
             if (!lesson && !e) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; }
-            const up = new FormData();
-            up.set('action', 'upload');
-            up.set('class_id', current.id);
-            up.set('subject_id', lesson ? f.subject_id.value : e.subject_id);
-            up.set('lesson_date', lesson ? f.lesson_date.value : e.date);
-            up.set('kind', 'altro');
-            up.set('title', f.title.value || `${f.kind.selectedOptions[0].textContent} fatto con un'altra AI`);
-            up.append('files[]', picked, picked.name);
             try {
-                await post('../api/appunti.php', up);
+                // same queue as every upload: in pieces, resumable, shrunk if it is a photo
+                await window.AppuntiUpload.enqueue({ class_id: current.id, label: lesson ? subjectName(Number(f.subject_id.value)) : e.subject,
+                    fields: { subject_id: lesson ? f.subject_id.value : e.subject_id, period: '', kind: 'altro', lesson_date: lesson ? f.lesson_date.value : e.date,
+                        title: f.title.value || `${f.kind.selectedOptions[0].textContent} fatto con un'altra AI`, body: '' }, files: [picked] });
                 f.title.value = ''; f.file.value = '';
-                status('File caricato come materiale: il sito lo legge e lo trovi nell\'Archivio, nella cartella del giorno.', 'ok');
+                status('Messo in coda come materiale: il sito lo legge e lo trovi nell\'Archivio, nella cartella del giorno.', 'ok');
             } catch (er) { status(er.message, 'err'); }
             return;
         }

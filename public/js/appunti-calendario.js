@@ -233,9 +233,15 @@
             h.can_edit ? C.menu([{ label: 'Modifica', onclick: () => editHomework(h) },
                 { label: 'Elimina', danger: true, onclick: () => confirm('Eliminare questo compito?') && act({ action: 'delete_homework', id: h.id }) }]) : null));
 
+    /** The teacher asks on the programme: the topics of the subject up to that day (the open one included). */
+    function programOf(t) {
+        const list = data.topics.filter((x) => !x.proposed && x.subject_id === t.subject_id && x.start <= t.date).map((x) => x.name);
+        return list.length ? el('div', { class: 'muted small turn-program', text: `Programma fino a quel giorno: ${list.slice(-8).join(', ')}${list.length > 8 ? ' e prima' : ''}` }) : null;
+    }
     const turnRow = (t) => el('div', { class: 'ag-item' + (t.user_ids.includes(P().me()) ? ' mine' : '') },
         el('div', { class: 'what' }, el('span', { class: 'badge turn', text: 'Interrogati' }), t.subject, t.note ? ` · ${t.note}` : ''),
         el('div', { class: 'topics', text: t.user_ids.length ? t.user_ids.map(nameOf).join(', ') : 'nessuno' }),
+        programOf(t),
         el('div', { class: 'muted small event-actions' },
             el('a', { class: 'ghost-link mini-link', href: `appunti-archivio.php?class=${P().current.id}&subject=${t.subject_id}`, text: 'Apri la materia' }),
             can('turns') ? C.menu([{ label: 'Sposta o cambia…', onclick: () => editTurn(t) },

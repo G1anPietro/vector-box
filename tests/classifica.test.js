@@ -121,3 +121,17 @@ test('leaving the scoreboard deletes the points and keeps new ones out; the clas
     assert.equal(q2.points, 0);
     assert.equal(site.db('SELECT COUNT(*) AS n FROM score_events WHERE user_id = (SELECT id FROM accounts WHERE username = ?)', ['sc_toad'])[0].n, 0);
 });
+
+test('a question answered wrongly again and again is flagged in the review', async () => {
+    // fresh student: wrong at the first try, wrong twice in the review
+    const peachLike = mario;   // the representative has not touched question 1 yet
+    site.db("DELETE FROM quiz_answers WHERE user_id = (SELECT id FROM accounts WHERE username = 'sc_mario')");
+    await ap(peachLike, { action: 'quiz_answer', doc_id: docId, q: 1, choice: 0 });
+    for (let i = 0; i < 2; i++) {
+        site.db("UPDATE review_cards SET due_date = '2000-01-01' WHERE user_id = (SELECT id FROM accounts WHERE username = 'sc_mario')");
+        await ap(peachLike, { action: 'review_answer', doc_id: docId, q: 1, choice: 0 });
+    }
+    site.db("UPDATE review_cards SET due_date = '2000-01-01' WHERE user_id = (SELECT id FROM accounts WHERE username = 'sc_mario')");
+    const rr = (await peachLike.get(`/api/appunti.php?action=review&class_id=${classId}`)).json; assert.ok(rr.success, JSON.stringify(rr)); const due = rr.due;
+    assert.equal(due[0].fails, 3);
+});

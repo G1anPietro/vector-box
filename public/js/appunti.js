@@ -703,6 +703,7 @@ ${lines.join('\n')}
             else if (firstOpen < 0) firstOpen = n;
             box.append(el('div', { class: 'quiz-q', id: `quiz-q-${n}` },
                 q.topic || q.prof ? el('div', { class: 'topic' }, q.prof ? el('span', { class: 'qa-badge prof', text: 'Domanda del prof' }) : null, q.topic || '') : null,
+                q.fails >= 2 ? el('div', { class: 'fails-note', text: `La stai sbagliando da un po' (${q.fails} volte): rileggi la parte degli appunti, poi riprova.` }) : null,
                 el('div', { class: 'quiz-qtext' }, el('b', { text: `${n + 1}. ` }), q.question,
                     C.canSpeak() ? el('button', { type: 'button', class: 'ghost mini speak-btn', text: 'Leggi', 'aria-label': 'Leggi la domanda a voce', onclick: () => C.speak(`${q.question}. ${q.type === 'tf' ? 'Vero o falso?' : q.options.map((o, k) => `${'ABCD'[k]}: ${o}`).join('. ')}`) }) : null),
                 opts, why));

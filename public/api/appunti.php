@@ -153,10 +153,10 @@ function apLeitner(PDO $db, array $class, int $me, int $docId, int $q, ?array $c
     }
     $due = (new DateTimeImmutable(classToday($class)))->modify('+' . REVIEW_DAYS[$newBox] . ' days')->format('Y-m-d');
     if ($card) {
-        $db->prepare('UPDATE review_cards SET box = :b, due_date = :due, updated_at = :t WHERE user_id = :u AND doc_id = :d AND q_index = :q')
-           ->execute($key + [':b' => $newBox, ':due' => $due, ':t' => time()]);
+        $db->prepare('UPDATE review_cards SET box = :b, due_date = :due, updated_at = :t, fails = fails + :f WHERE user_id = :u AND doc_id = :d AND q_index = :q')
+           ->execute($key + [':b' => $newBox, ':due' => $due, ':t' => time(), ':f' => $correct ? 0 : 1]);
     } else {
-        $db->prepare('INSERT INTO review_cards (user_id, doc_id, q_index, class_id, box, due_date, question, updated_at) VALUES (:u, :d, :q, :c, :b, :due, :qq, :t)')
+        $db->prepare('INSERT INTO review_cards (user_id, doc_id, q_index, class_id, box, due_date, question, updated_at, fails) VALUES (:u, :d, :q, :c, :b, :due, :qq, :t, 1)')
            ->execute($key + [':c' => (int)$class['id'], ':b' => $newBox, ':due' => $due, ':qq' => json_encode($question, JSON_UNESCAPED_UNICODE), ':t' => time()]);
     }
     return ['review', ['box' => $newBox, 'due' => $due]];
@@ -372,7 +372,7 @@ try {
 
         if ($action === 'review') {
             $today = classToday($class);
-            $st = $db->prepare('SELECT r.doc_id, r.q_index, r.box, r.due_date, r.question, d.title FROM review_cards r
+            $st = $db->prepare('SELECT r.doc_id, r.q_index, r.box, r.due_date, r.question, r.fails, d.title FROM review_cards r
                                 LEFT JOIN class_docs d ON d.id = r.doc_id
                                 WHERE r.user_id = :u AND r.class_id = :c ORDER BY r.due_date, r.doc_id, r.q_index');
             $st->execute([':u' => $me, ':c' => $classId]);
@@ -383,7 +383,7 @@ try {
                 $q = json_decode($r['question'], true);
                 if (!is_array($q) || count($due) >= 30) continue;
                 unset($q['answer'], $q['explanation']);   // the answer is given by the server when the question is answered
-                $due[] = ['doc_id' => (int)$r['doc_id'], 'q' => (int)$r['q_index'], 'box' => (int)$r['box'], 'from' => $r['title'] ?? 'Quiz'] + $q;
+                $due[] = ['doc_id' => (int)$r['doc_id'], 'q' => (int)$r['q_index'], 'box' => (int)$r['box'], 'fails' => (int)$r['fails'], 'from' => $r['title'] ?? 'Quiz'] + $q;
             }
             jsonResponse(['success' => true, 'today' => $today, 'due' => $due, 'later' => $later]);
         }
