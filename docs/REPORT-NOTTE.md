@@ -19,3 +19,16 @@ Locale, non in git. Ogni voce: cosa è stato fatto, dove, versione in produzione
 14. Il turno nel calendario mostra il **programma** fino a quel giorno; il file dell'AI (PDF/Word) passa dalla coda dei caricamenti; nel ripasso "la stai sbagliando da un po'" (schema v23).
 15. **PDF unico "Per AI"** (prompt, testi, trascrizioni e le foto originali in un solo file): pulsante "Scarica un PDF (con le foto)" nella pagina Carica e voce nei menu ⋯ (giorno, materia, verifica). Niente librerie: ho scritto un piccolo generatore di PDF (accenti ok; foto JPEG e PNG semplici; le altre restano nello zip). Testato con `pdftotext` e `pdfimages`. Lo zip tiene già senza compressione foto, PDF e audio.
 16. **L'AI controlla i caricamenti** (schema v24, `tests/classificazione.test.js`, si spegne con `AI_CLASSIFY=false` nel `.env`): dopo la trascrizione legge ogni caricamento nuovo; se tipo, materia o data scelti non coincidono col testo (e l'AI è sicura) manda una **segnalazione** a chi ha caricato e al rappresentante (Bacheca › Da sistemare: "Correggi come suggerito" / "Lascia com'è": **non cambia mai niente da sola**); se hai scelto **"Lo decide l'AI"** (ora il tipo predefinito nella pagina Carica) mette lei il tipo; propone un **argomento** nuovo (da confermare) e una **verifica annunciata** nel materiale ("Aggiungi al calendario"). Usa il modello veloce, al massimo 8 caricamenti per giro.
+17. **Altre cose del piano**: promemoria del **ripasso** a un'ora scelta (spento di base); promemoria delle verifiche anche **una settimana** e **3 giorni** prima (a scelta, di base restano 2gg/1gg/sera); **avanzamento di lettura sul server** (stesso punto su telefono e computer); **"Gli Appunti si aprono su…"** (ultima scheda / Bacheca / Classe / …) in Impostazioni; **modalità mancini** (header, menu e pulsanti specchiati); nel quiz "la stai sbagliando da un po'".
+
+## Non fatto (e perché)
+- **Cache lunga di /js e /css** (ho preparato le righe in `docs/DA-FARE.md`): è una modifica a nginx, serve il tuo sì. Oggi il browser tiene già i file e chiede solo "è cambiato?" (304).
+- **Materiale diviso per data + argomento, con l'AI che lavora "per pezzo"**: cambierebbe tutta la pipeline dell'AI (documenti per lezione → per argomento); troppo rischioso da fare di notte senza che tu lo veda. Oggi gli argomenti guidano *quali* lezioni riassumere, non come si dividono i documenti.
+- **Coda dei caricamenti per i libri della Biblioteca**, e coda **in background a pagina chiusa** (service worker con Background Sync, solo Chrome/Android).
+- Ho letto "installare il materiale" come "scaricare".
+
+## Cose da guardare domattina
+1. Dal telefono: Classe (orario) → Bacheca → Classifica → Studio (Quiz su misura, Domande fatte in classe) → Carica (passo 1 e prompt) → Impostazioni (ingranaggio).
+2. Caricare una foto con "Lo decide l'AI" e controllare dopo qualche minuto la Bacheca › Da sistemare.
+3. Una prova di Whisper con un audio vero (la sessione del server lo ha installato ma non l'ha ancora provato).
+4. Se vuoi la cache lunga: dimmi sì e preparo il messaggio per la sessione del server.

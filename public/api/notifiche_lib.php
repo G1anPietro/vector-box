@@ -9,7 +9,8 @@ require_once __DIR__ . '/webpush.php';
 const NOTIFY_KEEP = 200;               // notifications kept per user
 const NOTIFY_PUSH_MAX_FAILURES = 10;   // a subscription failing this many times in a row is dropped
 // Reminder slots: [days before the test, local time from which it is sent]
-const REMINDER_SLOTS = ['d2' => [2, '16:00'], 'd1' => [1, '16:00'], 'sera' => [1, '21:00']];
+const REMINDER_SLOTS = ['d7' => [7, '16:00'], 'd3' => [3, '16:00'], 'd2' => [2, '16:00'], 'd1' => [1, '16:00'], 'sera' => [1, '21:00']];
+const REMINDER_DEFAULT = ['d2', 'd1', 'sera'];   // on unless the member chose otherwise (a week and 3 days before are opt-in)
 const BELL_LEAD_SEC = 300;             // "next lesson" push: this long before the end of the current one
 
 const NOTIFY_PREF_KINDS = ['promemoria', 'turno', 'annuncio', 'riepilogo'];   // what a member can switch off (the bell has its own switch)
@@ -18,7 +19,7 @@ const NOTIFY_PREF_KINDS = ['promemoria', 'turno', 'annuncio', 'riepilogo'];   //
 function notifyPrefs(string $settingsJson): array {
     $s = json_decode($settingsJson, true);
     $n = is_array($s) && is_array($s['notify'] ?? null) ? $s['notify'] : [];
-    $slots = isset($n['slots']) && is_array($n['slots']) ? array_values(array_intersect(array_keys(REMINDER_SLOTS), $n['slots'])) : array_keys(REMINDER_SLOTS);
+    $slots = isset($n['slots']) && is_array($n['slots']) ? array_values(array_intersect(array_keys(REMINDER_SLOTS), $n['slots'])) : REMINDER_DEFAULT;
     return ['promemoria' => ($n['promemoria'] ?? true) !== false, 'slots' => $slots,
             'turno' => ($n['turno'] ?? true) !== false, 'annuncio' => ($n['annuncio'] ?? true) !== false, 'riepilogo' => ($n['riepilogo'] ?? true) !== false,
             'ripasso_on' => !empty($n['ripasso_on']), 'ripasso_hour' => max(0, min(23, (int)($n['ripasso_hour'] ?? 18)))];
@@ -93,7 +94,7 @@ function remindersRun(PDO $db, int $now): int {
         $time = $local->format('H:i');
         $st = $db->prepare("SELECT e.*, s.name AS subject FROM class_events e JOIN class_subjects s ON s.id = e.subject_id
                             WHERE e.class_id = :c AND e.kind IN ('verifica', 'interrogazione') AND e.event_date BETWEEN :f AND :t");
-        $st->execute([':c' => $class['id'], ':f' => $today, ':t' => $local->modify('+2 days')->format('Y-m-d')]);
+        $st->execute([':c' => $class['id'], ':f' => $today, ':t' => $local->modify('+7 days')->format('Y-m-d')]);
         foreach ($st->fetchAll() as $ev) {
             $done->execute([':e' => $ev['id']]);
             $already = array_flip($done->fetchAll(PDO::FETCH_COLUMN));
@@ -174,7 +175,7 @@ function turnsRun(PDO $db, int $now): int {
 
 function reminderText(PDO $db, array $ev, string $slot): array {
     $what = $ev['kind'] === 'interrogazione' ? 'Interrogazione' : 'Verifica';
-    $when = ['d2' => 'tra 2 giorni', 'd1' => 'domani', 'sera' => 'domani: ultimo ripasso'][$slot];
+    $when = ['d7' => 'tra una settimana', 'd3' => 'tra 3 giorni', 'd2' => 'tra 2 giorni', 'd1' => 'domani', 'sera' => 'domani: ultimo ripasso'][$slot];
     $date = (new DateTimeImmutable($ev['event_date']))->format('d/m');
     $st = $db->prepare("SELECT kind FROM class_docs WHERE event_id = :e AND status = 'ok'");
     $st->execute([':e' => $ev['id']]);

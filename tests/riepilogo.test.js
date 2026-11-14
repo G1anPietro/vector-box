@@ -86,3 +86,16 @@ test('the review reminder is off by default; at the member\'s hour it says how m
     await worker(Math.floor(Date.parse('2030-02-04T22:30:00Z') / 1000));
     assert.equal(reviews().length, 1, 'once a day');
 });
+
+test('reminders a week or three days before a test are opt-in; the default ones are unchanged', async () => {
+    site.db("DELETE FROM notifications; DELETE FROM class_event_reminders");
+    const test3 = '2030-03-20';   // a Wednesday; three days before: Sunday 17th
+    await mario.post('/api/appunti.php', { action: 'add_event', class_id: classId, subject_id: storia, kind: 'verifica', date: test3 });
+    // luigi wants the 3-days-before one too; mario keeps the defaults
+    await luigi.post('/api/notifiche.php', { action: 'save_prefs', class_id: classId, prefs: { promemoria: true, turno: true, annuncio: true, riepilogo: true, slots: ['d3', 'd2', 'd1', 'sera'] } });
+    const at = Math.floor(Date.parse('2030-03-17T15:30:00Z') / 1000);   // 16:30 Rome
+    await run('php', [path.join(site.root, 'bin/appunti-ai.php'), `--now=${at}`]);
+    const get = (u) => site.db("SELECT title FROM notifications WHERE kind = 'promemoria' AND user_id = (SELECT id FROM accounts WHERE username = ?)", [u]).map((r) => r.title);
+    assert.deepEqual(get('rs_luigi'), ['Verifica di Storia tra 3 giorni']);
+    assert.deepEqual(get('rs_mario'), [], 'the default member is not told three days before');
+});

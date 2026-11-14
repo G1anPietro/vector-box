@@ -780,3 +780,11 @@ html, body { overflow-x: clip; }
 .prompt-lib { margin: 10px 0 4px; }
 .prompt-lib summary { cursor: pointer; color: var(--accent); }
 .fails-note { font-size: 13px; color: var(--accent); margin: 2px 0 4px; }
+
+/* Left-handed mode: what sits on the right goes to the left, so the thumb does not cross the screen */
+html.lefty .top, html.lefty .top-right, html.lefty .arch-top, html.lefty .arch-bar, html.lefty .bb-head, html.lefty .test-head, html.lefty .ai-bar-row, html.lefty .doc-row,
+html.lefty .day-head, html.lefty .sr-head, html.lefty .pv-head, html.lefty .card-head, html.lefty .cal-view, html.lefty .mc-head, html.lefty .asked-tools,
+html.lefty .doc-tools, html.lefty .sc-mine, html.lefty .bb-note-top, html.lefty .notif-head { flex-direction: row-reverse; }
+html.lefty .row-actions { flex-direction: row-reverse; }
+html.lefty .up-widget { left: auto; right: 12px; }
+html.lefty .code-actions { flex-direction: row-reverse; justify-content: flex-start; }

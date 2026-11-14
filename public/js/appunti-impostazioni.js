@@ -186,7 +186,7 @@
         let digestRow = null;
         let hourRow = null;
         const up = window.AppuntiUpload.settings();
-        const slotLabel = { d2: 'Due giorni prima, alle 16:00', d1: 'Il giorno prima, alle 16:00', sera: 'La sera prima, alle 21:00' };
+        const slotLabel = { d7: 'Una settimana prima, alle 16:00', d3: 'Tre giorni prima, alle 16:00', d2: 'Due giorni prima, alle 16:00', d1: 'Il giorno prima, alle 16:00', sera: 'La sera prima, alle 21:00' };
 
         // name in the class
         const name = el('input', { name: 'name', maxLength: 40, placeholder: 'Nome e cognome', value: me ? me.display_name : '' });
@@ -329,6 +329,7 @@
             ...(C.canSpeak() ? [voiceSection()] : []),
             section('Come lo vedo', 'Su questo dispositivo.',
                 el('label', { text: 'Gli Appunti si aprono su' }, openTab),
+                sw('Uso il telefono con la mano sinistra (menu e pulsanti specchiati)', C.stored('vb_lefty') === '1', (on) => { C.store('vb_lefty', on ? '1' : '0'); document.documentElement.classList.toggle('lefty', on); saved(); }),
                 el('label', { text: 'La settimana inizia di' }, week),
                 el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),
             el('div', { class: 'set-pair' },

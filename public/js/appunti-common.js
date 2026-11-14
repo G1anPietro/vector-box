@@ -421,6 +421,9 @@
     new MutationObserver((list) => list.forEach((r) => r.addedNodes.forEach((n) => { if (n.nodeType === 1) enhanceAll(n); })))
         .observe(document.documentElement, { childList: true, subtree: true });
 
+    // Left-handed mode (Impostazioni): header, menus and button rows are mirrored so the thumb does not cross the screen
+    try { if (localStorage.getItem('vb_lefty') === '1') document.documentElement.classList.add('lefty'); } catch (e) { /* private mode */ }
+
     /* ---------- "⋯" menu: the actions of an element without a row of big buttons ---------- */
     function closeMenus() { document.querySelectorAll('.kebab-list:not([hidden])').forEach((l) => { l.hidden = true; }); }
     document.addEventListener('click', closeMenus);
@@ -442,7 +445,9 @@
                 const r = btn.getBoundingClientRect();
                 const w = Math.min(box.offsetWidth || 220, window.innerWidth - 16);
                 box.style.position = 'fixed';
-                box.style.left = `${Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))}px`;
+                // left-handed mode: the list opens towards the right, away from the thumb's corner
+                const edge = document.documentElement.classList.contains('lefty') ? r.left : r.right - w;
+                box.style.left = `${Math.max(8, Math.min(edge, window.innerWidth - w - 8))}px`;
                 box.style.right = 'auto';
                 const h = box.offsetHeight;
                 box.style.top = `${r.bottom + 4 + h > window.innerHeight - 8 ? Math.max(8, r.top - h - 4) : r.bottom + 4}px`;
