@@ -35,7 +35,7 @@ require_once __DIR__ . '/../includes/head.php';
         <h2 id="cosa">Cos'è</h2>
         <p>vector-box è un sito in stile "desktop cyberpunk": si apre nel browser e sembra un sistema operativo, con finestre da
         trascinare, un terminale con i suoi comandi e una barra delle applicazioni. Dentro ci sono una chat con stanze e messaggi
-        privati, una biblioteca di libri da leggere online per gli amici e una serie di giochi: giochi da festa da fare con il
+        privati, una biblioteca di libri da leggere online per gli amici, gli appunti condivisi di una classe di scuola e una serie di giochi: giochi da festa da fare con il
         telefono (Chi è la spia?, Lupus, Non ho mai…) e giochi da soli come il Solitario. Lo usa ogni giorno un gruppo di amici.</p>
 
         <h2 id="come">Come funziona</h2>
@@ -49,7 +49,7 @@ require_once __DIR__ . '/../includes/head.php';
             </div>
         </div>
         <p><strong>PHP</strong> è la "fonte di verità": salva ogni messaggio, controlla chi può fare cosa e fa girare i giochi.
-        Il database è <strong>SQLite</strong>, un unico file, con le modifiche alla struttura numerate (oggi siamo alla versione 11)
+        Il database è <strong>SQLite</strong>, un unico file, con le modifiche alla struttura numerate (oggi siamo alla versione 26)
         e applicate da sole a ogni aggiornamento. Per la chat in tempo reale c'è un piccolo server <strong>Node.js</strong>: invece di
         far chiedere a ogni browser "ci sono messaggi nuovi?" ogni pochi secondi, tiene aperta una sola connessione
         (<abbr title="Server-Sent Events">SSE</abbr>) e spinge i messaggi appena arrivano. Se Node si ferma, il sito torna da solo al
@@ -66,7 +66,11 @@ require_once __DIR__ . '/../includes/head.php';
             schede; i giochi si installano come app e il Solitario funziona anche offline.</li>
             <li><strong>Messaggi privati</strong> con blocco degli utenti, e i messaggi vecchi che si caricano da soli scorrendo.</li>
             <li><strong>Biblioteca</strong> con lettore EPUB e PDF, copertine, segnalibri e avanzamento salvato.</li>
-            <li><strong>Test automatici:</strong> 101 test che avviano ogni volta una copia del sito con un database vuoto e controllano
+            <li><strong>Appunti di classe:</strong> gli studenti caricano foto, audio e file delle lezioni (a pezzi, così riprendono anche se cade la
+            connessione) e un'AI li unisce in appunti, schemi, dispense, riassunti e quiz per ogni verifica, divisi per materia, giorno e
+            argomento. C'è una ricerca nel materiale, un calendario, i turni delle interrogazioni, una classifica in cui i punti li conta il
+            server (la pagina non conosce la risposta giusta prima che tu risponda) e promemoria sul telefono scelti da ciascuno.</li>
+            <li><strong>Test automatici:</strong> oltre 200 test che avviano ogni volta una copia del sito con un database vuoto e controllano
             account, permessi, chat, giochi, sicurezza. Prima di ogni modifica pubblicata devono passare tutti.</li>
         </ul>
 
@@ -120,10 +124,10 @@ require_once __DIR__ . '/../includes/head.php';
 
         <h2 id="numeri">In numeri</h2>
         <div class="numbers">
-            <div><b>~27.000</b><span>righe di codice e testo</span></div>
-            <div><b>110+</b><span>modifiche registrate (commit)</span></div>
-            <div><b>101</b><span>test automatici</span></div>
-            <div><b>10</b><span>versioni della struttura del database</span></div>
+            <div><b>~46.000</b><span>righe di codice e testo</span></div>
+            <div><b>190+</b><span>modifiche registrate (commit)</span></div>
+            <div><b>200+</b><span>test automatici</span></div>
+            <div><b>26</b><span>versioni della struttura del database</span></div>
             <div><b>8</b><span>giochi</span></div>
             <div><b>5</b><span>lingue</span></div>
         </div>

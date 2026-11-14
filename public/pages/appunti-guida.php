@@ -83,6 +83,10 @@ $login = 'login.php?next=appunti.php';
                 <li><strong>Pagina Carica</strong> (in alto, <em>Carica</em>): tutti i modi per caricare in un posto solo, cioè fotocamera,
                     file (anche trascinandoli), testo scritto o copiato da un'AI (il <b>**grassetto**</b> di ChatGPT e Gemini viene mostrato
                     formattato) e documenti fatti con un'altra AI, con la barra di avanzamento.</li>
+                <li><strong>Per argomento:</strong> ogni caricamento va sotto l'argomento (messo nel Calendario) che copre quel giorno; se nello stesso giorno
+                    ne corrono due, lo scegli tu (o lo sceglie l'AI leggendo il testo). Se due argomenti dividono un giorno, l'AI scrive un documento per
+                    ciascuno. Nell'Archivio trovi le cartelle <em>Per argomento</em>, in Materiale c'è il filtro, e una verifica lascia fuori il materiale
+                    degli argomenti che togli dalla sua lista.</li>
                 <li><strong>Archivio</strong> (in alto): tutto il materiale a cartelle, Materia → Giorno → file, con l'anteprima accanto
                     (foto, PDF, testi, trascrizioni, documenti dell'AI) senza dover scorrere la pagina.</li>
                 <li><strong>Tutti vedono tutto</strong>, con il nome di chi l'ha caricato. Puoi modificare o cancellare solo quello che hai

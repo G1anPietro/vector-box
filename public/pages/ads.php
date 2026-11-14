@@ -30,7 +30,7 @@ $other = $it ? 'en' : 'it';
     <main class="doc">
 <?php if ($it): ?>
         <h1>Supporta vector-box</h1>
-        <p>vector-box è un sito fatto in casa, nel senso letterale: gira su un vecchio portatile senza schermo, in una casa in Italia, ed è curato da uno studente di informatica. Dentro ci sono una chat, un lettore di libri per gli amici e dei giochi che chiunque può usare gratis, senza account.</p>
+        <p>vector-box è un sito fatto in casa, nel senso letterale: gira su un vecchio portatile senza schermo, in una casa in Italia, ed è curato da uno studente di informatica. Dentro ci sono una chat, un lettore di libri per gli amici, gli appunti di classe (foto, audio e file di tutta la classe messi in ordine da un’AI, con riassunti, quiz e promemoria delle verifiche) e dei giochi che chiunque può usare gratis, senza account.</p>
 
         <h2>Cosa costa tenerlo acceso</h2>
         <p>Il server è acceso giorno e notte: corrente, una chiavetta per i backup notturni e, prima o poi, pezzi di ricambio (il disco ha già dato qualche segno di stanchezza). Non sono cifre enormi, ma ci sono.</p>
@@ -51,7 +51,7 @@ $other = $it ? 'en' : 'it';
         <a class="cta<?= donationsOn() ? ' secondary' : '' ?>" href="giochi.php">Vai ai giochi</a>
 <?php else: ?>
         <h1>Support vector-box</h1>
-        <p>vector-box is home-made, literally: it runs on an old screenless laptop in a house in Italy and is looked after by a computer science student. It has a chat, a book reader for friends, and games anyone can play for free, with no account.</p>
+        <p>vector-box is home-made, literally: it runs on an old screenless laptop in a house in Italy and is looked after by a computer science student. It has a chat, a book reader for friends, class notes (photos, recordings and files of a whole class put in order by an AI, with summaries, quizzes and test reminders), and games anyone can play for free, with no account.</p>
 
         <h2>What it costs to keep it running</h2>
         <p>The server is on day and night: electricity, a USB drive for the nightly backups and, sooner or later, spare parts (the disk has already shown some signs of wear). Not huge amounts, but they add up.</p>

@@ -18,7 +18,7 @@ architecture, database, every API endpoint, security rules, configuration, deplo
 | **Chat** | Rooms (announcement-only and admin-only ones too), @mentions, who's online, "is typing", real-time through the hub. |
 | **Private messages** | Between registered users, with blocking and older messages loading as you scroll; no admin access path. |
 | **Library** | EPUB and PDF reader for allowed accounts: covers, reading progress, bookmarks, multi-file upload. |
-| **Class notes** | Shared notes per school class (admin-approved classes, invite codes, per-day timetable read from a photo), a test calendar with reminders (in-site bell and Web Push), and study documents written by Google Gemini: merged lesson notes, a complete handout, summary, targeted preparation and a quiz for every test. |
+| **Class notes** | Shared notes per school class: admin-approved classes, invite codes, roles and permissions, a timetable read from a photo, uploads in resumable pieces (drag and drop anywhere), full-text search, a board (now / next lesson, announcements, the week), a calendar with tests, homework, topics and oral-exam turns, reminders (in-site and Web Push, chosen per person), and study documents written by Google Gemini: lesson notes per topic, a complete handout, summary, targeted preparation, quizzes (custom quizzes, spaced review, a scoreboard judged by the server), mind maps, one PDF "for another AI" and ready-made prompts. |
 | **Games** | *Who's the spy?*, *Lupus* (werewolf) and *Cucù* (an Italian card game) with multi-phone rooms, *Never have I ever…*, *Solitaire* (Klondike), *Node Breach*, *ARG Vault*, poker. Five languages for the party games. |
 
 <img src="docs/img/giochi.png" alt="Games page" width="640">
@@ -30,7 +30,7 @@ cp .env.example .env          # fill it in: Node refuses to start without SESSIO
 npm install
 php -S 127.0.0.1:8080 -t public
 npm start                     # optional: the chat hub
-npm test                      # 101 automated tests, each run on a throwaway copy of the site
+npm test                      # about 220 automated tests, each run on a throwaway copy of the site
 ```
 
 Requirements: PHP 8 with `pdo_sqlite`, `curl`, `zip`, `xml` (`mbstring` recommended); Node.js 22.
@@ -38,7 +38,7 @@ Requirements: PHP 8 with `pdo_sqlite`, `curl`, `zip`, `xml` (`mbstring` recommen
 - Serve **only** `public/`; `data/` (SQLite, sessions, books, logs) lives outside it and is created automatically.
 - Behind a reverse proxy set `TRUSTED_PROXIES` (PHP) and `TRUST_PROXY` (Node).
 - Schema changes: a new `migrateVN()` in `public/api/database.php` plus `DB_SCHEMA_VERSION` (tracked with
-  `PRAGMA user_version`, currently 11).
+  `PRAGMA user_version`, currently 26).
 - Deploy on the server with `sudo bash updatesite.sh` (see [`docs/DEPLOY.md`](docs/DEPLOY.md)); nightly backups:
   [`docs/BACKUP.md`](docs/BACKUP.md).
 
