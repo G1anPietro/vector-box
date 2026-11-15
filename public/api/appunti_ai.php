@@ -204,7 +204,8 @@ function aiTranscribePending(PDO $db, int $max): int {
             $done++;
         } catch (GeminiError $e) {
             if ($e->stop) { aiLog('transcription stopped: ' . $e->getMessage()); break; }
-            $failed = (int)$f['text_attempts'] + 1 >= AI_MAX_ATTEMPTS;
+            // No automatic second try: every call counts against the day's quota. A file that failed is marked failed.
+            $failed = true;
             $save->execute([':t' => null, ':s' => $failed ? 'failed' : 'pending', ':inc' => 1, ':id' => $f['id']]);
             aiLog("transcription of file {$f['id']} failed: " . $e->getMessage());
         }
@@ -257,9 +258,23 @@ function aiSaveDoc(PDO $db, array $doc): void {
                   ':err' => $doc['error'] ?? null, ':now' => $now]);
 }
 
+/**
+ * Whether the run in progress may redo documents that failed last time. The daily (automatic) run never does: a failed
+ * document with the same material is left alone until someone presses "Genera ora", so one bad day cannot burn the
+ * whole quota on retries. Set per class by aiRun().
+ */
+function aiRetryErrors(?bool $set = null): bool {
+    static $retry = false;
+    if ($set !== null) $retry = $set;
+    return $retry;
+}
+
 function aiDocHash(PDO $db, int $classId, string $key): ?string {
-    $st = $db->prepare("SELECT input_hash FROM class_docs WHERE class_id = :c AND doc_key = :k AND status = 'ok'");
-    $st->execute([':c' => $classId, ':k' => $key]);
+    $st = $db->prepare("SELECT input_hash FROM class_docs WHERE class_id = :c AND doc_key = :k AND (status = 'ok' OR (status = 'error' AND :r = 0))");
+    $st->bindValue(':r', aiRetryErrors() ? 1 : 0, PDO::PARAM_INT);
+    $st->bindValue(':c', $classId, PDO::PARAM_INT);
+    $st->bindValue(':k', $key);
+    $st->execute();
     $h = $st->fetchColumn();
     return $h === false ? null : (string)$h;
 }
@@ -383,8 +398,20 @@ function aiLessonDocs(PDO $db, array $class): int {
 
 /** Calls the smart model, or the fast one when the smart one is out of quota or overloaded. Returns [text, model]. */
 function aiGenerateBest(PDO $db, bool $smart, string $system, array $parts, array $opts = []): array {
-    // The smart model when possible; the fast one when it is out of quota or overloaded
-    return geminiGenerateAny($db, $smart ? GEMINI_SMART_CHAIN : ['fast'], $system, $parts, $opts);
+    // The smart model when possible; the fast one when it is out of quota (no call is made then, so nothing is burnt).
+    // When Google is just overloaded the automatic run does not try the other models: a manual run ("Genera ora") does.
+    $tiers = $smart ? GEMINI_SMART_CHAIN : ['fast'];
+    if (aiRetryErrors()) return geminiGenerateAny($db, $tiers, $system, $parts, $opts);
+    $last = null;
+    foreach ($tiers as $tier) {
+        try {
+            return [geminiGenerate($db, $tier, $system, $parts, $opts), geminiTier($tier)['model']];
+        } catch (GeminiError $e) {
+            if (!$e->quota) throw $e;
+            $last = $e;
+        }
+    }
+    throw $last ?? new GeminiError('no model available', true);
 }
 
 /** Dates (YYYY-MM-DD) in [from, to] with a lesson of the subject in the timetable but no material uploaded. */
@@ -789,10 +816,11 @@ function aiRun(PDO $db, int $now): array {
     $stats['transcribed'] = aiTranscribePending($db, min(AI_TRANSCRIBE_PER_RUN, geminiLeftToday($db, 'fast')));
     if (strtolower((string)envValue('AI_CLASSIFY', 'true')) !== 'false' && geminiLeftToday($db, 'fast') > 10) aiClassifyItems($db, $now);
 
-    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active' ORDER BY id")->fetchAll();
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active' AND is_demo = 0 ORDER BY id")->fetchAll();   // the example class has hand-made documents
     foreach ($classes as $class) {
         if (!aiClassDue($class, $now)) continue;
         $manual = !empty($class['ai_requested_at']);
+        aiRetryErrors($manual);
         GeminiError::$lastStop = '';
         $lessons = aiLessonDocs($db, $class);
         $lessons += aiLessonSchemas($db, $class);

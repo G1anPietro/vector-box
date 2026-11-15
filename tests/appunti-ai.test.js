@@ -499,3 +499,45 @@ test('the worker cannot be run from the web', async () => {
     const direct = await fetch(`${site.base}/api/appunti_ai.php`);
     assert.equal((await direct.text()).trim(), '', 'the library prints nothing');
 });
+
+test('Google overloaded: one call and no automatic second try (every call counts against the day\'s quota)', async () => {
+    setEnv({ GEMINI_RETRY_WAITS: '' });      // the default
+    site.db('DELETE FROM class_docs WHERE class_id = ?', [classId]);
+    mode = 'busy';
+    calls.length = 0;
+    site.db('UPDATE school_classes SET ai_requested_at = ? WHERE id = ?', [Math.floor(Date.now() / 1000), classId]);
+    await worker();
+    assert.equal(calls.length, 1, 'a 503 is not tried again by the worker');
+    // with the old behaviour a wait list retries: this is still possible, only on request
+    setEnv({ GEMINI_RETRY_WAITS: '0.05,0.05' });
+    calls.length = 0;
+    site.db('UPDATE school_classes SET ai_requested_at = ? WHERE id = ?', [Math.floor(Date.now() / 1000), classId]);
+    await worker();
+    assert.equal(calls.length, 3, 'GEMINI_RETRY_WAITS can still switch the retries on');
+    mode = 'ok';
+    setEnv();
+});
+
+test('the daily run leaves a failed document alone; "Genera ora" does it again', async () => {
+    mode = 'badquiz';       // the quiz is not JSON: that document fails (not a stop)
+    site.db('DELETE FROM class_docs WHERE class_id = ?', [classId]);
+    const ev = await ap(mario, { action: 'add_event', class_id: classId, subject_id: storia, kind: 'verifica', date: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10), title: 'Prova' });
+    assert.equal(ev.status, 200);
+    site.db('UPDATE school_classes SET ai_requested_at = ? WHERE id = ?', [Math.floor(Date.now() / 1000), classId]);
+    await worker();
+    const bad = () => site.db("SELECT COUNT(*) AS n FROM class_docs WHERE class_id = ? AND status = 'error'", [classId])[0].n;
+    assert.ok(bad() >= 1, 'a document failed');
+    // the daily run (not manual): the same material, so the failed document is not tried again
+    site.db("UPDATE school_classes SET ai_requested_at = NULL, ai_last_auto = '2000-01-01', summary_time = '00:00' WHERE id = ?", [classId]);
+    calls.length = 0;
+    await worker();
+    assert.equal(calls.filter((c) => /quiz/.test(JSON.stringify(c.body.systemInstruction))).length, 0, 'the failed quiz was left alone');
+    // "Genera ora" tries again
+    mode = 'ok';
+    site.db('UPDATE school_classes SET ai_requested_at = ? WHERE id = ?', [Math.floor(Date.now() / 1000), classId]);
+    calls.length = 0;
+    await worker();
+    assert.equal(bad(), 0);
+    assert.ok(site.db("SELECT COUNT(*) AS n FROM class_docs WHERE class_id = ? AND kind = 'quiz' AND status = 'ok'", [classId])[0].n >= 1);
+    site.db("UPDATE school_classes SET ai_last_auto = '2999-01-01' WHERE id = ?", [classId]);
+});

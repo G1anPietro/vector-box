@@ -98,9 +98,9 @@ function geminiGenerateAny(PDO $db, array $tiers, string $system, array $parts, 
     throw $last ?? new GeminiError('no time left', false, false, true);
 }
 
-/** Seconds to wait before each retry of a 500/503/504 answer (GEMINI_RETRY_WAITS, default "2,5"). */
+/** Seconds to wait before each retry of a 500/503/504 answer (GEMINI_RETRY_WAITS, default none: every call counts against the quota). */
 function geminiRetryWaits(): array {
-    return array_map('floatval', array_filter(explode(',', (string)envValue('GEMINI_RETRY_WAITS', '2,5')), 'is_numeric'));
+    return array_map('floatval', array_filter(explode(',', (string)envValue('GEMINI_RETRY_WAITS', '')), 'is_numeric'));
 }
 
 /**
