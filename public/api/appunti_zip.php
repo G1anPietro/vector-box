@@ -284,24 +284,50 @@ function packPdf(PDO $db, array $class, array $scope): array|string {
     foreach ($prompts as $title => $text) { $pdf->heading($title, 2); $pdf->code(trim($text)); }
     $pdf->heading('Materiale', 1);
     $left = [];
+    $overview = [];
+    $pageBudget = 120;   // pages of PDFs added as pictures, in total
     foreach (array_values($items) as $n => $it) {
         $pdf->heading('[' . ($n + 1) . '] ' . (AI_KIND_LABELS[$it['kind']] ?? $it['kind']) . ' di ' . ($it['author'] ?? '?') . ' — ' . $it['subject'] . ', '
             . (new DateTimeImmutable($it['lesson_date']))->format('d/m/Y') . ($it['period'] ? ", {$it['period']}ª ora" : '') . ($it['title'] !== '' ? " — {$it['title']}" : ''), 3);
         if (trim($it['body']) !== '') $pdf->para($it['body']);
         foreach ($filesOf[$it['id']] as $f) {
             $src = notesDir((int)$class['id']) . '/' . basename($f['stored_name']);
+            $mime = (string)$f['mime'];
+            $how = [];
             $pdf->para('File: ' . $f['original_name']);
-            if (str_starts_with((string)$f['mime'], 'image/') && is_file($src) && filesize($src) < 12 * 1048576) {
-                if (!$pdf->image((string)file_get_contents($src))) $left[] = $f['original_name'];
+            if (str_starts_with($mime, 'image/') && is_file($src) && filesize($src) < 12 * 1048576) {
+                if ($pdf->image((string)file_get_contents($src))) $how[] = 'foto originale';
             }
-            if ($f['text_status'] === 'done' && $f['text'] !== null) $pdf->para($f['text']);
-            elseif (!str_starts_with((string)$f['mime'], 'image/')) $left[] = $f['original_name'];
+            // a PDF (typed or handwritten): its pages are added as pictures, for as many as the budget allows, so nothing is lost
+            if ($mime === 'application/pdf' && is_file($src) && filesize($src) < 40 * 1048576 && $pageBudget > 0) {
+                $pages = packPdfPages($src, min($pageBudget, 40));
+                foreach ($pages as $img) $pdf->image($img);
+                if ($pages) { $pageBudget -= count($pages); $how[] = count($pages) . ' pagine come immagini'; }
+            }
+            if ($f['text_status'] === 'done' && $f['text'] !== null) { $pdf->para($f['text']); $how[] = 'testo'; }
+            if (!$how) $left[] = $f['original_name'];
+            $overview[] = '[' . ($n + 1) . '] ' . $f['original_name'] . ': ' . ($how ? implode(' + ', $how) : 'non incorporato (audio, trascrizione non ancora pronta o formato non leggibile: è nello .zip)');
         }
     }
+    if ($overview) { $pdf->heading('Come sono inclusi i file', 2); $pdf->para(implode("\n", $overview)); }
     if ($left) $pdf->para('Nota: questi file non sono incorporati o trascritti (sono nello .zip): ' . implode(', ', array_slice($left, 0, 15)) . (count($left) > 15 ? ', …' : '') . '.');
     $out = $pdf->output();
     if (strlen($out) > ZIP_MAX_BYTES) return 'Troppo materiale per un solo PDF: scegli un giorno o una materia.';
     return [$out, zipName("Per AI - Appunti {$class['name']} - $what", 100) . '.pdf'];
+}
+
+/** Pages of a PDF as JPEG bytes (needs pdftoppm on the server; returns [] when it is not there). At most $maxPages pages. */
+function packPdfPages(string $src, int $maxPages): array {
+    if ($maxPages < 1 || !function_exists('exec') || in_array('exec', array_map('trim', explode(',', (string)ini_get('disable_functions'))), true)) return [];
+    $dir = dirname(__DIR__, 2) . '/data/tmp/pp-' . bin2hex(random_bytes(6));
+    if (!@mkdir($dir, 0750, true)) return [];
+    $out = [];
+    @exec('timeout 40 pdftoppm -jpeg -r 85 -l ' . (int)$maxPages . ' ' . escapeshellarg($src) . ' ' . escapeshellarg("$dir/p") . ' 2>/dev/null');
+    $pages = glob("$dir/p*.jpg") ?: [];
+    sort($pages);
+    foreach ($pages as $p) { $out[] = (string)file_get_contents($p); @unlink($p); }
+    @rmdir($dir);
+    return $out;
 }
 
 /** The site's prompts, reworded for an AI that reads the material from this same file. */

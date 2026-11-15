@@ -21,6 +21,9 @@ const NOTE_FILE_TYPES = [
     'heic' => ['image/heic', 'image/heif'], 'heif' => ['image/heif', 'image/heic'],
     'pdf' => ['application/pdf'],
     'txt' => ['text/plain'], 'md' => ['text/plain', 'text/markdown'],
+    // web pages (the teacher's HTML notes): never kept as uploaded, see notesSanitizeHtml()
+    'html' => ['text/html', 'text/plain', 'application/xhtml+xml', 'text/xml', 'application/xml'],
+    'htm' => ['text/html', 'text/plain', 'application/xhtml+xml', 'text/xml', 'application/xml'],
     // recordings of lessons (phone voice recorders, WhatsApp voice notes, ...)
     'mp3' => ['audio/mpeg', 'audio/mp3'], 'm4a' => ['audio/mp4', 'audio/x-m4a', 'video/mp4', 'audio/aac'],
     'aac' => ['audio/aac', 'audio/x-hx-aac-adts'], 'wav' => ['audio/wav', 'audio/x-wav', 'audio/wave'],
@@ -34,7 +37,7 @@ const NOTE_FILE_TYPES = [
 const NOTE_MIME_OUT = [
     'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp',
     'heic' => 'image/heic', 'heif' => 'image/heif', 'pdf' => 'application/pdf',
-    'txt' => 'text/plain', 'md' => 'text/markdown',
+    'txt' => 'text/plain', 'md' => 'text/markdown', 'html' => 'text/html', 'htm' => 'text/html',
     'mp3' => 'audio/mpeg', 'm4a' => 'audio/mp4', 'aac' => 'audio/aac', 'wav' => 'audio/wav', 'ogg' => 'audio/ogg',
     'opus' => 'audio/ogg', 'flac' => 'audio/flac', 'webm' => 'audio/webm',
     'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -210,6 +213,91 @@ function notesFileType(string $path, string $originalName): ?array {
     return [$ext, NOTE_MIME_OUT[$ext]];
 }
 
+/**
+ * Makes an uploaded web page safe. Nothing of the original markup is kept: the page is read into a DOM and written again
+ * from an allow-list of tags and attributes (no scripts, frames, forms, event handlers, styles, links to javascript:,
+ * pictures from other sites). Returns [clean html, plain text] or null when it cannot be read.
+ * The file is also served with a CSP that forbids scripts and any request (see the "file" action), so this is a second wall.
+ */
+function notesSanitizeHtml(string $raw): ?array {
+    if (!class_exists('DOMDocument') || $raw === '') return null;
+    $raw = substr($raw, 0, 12 * 1048576);
+    if (!preg_match('//u', $raw)) {
+        $raw = function_exists('mb_convert_encoding') ? mb_convert_encoding($raw, 'UTF-8', 'Windows-1252') : (string)iconv('Windows-1252', 'UTF-8//IGNORE', $raw);
+    }
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw) ?? $raw;
+    $dom = new DOMDocument();
+    $prev = libxml_use_internal_errors(true);
+    $ok = $dom->loadHTML('<?xml encoding="UTF-8">' . $raw, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+    if (!$ok) return null;
+
+    $keep = array_flip(['h1','h2','h3','h4','h5','h6','p','div','span','a','ul','ol','li','table','thead','tbody','tfoot','tr','td','th','caption',
+        'img','br','hr','pre','code','kbd','samp','b','i','u','s','strong','em','mark','small','blockquote','q','cite','sup','sub','figure','figcaption',
+        'section','article','header','footer','nav','main','aside','dl','dt','dd','abbr','del','ins','details','summary','center']);
+    $drop = array_flip(['script','style','iframe','frame','frameset','object','embed','applet','noscript','template','svg','math','form','input','button',
+        'textarea','select','option','link','meta','base','head','audio','video','source','track','canvas','map','area','dialog','title']);
+    $block = array_flip(['h1','h2','h3','h4','h5','h6','p','div','ul','ol','li','table','tr','pre','blockquote','figure','figcaption','section','article','header','footer','nav','main','aside','dl','dt','dd','caption','details','summary','center','hr']);
+    $text = '';
+    $budget = 4000000;   // output size cap (bytes)
+
+    $walk = function (DOMNode $n) use (&$walk, $keep, $drop, $block, &$text, &$budget): string {
+        $out = '';
+        foreach ($n->childNodes as $c) {
+            if ($budget <= 0) break;
+            if ($c->nodeType === XML_TEXT_NODE || $c->nodeType === XML_CDATA_SECTION_NODE) {
+                $t = (string)$c->nodeValue;
+                $text .= $t;
+                $out .= htmlspecialchars($t, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $budget -= strlen($t);
+                continue;
+            }
+            if ($c->nodeType !== XML_ELEMENT_NODE) continue;   // comments, processing instructions
+            $tag = strtolower($c->nodeName);
+            if (isset($drop[$tag])) continue;
+            if (!isset($keep[$tag])) { $out .= $walk($c); continue; }   // unknown tag: keep only its content
+            if ($tag === 'br') { $text .= "\n"; $out .= '<br>'; continue; }
+            if ($tag === 'hr') { $text .= "\n"; $out .= '<hr>'; continue; }
+            $attrs = '';
+            if ($tag === 'a') {
+                $href = trim((string)$c->getAttribute('href'));
+                if (preg_match('#^(https?://|mailto:)#i', $href) && !preg_match('/[\x00-\x1F\s]/', $href)) $attrs = ' href="' . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . '" rel="noopener noreferrer nofollow" target="_blank"';
+            } elseif ($tag === 'img') {
+                $src = trim((string)$c->getAttribute('src'));
+                $alt = (string)$c->getAttribute('alt');
+                if (preg_match('#^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$#i', $src) && strlen($src) < 6000000) {
+                    $budget -= strlen($src);
+                    $out .= '<img src="' . $src . '" alt="' . htmlspecialchars($alt, ENT_QUOTES, 'UTF-8') . '">';
+                    if ($alt !== '') $text .= "\n[Immagine: $alt]\n";
+                } elseif ($alt !== '') {
+                    $text .= "\n[Immagine: $alt]\n";
+                    $out .= '<em>[' . htmlspecialchars($alt, ENT_QUOTES, 'UTF-8') . ']</em>';
+                }
+                continue;
+            } elseif ($tag === 'td' || $tag === 'th') {
+                foreach (['colspan', 'rowspan'] as $a) { $v = (int)$c->getAttribute($a); if ($v > 1 && $v <= 50) $attrs .= " $a=\"$v\""; }
+            }
+            if (isset($block[$tag])) $text .= "\n";
+            elseif ($tag === 'td' || $tag === 'th') $text .= "\t";
+            $inner = $walk($c);
+            if (isset($block[$tag])) $text .= "\n";
+            $out .= "<$tag$attrs>$inner</$tag>";
+        }
+        return $out;
+    };
+    $bodyNode = $dom->getElementsByTagName('body')->item(0) ?? $dom->documentElement;
+    if (!$bodyNode) return null;
+    $body = $walk($bodyNode);
+    $text = trim(preg_replace(["/[ \\t]+\\n/", "/\\n{3,}/", "/[ \\t]{2,}/"], ["\n", "\n\n", ' '], str_replace("\xC2\xA0", ' ', $text)) ?? '');
+    if ($text === '') return null;
+    $css = 'body{font:16px/1.55 system-ui,sans-serif;max-width:60rem;margin:0 auto;padding:1rem;color:#1a1a1a;background:#fff;overflow-wrap:anywhere}'
+         . 'img{max-width:100%;height:auto}table{border-collapse:collapse;max-width:100%}td,th{border:1px solid #bbb;padding:.3rem .5rem}'
+         . 'pre,code{font-family:ui-monospace,monospace;background:#f2f2f2}pre{padding:.6rem;overflow:auto}blockquote{border-left:3px solid #bbb;margin-left:0;padding-left:1rem}';
+    $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' . $css . '</style></head><body>' . $body . '</body></html>';
+    return [$html, $text];
+}
+
 /** Plain text of an XML part: one line per paragraph, entities decoded. */
 function notesXmlText(string $xml, string $paragraphTag): string {
     $xml = preg_replace('#</' . preg_quote($paragraphTag, '#') . '>#', "\n", $xml) ?? '';
@@ -232,6 +320,10 @@ function notesExtractText(string $path, string $ext): array {
                 : (string)iconv('Windows-1252', 'UTF-8//IGNORE', $text);
         }
         return [textCut($text, NOTE_TEXT_MAX), 'done'];
+    }
+    if (in_array($ext, ['html', 'htm'], true)) {
+        $res = notesSanitizeHtml((string)file_get_contents($path));
+        return $res && trim($res[1]) !== '' ? [textCut($res[1], NOTE_TEXT_MAX), 'done'] : [null, 'failed'];
     }
     if (!in_array($ext, ['docx', 'pptx', 'odt', 'odp'], true)) return [null, 'pending'];
 

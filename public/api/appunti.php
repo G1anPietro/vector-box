@@ -236,7 +236,7 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
     // Check every file's real type before keeping any of them
     foreach ($uploads as $k => $u) {
         $type = notesFileType($u['tmp'], $u['name']);
-        if (!$type) apFail('bad_type', "\"{$u['name']}\": use photos, PDF, text, Word/PowerPoint or LibreOffice files", 415);
+        if (!$type) apFail('bad_type', "\"{$u['name']}\": use photos, PDF, text, web pages (HTML), Word/PowerPoint or LibreOffice files", 415);
         $uploads[$k]['type'] = $type;
     }
 
@@ -250,6 +250,15 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
             if (!empty($u['local']) ? !rename($u['tmp'], "$dir/$name") : !move_uploaded_file($u['tmp'], "$dir/$name")) throw new RuntimeException('cannot store the file');
             $stored[] = ['stored' => $name, 'original' => textCut(basename(str_replace('\\', '/', $u['name'])), 200),
                          'mime' => $mime, 'size' => $u['size'], 'ext' => $ext, 'sha256' => (string)@hash_file('sha256', "$dir/$name")];
+            if ($ext === 'html' || $ext === 'htm') {
+                // a web page is never kept as uploaded: only the cleaned copy is stored (no scripts, no outside requests)
+                $clean = notesSanitizeHtml((string)file_get_contents("$dir/$name"));
+                if (!$clean) { foreach ($stored as $f) @unlink("$dir/{$f['stored']}"); @unlink("$dir/$name"); apFail('bad_html', "\"{$u['name']}\": the page has no readable text", 415); }
+                file_put_contents("$dir/$name", $clean[0]);
+                $last = count($stored) - 1;
+                $stored[$last]['size'] = strlen($clean[0]);
+                $stored[$last]['sha256'] = hash('sha256', $clean[0]);
+            }
         }
 
         $now = time();
@@ -331,15 +340,18 @@ try {
             $path = notesDir((int)$file['class_id']) . '/' . basename($file['stored_name']);
             if (!is_file($path)) apFail('not_found', 'File not found', 404);
 
-            $inline = str_starts_with($file['mime'], 'image/') || $file['mime'] === 'application/pdf';
+            $isHtml = $file['mime'] === 'text/html';
+            $inline = str_starts_with($file['mime'], 'image/') || $file['mime'] === 'application/pdf' || $isHtml;
             $name = str_replace(['"', '\\'], '', $file['original_name']);
-            header('Content-Type: ' . $file['mime']);
+            header('Content-Type: ' . $file['mime'] . ($isHtml ? '; charset=utf-8' : ''));
             header('Content-Length: ' . filesize($path));
             header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . rawurlencode($name)
                    . '"; filename*=UTF-8\'\'' . rawurlencode($name));
             header('X-Content-Type-Options: nosniff');
             header('Cache-Control: private, max-age=3600');
             if (str_starts_with($file['mime'], 'image/')) header("Content-Security-Policy: sandbox; default-src 'none'");
+            // a page written by a classmate: no script, no outside request, no form, not even the site's own origin
+            if ($isHtml) header("Content-Security-Policy: sandbox allow-popups; default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'");
             readfile($path);
             exit();
         }

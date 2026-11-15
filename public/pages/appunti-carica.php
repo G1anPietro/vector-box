@@ -79,10 +79,12 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
         <section class="card panel" id="p-files" hidden>
             <h2>📁 Scegli file</h2>
             <label class="drop" id="drop">
-                <input type="file" id="files-input" multiple accept="image/*,audio/*,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac,.webm">
+                <input type="file" id="files-input" multiple accept="image/*,audio/*,.pdf,.txt,.md,.html,.htm,.docx,.pptx,.odt,.odp,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac,.webm">
                 <b>Trascina qui i file</b><span>o tocca per sceglierli</span>
-                <small>Foto, registrazioni audio, PDF, Word, PowerPoint, LibreOffice, testo · fino a 20 alla volta</small>
+                <small>PDF (anche scritti a mano o scansionati), PowerPoint, pagine HTML, testo e Markdown, Word, LibreOffice, foto, audio · fino a 20 alla volta</small>
             </label>
+            <p class="muted small">✍️ <b>Appunti scritti a mano?</b> Caricali come PDF o come foto: l'AI li legge e li trascrive.
+                Le pagine HTML vengono ripulite prima di essere salvate: script, moduli e contenuti da altri siti vengono tolti, resta il testo con titoli, elenchi e tabelle.</p>
         </section>
 
         <section class="card panel" id="p-text" hidden>

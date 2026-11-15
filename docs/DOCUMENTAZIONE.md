@@ -126,7 +126,7 @@ sceglie l'ora del riassunto automatico (18:00 se non la cambia) e inserisce l'**
   data d'inizio, così il passaggio dal provvisorio al definitivo non cambia gli appunti vecchi.
 
 **Caricare il materiale** (scheda *Materiale*): appunti, slide o materiale del prof, pagine del libro, domande fatte dal
-prof alle interrogazioni, verifiche di preparazione. Foto, PDF, Word, PowerPoint, LibreOffice o testo scritto lì. Il sito
+prof alle interrogazioni, verifiche di preparazione. Foto, PDF (anche scritti a mano: li trascrive l'AI), Word, PowerPoint, LibreOffice, testo, Markdown o pagine HTML. Le pagine HTML non si conservano come caricate: `notesSanitizeHtml()` le rilegge in un DOM e le riscrive con una lista di tag e attributi ammessi (niente script, frame, moduli, stili, immagini da altri siti), si salva solo la copia pulita, si serve con CSP `sandbox; default-src 'none'` e nell'archivio si vede in un iframe `sandbox=""`. Il PDF unico "per AI" include testo, foto e le pagine dei PDF come immagini (serve `pdftoppm` sul server), con l'elenco di come è incluso ogni file. Il sito
 propone da solo la lezione giusta guardando l'ora della foto e l'orario (le ore di fila della stessa materia sono una
 lezione sola); si può sempre cambiare. Tutti i compagni vedono tutto il materiale, con il nome di chi l'ha caricato; chi
 l'ha caricato e il responsabile possono modificarlo o cancellarlo. Limiti: 40 MB per file e 5 GB per classe (li cambia

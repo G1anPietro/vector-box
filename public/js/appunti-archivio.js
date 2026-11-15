@@ -145,7 +145,7 @@
     }
 
     const fileIcon = (f) => f.mime.startsWith('image/') ? '🖼' : f.mime.startsWith('audio/') ? '🎧' : f.mime === 'application/pdf' ? '📕'
-        : /word|opendocument\.text/.test(f.mime) ? '📄' : /presentation/.test(f.mime) ? '📊' : '📃';
+        : f.mime === 'text/html' ? '🌐' : /word|opendocument\.text/.test(f.mime) ? '📄' : /presentation/.test(f.mime) ? '📊' : '📃';
     const docEntry = (d, label) => ({ type: 'doc', id: d.id, kind: d.kind, can_delete: d.can_delete, rawTitle: d.title, manualAi: !d.manual, icon: d.kind === 'schema' ? '🧠' : d.kind === 'quiz' || d.kind === 'domande' ? '❓' : d.event_id ? '📘' : '📝',
         label: label + (d.manual ? ` · di ${d.author || '?'}` : ''), meta: d.status === 'ok' ? (d.lesson_date ? shortDay.format(C.parseDate(d.lesson_date)) : '') : 'non riuscito',
         disabled: d.status !== 'ok' });
@@ -304,6 +304,10 @@
                     pv.replaceChildren(head(f.name, dl), meta, el('audio', { class: 'pv-audio', controls: true, preload: 'metadata', src: fileUrl(f.id) }), await textBlock(f, true));
                 } else if (f.mime === 'application/pdf') {
                     pv.replaceChildren(head(f.name, open, dl), meta, window.AppuntiPdf.view(fileUrl(f.id), f.name));
+                } else if (f.mime === 'text/html') {
+                    // sandbox="" : no script, no forms, not even the site's origin (the server adds the same limits)
+                    const frame = el('iframe', { class: 'pv-html', src: fileUrl(f.id), sandbox: '', referrerpolicy: 'no-referrer', title: f.name, loading: 'lazy' });
+                    pv.replaceChildren(head(f.name, open, dl), meta, frame);
                 } else {
                     pv.replaceChildren(head(f.name, dl), meta, await textBlock(f, false));
                 }

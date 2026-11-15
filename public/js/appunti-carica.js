@@ -94,7 +94,7 @@
         $('#queue').replaceChildren(...queue.map((f, i) => {
             const thumb = f.type.startsWith('image/') && !/heic|heif/.test(f.type)
                 ? el('img', { class: 'qthumb', alt: '', src: URL.createObjectURL(f) })
-                : el('span', { class: 'qthumb icon', text: f.type.startsWith('audio/') ? '🎧' : f.type === 'application/pdf' ? '📕' : '📄' });
+                : el('span', { class: 'qthumb icon', text: f.type.startsWith('audio/') ? '🎧' : f.type === 'application/pdf' ? '📕' : /html/.test(f.type) || /\.html?$/i.test(f.name) ? '🌐' : '📄' });
             return el('li', {}, thumb, el('span', { class: 'qname', text: `${f.name} · ${C.sizeText(f.size)}` }),
                 el('button', { type: 'button', class: 'ghost mini', text: '×', 'aria-label': 'Togli', onclick: () => { queue.splice(i, 1); renderQueue(); } }));
         }));
