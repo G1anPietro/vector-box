@@ -580,7 +580,7 @@
         const fit = () => {
             canvas.style.zoom = '1'; drawLinks();
             const w = canvas.scrollWidth || 1; const h = canvas.scrollHeight || 1;
-            const big = wrap.classList.contains('is-fs'); const phone = window.innerWidth < 700;
+            const big = wrap.classList.contains('is-fs'); const phone = Math.min(window.innerWidth, window.innerHeight) < 700;
             const fitW = (map.clientWidth - 32) / w; const fitH = (map.clientHeight - 32) / h;
             // a phone never shrinks the map below a readable size (it scrolls instead); full screen may also enlarge it
             zoom(big ? (phone ? Math.max(0.9, Math.min(2, fitW, fitH)) : Math.min(2, fitW, fitH)) : (phone ? Math.max(0.75, Math.min(1, fitW)) : Math.min(1, fitW)));
@@ -632,6 +632,11 @@
         const dl = el('span', { class: 'schema-dl' }, dlBtn, menu);
         wrap.querySelector('.schema-tools').append(dl);
         setView(stored(VIEW_KEY) || (window.innerWidth >= 700 ? 'map' : 'list'));
+        // turning the phone: the map is fitted again for the new shape
+        let turnTimer = 0;
+        const refit = () => { clearTimeout(turnTimer); turnTimer = setTimeout(() => { if (wrap.isConnected && wrap.dataset.view === 'map') fit(); }, 250); };
+        window.addEventListener('orientationchange', refit);
+        window.addEventListener('resize', refit);
         return wrap;
     }
 
@@ -988,7 +993,7 @@
             };
             if (badge) { count(); setInterval(() => { if (document.visibilityState === 'visible') count(); }, 60000); }
             if (needs.length) {
-                try { const m = await getJson('../api/classi.php?action=mine'); needs.forEach((x) => { x.hidden = m.classes.length === 0; }); } catch (e) { /* keep them */ }
+                try { const m = await getJson('../api/classi.php?action=mine'); const have = m.classes.length > 0 || (m.demo && stored('vb_appunti_demo') === '1'); needs.forEach((x) => { x.hidden = !have; }); } catch (e) { /* keep them */ }
             }
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();

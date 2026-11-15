@@ -526,11 +526,11 @@ label:has(> .dp-native) { position: relative; }
 /* ---------- Schemi as a map: main topic in the centre, branches right and left ---------- */
 .schema-tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .schema[data-view="map"] .schema-tree, .schema[data-view="list"] .mm, .schema[data-view="list"] .mm-zoom { display: none; }
-.mm { scrollbar-color: var(--line) transparent; overflow: auto; max-height: 78vh; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); padding: 16px; cursor: grab; touch-action: pan-x pan-y; }
+.mm { scrollbar-color: var(--line) transparent; overflow: auto; height: clamp(300px, 72vh, 700px); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); padding: 16px; cursor: grab; touch-action: pan-x pan-y; }
 .mm.dragging { cursor: grabbing; user-select: none; }
 .mm-links { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 .mm-center, .mm-side { position: relative; z-index: 1; }
-.mm-canvas { position: relative; display: flex; align-items: center; width: max-content; margin: 0 auto; gap: 56px; }
+.mm-canvas { position: relative; display: flex; align-items: center; width: max-content; min-width: max-content; flex: none; margin: 0 auto; gap: 56px; }
 .mm-center { flex: none; max-width: 220px; padding: 14px 20px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 20px; text-align: center; }
 .mm-side { display: flex; flex-direction: column; gap: 22px; }
 .mm-side.left { align-items: flex-end; }
@@ -551,7 +551,7 @@ label:has(> .dp-native) { position: relative; }
 .mm-branch.has-kids:not(.collapsed) > .mm-node { margin-right: 0; }
 .mm-branch.has-kids:not(.collapsed) > .mm-node + .mm-kids::before { content: ""; position: absolute; top: 50%; left: -18px; width: 16px; border-top: 2px solid var(--c); }
 .mm-side.left .mm-branch.has-kids:not(.collapsed) > .mm-node + .mm-kids::before { left: auto; right: -18px; }
-@media print { .mm { max-height: none; overflow: visible; border: 0; } .schema-tools { display: none; } }
+@media print { .mm { height: auto; max-height: none; overflow: visible; border: 0; } .schema-tools { display: none; } }
 
 /* ---------- Board: now/next, announcements, the week as a diary ---------- */
 .bb-now { margin: 18px 0 24px; padding: 18px 18px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
@@ -897,12 +897,33 @@ html.has-fs { overflow: hidden; }
 .is-fs { padding-top: max(env(safe-area-inset-top), 44px); padding-bottom: max(env(safe-area-inset-bottom), 16px); }
 .schema.is-fs { display: flex; flex-direction: column; height: 100vh; height: 100dvh; box-sizing: border-box; padding-bottom: 84px; }
 .schema.is-fs .mm-frame { flex: 1; min-height: 0; display: flex; }
-.schema.is-fs .mm { flex: 1; max-height: none; height: auto; display: flex; }
-.schema.is-fs .mm-canvas { margin: auto; }
+.schema.is-fs .mm { flex: 1; max-height: none; height: auto; display: flex; padding: 0; }
+.schema.is-fs .mm-canvas { margin: auto; flex: none; }
+.schema.is-fs .mm-canvas { padding: 16px; box-sizing: content-box; }
 .schema.is-fs .schema-head { flex: none; flex-wrap: wrap; row-gap: 6px; }
 .fs-close { bottom: max(env(safe-area-inset-bottom), 14px); }
 .schema.is-fs .mm-frame .fs-icon { top: 10px; right: 10px; }
 .schema[data-view="list"].is-fs .schema-tree { max-width: 900px; margin: 0 auto; }
+
+/* phone held sideways: little height, so the bars shrink and sit at the sides (and clear the camera notch) */
+@media (orientation: landscape) and (max-height: 520px) {
+    .is-fs { padding: max(env(safe-area-inset-top), 8px) max(env(safe-area-inset-right), 12px) 8px max(env(safe-area-inset-left), 12px); }
+    .schema.is-fs { padding-bottom: 8px; }
+    .schema.is-fs .schema-head { margin-bottom: 4px; }
+    .schema.is-fs .schema-title { font-size: 15px; }
+    .schema.is-fs .mm-frame .fs-icon { top: 6px; right: 6px; width: 34px; height: 34px; }
+    .fs-close { left: auto; right: max(env(safe-area-inset-right), 12px); bottom: max(env(safe-area-inset-bottom), 10px); transform: none; padding: 8px 16px; }
+    .mm { height: clamp(220px, 78vh, 700px); padding: 8px; }
+    .top { position: static; }
+    .shared-img { max-height: 84vh; }
+    .quiz-nav { position: static; }
+}
+
+/* the example class: a bar that says so, and no way to start writing */
+.demo-banner { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; margin: 8px 0 12px; padding: 10px 12px; border: 1px dashed var(--accent); border-radius: 10px; background: var(--card); font-size: 14px; }
+.demo-banner[hidden] { display: none; }
+.demo-offer { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
+body.is-demo #upload-link, body.is-demo #doc-upload-link, body.is-demo #event-box, body.is-demo .top a[href*="appunti-carica"] { display: none; }
 
 /* LEFTY:BEGIN (generated by tools/make-lefty-css.py: do not edit by hand) */
 html.lefty .top { flex-direction: row-reverse; }
@@ -937,4 +958,5 @@ html.lefty .mc-head { flex-direction: row-reverse; }
 html.lefty .bb-miss li { flex-direction: row-reverse; }
 html.lefty .fc-q { flex-direction: row-reverse; }
 html.lefty .schema-dl-menu button { flex-direction: row-reverse; }
+html.lefty .demo-banner { flex-direction: row-reverse; }
 /* LEFTY:END */
