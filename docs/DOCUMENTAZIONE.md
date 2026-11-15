@@ -27,7 +27,7 @@ dell'account) e ai temi grafici. Nel menu: **interruttore del Matrix** (sfondo a
 I temi sono un elenco solo, in `js/theme.js` (`THEMES`) e in `api/helpers.php` (`SYSTEM_THEMES`; `tests/temi.test.js` controlla che coincidano): menu, terminale
 (`theme`, `rice`) e Impostazioni dell'account usano lo stesso `setSystemTheme`, che salva la scelta sull'account (`api/save_theme.php`); le pagine scrivono il tema
 dell'account in `<meta name="vb-theme">` e `theme.js` lo applica, così tutti i luoghi e tutti i dispositivi coincidono. I temi del lettore di libri (chiaro, seppia, scuro,
-nero) restano nel browser e non toccano il tema del desktop.
+nero) restano nel browser; le etichette sono in inglese come l'index. Nel menu c'è anche **FROSTED GLASS** (il vetro sfocato e semitrasparente delle finestre, che rende "nebbioso" lo sfondo: spento = finestre piene) e non toccano il tema del desktop.
 
 | Finestra | A cosa serve |
 |---|---|
@@ -553,7 +553,7 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - **Classe di esempio** (schema v29: `school_classes.is_demo`). `api/appunti_demo.php` (`demoEnsure`) la scrive: 5 compagni finti (`demo_*`, password `!` = nessuno ci entra),
   orario di 8 materie con ore doppie, argomenti, ~17 caricamenti, documenti scritti a mano (lezione, domande, schema, dispensa, riassunto, scheda, preparazione, quiz), una
   verifica già fatta e quattro in arrivo, compiti, giorno senza lezione, annunci, classifica. Si rigenera ogni giorno (date relative a oggi) da `bin/appunti-demo.php` e dal
-  lavoratore `bin/appunti-ai.php`; il lavoratore e i promemoria la saltano (`is_demo = 0`). Tutti gli utenti registrati la **vedono in sola lettura**: `classCanView` = membro, oppure
+  lavoratore `bin/appunti-ai.php`; il lavoratore e i promemoria la saltano (`is_demo = 0`). Tutti la **vedono in sola lettura**, anche i visitatori senza account (`requireLoginOrDemoGuest`: utente 0, solo GET e `quiz_answer`; niente zip, prompt, ripasso, link; `appunti.php` e `appunti-archivio.php` non rimandano più alla guida): `classCanView` = membro, oppure
   classe di esempio in GET; le scritture rispondono `403 demo` con un messaggio chiaro. Unica eccezione: `quiz_answer`, che corregge ma non salva nulla (niente punti né ripasso).
   Nella pagina: pulsante "Guarda la classe di esempio" (senza classi proprie, o dopo averlo chiesto), banner "Chiudi l'esempio", Carica/Calendario-aggiungi nascosti.
 - **Schemi:** riquadro dell'altezza fissa (non più `max-height` che faceva muovere la pagina allo zoom indietro); `.mm-canvas` non si restringe più (`flex: none`) così a schermo intero
