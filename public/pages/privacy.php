@@ -9,7 +9,7 @@ $other = $it ? 'en' : 'it';
 $email = trim((string)envValue('CONTACT_EMAIL', ''));
 $email = filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
 $adsOn = adsenseClient() !== '';
-$updated = '2026-11-12';
+$updated = '2026-11-15';
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -42,13 +42,16 @@ $updated = '2026-11-12';
             <li><strong>Visite:</strong> per ogni nuova visita vengono annotati data e ora, indirizzo IP, pagina, tipo di browser e sistema, e il sito da cui arrivi. Servono a chi gestisce il sito per sapere chi lo usa; il registro si sovrascrive da solo quando diventa grande.</li>
             <li><strong>Giochi:</strong> partite, impostazioni e statistiche restano nel tuo browser (memoria locale). Per le stanze multigiocatore il server conserva i nomi scelti e lo stato della partita.</li>
             <li><strong>Appunti di classe:</strong> il materiale che carichi (testi, foto, file), con il tuo nome utente, la data e la materia, le date del calendario e i documenti di studio ricavati. Li vedono solo i compagni della stessa classe e l'amministratore. Restano finché tu, il responsabile della classe o l'amministratore non li cancellate, o finché la classe esiste.</li>
+            <li><strong>Richieste di classe:</strong> se chiedi di aprire una classe, il server conserva nome della classe, scuola, la nota che scrivi e il tuo account; per limitare lo spam conta anche quante richieste arrivano dallo stesso indirizzo IP.</li>
+            <li><strong>Link temporanei:</strong> quando condividi un appunto con un link, il server salva solo una versione cifrata del codice, la scadenza e quante volte è stato aperto. Chi apre il link non ha bisogno di un account e il link smette di funzionare alla scadenza o se il responsabile spegne i link della classe.</li>
+            <li><strong>Classe di esempio:</strong> la classe "5ª A" è finta (compagni, appunti, voti e date inventati) e la può guardare chiunque, anche senza account, ma solo in lettura. I visitatori senza account non caricano né scaricano nulla e non lasciano dati nella classe; i materiali di esempio non vengono mai inviati all'intelligenza artificiale.</li>
         </ul>
         <p>I dati stanno sul server di casa del sito, non vengono venduti né ceduti a nessuno.</p>
 
         <h2>Cookie</h2>
         <ul>
             <li><strong>Tecnici, sempre attivi:</strong> il cookie di sessione (per restare collegati e proteggere i moduli) e <code>vb_lang</code> (la lingua scelta).</li>
-            <li><strong>Preferenze, solo se accetti:</strong> il tema grafico del desktop.</li>
+            <li><strong>Preferenze, solo se accetti:</strong> il tema grafico del desktop e le opzioni del menu (sfondo matrix, vetro smerigliato); se hai un account il tema si salva anche lì.</li>
             <li><strong>Pubblicità (Google AdSense):</strong> <?= $adsOn ? 'le pagine Giochi e Supporta mostrano annunci di Google.' : 'quando saranno attivi, le pagine Giochi e Supporta mostreranno annunci di Google.' ?> Google e i suoi partner possono usare cookie e identificatori per mostrare e misurare gli annunci solo dopo che hai dato il consenso nel messaggio di Google; puoi rifiutare o cambiare idea in ogni momento. Come Google usa questi dati: <a href="https://policies.google.com/technologies/partner-sites?hl=it" rel="noopener">policies.google.com/technologies/partner-sites</a>.</li>
         </ul>
 
@@ -75,13 +78,16 @@ $updated = '2026-11-12';
             <li><strong>Visits:</strong> for each new visit the date and time, IP address, page, browser and system, and the site you came from are noted down, so whoever runs the site knows who uses it; the log overwrites itself when it grows large.</li>
             <li><strong>Games:</strong> games, settings and statistics stay in your browser (local storage). For multiplayer rooms the server keeps the chosen names and the game state.</li>
             <li><strong>Class notes:</strong> the material you upload (text, photos, files) with your username, date and subject, the calendar dates and the study documents made from them. Only classmates in the same class and the admin can see them. They stay until you, the class manager or the admin delete them, or while the class exists.</li>
+            <li><strong>Class requests:</strong> if you ask for a class to be opened, the server keeps the class name, school, the note you write and your account; to limit spam it also counts how many requests come from the same IP address.</li>
+            <li><strong>Temporary links:</strong> when you share a note with a link, the server stores only a hashed version of the code, the expiry and how many times it was opened. Whoever opens the link needs no account, and the link stops working when it expires or if the class manager turns links off.</li>
+            <li><strong>Example class:</strong> the "5ª A" class is fake (invented classmates, notes, scores and dates) and anyone can look at it, even without an account, but read-only. Visitors without an account cannot upload or download anything and leave no data in the class; the example material is never sent to the AI.</li>
         </ul>
         <p>The data lives on the site’s home server and is never sold or handed to anyone.</p>
 
         <h2>Cookies</h2>
         <ul>
             <li><strong>Technical, always on:</strong> the session cookie (to stay logged in and protect forms) and <code>vb_lang</code> (your chosen language).</li>
-            <li><strong>Preferences, only if you accept:</strong> the desktop’s visual theme.</li>
+            <li><strong>Preferences, only if you accept:</strong> the desktop’s visual theme and the menu options (matrix background, frosted glass); with an account the theme is also saved there.</li>
             <li><strong>Advertising (Google AdSense):</strong> <?= $adsOn ? 'the Games and Support pages show Google ads.' : 'once enabled, the Games and Support pages will show Google ads.' ?> Google and its partners may use cookies and identifiers to show and measure ads only after you consent in Google’s message; you can refuse or change your mind at any time. How Google uses this data: <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">policies.google.com/technologies/partner-sites</a>.</li>
         </ul>
 
