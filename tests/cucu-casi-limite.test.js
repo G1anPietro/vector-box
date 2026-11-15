@@ -101,3 +101,27 @@ test('twenty players: the deck lasts through the deal and the ties', async () =>
     const s = await a.state();
     assert.ok(s.cucu);
 });
+
+test('the site admin sees every card and every life in LIVE, from a session that is in no room; nobody else can', async () => {
+    const r = await started(await cucuRoom());
+    await r.a.post({ action: 'recite', ok: true });
+    const admin = await makeAdmin(site, 'cu_admin');       // not a player: just looking from another phone
+    const live = (await admin.get('/api/spia.php?action=live')).json;
+    const room = live.rooms.find((x) => x.code === r.code);
+    assert.equal(room.game, 'cucu');
+    for (const name of ['P1', 'P2', 'P3']) {
+        const pid = r.id[name];
+        assert.ok(room.cucu.cards[String(pid)], 'card of ' + name);
+        assert.ok(room.cucu.lives[String(pid)] >= 1, 'lives of ' + name);
+    }
+    // a player's own phone never gets the others' cards or the lives
+    const mine = (await r.b.state()).cucu;
+    assert.equal(mine.lives, null);
+    assert.ok(!JSON.stringify(mine).includes('"cards":{'), 'no table of cards in a player view');
+    // not for guests, not for normal accounts
+    assert.equal((await r.b.c.get('/api/spia.php?action=live')).status, 400);
+    assert.equal((await r.b.c.get('/api/spia.php?action=ext')).status, 400);
+    // the admin script (served to admin sessions only) knows Cucù
+    const js = (await admin.get('/api/spia.php?action=ext')).text;
+    assert.match(js, /cucuCard/);
+});
