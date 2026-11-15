@@ -171,6 +171,7 @@
 
     let entries = [];
     async function openFolder(folder) {
+        selecting = false; picked.clear(); bulkForm = null;
         sel.folder = folder;
         sel.entry = null;
         renderFolders();
@@ -233,13 +234,125 @@
         renderFiles();
     }
 
+    /* ---------- selecting several files, moving or deleting a whole folder ---------- */
+
+    let selecting = false;
+    const picked = new Set();                                   // entryKey of the ticked rows
+    const selectable = (en) => !en.group && !en.disabled && entryKey(en) !== null;
+    const itemIdsOf = (list) => [...new Set(list.filter((e) => e.item && e.item.can_edit).map((e) => e.item.id))];
+    let bulkForm = null;                                        // the little form under the column title (day, topic, confirm)
+
+    function setSelecting(on) {
+        selecting = on;
+        picked.clear();
+        bulkForm = null;
+        renderFiles();
+    }
+
+    /** A small form in the files column: a question, one field, "OK" and "Annulla". */
+    function ask(label, field, okText, run) {
+        const form = el('form', { class: 'row move-day' }, el('label', { text: label + ' ' }, field),
+            el('button', { class: 'mini', text: okText }), el('button', { type: 'button', class: 'ghost mini', text: 'Annulla', onclick: () => { bulkForm = null; renderFiles(); } }));
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const btn = form.querySelector('button'); btn.disabled = true;
+            try { await run(); } catch (e) { C.toast(e.message, 'err'); btn.disabled = false; }
+        });
+        bulkForm = form;
+        renderFiles();
+        field.focus && field.focus();
+    }
+    function done(msg) {
+        C.toast(msg, 'ok');
+        // the folder may be empty now: the page opens again on the subject
+        sel.folder = null; sel.entry = null; saveState();
+        setTimeout(() => location.reload(), 600);
+    }
+    function moveToDay(ids, what) {
+        if (!ids.length) { C.toast('Niente da spostare qui (puoi spostare solo quello che hai il permesso di modificare).', 'err'); return; }
+        const first = (sel.folder && /^\d{4}-/.test(sel.folder)) ? sel.folder : '';
+        const input = el('input', { type: 'date', value: first, required: true });
+        ask(`Sposta ${what} al giorno`, input, 'Sposta', async () => {
+            if (!input.value) throw new Error('Scegli il giorno.');
+            const r = await C.post('../api/appunti.php', { action: 'move_items', ids, lesson_date: input.value });
+            done(`Spostati ${r.done} invii al ${input.value}.` + (r.skipped ? ` ${r.skipped} non spostati (non puoi modificarli).` : ''));
+        });
+    }
+    function moveToTopic(ids, what) {
+        const subject = tree.find((s) => s.id === sel.subject) || {};
+        if (!ids.length) { C.toast('Niente da spostare qui.', 'err'); return; }
+        if (!(subject.topics || []).length) { C.toast('Questa materia non ha ancora argomenti.', 'err'); return; }
+        const pick = el('select', {}, el('option', { value: '0', text: 'Lo decide il sito (in base al giorno)' }),
+            ...subject.topics.map((t) => el('option', { value: t.id, text: t.name })));
+        ask(`Sposta ${what} nell'argomento`, pick, 'Sposta', async () => {
+            const r = await C.post('../api/appunti.php', { action: 'move_items', ids, topic_id: Number(pick.value) });
+            done(`Spostati ${r.done} invii.` + (r.skipped ? ` ${r.skipped} non spostati.` : ''));
+        });
+    }
+    function deleteItems(ids, what) {
+        if (!ids.length) { C.toast('Niente da eliminare qui (puoi eliminare solo quello che hai il permesso di modificare).', 'err'); return; }
+        const ok = el('input', { type: 'text', placeholder: 'scrivi ELIMINA', required: true, autocomplete: 'off' });
+        ask(`Eliminare ${what}? Non si può annullare.`, ok, 'Elimina', async () => {
+            if (ok.value.trim().toUpperCase() !== 'ELIMINA') throw new Error('Per confermare scrivi ELIMINA.');
+            const r = await C.post('../api/appunti.php', { action: 'delete_items', ids });
+            done(`Eliminati ${r.done} invii.`);
+        });
+    }
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+    /** The ⋯ menu of the open folder: move it all or delete it (days and topics). */
+    function folderMenu() {
+        const all = entries.filter(selectable);
+        const ids = itemIdsOf(all);
+        const isDay = /^\d{4}-\d{2}-\d{2}$/.test(sel.folder || '');
+        const isTopic = (sel.folder || '').startsWith('topic:');
+        if (!ids.length || (!isDay && !isTopic)) return null;
+        const files = all.filter((e) => e.type === 'file' && e.item.can_edit).length;
+        const what = `${plural(ids.length, 'invio', 'invii')} della cartella (${plural(files, 'file', 'file')})`;
+        return C.menu([
+            ...(isDay ? [{ label: 'Sposta tutta la cartella in un altro giorno…', onclick: () => moveToDay(ids, 'tutta la cartella') }] : []),
+            ...(isTopic ? [{ label: 'Sposta tutta la cartella in un altro argomento…', onclick: () => moveToTopic(ids, 'tutta la cartella') }, { label: 'Sposta tutta la cartella in un altro giorno…', onclick: () => moveToDay(ids, 'tutta la cartella') }] : []),
+            { label: 'Elimina la cartella…', danger: true, onclick: () => deleteItems(ids, what) }], 'Azioni sulla cartella');
+    }
+
+    function bulkBar() {
+        const sels = entries.filter((e) => selectable(e) && picked.has(entryKey(e)));
+        const ids = itemIdsOf(sels);
+        const files = sels.filter((e) => e.type === 'file' && e.file.can_delete);
+        const docsDel = sels.filter((e) => e.type === 'doc' && e.can_delete);
+        const bar = el('div', { class: 'row bulk-bar' },
+            el('span', { class: 'muted small', text: `${picked.size} scelti` }),
+            el('button', { type: 'button', class: 'ghost mini', text: 'Tutti', onclick: () => { entries.filter(selectable).forEach((e) => picked.add(entryKey(e))); renderFiles(); } }),
+            el('button', { type: 'button', class: 'ghost mini', text: 'Nessuno', onclick: () => { picked.clear(); renderFiles(); } }),
+            el('button', { type: 'button', class: 'mini', text: 'Sposta al giorno…', disabled: !ids.length, onclick: () => moveToDay(ids, plural(ids.length, 'invio', 'invii')) }),
+            el('button', { type: 'button', class: 'ghost mini', text: 'Argomento…', disabled: !ids.length, onclick: () => moveToTopic(ids, plural(ids.length, 'invio', 'invii')) }),
+            el('button', { type: 'button', class: 'danger mini', text: 'Elimina', disabled: !files.length && !docsDel.length, onclick: async () => {
+                if (!confirm(`Eliminare ${plural(files.length, 'file', 'file')}${docsDel.length ? ' e ' + plural(docsDel.length, 'documento', 'documenti') : ''}? Non si può annullare.`)) return;
+                try {
+                    for (const e of files) await C.post('../api/appunti.php', { action: 'delete_file', id: e.file.id });
+                    for (const e of docsDel) await C.post('../api/appunti.php', { action: 'delete_doc', id: e.id });
+                    done('Eliminati.');
+                } catch (e) { C.toast(e.message, 'err'); }
+            } }));
+        return bar;
+    }
+
     function renderFiles() {
         const col = $('#col-files');
         if (!sel.folder) { col.replaceChildren(); return; }
         const title = folderTitle(sel.folder);
-        col.replaceChildren(el('h3', { class: 'col-h', text: title }), ...(entries.length ? entries.map((en) => en.group
+        const canSelect = entries.some(selectable);
+        const head = el('div', { class: 'col-h-row' }, el('h3', { class: 'col-h', text: title }),
+            canSelect ? el('div', { class: 'row-actions' },
+                el('button', { type: 'button', class: 'ghost mini', text: selecting ? 'Fine' : 'Seleziona', onclick: () => setSelecting(!selecting) }), folderMenu()) : null);
+        col.replaceChildren(head, ...(selecting ? [bulkBar()] : []), ...(bulkForm ? [bulkForm] : []), ...(entries.length ? entries.map((en) => en.group
             ? el('p', { class: 'agroup', text: en.group })
-            : row({ icon: en.icon, label: en.label, meta: en.meta, active: sel.entry === en, onclick: () => { if (!en.disabled) openEntry(en); } }))
+            : row({ icon: selecting && selectable(en) ? (picked.has(entryKey(en)) ? '☑' : '☐') : en.icon, label: en.label, meta: en.meta,
+                active: !selecting && sel.entry === en,
+                onclick: () => {
+                    if (selecting) { if (selectable(en)) { const k = entryKey(en); if (picked.has(k)) picked.delete(k); else picked.add(k); renderFiles(); } return; }
+                    if (!en.disabled) openEntry(en);
+                } }))
             : [el('p', { class: 'empty', text: 'Cartella vuota.' })]));
     }
 
@@ -327,6 +440,10 @@
                     pv.replaceChildren(head(f.name, dl), meta, el('audio', { class: 'pv-audio', controls: true, preload: 'metadata', src: fileUrl(f.id) }), await textBlock(f, true));
                 } else if (f.mime === 'application/pdf') {
                     pv.replaceChildren(head(f.name, open, dl), meta, window.AppuntiPdf.view(fileUrl(f.id), f.name));
+                } else if (/presentationml\.presentation$/.test(f.mime)) {
+                    // slides drawn by the server as sandboxed HTML; the extracted text stays below as a fallback
+                    const frame = el('iframe', { class: 'pv-html pv-slides', src: fileUrl(f.id) + '&view=1', sandbox: '', referrerpolicy: 'no-referrer', title: f.name, loading: 'lazy' });
+                    pv.replaceChildren(head(f.name, el('a', { class: 'ghost-link', href: fileUrl(f.id) + '&view=1', target: '_blank', rel: 'noopener', text: 'Apri' }), dl), meta, frame, el('details', {}, el('summary', { text: 'Solo testo' }), await textBlock(f, false)));
                 } else if (f.mime === 'text/html') {
                     // sandbox="" : no script, no forms, not even the site's origin (the server adds the same limits)
                     const frame = el('iframe', { class: 'pv-html', src: fileUrl(f.id), sandbox: '', referrerpolicy: 'no-referrer', title: f.name, loading: 'lazy' });

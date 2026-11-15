@@ -62,6 +62,12 @@ function zipSelect(PDO $db, array $class, array $scope): array|string {
         [$from, $to] = notesEventPeriod($db, $event);
         $where[] = 'i.subject_id = :s AND i.lesson_date BETWEEN :f AND :t';
         $params += [':s' => $event['subject_id'], ':f' => $from, ':t' => $to];
+    } elseif ($scope['type'] === 'range') {
+        // the days chosen by hand, optionally one subject
+        $where[] = 'i.lesson_date BETWEEN :f AND :t';
+        $params[':f'] = $scope['from'];
+        $params[':t'] = $scope['to'];
+        if (!empty($scope['subject_id'])) { $where[] = 'i.subject_id = :s'; $params[':s'] = $scope['subject_id']; }
     } elseif ($scope['type'] === 'day') {
         $where[] = 'i.lesson_date = :d';
         $params[':d'] = $scope['date'];
@@ -94,6 +100,7 @@ function zipWhat(array $scope, array $items, ?array $event): string {
             . (new DateTimeImmutable($event['event_date']))->format('d/m/Y') . ($event['title'] !== '' ? " ({$event['title']})" : '');
     }
     $subjects = array_unique(array_column($items, 'subject'));
+    if ($scope['type'] === 'range') return implode(', ', $subjects) . ' — dal ' . (new DateTimeImmutable($scope['from']))->format('d/m/Y') . ' al ' . (new DateTimeImmutable($scope['to']))->format('d/m/Y');
     return implode(', ', $subjects) . ($scope['type'] === 'day' ? ' — ' . (new DateTimeImmutable($scope['date']))->format('d/m/Y') : '');
 }
 
@@ -148,6 +155,7 @@ function zipWrite(PDO $db, array $class, array $scope, array $items, array $file
     else {
         $dw[] = "d.kind = 'lezione'";
         if ($scope['type'] === 'day') { $dw[] = 'd.lesson_date = :d'; $dp[':d'] = $scope['date']; }
+        if ($scope['type'] === 'range') { $dw[] = 'd.lesson_date BETWEEN :f AND :t'; $dp[':f'] = $scope['from']; $dp[':t'] = $scope['to']; }
         if (!empty($scope['subject_id'])) { $dw[] = 'd.subject_id = :s'; $dp[':s'] = $scope['subject_id']; }
     }
     $ds = $db->prepare('SELECT d.*, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author FROM class_docs d LEFT JOIN accounts a ON a.id = d.author_id LEFT JOIN class_members cm ON cm.class_id = d.class_id AND cm.user_id = d.author_id WHERE ' . implode(' AND ', $dw) . ' ORDER BY d.lesson_date, d.id');
@@ -160,14 +168,14 @@ function zipWrite(PDO $db, array $class, array $scope, array $items, array $file
     // Index and prompt
     $what = zipWhat($scope, $items, $event);
     $zip->addFromString('INDICE.txt', "Classe {$class['name']} ({$class['school']}) — $what\nFonti:\n\n" . implode("\n\n", $index) . "\n");
-    $zip->addFromString('PROMPT.txt', zipPromptText($class, $what, $event, !empty($scope['audio'])));
+    $zip->addFromString('PROMPT.txt', zipPromptText($class, $what, $event, !empty($scope['audio']), !empty($scope['dispensa'])));
     $zip->close();
 
     $download = zipName("Appunti {$class['name']} - $what", 100) . '.zip';
     return [$path, $download];
 }
 
-function zipPromptText(array $class, string $what, ?array $event, bool $audio = false): string {
+function zipPromptText(array $class, string $what, ?array $event, bool $audio = false, bool $dispensa = false): string {
     $audioBlock = $audio ? "\n===== PROMPT A — dalla registrazione audio (facoltativo) =====\n\nSe hai la registrazione della lezione, allegala all'AI e manda questo; poi continua con il PROMPT 1.\n\n" . AI_PROMPT_AUDIO . "\n" : '';
     $intro = "COME USARLO\n"
         . "1. Apri un'AI che accetta file (ChatGPT, Claude, Gemini, Copilot...).\n"
@@ -179,7 +187,7 @@ function zipPromptText(array $class, string $what, ?array $event, bool $audio = 
         . "Nota: l'AI può sbagliare. Controlla sempre con il libro e gli appunti originali.\n\n"
         . "Classe {$class['name']} ({$class['school']}). $what.\n"
         . ($event && $event['topics'] !== '' ? "Argomenti annunciati dal prof: {$event['topics']}\n" : '');
-    if (!$event) {
+    if (!$event && !$dispensa) {
         return $intro . $audioBlock . "\n===== PROMPT 1 — appunti completi =====\n\n" . zipPrompt(AI_PROMPT_LESSON)
             . "\n\n===== PROMPT 2 — schema (JSON) =====\n\n" . "Dagli appunti che hai appena scritto:\n" . AI_PROMPT_SCHEMA . "\n";
     }
@@ -209,7 +217,7 @@ function packBuild(PDO $db, array $class, array $scope): array|string {
     if ($event && $event['topics'] !== '') { $out[] = ''; $out[] = "Argomenti annunciati dal prof: {$event['topics']}"; }
     $missing = [];
 
-    $prompts = $event
+    $prompts = ($event || !empty($scope['dispensa']))
         ? ['PROMPT 1 — dispensa completa' => zipPackPrompt(AI_PROMPT_COMPLETO),
            'PROMPT 2 — riassunto' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_RIASSUNTO,
            'PROMPT 3 — preparazione mirata' => "Dalla dispensa che hai appena scritto e dalle fonti di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE,
@@ -273,7 +281,7 @@ function packPdf(PDO $db, array $class, array $scope): array|string {
     $pdf->para($what);
     $pdf->para("Questo file contiene tutto il materiale caricato dalla classe: i testi, le trascrizioni e le foto originali. Allegalo a una chat con un'AI e manda il PROMPT 1 qui sotto; gli altri prompt mandali dopo, nella stessa chat. Poi carica la risposta su vector-box (Appunti di classe, Carica, Documento da un'altra AI). L'AI può sbagliare: controlla sempre con il libro e gli appunti originali.");
     if ($event && $event['topics'] !== '') $pdf->para("Argomenti annunciati dal prof: {$event['topics']}");
-    $prompts = $event
+    $prompts = ($event || !empty($scope['dispensa']))
         ? ['PROMPT 1 — dispensa completa' => zipPackPrompt(AI_PROMPT_COMPLETO),
            'PROMPT 2 — riassunto' => "Dalla dispensa che hai appena scritto:\n" . AI_PROMPT_RIASSUNTO,
            'PROMPT 3 — preparazione mirata' => "Dalla dispensa che hai appena scritto e dalle fonti di tipo \"Domande del prof\" e \"Verifica di preparazione\":\n" . AI_PROMPT_PREPARAZIONE,

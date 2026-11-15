@@ -196,8 +196,14 @@
         const lesson = f.kind.value === 'lezione';
         const asPdf = action === 'pdf';
         if (asPdf) action = 'ai_pack';
-        const q = new URLSearchParams({ action, class_id: current.id, scope: lesson ? 'day' : 'event', ...(asPdf ? { format: 'pdf' } : {}) });
-        if (lesson) {
+        const byRange = $('#ai-range-on').checked;
+        const q = new URLSearchParams({ action, class_id: current.id, scope: byRange ? 'range' : lesson ? 'day' : 'event', ...(asPdf ? { format: 'pdf' } : {}) });
+        if (byRange) {
+            const from = $('#ai-from').value, to = $('#ai-to').value;
+            if (!from || !to || from > to) { status('Scegli il giorno di inizio e quello di fine (l\'inizio non può essere dopo la fine).', 'err'); return; }
+            q.set('from', from); q.set('to', to); q.set('subject_id', f.subject_id.value);
+            if (!lesson) q.set('dispensa', '1');   // for a test: the handout prompts, not the single-lesson ones
+        } else if (lesson) {
             if (!f.lesson_date.value) { status('Scegli il giorno della lezione.', 'err'); return; }
             q.set('date', f.lesson_date.value); q.set('subject_id', f.subject_id.value);
         } else {
@@ -231,6 +237,10 @@
         showPrompt();
     }
     $('#p-ai [name="kind"]').addEventListener('change', toggleAiTarget);
+    $('#ai-range-on').addEventListener('change', (ev) => {
+        $('#ai-range').hidden = !ev.target.checked;
+        if (ev.target.checked && !$('#ai-to').value) { $('#ai-to').value = todayStr(); }
+    });
     $('#p-ai [name="subject_id"]').addEventListener('change', () => fillEventOptions());
 
     /* Step 3: the exact text to give the AI for the chosen document (the same prompts that are inside the downloaded file) */

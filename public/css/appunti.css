@@ -290,6 +290,8 @@ body.archive { height: 100vh; height: 100dvh; display: flex; flex-direction: col
 .arch { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(170px, 220px) minmax(190px, 250px) minmax(220px, 300px) 1fr; }
 .arch .col { overflow-y: auto; border-right: 1px solid var(--line); padding: 8px; min-height: 0; }
 .arch .pv { overflow-y: auto; padding: 16px 20px 40px; min-height: 0; }
+.col-h-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.bulk-bar, .move-day { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 6px 10px; }
 .col-h { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 4px 6px 8px; }
 .arow { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: transparent; color: var(--text);
     border: 0; border-radius: 8px; padding: 8px; min-height: 44px; font-weight: 500; }
@@ -679,7 +681,7 @@ label:has(> .dp-native) { position: relative; }
     .arch.tiles .col { display: none; }
     .arch.tiles[data-level="0"] #col-subjects, .arch.tiles[data-level="1"] #col-folders, .arch.tiles[data-level="2"] #col-files {
         display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; padding: 8px 12px; }
-    .arch.tiles .col > .col-h, .arch.tiles .col > .agroup, .arch.tiles .col > .empty { grid-column: 1 / -1; }
+    .arch.tiles .col > .col-h-row, .arch.tiles .col > .bulk-bar, .arch.tiles .col > .move-day, .arch.tiles .col > .col-h, .arch.tiles .col > .agroup, .arch.tiles .col > .empty { grid-column: 1 / -1; }
     .arch.tiles .arow { flex-direction: column; justify-content: center; text-align: center; gap: 4px; min-height: 104px; padding: 10px 8px;
         background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
     .arch.tiles .arow .aicon { font-size: 28px; width: auto; }
@@ -935,6 +937,7 @@ html.lefty .day-head { flex-direction: row-reverse; }
 html.lefty .ai-bar-row, html.lefty .review-box { flex-direction: row-reverse; }
 html.lefty .doc-row { flex-direction: row-reverse; }
 html.lefty .arch-top select { margin-left: 0; margin-right: auto; }
+html.lefty .col-h-row { flex-direction: row-reverse; }
 html.lefty .pv-head { flex-direction: row-reverse; }
 html.lefty .cta-card { flex-direction: row-reverse; }
 html.lefty .schema-head { flex-direction: row-reverse; }

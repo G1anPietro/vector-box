@@ -78,8 +78,8 @@ $login = 'login.php?next=appunti.php';
                 <li><strong>Cosa caricare:</strong> appunti (foto, testo scritto lì, Word), slide o PDF del prof, foto delle pagine del
                     libro, le <strong>domande che il prof fa alle interrogazioni</strong>, le verifiche di preparazione. Più materiale c'è, più
                     i documenti sono completi. Vanno bene <strong>PDF</strong> (anche scritti a mano), <strong>PowerPoint</strong>, <strong>pagine HTML</strong>,
-                    testo, Markdown, Word e foto. Le pagine HTML vengono ripulite al caricamento: via script, moduli e contenuti da altri siti, resta il testo.
-                    Il <strong>rappresentante</strong> può caricare lo stesso materiale per più giorni ("Vale anche per altri giorni") e cambiare il giorno di un materiale dall'Archivio (⋯, "Cambia il giorno").</li>
+                    testo, Markdown, Word e foto. Le pagine HTML vengono ripulite al caricamento: via script, moduli e contenuti da altri siti, restano testo, tabelle e lo stile (colori, dimensioni). Le presentazioni PowerPoint si sfogliano nell'Archivio come slide (testo, immagini e tabelle; niente animazioni).
+                    Il <strong>rappresentante</strong> può caricare lo stesso materiale per più giorni ("Vale anche per altri giorni") e cambiare il giorno di un materiale dall'Archivio (⋯, "Cambia il giorno"). Nell'Archivio, con <strong>Seleziona</strong>, si scelgono più file insieme per spostarli a un altro giorno o argomento o eliminarli; dal ⋯ della cartella si sposta o si elimina tutta la cartella. Per le altre AI, nel passo 1 si può scegliere da che giorno a che giorno prendere il materiale.</li>
                 <li><strong>La lezione giusta:</strong> scegliendo le foto, il sito guarda l'ora in cui le hai scattate e l'orario della
                     classe, e propone la lezione (con le ore e la materia dell'orario della tua classe). Se sbaglia, cambiala.</li>
                 <li><strong>Pagina Carica</strong> (in alto, <em>Carica</em>): tutti i modi per caricare in un posto solo, cioè fotocamera,

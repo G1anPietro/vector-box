@@ -213,6 +213,18 @@ function notesFileType(string $path, string $originalName): ?array {
     return [$ext, NOTE_MIME_OUT[$ext]];
 }
 
+/** CSS of an uploaded page made harmless: no imports, no outside addresses, no scriptable values. The look (colours, sizes, layout) stays. */
+function notesSanitizeCss(string $css): string {
+    $css = substr($css, 0, 400000);
+    $css = preg_replace('#/\*.*?\*/#s', '', $css) ?? '';
+    $css = str_replace(['\\', '<', '>'], '', $css);             // escapes could hide a keyword; '<' could close the <style>
+    $css = preg_replace('/@(import|charset|namespace)\b[^;{]*;?/i', '', $css) ?? '';
+    // any url(...) that is not a data: picture is dropped (the browser would not load it anyway: CSP)
+    $css = preg_replace_callback('/url\s*\((.*?)\)/is', fn($m) => preg_match('/^\s*[\'"]?data:(image\/(png|jpe?g|gif|webp)|font\/|application\/font)/i', $m[1]) ? $m[0] : 'none', $css) ?? '';
+    $css = preg_replace('/(expression|image-set|-moz-binding|behavior|javascript\s*:)/i', 'x', $css) ?? '';
+    return $css;
+}
+
 /**
  * Makes an uploaded web page safe. Nothing of the original markup is kept: the page is read into a DOM and written again
  * from an allow-list of tags and attributes (no scripts, frames, forms, event handlers, styles, links to javascript:,
@@ -260,15 +272,21 @@ function notesSanitizeHtml(string $raw): ?array {
             if ($tag === 'br') { $text .= "\n"; $out .= '<br>'; continue; }
             if ($tag === 'hr') { $text .= "\n"; $out .= '<hr>'; continue; }
             $attrs = '';
+            foreach (['class', 'id', 'lang', 'dir', 'title', 'align'] as $a) {
+                $v = (string)$c->getAttribute($a);
+                if ($v !== '' && strlen($v) < 300 && preg_match('/^[\p{L}\p{N} _\-:.,()]+$/u', $v)) $attrs .= " $a=\"" . htmlspecialchars($v, ENT_QUOTES, 'UTF-8') . '"';
+            }
+            $st = (string)$c->getAttribute('style');
+            if ($st !== '' && strlen($st) < 4000 && ($st = notesSanitizeCss($st)) !== '') $attrs .= ' style="' . htmlspecialchars($st, ENT_QUOTES, 'UTF-8') . '"';
             if ($tag === 'a') {
                 $href = trim((string)$c->getAttribute('href'));
-                if (preg_match('#^(https?://|mailto:)#i', $href) && !preg_match('/[\x00-\x1F\s]/', $href)) $attrs = ' href="' . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . '" rel="noopener noreferrer nofollow" target="_blank"';
+                if (preg_match('#^(https?://|mailto:)#i', $href) && !preg_match('/[\x00-\x1F\s]/', $href)) $attrs .= ' href="' . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . '" rel="noopener noreferrer nofollow" target="_blank"';
             } elseif ($tag === 'img') {
                 $src = trim((string)$c->getAttribute('src'));
                 $alt = (string)$c->getAttribute('alt');
                 if (preg_match('#^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$#i', $src) && strlen($src) < 6000000) {
                     $budget -= strlen($src);
-                    $out .= '<img src="' . $src . '" alt="' . htmlspecialchars($alt, ENT_QUOTES, 'UTF-8') . '">';
+                    $out .= '<img' . $attrs . ' src="' . $src . '" alt="' . htmlspecialchars($alt, ENT_QUOTES, 'UTF-8') . '">';
                     if ($alt !== '') $text .= "\n[Immagine: $alt]\n";
                 } elseif ($alt !== '') {
                     $text .= "\n[Immagine: $alt]\n";
@@ -277,6 +295,7 @@ function notesSanitizeHtml(string $raw): ?array {
                 continue;
             } elseif ($tag === 'td' || $tag === 'th') {
                 foreach (['colspan', 'rowspan'] as $a) { $v = (int)$c->getAttribute($a); if ($v > 1 && $v <= 50) $attrs .= " $a=\"$v\""; }
+                foreach (['width', 'height'] as $a) { $v = trim((string)$c->getAttribute($a)); if (preg_match('/^\d{1,4}%?$/', $v)) $attrs .= " $a=\"$v\""; }
             }
             if (isset($block[$tag])) $text .= "\n";
             elseif ($tag === 'td' || $tag === 'th') $text .= "\t";
@@ -286,15 +305,30 @@ function notesSanitizeHtml(string $raw): ?array {
         }
         return $out;
     };
+    // the page's own <style> blocks (cleaned): so the page looks as its author made it
+    $pageCss = '';
+    foreach ($dom->getElementsByTagName('style') as $styleNode) {
+        $media = strtolower(trim((string)$styleNode->getAttribute('media')));
+        if ($media === 'print') continue;
+        $pageCss .= notesSanitizeCss((string)$styleNode->textContent) . "\n";
+        if (strlen($pageCss) > 400000) break;
+    }
     $bodyNode = $dom->getElementsByTagName('body')->item(0) ?? $dom->documentElement;
     if (!$bodyNode) return null;
     $body = $walk($bodyNode);
+    $bodyAttrs = '';
+    $bst = (string)$bodyNode->getAttribute('style');
+    if ($bst !== '' && strlen($bst) < 4000 && ($bst = notesSanitizeCss($bst)) !== '') $bodyAttrs .= ' style="' . htmlspecialchars($bst, ENT_QUOTES, 'UTF-8') . '"';
+    $bcl = (string)$bodyNode->getAttribute('class');
+    if ($bcl !== '' && preg_match('/^[\p{L}\p{N} _\-]{1,200}$/u', $bcl)) $bodyAttrs .= ' class="' . htmlspecialchars($bcl, ENT_QUOTES, 'UTF-8') . '"';
+    $bbg = trim((string)$bodyNode->getAttribute('bgcolor'));
+    if (preg_match('/^#?[0-9a-fA-F]{3,8}$/', $bbg)) $bodyAttrs .= ' bgcolor="' . htmlspecialchars($bbg, ENT_QUOTES, 'UTF-8') . '"';
     $text = trim(preg_replace(["/[ \\t]+\\n/", "/\\n{3,}/", "/[ \\t]{2,}/"], ["\n", "\n\n", ' '], str_replace("\xC2\xA0", ' ', $text)) ?? '');
     if ($text === '') return null;
     $css = 'body{font:16px/1.55 system-ui,sans-serif;max-width:60rem;margin:0 auto;padding:1rem;color:#1a1a1a;background:#fff;overflow-wrap:anywhere}'
          . 'img{max-width:100%;height:auto}table{border-collapse:collapse;max-width:100%}td,th{border:1px solid #bbb;padding:.3rem .5rem}'
          . 'pre,code{font-family:ui-monospace,monospace;background:#f2f2f2}pre{padding:.6rem;overflow:auto}blockquote{border-left:3px solid #bbb;margin-left:0;padding-left:1rem}';
-    $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' . $css . '</style></head><body>' . $body . '</body></html>';
+    $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' . $css . '</style>' . ($pageCss !== '' ? '<style>' . $pageCss . '</style>' : '') . '</head><body' . $bodyAttrs . '>' . $body . '</body></html>';
     return [$html, $text];
 }
 

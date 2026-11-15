@@ -138,6 +138,11 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                     <label>Materia <select name="subject_id" form="ai-form"></select></label>
                     <label class="for-event">Per quale verifica <select name="event_id" form="ai-form"></select></label>
                     <label class="for-lesson" hidden>Giorno della lezione <input type="date" name="lesson_date" form="ai-form"></label>
+                    <label class="switch"><input type="checkbox" id="ai-range-on"> Scelgo io da che giorno a che giorno passare il materiale</label>
+                    <div class="grid2" id="ai-range" hidden>
+                        <label>Dal giorno <input type="date" id="ai-from"></label>
+                        <label>Al giorno <input type="date" id="ai-to"></label>
+                    </div>
                 </div>
             </div>
 

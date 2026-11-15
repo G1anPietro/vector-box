@@ -367,6 +367,18 @@ try {
             $path = notesDir((int)$file['class_id']) . '/' . basename($file['stored_name']);
             if (!is_file($path)) apFail('not_found', 'File not found', 404);
 
+            // a PowerPoint to look at: drawn as HTML slides (appunti_pptx.php), same sandbox as the HTML notes
+            if (($_GET['view'] ?? '') === '1' && str_ends_with((string)$file['mime'], 'presentationml.presentation')) {
+                require_once __DIR__ . '/appunti_pptx.php';
+                $page = notesPptxHtml($path, (string)$file['original_name']);
+                if ($page === null) apFail('no_preview', 'This presentation cannot be shown here: download it', 422);
+                header('Content-Type: text/html; charset=utf-8');
+                header('X-Content-Type-Options: nosniff');
+                header('Cache-Control: private, max-age=600');
+                header("Content-Security-Policy: sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'");
+                echo $page;
+                exit();
+            }
             $isHtml = $file['mime'] === 'text/html';
             $inline = str_starts_with($file['mime'], 'image/') || $file['mime'] === 'application/pdf' || $isHtml;
             $name = str_replace(['"', '\\'], '', $file['original_name']);
@@ -589,8 +601,14 @@ try {
             if (!checkRateLimit('notes_zip', 20, 3600, 'user:' . $me)) apFail('slow_down', 'Too many downloads, try later', 429);
             $type = (string)($_GET['scope'] ?? '');
             $scope = ['type' => $type, 'subject_id' => (int)($_GET['subject_id'] ?? 0), 'date' => (string)($_GET['date'] ?? ''),
-                      'event_id' => (int)($_GET['event_id'] ?? 0), 'audio' => !empty($_GET['audio'])];
-            if (!in_array($type, ['day', 'subject', 'event'], true)) apFail('bad_scope', 'Unknown scope');
+                      'event_id' => (int)($_GET['event_id'] ?? 0), 'audio' => !empty($_GET['audio']),
+                      'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? ''), 'dispensa' => !empty($_GET['dispensa'])];
+            if ($type === 'range') {
+                if (!classValidDate($scope['from']) || !classValidDate($scope['to']) || $scope['from'] > $scope['to']) apFail('bad_range', 'Choose a start day before the end day');
+                if ((new DateTimeImmutable($scope['from']))->diff(new DateTimeImmutable($scope['to']))->days > 366) apFail('bad_range', 'At most one year at a time');
+                if ($scope['subject_id'] && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
+            }
+            if (!in_array($type, ['day', 'subject', 'event', 'range'], true)) apFail('bad_scope', 'Unknown scope');
             if ($type === 'day' && !classValidDate($scope['date'])) apFail('bad_date', 'Date must be YYYY-MM-DD');
             if ($type === 'subject' && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
             if (($_GET['format'] ?? '') === 'pdf') {
@@ -620,10 +638,16 @@ try {
             if (!checkRateLimit('notes_zip', 20, 3600, 'user:' . $me)) apFail('slow_down', 'Too many downloads, try later', 429);
             $type = (string)($_GET['scope'] ?? '');
             $scope = ['type' => $type, 'subject_id' => (int)($_GET['subject_id'] ?? 0), 'date' => (string)($_GET['date'] ?? ''),
-                      'event_id' => (int)($_GET['event_id'] ?? 0), 'audio' => !empty($_GET['audio'])];
+                      'event_id' => (int)($_GET['event_id'] ?? 0), 'audio' => !empty($_GET['audio']),
+                      'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? ''), 'dispensa' => !empty($_GET['dispensa'])];
+            if ($type === 'range') {
+                if (!classValidDate($scope['from']) || !classValidDate($scope['to']) || $scope['from'] > $scope['to']) apFail('bad_range', 'Choose a start day before the end day');
+                if ((new DateTimeImmutable($scope['from']))->diff(new DateTimeImmutable($scope['to']))->days > 366) apFail('bad_range', 'At most one year at a time');
+                if ($scope['subject_id'] && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
+            }
             if ($type === 'day' && !classValidDate($scope['date'])) apFail('bad_date', 'Date must be YYYY-MM-DD');
             if ($type === 'subject' && !notesSubjectOf($db, $classId, $scope['subject_id'])) apFail('bad_subject', 'Choose a subject');
-            if (!in_array($type, ['day', 'subject', 'event'], true)) apFail('bad_scope', 'Unknown scope');
+            if (!in_array($type, ['day', 'subject', 'event', 'range'], true)) apFail('bad_scope', 'Unknown scope');
             set_time_limit(120);
             $built = zipBuild($db, $class, $scope);
             if (is_string($built)) apFail('nothing', $built, 404);
@@ -825,6 +849,55 @@ try {
 
         $itemId = apCommitUploads($db, $class, $me, $fields, $uploads);
         jsonResponse(['success' => true, 'id' => $itemId]);
+    }
+
+    if ($action === 'move_items' || $action === 'delete_items') {
+        // Several uploads at once (the archive: selected files, or a whole folder): move them to another day / topic, or delete them.
+        $ids = is_array($in['ids'] ?? null) ? array_values(array_unique(array_filter(array_map('intval', $in['ids'])))) : [];
+        if (!$ids || count($ids) > 500) apFail('bad_ids', 'Choose between 1 and 500 items');
+        $first = null;
+        foreach ($ids as $id0) { if ($first = apLoadItem($db, $id0)) break; }   // some may be gone already (deleted in the meantime)
+        if (!$first) apFail('not_found', 'Not found', 404);
+        [$class, $perms] = apClass($db, (int)$first['class_id'], $me, $isAdmin);
+        $classId = (int)$class['id'];
+        $may = in_array('material', $perms, true);
+        $date = null; $topic = null;
+        if ($action === 'move_items') {
+            $date = (string)($in['lesson_date'] ?? '');
+            $hasTopic = array_key_exists('topic_id', $in);
+            if ($date === '' && !$hasTopic) apFail('nothing', 'Choose a day or a topic');
+            if ($date !== '' && !classValidDate($date)) apFail('bad_date', 'Date must be YYYY-MM-DD');
+            $topic = $hasTopic ? (int)$in['topic_id'] : null;
+        }
+        $done = 0; $skipped = 0; $subjects = [];
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            foreach ($ids as $id) {
+                $it = apLoadItem($db, $id);
+                if (!$it || (int)$it['class_id'] !== $classId || (!$may && (int)$it['author_id'] !== $me)) { $skipped++; continue; }
+                $subjects[(int)$it['subject_id']] = true;
+                if ($action === 'delete_items') {
+                    apDeleteFiles($db, $id);
+                    $db->prepare('DELETE FROM class_items WHERE id = :id')->execute([':id' => $id]);
+                } else {
+                    if ($date !== '' && $date !== $it['lesson_date']) {
+                        $db->prepare('UPDATE class_items SET lesson_date = :d, period = NULL, updated_at = :n WHERE id = :id')->execute([':d' => $date, ':n' => time(), ':id' => $id]);
+                    }
+                    if ($topic !== null) {
+                        $t = apTopicOf($db, $classId, (int)$it['subject_id'], $topic);
+                        $db->prepare('UPDATE class_items SET topic_id = :t, topic_manual = :m, updated_at = :n WHERE id = :id')->execute([':t' => $t ?: null, ':m' => $t ? 1 : 0, ':n' => time(), ':id' => $id]);
+                    }
+                }
+                $done++;
+            }
+            $db->exec('COMMIT');
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->exec('ROLLBACK');
+            throw $e;
+        }
+        if ($action === 'move_items') foreach (array_keys($subjects) as $sid) notesAssignTopics($db, $classId, $sid);
+        if ($done) classLog($db, $classId, $me, $action === 'move_items' ? 'Appunti spostati' : 'Appunti eliminati', $done . ' ' . ($date ?? ''));
+        jsonResponse(['success' => true, 'done' => $done, 'skipped' => $skipped]);
     }
 
     if ($action === 'edit_item' || $action === 'delete_item') {

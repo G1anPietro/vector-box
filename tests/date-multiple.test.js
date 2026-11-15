@@ -65,3 +65,48 @@ test('the admin sets the number of files per upload', async () => {
     assert.equal((await admin.post('/api/classi.php', { action: 'set_limits', file_mb: 40, class_mb: 5120, files: 500 })).json.code, 'bad_limit');
     assert.equal((await mario.post('/api/classi.php', { action: 'set_limits', file_mb: 40, class_mb: 5120, files: 5 })).status, 403);
 });
+
+test('bulk: move several uploads to another day, then delete a whole folder; others are skipped', async () => {
+    await admin.post('/api/classi.php', { action: 'set_limits', file_mb: 40, class_mb: 5120, files: 20 });
+    const ids = [];
+    for (const n of [1, 2, 3]) {
+        const r = await upload(mario, { class_id: classId, subject_id: subj, kind: 'appunti', lesson_date: '2026-11-02', title: 'bulk' + n }, [{ name: `b${n}.txt`, content: Buffer.from('b' + n), type: 'text/plain' }]);
+        assert.equal(r.status, 200);
+    }
+    const lu = await upload(luigi, { class_id: classId, subject_id: subj, kind: 'appunti', lesson_date: '2026-11-02', title: 'bulk-luigi' }, [{ name: 'lu.txt', content: Buffer.from('lu'), type: 'text/plain' }]);
+    assert.equal(lu.status, 200);
+    const all = (await items(mario)).filter((i) => i.title.startsWith('bulk'));
+    all.forEach((i) => ids.push(i.id));
+    // a classmate may move only his own
+    const m1 = await luigi.post('/api/appunti.php', { action: 'move_items', ids, lesson_date: '2026-11-03' });
+    assert.equal(m1.json.done, 1); assert.equal(m1.json.skipped, 3);
+    // the representative moves all
+    const m2 = await mario.post('/api/appunti.php', { action: 'move_items', ids, lesson_date: '2026-11-04' });
+    assert.equal(m2.json.done, 4);
+    assert.deepEqual((await items(mario)).filter((i) => i.title.startsWith('bulk')).map((i) => i.lesson_date), ['2026-11-04', '2026-11-04', '2026-11-04', '2026-11-04']);
+    assert.equal((await mario.post('/api/appunti.php', { action: 'move_items', ids })).json.code, 'nothing');
+    const before = fs.readdirSync(path.join(site.root, 'data/appunti', String(classId))).length;
+    assert.equal((await luigi.post('/api/appunti.php', { action: 'delete_items', ids })).json.done, 1);
+    assert.equal((await mario.post('/api/appunti.php', { action: 'delete_items', ids })).json.done, 3);
+    assert.equal((await items(mario)).filter((i) => i.title.startsWith('bulk')).length, 0);
+    assert.equal(fs.readdirSync(path.join(site.root, 'data/appunti', String(classId))).length, before - 4, 'their files are gone too');
+    const stranger = new Client(site); await stranger.register('dm_stranger');
+    assert.equal((await stranger.post('/api/appunti.php', { action: 'move_items', ids: [all[0].id], lesson_date: '2026-11-05' })).status, 404);
+});
+
+test('materials for another AI can be chosen from a first to a last day', async () => {
+    for (const [d, t] of [['2026-12-01', 'primo'], ['2026-12-03', 'secondo'], ['2026-12-09', 'terzo']]) {
+        assert.equal((await upload(mario, { class_id: classId, subject_id: subj, kind: 'appunti', lesson_date: d, title: t, body: 'testo ' + t }, [])).status, 200);
+    }
+    const get = async (q) => { const r = await fetch(`${site.base}/api/appunti.php?action=ai_pack&class_id=${classId}&${q}`, { headers: { Cookie: mario.cookieHeader() } }); return { status: r.status, text: await r.text() }; };
+    const r = await get(`scope=range&from=2026-12-01&to=2026-12-05&subject_id=${subj}`);
+    assert.equal(r.status, 200);
+    assert.ok(r.text.includes('testo primo') && r.text.includes('testo secondo') && !r.text.includes('testo terzo'));
+    assert.ok(r.text.includes('dal 01/12/2026 al 05/12/2026'));
+    assert.equal((await get('scope=range&from=2026-12-05&to=2026-12-01')).status, 400);
+    assert.equal((await get('scope=range&from=2027-01-01&to=2027-01-05')).status, 404);
+    const handout = await get(`scope=range&from=2026-12-01&to=2026-12-09&dispensa=1`);
+    assert.match(handout.text, /PROMPT 1 — dispensa completa/);
+    const zip = await fetch(`${site.base}/api/appunti.php?action=zip&class_id=${classId}&scope=range&from=2026-12-01&to=2026-12-09`, { headers: { Cookie: mario.cookieHeader() } });
+    assert.equal(zip.status, 200);
+});
