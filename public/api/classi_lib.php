@@ -154,6 +154,16 @@ function classDefaultLimits(PDO $db): array {
     ];
 }
 
+/** Upload limits for the whole site (set by the admin in the settings): files per upload, uploads per hour per user, unfinished uploads per user. */
+function classUploadLimits(PDO $db): array {
+    $get = fn(string $k, int $def, int $min, int $max) => max($min, min($max, (int)appSetting($db, $k, (string)$def)));
+    return [
+        'files' => $get('notes_max_files', 20, 1, 100),
+        'per_hour' => $get('notes_per_hour', 300, 10, 3000),
+        'open' => $get('notes_max_open', 40, 5, 200),
+    ];
+}
+
 /** Limits in force for one class (its override, else the site default), in MB. */
 function classLimits(PDO $db, array $class): array {
     $d = classDefaultLimits($db);

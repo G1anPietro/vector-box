@@ -138,6 +138,7 @@ try {
                 'success' => true,
                 'requests_open' => classRequestsOpen($db),
                 'default_limits_mb' => classDefaultLimits($db),
+                'upload_limits' => classUploadLimits($db),
                 'classes' => array_map(fn($c) => [
                     'id' => (int)$c['id'], 'name' => $c['name'], 'school' => $c['school'],
                     'status' => $c['status'], 'note' => $c['request_note'],
@@ -242,7 +243,13 @@ try {
         if ($file === null || $class === null) clFail('bad_limit', 'Both site-wide limits are required');
         appSettingSet($db, 'notes_max_file_mb', (string)$file);
         appSettingSet($db, 'notes_max_class_mb', (string)$class);
-        jsonResponse(['success' => true, 'limits_mb' => classDefaultLimits($db)]);
+        // the other upload limits: optional, each within its range
+        foreach (['files' => ['notes_max_files', 1, 100], 'per_hour' => ['notes_per_hour', 10, 3000], 'open' => ['notes_max_open', 5, 200]] as $key => [$setting, $lo, $hi]) {
+            if (!array_key_exists($key, $in) || $in[$key] === '' || $in[$key] === null) continue;
+            if (!is_numeric($in[$key]) || (int)$in[$key] < $lo || (int)$in[$key] > $hi) clFail('bad_limit', "Limit must be between $lo and $hi");
+            appSettingSet($db, $setting, (string)(int)$in[$key]);
+        }
+        jsonResponse(['success' => true, 'limits_mb' => classDefaultLimits($db), 'upload' => classUploadLimits($db)]);
     }
 
     if ($action === 'delete_class') {

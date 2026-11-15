@@ -64,6 +64,12 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                     </select>
                 </label>
             </div>
+            <details id="w-more" hidden>
+                <summary>Vale anche per altri giorni (rappresentante)</summary>
+                <p class="muted small">Per il materiale che serve a più lezioni: viene aggiunto a ogni giorno scelto qui sotto, oltre a quello in alto.</p>
+                <div class="row"><input type="date" id="w-more-date"><button type="button" class="ghost mini" id="w-more-add">Aggiungi giorno</button></div>
+                <ul id="w-more-list" class="chips plain"></ul>
+            </details>
             <label>Lezione / materia <select id="w-lesson"></select></label>
             <label id="w-topic-l" hidden>Argomento <select id="w-topic"></select></label>
             <p id="w-hint" class="muted small"></p>

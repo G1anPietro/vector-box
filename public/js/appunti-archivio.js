@@ -282,15 +282,38 @@
         function deleteMenu(en) {
             const isFile = en.type === 'file' && en.file.can_delete;
             const isDoc = en.type === 'doc' && en.can_delete;
-            if (!isFile && !isDoc) return null;
+            const canMove = (en.type === 'file' || en.type === 'text') && en.item && en.item.can_edit;
+            if (!isFile && !isDoc && !canMove) return null;
             const name = isFile ? en.file.name : (en.rawTitle || en.label);
-            return C.menu([{ label: isFile ? 'Elimina questo file…' : 'Elimina questo documento…', danger: true, onclick: async () => {
+            const actions = [];
+            if (canMove) actions.push({ label: 'Cambia il giorno…', onclick: () => moveDay(en) });
+            if (isFile || isDoc) actions.push({ label: isFile ? 'Elimina questo file…' : 'Elimina questo documento…', danger: true, onclick: async () => {
                 if (!confirm(`Eliminare «${name}»?${isDoc && en.manualAi ? ' L\'AI può rifarlo al prossimo riassunto se c\'è ancora il materiale.' : ''} Non si può annullare.`)) return;
                 try {
                     await C.post('../api/appunti.php', { action: isFile ? 'delete_file' : 'delete_doc', id: isFile ? en.file.id : en.id });
                     location.reload();
                 } catch (e) { C.toast(e.message, 'err'); }
-            } }], 'Altre azioni');
+            } });
+            return C.menu(actions, 'Altre azioni');
+        }
+        /** Moves the whole upload (the item the file or text belongs to) to another lesson day: the server checks who may. */
+        function moveDay(en) {
+            const it = en.item;
+            const input = el('input', { type: 'date', value: it.lesson_date, required: true });
+            const bar = el('form', { class: 'row move-day' }, el('label', { text: 'Giorno della lezione ' }, input),
+                el('button', { class: 'mini', text: 'Sposta' }), el('button', { type: 'button', class: 'ghost mini', text: 'Annulla', onclick: () => bar.remove() }));
+            bar.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                if (!input.value || input.value === it.lesson_date) { bar.remove(); return; }
+                try {
+                    await C.post('../api/appunti.php', { action: 'edit_item', id: it.id, subject_id: it.subject_id, kind: it.kind, lesson_date: input.value, period: '', title: it.title, body: it.body });
+                    C.toast('Spostato al ' + input.value + '.', 'ok');
+                    location.reload();
+                } catch (e) { C.toast(e.message, 'err'); }
+            });
+            const old = pv.querySelector('.move-day'); if (old) old.remove();
+            pv.querySelector('.pv-head').after(bar);
+            input.focus();
         }
         try {
             if (en.type === 'file') {

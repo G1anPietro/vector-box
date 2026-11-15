@@ -1267,6 +1267,7 @@ ${lines.join('\n')}
             const lf = $('#limits-form');
             lf.file_mb.value = all.default_limits_mb.file;
             lf.class_mb.value = all.default_limits_mb.class;
+            if (all.upload_limits) { lf.files.value = all.upload_limits.files; lf.per_hour.value = all.upload_limits.per_hour; lf.open.value = all.upload_limits.open; }
             const pending = all.classes.filter((c) => c.status === 'pending');
             $('#admin-requests').replaceChildren(...(pending.length ? pending.map((c) => el('li', {},
                 el('span', {}, el('b', { text: `${c.name} · ${c.school}` }), el('br'),
@@ -1295,7 +1296,8 @@ ${lines.join('\n')}
     $('#limits-form').addEventListener('submit', async (ev) => {
         ev.preventDefault();
         try {
-            await classes_({ action: 'set_limits', file_mb: Number(ev.target.file_mb.value), class_mb: Number(ev.target.class_mb.value) });
+            await classes_({ action: 'set_limits', file_mb: Number(ev.target.file_mb.value), class_mb: Number(ev.target.class_mb.value),
+                files: Number(ev.target.files.value), per_hour: Number(ev.target.per_hour.value), open: Number(ev.target.open.value) });
             status('Limiti salvati.', 'ok');
             loadAdmin();
         } catch (e) { status(e.message, 'err'); }

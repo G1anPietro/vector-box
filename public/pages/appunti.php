@@ -309,6 +309,9 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                 <form id="limits-form" class="row">
                     <label>MB per file <input type="number" name="file_mb" min="1" max="95" required></label>
                     <label>MB per classe <input type="number" name="class_mb" min="1" required></label>
+                    <label>File per invio <input type="number" name="files" min="1" max="100" required></label>
+                    <label>Invii all'ora per persona <input type="number" name="per_hour" min="10" max="3000" required></label>
+                    <label>Invii non finiti per persona <input type="number" name="open" min="5" max="200" required></label>
                     <button>Salva</button>
                 </form>
             </div>

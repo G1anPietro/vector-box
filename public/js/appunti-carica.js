@@ -78,11 +78,26 @@
 
     /* ---------- queue ---------- */
 
+    let maxFiles = 20;   // the site's limit, read from the server (the admin can change it)
+    let moreDays = [];   // extra lesson days for the same material (the representative)
+    function drawMoreDays() {
+        $('#w-more-list').replaceChildren(...moreDays.map((d) => el('li', {}, el('span', { text: d }),
+            el('button', { type: 'button', class: 'ghost mini', text: '✕', title: 'Togli', onclick: () => { moreDays = moreDays.filter((x) => x !== d); drawMoreDays(); } }))));
+    }
+    $('#w-more-add').addEventListener('click', () => {
+        const d = $('#w-more-date').value;
+        if (!d) return;
+        if (d === $('#w-date').value) { status('Quel giorno è già quello in alto.', 'err'); return; }
+        if (moreDays.length >= 30) { status('Al massimo 31 giorni.', 'err'); return; }
+        if (!moreDays.includes(d)) moreDays.push(d);
+        moreDays.sort(); drawMoreDays(); $('#w-more-date').value = '';
+    });
+
     function addFiles(list) {
         const files = [...list];
         if (!files.length) return;
         queue.push(...files);
-        if (queue.length > 20) { queue = queue.slice(0, 20); status('Al massimo 20 file alla volta: gli altri caricali dopo.', 'err'); }
+        if (queue.length > maxFiles) { queue = queue.slice(0, maxFiles); status(`Al massimo ${maxFiles} file alla volta: gli altri caricali dopo.`, 'err'); }
         renderQueue();
         // an audio file says when it was recorded inside itself; the date of the file is only the fallback
         Promise.all(files.map(async (f) => (f.type.startsWith('audio/') && await C.mediaTime(f)) || f.lastModified || Date.now()))
@@ -124,12 +139,13 @@
         const files = method !== 'text' ? queue.slice() : [];
         window.AppuntiUpload.enqueue({
             class_id: current.id, label: subjectName(Number(subjectId)),
-            fields: { subject_id: subjectId, period: period || '', kind: $('#w-kind').value, lesson_date: $('#w-date').value, title: $('#w-title').value, body: text, topic_id: Number($('#w-topic').value) || 0 },
+            fields: { subject_id: subjectId, period: period || '', kind: $('#w-kind').value, lesson_date: $('#w-date').value, title: $('#w-title').value, body: text, topic_id: Number($('#w-topic').value) || 0,
+                       ...(moreDays.length && (current.perms || []).includes('material') ? { extra_dates: moreDays } : {}) },
             files,
         }).then(() => {
             status(files.length ? 'Messo in coda: parte da solo e riprende se la connessione cade.' : 'Invio…', 'ok');
             $('#send-btn').textContent = 'Carica altro';
-            queue = []; renderQueue();
+            queue = []; renderQueue(); moreDays = []; drawMoreDays();
             $('#text-input').value = ''; $('#text-preview').replaceChildren(); $('#w-title').value = ''; $('#w-hint').textContent = '';
         }).catch((e) => status('Non riesco a preparare i file: ' + e.message, 'err'));
     });
@@ -141,7 +157,8 @@
     async function updateLimits() {
         try {
             const u = await getJson(`../api/appunti.php?action=usage&class_id=${current.id}`);
-            $('#limits').textContent = `Massimo ${u.limits_mb.file} MB per file · spazio della classe usato: ${C.sizeText(u.used_bytes)} su ${u.limits_mb.class >= 1024 ? (u.limits_mb.class / 1024).toFixed(1) + ' GB' : u.limits_mb.class + ' MB'}.`;
+            if (u.upload) maxFiles = u.upload.files;
+            $('#limits').textContent = `Massimo ${u.upload ? u.upload.files + ' file per invio, ' : ''}${u.limits_mb.file} MB per file · spazio della classe usato: ${C.sizeText(u.used_bytes)} su ${u.limits_mb.class >= 1024 ? (u.limits_mb.class / 1024).toFixed(1) + ' GB' : u.limits_mb.class + ' MB'}.`;
         } catch (e) { /* ignore */ }
     }
 
@@ -312,6 +329,8 @@
         // the example class: the screens open, nothing can be sent
         $('#demo-banner').hidden = !current.demo;
         ['#send-btn', '#ai-form button', '#aiget-md', '#aiget-pdf', '#aiget-zip'].forEach((q) => document.querySelectorAll(q).forEach((b) => { b.disabled = !!current.demo; if (current.demo) b.title = 'Nella classe di esempio non si carica'; }));
+        $('#w-more').hidden = !(current.perms || []).includes('material') || !!current.demo;
+        moreDays = []; drawMoreDays();
         $('[data-method="timetable"]').hidden = !(current.perms || []).includes('timetable');
         $('#tt-link').href = `appunti.php?class=${id}&tab=class`;
         $('#w-date').value = todayStr();

@@ -201,7 +201,15 @@
         listeners.done.forEach((fn) => fn(job, { id, duplicates: dups }));
     }
 
+    // Only one tab sends at a time (the one that got the lock): another tab opened meanwhile leaves the queue alone
     async function loop() {
+        if (running) return;
+        if (!navigator.locks || !navigator.locks.request) return runLoop();
+        let got = false;
+        await navigator.locks.request('vb-notes-upload', { ifAvailable: true }, async (lock) => { if (!lock) return; got = true; await runLoop(); });
+        if (!got) { jobs = []; state = { phase: 'idle', text: '' }; render(); }
+    }
+    async function runLoop() {
         if (running) return;
         running = true;
         try {
@@ -260,6 +268,15 @@
 
     window.addEventListener('online', kick);
     if (navigator.connection && navigator.connection.addEventListener) navigator.connection.addEventListener('change', kick);
+    // Going to another page of the notes while a file is on its way: it opens in a new tab, so the upload is not interrupted
+    // (and the browser does not ask "leave this page?")
+    document.addEventListener('click', (ev) => {
+        if (!(running && state.phase === 'running') || ev.defaultPrevented || ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+        const a = ev.target.closest && ev.target.closest('a[href]');
+        if (!a || a.target === '_blank' || a.hasAttribute('download') || a.origin !== location.origin || a.pathname === location.pathname) return;
+        ev.preventDefault();
+        window.open(a.href, '_blank', 'noopener');
+    });
     window.addEventListener('beforeunload', (ev) => { if (running && state.phase === 'running') { ev.preventDefault(); ev.returnValue = ''; } });
 
     // Jobs left from an earlier visit: carried on by themselves, or only when asked (setting "Riprendi da solo")

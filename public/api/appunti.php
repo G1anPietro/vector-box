@@ -96,7 +96,15 @@ function apItemFields(PDO $db, array $class, array $in): array {
     if ($period !== null && ($period < 1 || $period > CLASS_MAX_PERIODS)) apFail('bad_period', 'Invalid lesson hour');
     $body = (string)($in['body'] ?? '');
     if (textLength($body) > NOTE_BODY_MAX) apFail('too_long', 'Text is too long (max ' . NOTE_BODY_MAX . ' characters)');
+    // more days for the same material (the representative): "2026-10-05,2026-10-06" or a list; at most 30 more
+    $extra = $in['extra_dates'] ?? [];
+    if (is_string($extra)) $extra = preg_split('/[\s,;]+/', trim($extra), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $extra = is_array($extra) ? array_values(array_unique(array_map('strval', $extra))) : [];
+    $extra = array_values(array_filter($extra, fn($d) => $d !== $date));
+    foreach ($extra as $d) if (!classValidDate($d)) apFail('bad_date', 'Date must be YYYY-MM-DD');
+    if (count($extra) > 30) apFail('too_many_dates', 'At most 31 days at a time');
     return [
+        'extra_dates' => $extra,
         'subject_id' => $subjectId, 'kind' => $kind, 'lesson_date' => $date, 'period' => $period,
         'title' => apText($in['title'] ?? '', NOTE_TITLE_MAX), 'body' => apText($body, NOTE_BODY_MAX, true), 'auto' => $auto,
         'topic_given' => array_key_exists('topic_id', $in), 'topic_id' => apTopicOf($db, (int)$class['id'], $subjectId, (int)($in['topic_id'] ?? 0)),
@@ -229,7 +237,8 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
         if ($u['error'] !== UPLOAD_ERR_OK || empty($u['local']) && !is_uploaded_file($u['tmp'])) apFail('upload_failed', "Upload of \"{$u['name']}\" failed");
         $total += $u['size'];
     }
-    if (notesUsedBytes($db, $classId) + $total > $limits['class'] * 1048576) {
+    $days = array_merge([$fields['lesson_date']], $fields['extra_dates'] ?? []);   // the same material for more days: one copy of each file per day
+    if (notesUsedBytes($db, $classId) + $total * count($days) > $limits['class'] * 1048576) {
         apFail('class_full', 'The class has used all its space (' . $limits['class'] . ' MB)', 413);
     }
 
@@ -261,21 +270,37 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
             }
         }
 
+        // a copy of the files for every extra day (a hard link when possible, so no extra space on disk)
+        $perDay = [0 => $stored];
+        foreach ($days as $k => $day) {
+            if ($k === 0) continue;
+            foreach ($perDay[0] as $f) {
+                $copyName = bin2hex(random_bytes(16)) . '.' . $f['ext'];
+                if (!@link("$dir/{$f['stored']}", "$dir/$copyName") && !copy("$dir/{$f['stored']}", "$dir/$copyName")) throw new RuntimeException('cannot copy the file');
+                $perDay[$k][] = ['stored' => $copyName] + $f;
+                $stored[] = ['stored' => $copyName] + $f;   // for the cleanup below
+            }
+        }
+
         $now = time();
         $db->exec('BEGIN IMMEDIATE');
-        $db->prepare('INSERT INTO class_items (class_id, subject_id, kind, lesson_date, period, title, body, author_id, source, created_at, updated_at, ai_state)
-                      VALUES (:c, :s, :k, :d, :p, :t, :b, :a, :src, :now, :now, :ais)')
-           ->execute([':c' => $classId, ':s' => $fields['subject_id'], ':k' => $fields['kind'], ':d' => $fields['lesson_date'],
-                      ':p' => $fields['period'], ':t' => $fields['title'], ':b' => $fields['body'], ':a' => $me,
-                      ':src' => 'site', ':now' => $now, ':ais' => !empty($fields['auto']) ? 'auto' : '']);
-        $itemId = (int)$db->lastInsertId();
+        $itemIds = [];
+        $insItem = $db->prepare('INSERT INTO class_items (class_id, subject_id, kind, lesson_date, period, title, body, author_id, source, created_at, updated_at, ai_state)
+                      VALUES (:c, :s, :k, :d, :p, :t, :b, :a, :src, :now, :now, :ais)');
         $ins = $db->prepare('INSERT INTO class_item_files (item_id, class_id, stored_name, original_name, mime, size, text, text_status, created_at, sha256)
                              VALUES (:i, :c, :n, :o, :m, :sz, :tx, :ts, :now, :h)');
-        foreach ($stored as $f) {
-            [$text, $status] = notesExtractText("$dir/{$f['stored']}", $f['ext']);
-            $ins->execute([':i' => $itemId, ':c' => $classId, ':n' => $f['stored'], ':o' => $f['original'], ':m' => $f['mime'],
-                           ':sz' => $f['size'], ':tx' => $text, ':ts' => $status, ':now' => $now, ':h' => $f['sha256']]);
+        foreach ($days as $k => $day) {
+            $insItem->execute([':c' => $classId, ':s' => $fields['subject_id'], ':k' => $fields['kind'], ':d' => $day,
+                          ':p' => $k === 0 ? $fields['period'] : null, ':t' => $fields['title'], ':b' => $fields['body'], ':a' => $me,
+                          ':src' => 'site', ':now' => $now, ':ais' => !empty($fields['auto']) ? 'auto' : '']);
+            $itemIds[$k] = (int)$db->lastInsertId();
+            foreach ($perDay[$k] as $f) {
+                [$text, $status] = notesExtractText("$dir/{$f['stored']}", $f['ext']);
+                $ins->execute([':i' => $itemIds[$k], ':c' => $classId, ':n' => $f['stored'], ':o' => $f['original'], ':m' => $f['mime'],
+                               ':sz' => $f['size'], ':tx' => $text, ':ts' => $status, ':now' => $now, ':h' => $f['sha256']]);
+            }
         }
+        $itemId = $itemIds[0];
         $db->exec('COMMIT');
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->exec('ROLLBACK');
@@ -285,6 +310,8 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
     // the topic: the one chosen, or the one that covers that day
     if (!empty($fields['topic_id'])) $db->prepare('UPDATE class_items SET topic_id = :t, topic_manual = 1 WHERE id = :id')->execute([':t' => $fields['topic_id'], ':id' => $itemId]);
     else notesAssignTopics($db, $classId, (int)$fields['subject_id']);
+    // the other days: the chosen topic belongs to the first day only, the site assigns the rest
+    if (count($itemIds) > 1) notesAssignTopics($db, $classId, (int)$fields['subject_id']);
     return $itemId;
 }
 
@@ -660,7 +687,7 @@ try {
         }
 
         if ($action === 'usage') {
-            jsonResponse(['success' => true, 'used_bytes' => notesUsedBytes($db, $classId), 'limits_mb' => classLimits($db, $class)]);
+            jsonResponse(['success' => true, 'used_bytes' => notesUsedBytes($db, $classId), 'limits_mb' => classLimits($db, $class), 'upload' => classUploadLimits($db)]);
         }
 
         apFail('unknown_action', 'Unknown action');
@@ -695,7 +722,7 @@ try {
     if ($action === 'upload_begin') {
         // Start (or recognise) one file of a resumable upload
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
-        if (!checkRateLimit('notes_upload_begin', 300, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
+        if (!checkRateLimit('notes_upload_begin', classUploadLimits($db)['per_hour'], 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
         $name = textCut(basename(str_replace('\\', '/', (string)($in['name'] ?? ''))), 200);
         $size = (int)($in['size'] ?? 0);
         $hash = strtolower((string)($in['sha256'] ?? ''));
@@ -710,7 +737,7 @@ try {
         }
         apTmpClean();
         $mine = glob(apTmpRoot() . "/$me/*", GLOB_ONLYDIR) ?: [];
-        if (count($mine) >= UP_MAX_OPEN) apFail('too_many_open', 'Too many unfinished uploads: finish or cancel some');
+        if (count($mine) >= classUploadLimits($db)['open']) apFail('too_many_open', 'Too many unfinished uploads: finish or cancel some');
         $id = bin2hex(random_bytes(12));
         $dir = apTmpRoot() . "/$me/$id";
         if (!@mkdir($dir, 0750, true) && !is_dir($dir)) throw new RuntimeException('cannot create ' . $dir);
@@ -720,7 +747,7 @@ try {
 
     if ($action === 'upload_chunk') {
         // One piece, at the exact offset where the server stopped: a repeated or out-of-order piece is refused with the right offset
-        if (!checkRateLimit('notes_upload_chunk', 3000, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
+        if (!checkRateLimit('notes_upload_chunk', classUploadLimits($db)['per_hour'] * 10, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
         $dir = apTmpDir($me, (string)($in['upload_id'] ?? ''));
         if (!$dir) apFail('not_found', 'Unknown upload', 404);
         $meta = apTmpMeta($dir);
@@ -750,12 +777,13 @@ try {
 
     if ($action === 'upload_commit') {
         // All the files are here: make the item (same checks as a normal upload)
-        [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        [$class, $perms] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         if (!checkRateLimit('notes_upload', 60, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
         $fields = apItemFields($db, $class, $in);
+        if ($fields['extra_dates'] && !in_array('material', $perms, true)) apFail('forbidden', 'Only the class manager can add material to more days', 403);
         $ids = is_array($in['upload_ids'] ?? null) ? array_values(array_unique(array_map('strval', $in['upload_ids']))) : [];
         if (!$ids && $fields['body'] === '') apFail('empty', 'Add a file or write some text');
-        if (count($ids) > NOTE_MAX_FILES) apFail('too_many_files', 'At most ' . NOTE_MAX_FILES . ' files at a time');
+        if (count($ids) > classUploadLimits($db)['files']) apFail('too_many_files', 'At most ' . classUploadLimits($db)['files'] . ' files at a time');
         $uploads = [];
         $dirs = [];
         foreach ($ids as $id) {
@@ -775,10 +803,11 @@ try {
     }
 
     if ($action === 'upload') {
-        [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
+        [$class, $perms] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         $classId = (int)$class['id'];
         if (!checkRateLimit('notes_upload', 60, 3600, 'user:' . $me)) apFail('slow_down', 'Too many uploads, try later', 429);
         $fields = apItemFields($db, $class, $in);
+        if ($fields['extra_dates'] && !in_array('material', $perms, true)) apFail('forbidden', 'Only the class manager can add material to more days', 403);
 
         // Normalise files[] (PHP gives parallel arrays)
         $uploads = [];
@@ -792,7 +821,7 @@ try {
             }
         }
         if (!$uploads && $fields['body'] === '') apFail('empty', 'Add a file or write some text');
-        if (count($uploads) > NOTE_MAX_FILES) apFail('too_many_files', 'At most ' . NOTE_MAX_FILES . ' files at a time');
+        if (count($uploads) > classUploadLimits($db)['files']) apFail('too_many_files', 'At most ' . classUploadLimits($db)['files'] . ' files at a time');
 
         $itemId = apCommitUploads($db, $class, $me, $fields, $uploads);
         jsonResponse(['success' => true, 'id' => $itemId]);
