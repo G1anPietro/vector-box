@@ -26,6 +26,10 @@ window.SpiaLocal = (() => {
         return a;
     };
     const clean = (s, max) => String(s || '').replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+    /** A name as shown: invisible characters removed (a joiner stays between two symbols), spaces collapsed, letters composed. */
+    const cleanName = (s) => String(s || '').normalize('NFC').replace(/\u200D/g, '\uE000').replace(/[\p{Cf}\u2028\u2029]+/gu, '')
+        .replace(/(?<=\p{So})\uE000(?=\p{So})/gu, '\u200D').replace(/\uE000/g, '').replace(/[\u0000-\u001F\u007F\s]+/gu, ' ').trim().slice(0, 24);
+    const nameKey = (s) => cleanName(s).replace(/[\u200D\uFE0F]/g, '').toLowerCase();
     const fail = (code) => { const e = new Error(code); e.code = code; throw e; };
 
     function setData(loc) {
@@ -97,10 +101,10 @@ window.SpiaLocal = (() => {
     }
 
     function addPlayer(raw) {
-        const name = clean(raw, 24);
-        if (!name) fail('name_empty');
+        const name = cleanName(raw);
+        if (!name || !nameKey(name)) fail('name_empty');
         if (g.players.length >= MAX_PLAYERS) fail('room_full');
-        if (g.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) fail('name_taken');
+        if (g.players.some((p) => nameKey(p.name) === nameKey(name))) fail('name_taken');
         const p = { id: g.nextId++, name, score: 0 };
         g.players.push(p);
         const r = g.round;
@@ -240,7 +244,13 @@ window.SpiaLocal = (() => {
             case 'player_remove': {
                 const id = own(d.player_id);
                 g.players = g.players.filter((p) => p.id !== id);
-                if (playing && r.assign[id] && !r.assign[id].out) { r.assign[id].out = 'left'; maybeCloseVote(); }
+                if (playing && r.assign[id] && !r.assign[id].out) {
+                    const wasSpy = r.assign[id].spy;
+                    r.assign[id].out = 'left';
+                    if (wasSpy && aliveSpies(r) === 0) end('civilians', 'spy_left');            // the last spy walked away
+                    else if (alive(r).length < 3) end('none', 'too_few');                        // too few players: round stopped
+                    else maybeCloseVote();
+                }
                 break;
             }
             case 'settings': g.settings = sanitize(d.settings, g.settings); break;

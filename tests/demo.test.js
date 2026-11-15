@@ -56,7 +56,9 @@ test('a new user is offered the example class and can read all of it', async () 
     const cls = (await anna.get(`/api/classi.php?action=class&id=${demoId}`)).json.class;
     assert.equal(cls.demo, true);
     assert.equal(cls.is_member, false);
-    assert.deepEqual(cls.perms, []);
+    assert.ok(cls.perms.includes('roles') && cls.perms.includes('settings'), 'the representative screens are shown as a preview');
+    assert.equal(cls.is_manager, false);
+    assert.equal((await anna.get(`/api/classi.php?action=log&id=${demoId}`)).status, 200);
     assert.equal(cls.members.length, 5);
     assert.ok(cls.timetable.slots.length >= 25);
     const get = async (p) => (await anna.get(p)).json;

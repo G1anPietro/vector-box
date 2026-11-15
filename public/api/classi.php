@@ -161,7 +161,17 @@ try {
         $restriction = accountRestriction($db, $me);
         if ($restriction) clFail('restricted', $restriction, 403);
         if (!$isAdmin && !classRequestsOpen($db)) clFail('requests_closed', 'New class requests are closed right now', 403);
-        if (!checkRateLimit('class_request', 5, 3600, 'user:' . $me)) clFail('slow_down', 'Too many requests, try later', 429);
+        // Spam brakes (a bot, or someone with a lot of patience): per person and per address, per hour and per day;
+        // the same class already waiting; too many refused lately; and a ceiling on the requests waiting for the admin at once
+        if (!checkRateLimit('class_request', 5, 3600, 'user:' . $me)
+            || !checkRateLimit('class_request_day', 10, 86400, 'user:' . $me)
+            || !checkRateLimit('class_request_ip', 10, 86400, 'ip:' . getClientIp())) clFail('slow_down', 'Too many requests, try again later', 429);
+        $refused = $db->prepare("SELECT COUNT(*) FROM school_classes WHERE manager_id = :me AND status = 'rejected' AND created_at > :t");
+        $refused->execute([':me' => $me, ':t' => time() - 7 * 86400]);
+        if (!$isAdmin && (int)$refused->fetchColumn() >= CLASS_MAX_REFUSED_WEEK) clFail('too_many_refused', 'Several of your requests were refused this week: try again later', 429);
+        if (!$isAdmin && (int)$db->query("SELECT COUNT(*) FROM school_classes WHERE status = 'pending'")->fetchColumn() >= CLASS_MAX_PENDING_ALL) {
+            clFail('requests_full', 'There are too many requests waiting right now: try again in a few days', 429);
+        }
 
         $name = clText($in['name'] ?? '', CLASS_NAME_MAX);
         $school = clText($in['school'] ?? '', CLASS_SCHOOL_MAX);
@@ -172,6 +182,9 @@ try {
         $st = $db->prepare("SELECT COUNT(*) FROM school_classes WHERE manager_id = :me AND status = 'pending'");
         $st->execute([':me' => $me]);
         if ((int)$st->fetchColumn() >= CLASS_MAX_PENDING) clFail('too_many', 'You already have requests waiting');
+        $dup = $db->prepare("SELECT 1 FROM school_classes WHERE status = 'pending' AND LOWER(name) = LOWER(:n) AND LOWER(school) = LOWER(:s)");
+        $dup->execute([':n' => $name, ':s' => $school]);
+        if ($dup->fetchColumn()) clFail('duplicate', 'This class was already requested and is waiting for approval');
 
         $db->prepare("INSERT INTO school_classes (name, school, status, manager_id, request_note, periods, created_at)
                       VALUES (:n, :s, 'pending', :me, :note, :p, :t)")

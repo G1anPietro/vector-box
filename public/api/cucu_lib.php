@@ -207,7 +207,9 @@ function cucuPlayerLeft(array &$g, int $pid): void {
     cucuEvent($g, ['t' => 'left', 'p' => $pid]);
     $alive = cucuAlive($g);
     if (count($alive) <= 1) { cucuEnd($g, $alive[0] ?? null, 'last_alive'); return; }
-    if ($wasDealer) { cucuNextHand($g); return; }
+    // the one who was about to lose a life walked away: the hand is over, or the host could never confirm it
+    $wasLoser = $g['phase'] === 'confirm' && (int)($g['reveal']['loser'] ?? 0) === $pid;
+    if ($wasDealer || $wasLoser) { cucuNextHand($g); return; }
     if ($wasTurn) $g['turn'] = cucuNext($g, $pid);
 }
 

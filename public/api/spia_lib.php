@@ -49,6 +49,42 @@ function spiaDefaultSettings(): array {
     ];
 }
 
+/**
+ * A player's name as shown: control characters and invisible ones (zero-width spaces, joiners, right-to-left overrides, BOM) are removed,
+ * any run of spaces (also non-breaking ones) becomes one space, letters with a separate accent are composed ("e" + dots = "ë").
+ * A joiner is kept only between two symbols (emoji families such as the ones with a laptop).
+ */
+function spiaCleanName($s): string {
+    $s = str_replace("\u{200D}", "\u{E000}", (string)$s);                     // joiners set aside for a moment
+    $s = preg_replace('/[\p{Cf}\x{2028}\x{2029}]+/u', '', $s) ?? '';            // zero-width, bidi marks, BOM
+    $s = preg_replace('/(?<=\p{So})\x{E000}(?=\p{So})/u', "\u{200D}", $s) ?? ''; // a joiner between two symbols stays
+    $s = str_replace("\u{E000}", '', $s);
+    $s = preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', $s) ?? '';
+    return textCut(trim(spiaCompose($s)), SPIA_NAME_MAX);
+}
+
+/** Composes the common letter + combining mark pairs (the Normalizer class needs the intl extension, which may be missing). */
+function spiaCompose(string $s): string {
+    if (class_exists('Normalizer')) return Normalizer::normalize($s, Normalizer::FORM_C) ?: $s;
+    static $map = null;
+    if ($map === null) {
+        $marks = ["\u{0300}" => 'àèìòùÀÈÌÒÙ', "\u{0301}" => 'áéíóúýÁÉÍÓÚÝ', "\u{0302}" => 'âêîôûÂÊÎÔÛ', "\u{0303}" => 'ãñõÃÑÕ', "\u{0308}" => 'äëïöüÿÄËÏÖÜ', "\u{030A}" => 'åÅ', "\u{0327}" => 'çÇ', "\u{030C}" => 'šžčŠŽČ'];
+        $bases = ["\u{0300}" => 'aeiouAEIOU', "\u{0301}" => 'aeiouyAEIOUY', "\u{0302}" => 'aeiouAEIOU', "\u{0303}" => 'anoANO', "\u{0308}" => 'aeiouyAEIOUY', "\u{030A}" => 'aA', "\u{0327}" => 'cC', "\u{030C}" => 'szcSZC'];
+        $map = [];
+        foreach ($marks as $mark => $composed) {
+            $chars = preg_split('//u', $composed, -1, PREG_SPLIT_NO_EMPTY);
+            foreach (str_split($bases[$mark]) as $i => $b) if (isset($chars[$i])) $map[$b . $mark] = $chars[$i];
+        }
+    }
+    return strtr($s, $map);
+}
+
+/** The comparison form of a name: the same for "Zoë", "ZOË", "zoe + dots" and a name with an invisible character in it. */
+function spiaNameKey(string $name): string {
+    $n = str_replace(["\u{200D}", "\u{FE0F}"], '', spiaCleanName($name));
+    return function_exists('mb_strtolower') ? mb_strtolower($n, 'UTF-8') : strtolower($n);
+}
+
 function spiaCleanText($s, int $max): string {
     $s = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string)$s) ?? '';
     return textCut(trim(preg_replace('/\s+/u', ' ', $s) ?? ''), $max);
@@ -479,6 +515,11 @@ function spiaRemoveDevice(PDO $db, array $room, int $deviceId): void {
 }
 
 function spiaRemovePlayer(PDO $db, array $room, ?array $round, int $playerId): void {
+    $wasSpy = false;
+    if ($round && $round['status'] === 'play') {
+        $a = spiaAssignments($db, (int)$round['id'])[$playerId] ?? null;
+        $wasSpy = $a && (int)$a['is_spy'] === 1 && $a['out_reason'] === null;
+    }
     $db->prepare('UPDATE spia_players SET removed = 1 WHERE id = :id')->execute([':id' => $playerId]);
     if (($room['game'] ?? 'spia') === 'cucu') {
         $g = cucuLoad($db, (int)$room['id']);
@@ -501,7 +542,16 @@ function spiaRemovePlayer(PDO $db, array $room, ?array $round, int $playerId): v
     if ($round && $round['status'] === 'play') {
         $db->prepare("UPDATE spia_assign SET out_reason = 'left' WHERE round_id = :r AND player_id = :p AND out_reason IS NULL")
            ->execute([':r' => $round['id'], ':p' => $playerId]);
-        spiaMaybeCloseVote($db, $room, $round);
+        $alive = spiaAlive($db, $round);
+        if ($wasSpy && spiaAliveSpies($db, $round) === 0) {
+            // the last spy walked away: nobody is left to find
+            spiaEndRound($db, $room, $round, 'civilians', 'spy_left');
+        } elseif (count($alive) < 3) {
+            // too few players left to go on (the round is stopped, no points)
+            spiaEndRound($db, $room, $round, 'none', 'too_few');
+        } else {
+            spiaMaybeCloseVote($db, $room, $round);
+        }
     }
 }
 

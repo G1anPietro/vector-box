@@ -61,12 +61,12 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
         <section id="welcome" class="card" hidden>
             <p id="guest-note" class="muted" hidden>Per usare gli Appunti con la tua classe serve un account gratuito: <a href="login.php">accedi o registrati</a>. Intanto puoi guardare la classe di esempio.</p>
             <h2>Entra nella tua classe</h2>
-            <p class="muted">Chiedi il codice d'invito al rappresentante della classe.</p>
+            <p class="muted">Se la tua classe c'è già, chiedi il codice d'invito al rappresentante. <strong>Se non c'è ancora, puoi chiederla tu:</strong> di' solo il nome della classe e della scuola, l'amministratore la approva e tu ne diventi il rappresentante.</p>
             <form id="join-form" class="row">
                 <input name="code" placeholder="Codice (es. K7QM-2XPA)" autocomplete="off" required maxlength="20">
                 <button>Entra</button>
             </form>
-            <details id="request-box">
+            <details id="request-box" open>
                 <summary>La tua classe non c'è? Chiedila</summary>
                 <form id="request-form" class="stack">
                     <input name="name" placeholder="Classe (es. 5B-I)" required maxlength="40">

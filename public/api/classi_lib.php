@@ -6,7 +6,9 @@
 const CLASS_NAME_MAX = 40;
 const CLASS_SCHOOL_MAX = 100;
 const CLASS_NOTE_MAX = 300;
-const CLASS_MAX_PENDING = 3;
+const CLASS_MAX_PENDING = 3;          // requests waiting, per person
+const CLASS_MAX_PENDING_ALL = 40;     // requests waiting, in total: beyond this nobody can ask until the admin decides
+const CLASS_MAX_REFUSED_WEEK = 3;     // refused in the last 7 days: no new request for a while
 const CLASS_MAX_PERIODS = 12;
 const CLASS_MAX_DAYS = 7;            // Monday..Sunday (Sunday only if a class needs it)
 const CLASS_SUBJECT_MAX = 60;
@@ -87,7 +89,12 @@ function classPerms(PDO $db, array $class, int $me, bool $isAdmin): array {
                         WHERE m.class_id = :c AND m.user_id = :u');
     $st->execute([':c' => $class['id'], ':u' => $me]);
     $row = $st->fetch();
-    if (!$row) return [];
+    if (!$row) {
+        // Somebody looking at the example class sees ALL the screens of the representative (roles, subjects, settings, log) as a preview;
+        // nothing works for them: every write is refused (classCanView)
+        if ((int)($class['is_demo'] ?? 0) === 1 && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' || !empty($GLOBALS['demo_write_ok']))) return array_keys(CLASS_PERMS);
+        return [];
+    }
     $all = array_merge(json_decode($row['perms'] ?? '[]', true) ?: [], json_decode($row['role_perms'] ?? '[]', true) ?: []);
     return array_values(array_intersect(array_keys(CLASS_PERMS), $all));
 }

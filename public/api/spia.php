@@ -60,12 +60,12 @@ function spiaOwnPlayer(PDO $db, array $device, $playerId): array {
 
 /** Add a player to a phone. Admin sessions mark their first player as "the admin" (server-side only). */
 function spiaAddPlayer(PDO $db, array $room, array $device, string $rawName, bool $isAdmin): void {
-    $name = spiaCleanText($rawName, SPIA_NAME_MAX);
-    if ($name === '') spiaFail('name_empty');
+    $name = spiaCleanName($rawName);
+    if ($name === '' || spiaNameKey($name) === '') spiaFail('name_empty');
     $players = spiaPlayers($db, (int)$room['id']);
     if (count($players) >= SPIA_MAX_PLAYERS) spiaFail('room_full');
     foreach ($players as $p) {
-        if (mb_strtolower_safe($p['name']) === mb_strtolower_safe($name)) spiaFail('name_taken');
+        if (spiaNameKey($p['name']) === spiaNameKey($name)) spiaFail('name_taken');
     }
     $isOwner = 0;
     if ($isAdmin) {

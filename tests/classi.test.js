@@ -300,3 +300,24 @@ test('the admin deletes a class with everything in it', async () => {
         assert.equal(site.db(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = ?`, [classId])[0].n, 0, t);
     }
 });
+
+test('class requests have spam brakes: same class already waiting, many refused, a ceiling of waiting requests, per-address limit', async () => {
+    const own = await startSite();       // a site of its own: registering is limited per address
+    try {
+    const a = new Client(own); await a.register('sp_a');
+    const b = new Client(own); await b.register('sp_b');
+    const site = own;
+    assert.equal((await api(a, { action: 'request', name: '4C', school: 'Liceo Spam' })).status, 200);
+    const dup = await api(b, { action: 'request', name: '4c', school: 'liceo spam' });
+    assert.equal(dup.json.code, 'duplicate', 'the same class (any case) is not asked twice');
+    // three refused in a week: no more for a while
+    for (const n of ['R1', 'R2', 'R3']) {
+        site.db("INSERT INTO school_classes (name, school, status, manager_id, created_at) VALUES (?, 'X', 'rejected', (SELECT id FROM accounts WHERE username = 'sp_b'), ?)", [n, Math.floor(Date.now() / 1000)]);
+    }
+    assert.equal((await api(b, { action: 'request', name: '5A', school: 'Liceo Altro' })).json.code, 'too_many_refused');
+    // a ceiling on the requests waiting in total
+    const c = new Client(own); await c.register('sp_c');
+    for (let i = 0; i < 40; i++) site.db("INSERT INTO school_classes (name, school, status, manager_id, created_at) VALUES (?, 'Y', 'pending', 1, ?)", ['P' + i, Math.floor(Date.now() / 1000)]);
+    assert.equal((await api(c, { action: 'request', name: '5B', school: 'Liceo Nuovo' })).json.code, 'requests_full');
+    } finally { await own.stop(); }
+});
