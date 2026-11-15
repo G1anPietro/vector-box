@@ -154,7 +154,7 @@ function establishSession(array $account): string {
     $csrf = bin2hex(random_bytes(32));
     $_SESSION['user_id']    = (int)$account['id'];
     $_SESSION['username']   = $account['username'];
-    $_SESSION['theme']      = $account['theme'] ?? 'cyan';
+    $_SESSION['theme']      = $account['theme'] ?? 'monochrome';
     $_SESSION['is_admin']   = (int)($account['is_admin'] ?? 0);
     $_SESSION['csrf_token'] = $csrf;
     session_write_close();
@@ -422,4 +422,42 @@ function textLength(string $s): int {
 }
 function textCut(string $s, int $max): string {
     return function_exists('mb_substr') ? mb_substr($s, 0, $max) : substr($s, 0, $max);
+}
+
+
+/**
+ * The themes of the desktop (index, terminal, account settings). The same ids live in js/theme.js (THEMES):
+ * tests/temi.test.js checks that the two lists match. Reader themes (light, sepia, dark, black) are separate.
+ */
+const SYSTEM_THEMES = [
+    'monochrome' => 'Monocromatico', 'cyan' => 'Cyan', 'matrix' => 'Matrix', 'amber' => 'Amber', 'cyberpunk' => 'Cyberpunk',
+    'dracula' => 'Dracula', 'synthwave' => 'Synthwave', 'nord' => 'Nord', 'blood' => 'Blood', 'catppuccin' => 'Catppuccin',
+    'gruvbox' => 'Gruvbox', 'solarized' => 'Solarized', 'tokyonight' => 'Tokyo Night', 'rosepine' => 'Rosé Pine',
+    'ocean' => 'Oceano', 'forest' => 'Foresta', 'sunset' => 'Tramonto', 'ice' => 'Ghiaccio',
+];
+const DEFAULT_SYSTEM_THEME = 'monochrome';
+const READER_THEMES = ['light', 'sepia', 'dark', 'black'];
+
+/** <option> tags of the theme list, with $current selected. */
+function systemThemeOptions(?string $current): string {
+    $out = '';
+    foreach (SYSTEM_THEMES as $id => $label) {
+        $out .= '<option value="' . $id . '"' . ($id === $current ? ' selected' : '') . '>' . htmlspecialchars($label . ($id === DEFAULT_SYSTEM_THEME ? ' (predefinito)' : '')) . '</option>';
+    }
+    return $out;
+}
+
+/** The theme saved on the account of the logged-in user (so every device shows the same), or null. */
+function savedAccountTheme(): ?string {
+    $uid = $_SESSION['user_id'] ?? null;
+    if (!$uid) return null;
+    try {
+        require_once __DIR__ . '/database.php';
+        $st = getDbConnection()->prepare('SELECT theme FROM accounts WHERE id = :id');
+        $st->execute([':id' => $uid]);
+        $t = (string)$st->fetchColumn();
+        return isset(SYSTEM_THEMES[$t]) ? $t : null;
+    } catch (Throwable $e) {
+        return null;
+    }
 }

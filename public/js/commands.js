@@ -47,8 +47,8 @@ const COMMAND_DESCRIPTIONS = {
     "status": "Display client viewport screen resolution and system environment.",
     "decrypt": "Run automated dictionary attack sequence on target hash. Usage: decrypt [hash]",
     "ascii": "Render ASCII text banner using local FIGlet font parser. Usage: ascii <text>",
-    "theme": "Set desktop interface theme preset. Usage: theme <cyberpunk|nord|catppuccin|gruvbox|dracula|synthwave|solarized>",
-    "matrix": "Set Matrix canvas rain color. Usage: matrix <color|#hex>",
+    "theme": "Show or set the desktop theme (saved on your account when logged in). Usage: theme [name]  (no name: list)",
+    "matrix": "Matrix rain background. Usage: matrix <on|off|color|#hex>",
     "cmatrix": "Trigger matrix rain canvas animation overlay.",
     "nuke": "Trigger emergency CRT screen invert visual effect.",
     "glitch": "Trigger temporary screen distortion glitch effect.",
@@ -211,11 +211,13 @@ function loadAdminCommandsIfEligible() {
     }
 }
 
-const defaultRices = ["cyberpunk", "nord", "catppuccin", "gruvbox", "dracula", "synthwave", "solarized"];
+const themeNames = () => Object.keys(window.THEMES || {});
 
 function applyRiceTheme(themeName) {
-    if (typeof window.applySystemTheme === 'function') {
-        window.applySystemTheme(themeName);
+    if (window.THEMES && window.THEMES[themeName] && typeof window.setSystemTheme === 'function') {
+        window.setSystemTheme(themeName);      // a built-in theme: shown, and saved on the account (synced with menu and settings)
+    } else if (typeof window.applySystemTheme === 'function') {
+        window.applySystemTheme(themeName);    // a custom `rice add` theme stays in this browser
     } else {
         document.body.setAttribute("data-rice", themeName);
         localStorage.setItem("selected_rice", themeName);
@@ -731,7 +733,7 @@ const commandHandlers = {
         }
 
         const customThemes = JSON.parse(localStorage.getItem("custom_rices") || "{}");
-        const availableRices = [...defaultRices, ...Object.keys(customThemes)];
+        const availableRices = [...themeNames(), ...Object.keys(customThemes)];
 
         if (!action || !availableRices.includes(action)) {
             printGuestLog(`>> AVAILABLE RICES: ${availableRices.join(" | ")}`, COLORS.INFO);
@@ -822,7 +824,19 @@ const commandHandlers = {
     uptime(args, printGuestLog) { printGuestLog(" 11:10:00 up 42 days, 13:37, 1 user, load average: 0.12, 0.08, 0.05", COLORS.PRIMARY); },
     theme(args, printGuestLog) {
         const themeArg = args[0]?.toLowerCase();
-        if (themeArg) applyRiceTheme(themeArg);
+        const names = themeNames();
+        const current = document.documentElement.getAttribute('data-rice') || window.DEFAULT_THEME;
+        if (!themeArg) {
+            printGuestLog(`>> THEME: ${current}`, COLORS.PRIMARY);
+            printGuestLog(`>> AVAILABLE: ${names.join(' | ')}`, COLORS.INFO);
+            return;
+        }
+        if (!names.includes(themeArg)) {
+            printGuestLog(`>> theme: unknown theme '${escapeHTML(themeArg)}'. Available: ${names.join(' | ')}`, COLORS.ERROR);
+            return;
+        }
+        applyRiceTheme(themeArg);
+        printGuestLog(`>> THEME APPLIED: ${themeArg.toUpperCase()}`, COLORS.PRIMARY);
     },
     decrypt(args, printGuestLog) {
         printGuestLog(">> INITIATING DICTIONARY ATTACK...", COLORS.WARNING);
@@ -839,7 +853,10 @@ const commandHandlers = {
     },
     matrix(args, printGuestLog) {
         const colorArg = args[0]?.toLowerCase();
-        if (colorArg) {
+        if (colorArg === 'on' || colorArg === 'off') {
+            if (typeof window.setMatrixEnabled === 'function') window.setMatrixEnabled(colorArg === 'on');
+            printGuestLog(`>> MATRIX BACKGROUND: ${colorArg.toUpperCase()}`, COLORS.PRIMARY);
+        } else if (colorArg) {
             window.matrixColor = colorArg;
             printGuestLog(`>> MATRIX COLOR UPDATED: ${colorArg.toUpperCase()}`, COLORS.PRIMARY);
         }

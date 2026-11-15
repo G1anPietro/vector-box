@@ -11,9 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const errorLog = document.getElementById('login-err');
     const submitBtn = document.getElementById('submit-login-btn');
 
-    const themeToggle = document.getElementById('theme-toggle');
-    const themeLabel = document.getElementById('theme-label');
-    const scanlineToggle = document.getElementById('scanline-toggle');
+    const matrixToggle = document.getElementById('matrix-toggle');
     const matrixSpeedSlider = document.getElementById('matrix-speed-slider');
 
     let authMode = 'login';
@@ -138,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 if (data.theme && typeof window.applySystemTheme === 'function') {
-                    window.applySystemTheme(data.theme);
+                    window.applySystemTheme(data.theme);   // the theme saved on the account
                 }
 
                 closeModal();
@@ -163,31 +161,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.key === 'Enter') passwordInput?.focus(); 
     });
 
-    // --- 4. Mode & Display Toggles ---
-    const contrastToggle = document.getElementById('contrast-toggle');
-
-    // Mode & Display Toggles
-    const savedTheme = localStorage.getItem('selected_theme') || 'cyan';
-    const riceSelector = document.getElementById('rice-selector');
-    if (riceSelector) {
-        riceSelector.value = savedTheme;
-    }
-
-    if (contrastToggle) {
-        const savedContrast = localStorage.getItem('high_contrast_mode') === 'true';
-        contrastToggle.checked = savedContrast;
-        document.body.classList.toggle('high-contrast', savedContrast);
-
-        contrastToggle.addEventListener('change', () => {
-            const isHighContrast = contrastToggle.checked;
-            document.body.classList.toggle('high-contrast', isHighContrast);
-            localStorage.setItem('high_contrast_mode', isHighContrast);
+    // --- 4. Display toggles: the theme and the scanlines are handled by theme.js; the matrix rain is here ---
+    if (matrixToggle) {
+        matrixToggle.checked = typeof window.isMatrixEnabled === 'function' ? window.isMatrixEnabled() : true;
+        matrixToggle.addEventListener('change', () => {
+            if (typeof window.setMatrixEnabled === 'function') window.setMatrixEnabled(matrixToggle.checked);
         });
+        window.addEventListener('vb-matrix-change', (e) => { matrixToggle.checked = e.detail.on; });
     }
-
-    scanlineToggle?.addEventListener('change', () => {
-        document.body.classList.toggle('scanlines-active', scanlineToggle.checked);
-    });
 
     matrixSpeedSlider?.addEventListener('input', (e) => {
         const delayMs = 80 - parseInt(e.target.value, 10);

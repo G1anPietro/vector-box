@@ -35,7 +35,7 @@ if ($userId && !$isAdmin) {
     <?php renderHead("Node // Vector-Box", false); ?>
     <?= socialMeta('vector-box', 'Un desktop cyberpunk nel browser: terminale, chat, giochi da festa per il telefono e giochi da soli.', '/', '/assets/og/desktop.jpg') ?>
 </head>
-<body>
+<body class="home">
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
@@ -71,17 +71,9 @@ if ($userId && !$isAdmin) {
                     <span class="settings-title">>_ OPTIONS</span>
                     
                     <div class="toggle-row">
-                        <span id="theme-label" class="toggle-label">MODE: NIGHT</span>
+                        <span class="toggle-label">MATRIX BACKGROUND</span>
                         <label class="cyber-switch">
-                            <input type="checkbox" id="theme-toggle">
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row" style="margin-top: 8px;">
-                        <span class="toggle-label">HIGH CONTRAST</span>
-                        <label class="cyber-switch">
-                            <input type="checkbox" id="contrast-toggle">
+                            <input type="checkbox" id="matrix-toggle" checked>
                             <span class="switch-slider"></span>
                         </label>
                     </div>
@@ -100,18 +92,8 @@ if ($userId && !$isAdmin) {
                     </div>
 
                     <div class="cyber-slider-row" style="margin-top: 10px;">
-                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">DESKTOP_RICE</span>
-                        <select id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 4px 8px; font-size: 0.8rem; background: #020304;">
-                            <option value="cyan">Cyan (Default)</option>
-                            <option value="matrix">Matrix</option>
-                            <option value="amber">Amber</option>
-                            <option value="cyberpunk">Cyberpunk</option>
-                            <option value="dracula">Dracula</option>
-                            <option value="synthwave">Synthwave</option>
-                            <option value="nord">Nord</option>
-                            <option value="monochrome">Monochrome</option>
-                            <option value="blood">Blood</option>
-                        </select>
+                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">THEME</span>
+                        <select id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 4px 8px; font-size: 0.8rem; background: #020304;"><?php echo systemThemeOptions(savedAccountTheme()); ?></select>
                     </div>
                 </div>
             </div>

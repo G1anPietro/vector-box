@@ -32,7 +32,7 @@ try {
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
-            $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'cyan', 0)");
+            $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'monochrome', 0)");
             $stmt->execute([':u' => $username, ':p' => $hash]);
         } catch (PDOException $e) {
             // UNIQUE violation: atomic, no check-then-insert race
@@ -42,10 +42,10 @@ try {
             throw $e;
         }
 
-        $account = ['id' => $db->lastInsertId(), 'username' => $username, 'theme' => 'cyan', 'is_admin' => 0];
+        $account = ['id' => $db->lastInsertId(), 'username' => $username, 'theme' => 'monochrome', 'is_admin' => 0];
         $csrf = establishSession($account);
 
-        jsonResponse(['success' => true, 'username' => $username, 'theme' => 'cyan', 'is_admin' => 0, 'csrf_token' => $csrf]);
+        jsonResponse(['success' => true, 'username' => $username, 'theme' => 'monochrome', 'is_admin' => 0, 'csrf_token' => $csrf]);
     }
 
     // ---- login ----
@@ -66,7 +66,7 @@ try {
     jsonResponse([
         'success' => true,
         'username' => $user['username'],
-        'theme' => $user['theme'] ?? 'cyan',
+        'theme' => $user['theme'] ?? 'monochrome',
         'is_admin' => (int)($user['is_admin'] ?? 0),
         'csrf_token' => $csrf,
     ]);

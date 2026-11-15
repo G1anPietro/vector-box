@@ -27,6 +27,7 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customSc
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($title); ?></title>
     
+    <?php if (($saved = savedAccountTheme()) !== null): ?><meta name="vb-theme" content="<?php echo htmlspecialchars($saved); ?>"><?php endif; ?>
     <script src="<?php echo $pathPrefix; ?>js/csrf.js?v=<?php echo $ver; ?>"></script>
 
     <?php if ($isLightPage): ?>

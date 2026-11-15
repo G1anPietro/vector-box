@@ -295,15 +295,6 @@ input:checked + .switch-slider:before { transform: translateX(18px); background-
     background: var(--accent-color); cursor: pointer; box-shadow: 0 0 8px var(--accent-color);
 }
 
-body.scanlines-active::before {
-    content: " ";
-    display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.45) 50%), 
-                linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
-    z-index: 999; 
-    background-size: 100% 6px, 12px 100%; 
-    pointer-events: none;
-}
 
 /* Hack / Hex Breach Page Styles */
 .hack-container {
@@ -523,4 +514,15 @@ body.scanlines-active::before {
         justify-content: center;
         width: 100%;
     }
+}
+
+/* Scanlines (CRT effect): only on the desktop (index), over the whole screen, above every window and menu */
+body.home.scanlines-active::before {
+    content: "";
+    position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.45) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+    background-size: 100% 6px, 12px 100%;
+    z-index: 2147483000;
+    pointer-events: none;
 }

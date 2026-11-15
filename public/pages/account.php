@@ -64,10 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Please fill in both password fields.";
         }
     } elseif ($action === 'save_theme') {
-        $selectedTheme = (string)($_POST['theme'] ?? 'cyan');
-        if (!in_array($selectedTheme, ['cyan', 'matrix', 'amber', 'cyberpunk', 'dracula', 'synthwave', 'nord', 'blood', 'emerald', 'slate', 'classic'], true)) {
-            $selectedTheme = 'cyan';
-        }
+        $selectedTheme = (string)($_POST['theme'] ?? DEFAULT_SYSTEM_THEME);
+        if (!isset(SYSTEM_THEMES[$selectedTheme])) $selectedTheme = DEFAULT_SYSTEM_THEME;
         $upd = $db->prepare("UPDATE accounts SET theme = :t WHERE id = :id");
         $upd->execute([':t' => $selectedTheme, ':id' => $account['id']]);
         $_SESSION['theme'] = $selectedTheme;
@@ -126,16 +124,7 @@ session_write_close();
             <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <span class="settings-title">>_ DEFAULT SYSTEM THEME</span>
-                <select name="theme" class="nav-btn" style="width: 100%; text-align: left; padding: 6px; background: #020304;">
-                    <option value="cyan" <?php if(($account['theme']??'')==='cyan') echo 'selected'; ?>>Cyan (Default)</option>
-                    <option value="matrix" <?php if(($account['theme']??'')==='matrix') echo 'selected'; ?>>Matrix</option>
-                    <option value="amber" <?php if(($account['theme']??'')==='amber') echo 'selected'; ?>>Amber</option>
-                    <option value="cyberpunk" <?php if(($account['theme']??'')==='cyberpunk') echo 'selected'; ?>>Cyberpunk</option>
-                    <option value="dracula" <?php if(($account['theme']??'')==='dracula') echo 'selected'; ?>>Dracula</option>
-                    <option value="synthwave" <?php if(($account['theme']??'')==='synthwave') echo 'selected'; ?>>Synthwave</option>
-                    <option value="nord" <?php if(($account['theme']??'')==='nord') echo 'selected'; ?>>Nord</option>
-                    <option value="blood" <?php if(($account['theme']??'')==='blood') echo 'selected'; ?>>Blood</option>
-                </select>
+                <select name="theme" id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 6px; background: #020304;"><?php echo systemThemeOptions($account['theme'] ?? null); ?></select>
                 <button type="submit" name="action" value="save_theme" class="nav-btn">>_ SAVE THEME PREFERENCE</button>
             </form>
 

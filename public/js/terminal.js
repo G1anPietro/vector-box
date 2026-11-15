@@ -191,7 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Sub-commands & Presets Autocomplete
         if (cmdName === 'rice') {
-            const defaultRices = ["cyberpunk", "nord", "catppuccin", "gruvbox", "dracula", "synthwave", "solarized", "add"];
+            const defaultRices = [...Object.keys(window.THEMES || {}), "add"];
             const customThemes = JSON.parse(localStorage.getItem("custom_rices") || "{}");
             const allRices = [...defaultRices, ...Object.keys(customThemes)];
 
@@ -203,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (cmdName === 'theme') {
             const presets = typeof window.THEME_PRESETS !== 'undefined' 
                 ? Object.keys(window.THEME_PRESETS) 
-                : ["cyberpunk", "nord", "catppuccin", "gruvbox", "dracula", "synthwave", "solarized"];
+                : ["monochrome", "cyberpunk", "nord"];
 
             return presets
                 .filter(preset => preset.toLowerCase().startsWith(argPrefix))

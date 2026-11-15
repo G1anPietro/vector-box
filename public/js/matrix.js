@@ -43,7 +43,7 @@
         lastDrawTime = timestamp - (elapsed % window.matrixIntervalSpeed);
 
         // Fade clear effect
-        ctx.fillStyle = "rgba(6, 8, 12, 0.06)";
+        ctx.fillStyle = window.matrixFade || "rgba(6, 8, 12, 0.06)";
         ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
         ctx.fillStyle = window.matrixColor || "#00ff66";
@@ -71,12 +71,28 @@
         window.matrixIntervalSpeed = Math.max(10, newSpeedMs);
     };
 
+    const KEY = 'vb_matrix';
+    const stored = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
+    let enabled = stored() !== 'off';
+    window.isMatrixEnabled = () => enabled;
+
+    /** Switches the rain on or off (it stays off in this browser until switched on again). Off: no drawing at all, no battery used. */
+    window.setMatrixEnabled = (on) => {
+        enabled = !!on;
+        try { localStorage.setItem(KEY, enabled ? 'on' : 'off'); } catch (e) { /* private mode */ }
+        if (canvas) canvas.style.display = enabled ? '' : 'none';
+        if (!enabled && animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+        if (enabled && canvas && !animationFrameId) { setupCanvasDimensions(); animationFrameId = requestAnimationFrame(drawMatrix); }
+        window.dispatchEvent(new CustomEvent('vb-matrix-change', { detail: { on: enabled } }));
+    };
+
     // Initialize engine on DOM Ready
     document.addEventListener("DOMContentLoaded", () => {
         canvas = document.getElementById("canvas");
         if (!canvas) return;
 
         ctx = canvas.getContext("2d", { alpha: false });
+        if (!enabled) { canvas.style.display = 'none'; }
         setupCanvasDimensions();
 
         // Debounced Window Resize Handler
@@ -86,7 +102,7 @@
             resizeTimeout = setTimeout(setupCanvasDimensions, 100);
         });
 
-        // Start High-Performance Animation Loop
-        animationFrameId = requestAnimationFrame(drawMatrix);
+        // Start High-Performance Animation Loop (not when the user switched the rain off)
+        if (enabled) animationFrameId = requestAnimationFrame(drawMatrix);
     });
 })();

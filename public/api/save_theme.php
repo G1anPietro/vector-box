@@ -13,17 +13,16 @@ if (!$userId) {
 requireCsrf();
 
 $input = json_decode(file_get_contents('php://input'), true);
-$theme = trim($input['theme'] ?? 'cyan');
+$theme = trim((string)($input['theme'] ?? DEFAULT_SYSTEM_THEME));
 
-// Support both system themes and new reader themes
-$allowedThemes = [
-    // System themes
-    'cyan', 'matrix', 'amber', 'emerald', 'synthwave', 'slate', 'classic',
-    // Reader themes
-    'light', 'sepia', 'dark', 'black'
-];
-
-if (!in_array($theme, $allowedThemes, true)) {
+if (in_array($theme, READER_THEMES, true)) {
+    // The reader keeps its own theme in the browser: it must not overwrite the desktop theme of the account
+    session_write_close();
+    echo json_encode(['success' => true, 'theme' => $theme, 'stored' => false]);
+    exit();
+}
+if (!isset(SYSTEM_THEMES[$theme])) {
+    session_write_close();
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid theme selection']);
     exit();
@@ -38,7 +37,7 @@ try {
     $_SESSION['theme'] = $theme;
     session_write_close();
 
-    echo json_encode(['success' => true, 'theme' => $theme]);
+    echo json_encode(['success' => true, 'theme' => $theme, 'stored' => true]);
 } catch (Exception $e) {
     failInternal('SAVE_THEME', $e);
 }
