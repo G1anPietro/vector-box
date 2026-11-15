@@ -154,6 +154,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                     <button type="button" id="aiget-pdf" class="ghost ico-dl">PDF con le foto</button>
                     <button type="button" id="aiget-zip" class="ghost ico-dl">File originali (.zip)</button>
                 </div>
+                <p class="note-box small">⚠️ Il <b>.zip</b> è per tenere i file originali: <b>Gemini, ChatGPT e Claude nell'app non leggono gli zip</b> (vedono solo dati illeggibili). Per l'AI usa il <b>.md</b> o il <b>PDF</b>: dentro c'è già il testo di tutto, anche di PowerPoint, PDF e HTML.</p>
             </div>
 
             <div class="ai-step">

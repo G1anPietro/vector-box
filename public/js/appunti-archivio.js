@@ -84,8 +84,9 @@
         return shortDay.format(C.parseDate(folder));
     }
 
-    function row({ icon, label, meta, active, onclick, title }) {
-        return el('button', { type: 'button', class: 'arow' + (active ? ' active' : ''), onclick, title: title || label },
+    function row({ icon, label, meta, active, onclick, title, check }) {
+        return el('button', { type: 'button', class: 'arow' + (active ? ' active' : '') + (check === true ? ' picked' : ''), onclick, title: title || label, ...(check === undefined ? {} : { role: 'checkbox', 'aria-checked': String(check) }) },
+            check === undefined ? null : el('span', { class: 'acheck', 'aria-hidden': 'true', text: check ? '☑' : '☐' }),
             el('span', { class: 'aicon', text: icon }), el('span', { class: 'alabel' }, el('span', { text: label }), meta ? el('small', { text: meta }) : null));
     }
 
@@ -347,7 +348,7 @@
                 el('button', { type: 'button', class: 'ghost mini', text: selecting ? 'Fine' : 'Seleziona', onclick: () => setSelecting(!selecting) }), folderMenu()) : null);
         col.replaceChildren(head, ...(selecting ? [bulkBar()] : []), ...(bulkForm ? [bulkForm] : []), ...(entries.length ? entries.map((en) => en.group
             ? el('p', { class: 'agroup', text: en.group })
-            : row({ icon: selecting && selectable(en) ? (picked.has(entryKey(en)) ? '☑' : '☐') : en.icon, label: en.label, meta: en.meta,
+            : row({ icon: en.icon, label: en.label, meta: en.meta, check: selecting && selectable(en) ? picked.has(entryKey(en)) : undefined,
                 active: !selecting && sel.entry === en,
                 onclick: () => {
                     if (selecting) { if (selectable(en)) { const k = entryKey(en); if (picked.has(k)) picked.delete(k); else picked.add(k); renderFiles(); } return; }

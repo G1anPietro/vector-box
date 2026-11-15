@@ -223,7 +223,7 @@
             const a = el('a', { href: url, download: name });
             document.body.append(a); a.click();
             setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
-            status(action === 'zip' ? 'Scaricato: dentro c\'è anche PROMPT.txt.' : 'Scaricato: allegalo all\'AI e manda il PROMPT 1 che trovi all\'inizio del file.', 'ok');
+            status(action === 'zip' ? 'Scaricato (dentro c\'è anche PROMPT.txt). Attenzione: le app di Gemini, ChatGPT e Claude non leggono gli zip: per l\'AI usa il .md o il PDF.' : 'Scaricato: allegalo all\'AI e manda il PROMPT 1 che trovi all\'inizio del file.', 'ok');
         } catch (e) { status(e.message, 'err'); } finally { btn.disabled = false; }
     }
     $('#aiget-md').addEventListener('click', (ev) => getMaterial('ai_pack', ev.currentTarget));
