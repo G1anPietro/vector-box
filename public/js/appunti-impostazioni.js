@@ -182,6 +182,37 @@
                 canSettings ? null : el('p', { class: 'muted small', text: 'La accende e la spegne il rappresentante (o chi ha il permesso).' })));
     }
 
+    /** "Come lo vedo": choices kept on this device (no account needed). */
+    function viewSection() {
+        const week = el('select', { 'aria-label': 'La settimana inizia', onchange: (ev) => { C.store('vb_week_start', ev.target.value); saved(); } },
+            el('option', { value: 'mon', text: 'Lunedì' }), el('option', { value: 'sun', text: 'Domenica' }));
+        week.value = C.stored('vb_week_start') === 'sun' ? 'sun' : 'mon';
+        const pdf = el('select', { 'aria-label': 'Come si aprono i PDF', onchange: (ev) => { C.store('vb_pdf_mode', ev.target.value); saved(); } },
+            el('option', { value: 'auto', text: 'Testo sul telefono, pagine sul computer' }), el('option', { value: 'text', text: 'Sempre il testo' }), el('option', { value: 'pages', text: 'Sempre le pagine' }));
+        pdf.value = C.stored('vb_pdf_mode') || 'auto';
+        const openTab = el('select', { 'aria-label': 'Gli Appunti si aprono su', onchange: (ev) => { C.store('vb_open_tab', ev.target.value); saved(); } },
+            ...[['last', 'L\'ultima scheda che hai usato'], ['board', 'Bacheca'], ['class', 'Classe (con l\'orario)'], ['calendar', 'Calendario'], ['study', 'Studio'], ['score', 'Classifica'], ['material', 'Materiale']].map(([v, t]) => el('option', { value: v, text: t })));
+        openTab.value = C.stored('vb_open_tab') || 'last';
+        return section('Come lo vedo', 'Su questo dispositivo.',
+            el('label', { text: 'Gli Appunti si aprono su' }, openTab),
+            sw('Uso il telefono con la mano sinistra (menu e pulsanti specchiati)', C.stored('vb_lefty') === '1', (on) => { C.store('vb_lefty', on ? '1' : '0'); document.documentElement.classList.toggle('lefty', on); saved(); }),
+            el('label', { text: 'La settimana inizia di' }, week),
+            el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf));
+    }
+
+    /** A visitor with no account: only what is kept on this device. */
+    function drawGuest() {
+        const up = window.AppuntiUpload.settings();
+        $('#settings-root').replaceChildren(
+            section('Non hai un account', 'Le notifiche, il nome in classe e il resto servono a chi fa parte di una classe. Qui trovi le scelte di questo dispositivo.',
+                el('a', { class: 'ghost-link', href: 'login.php?next=appunti-impostazioni.php', text: 'Accedi o registrati' })),
+            viewSection(),
+            ...(C.canSpeak() ? [voiceSection()] : []),
+            section('Caricamenti', 'Su questo dispositivo (servono quando avrai una classe).',
+                sw('Riprendi da solo i caricamenti rimasti a metà', up.auto, (on) => { window.AppuntiUpload.setSetting('auto', on); saved(); }),
+                sw('Riduci le foto grandi prima di inviarle (più veloce, la scrittura resta leggibile)', up.shrink, (on) => { window.AppuntiUpload.setSetting('shrink', on); saved(); })));
+    }
+
     async function draw() {
         const root = $('#settings-root');
         root.replaceChildren(el('p', { class: 'muted', text: 'Carico…' }));
@@ -220,15 +251,6 @@
         })));
         slotBox.hidden = !p.promemoria;
 
-        const week = el('select', { 'aria-label': 'La settimana inizia', onchange: (ev) => { C.store('vb_week_start', ev.target.value); saved(); } },
-            el('option', { value: 'mon', text: 'Lunedì' }), el('option', { value: 'sun', text: 'Domenica' }));
-        week.value = C.stored('vb_week_start') === 'sun' ? 'sun' : 'mon';
-        const pdf = el('select', { 'aria-label': 'Come si aprono i PDF', onchange: (ev) => { C.store('vb_pdf_mode', ev.target.value); saved(); } },
-            el('option', { value: 'auto', text: 'Testo sul telefono, pagine sul computer' }), el('option', { value: 'text', text: 'Sempre il testo' }), el('option', { value: 'pages', text: 'Sempre le pagine' }));
-        pdf.value = C.stored('vb_pdf_mode') || 'auto';
-        const openTab = el('select', { 'aria-label': 'Gli Appunti si aprono su', onchange: (ev) => { C.store('vb_open_tab', ev.target.value); saved(); } },
-            ...[['last', 'L\'ultima scheda che hai usato'], ['board', 'Bacheca'], ['class', 'Classe (con l\'orario)'], ['calendar', 'Calendario'], ['study', 'Studio'], ['score', 'Classifica'], ['material', 'Materiale']].map(([v, t]) => el('option', { value: v, text: t })));
-        openTab.value = C.stored('vb_open_tab') || 'last';
 
         // class code and the automatic summary (who may manage settings changes the summary; the code is for who manages members)
         const canSettings = (c.perms || []).includes('settings');
@@ -343,11 +365,7 @@
                 sw('Riduci le foto grandi prima di inviarle (più veloce, la scrittura resta leggibile)', up.shrink, (on) => { window.AppuntiUpload.setSetting('shrink', on); saved(); })),
             ...(sc ? [scoreSection(sc, c)] : []),
             ...(C.canSpeak() ? [voiceSection()] : []),
-            section('Come lo vedo', 'Su questo dispositivo.',
-                el('label', { text: 'Gli Appunti si aprono su' }, openTab),
-                sw('Uso il telefono con la mano sinistra (menu e pulsanti specchiati)', C.stored('vb_lefty') === '1', (on) => { C.store('vb_lefty', on ? '1' : '0'); document.documentElement.classList.toggle('lefty', on); saved(); }),
-                el('label', { text: 'La settimana inizia di' }, week),
-                el('label', { text: 'I PDF dell\'archivio si aprono con' }, pdf)),
+            viewSection(),
             el('div', { class: 'set-pair' },
             section('Codice della classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox,
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
@@ -361,6 +379,7 @@
     (async () => {
         try {
             const mine = await getJson('../api/classi.php?action=mine');
+            if (mine.guest) { drawGuest(); return; }
             classes = mine.classes;
             if (!classes.length) { location.href = 'appunti.php'; return; }
             const want = Number(new URLSearchParams(location.search).get('class') || C.stored(C.CLASS_KEY));

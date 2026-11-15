@@ -90,5 +90,5 @@ test('the text to give another AI for each document, as shown in the upload page
     assert.match((await get(mario, 'quiz')).json.note, /JSON/);
     assert.equal((await get(mario, 'riassunto')).json.prompt.startsWith('Dalla dispensa che hai appena scritto'), true);
     assert.equal((await get(mario, 'boh')).json.code, 'bad_kind');
-    assert.equal((await new Client(site).get('/api/appunti.php?action=ai_prompt&kind=quiz')).status, 401);
+    assert.equal((await new Client(site).get('/api/appunti.php?action=ai_prompt&kind=quiz')).status, 200, 'static text: a visitor may read it');
 });

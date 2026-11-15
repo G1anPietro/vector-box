@@ -309,6 +309,9 @@
     async function openClass(id) {
         current = (await getJson(`../api/classi.php?action=class&id=${id}`)).class;
         C.store(C.CLASS_KEY, String(id));
+        // the example class: the screens open, nothing can be sent
+        $('#demo-banner').hidden = !current.demo;
+        ['#send-btn', '#ai-form button', '#aiget-md', '#aiget-pdf', '#aiget-zip'].forEach((q) => document.querySelectorAll(q).forEach((b) => { b.disabled = !!current.demo; if (current.demo) b.title = 'Nella classe di esempio non si carica'; }));
         $('[data-method="timetable"]').hidden = !(current.perms || []).includes('timetable');
         $('#tt-link').href = `appunti.php?class=${id}&tab=class`;
         $('#w-date').value = todayStr();
@@ -324,12 +327,13 @@
             csrf = (await r.json()).csrf_token || '';
             const mine = await getJson('../api/classi.php?action=mine');
             classes = mine.classes;
+            if (mine.demo && (mine.guest || C.stored('vb_appunti_demo') === '1' || Number(new URLSearchParams(location.search).get('class')) === mine.demo.id)) classes = [...classes, mine.demo];   // the example class: look only
             if (!classes.length) { location.href = 'appunti.php'; return; }
             const params = new URLSearchParams(location.search);
             const want = Number(params.get('class') || C.stored(C.CLASS_KEY));
             const pick = classes.find((c) => c.id === want) || classes[0];
             const select = $('#class-select');
-            select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}`, selected: c.id === pick.id })));
+            select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: c.demo ? `${c.name} · classe di esempio` : `${c.name} · ${c.school}`, selected: c.id === pick.id })));
             select.hidden = classes.length < 2;
             select.addEventListener('change', () => openClass(Number(select.value)).catch((e) => status(e.message, 'err')));
             await openClass(pick.id);

@@ -424,11 +424,10 @@ test('spaced review: wrong quiz answers come back after 1, 3, 7, 14, 30 days unt
     site.db("DELETE FROM class_docs WHERE id = ?", [docId]);
 });
 
-test('archive and upload pages: members only, no inline scripts', async () => {
+test('archive and upload pages: open to visitors too (look only), no inline scripts', async () => {
     for (const page of ['appunti-archivio.php', 'appunti-carica.php']) {
         const guest = await fetch(`${site.base}/pages/${page}`, { redirect: 'manual' });
-        if (page === 'appunti-archivio.php') assert.equal(guest.status, 200, 'the archive opens for a visitor (example class only)');
-        else { assert.equal(guest.status, 302, page); assert.equal(guest.headers.get('location'), 'appunti-guida.php'); }
+        assert.equal(guest.status, 200, page + ': it opens for a visitor (example class only, nothing can be sent)');
         const r = await fetch(`${site.base}/pages/${page}`, { headers: { Cookie: luigi.cookieHeader() } });
         const html = await r.text();
         assert.equal(r.status, 200, page);

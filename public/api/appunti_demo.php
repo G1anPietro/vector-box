@@ -7,7 +7,7 @@
 require_once __DIR__ . '/appunti_lib.php';
 require_once __DIR__ . '/classifica_lib.php';
 
-const DEMO_CLASS_NAME = '5ª A Informatica';
+const DEMO_CLASS_NAME = '5ª A';
 const DEMO_SCHOOL = 'Istituto di esempio (dati finti)';
 /** The made-up classmates: accounts nobody can log in to (the password hash "!" never matches). */
 const DEMO_USERS = ['demo_giulia' => 'Giulia R.', 'demo_marco' => 'Marco B.', 'demo_sara' => 'Sara L.', 'demo_luca' => 'Luca F.', 'demo_elena' => 'Elena M.'];
@@ -15,16 +15,16 @@ const DEMO_USERS = ['demo_giulia' => 'Giulia R.', 'demo_marco' => 'Marco B.', 'd
 function demoTimetable(): array {
     $days = [
         1 => ['Italiano', 'Italiano', 'Storia', 'Inglese', 'Matematica', 'Matematica'],
-        2 => ['Informatica', 'Informatica', 'Sistemi e Reti', 'Sistemi e Reti', 'Matematica', 'Scienze motorie'],
-        3 => ['Inglese', 'TPSIT', 'TPSIT', 'Italiano', 'Storia', 'Informatica'],
-        4 => ['Sistemi e Reti', 'Sistemi e Reti', 'Informatica', 'Informatica', 'Inglese', 'Matematica'],
-        5 => ['Italiano', 'Matematica', 'TPSIT', 'TPSIT', 'Scienze motorie', 'Storia'],
+        2 => ['Informatica', 'Informatica', 'Fisica', 'Fisica', 'Matematica', 'Scienze motorie'],
+        3 => ['Inglese', 'Filosofia', 'Filosofia', 'Italiano', 'Storia', 'Informatica'],
+        4 => ['Fisica', 'Fisica', 'Informatica', 'Informatica', 'Inglese', 'Matematica'],
+        5 => ['Italiano', 'Matematica', 'Filosofia', 'Filosofia', 'Scienze motorie', 'Storia'],
     ];
     $slots = [];
     foreach ($days as $d => $list) {
         foreach ($list as $i => $subject) {
             $slot = ['day' => $d, 'period' => $i + 1, 'subject' => $subject];
-            if (in_array($subject, ['Informatica', 'Sistemi e Reti', 'TPSIT'], true)) { $slot['label'] = 'Lab'; $slot['room'] = 'Lab 2'; }
+            if ($subject === 'Informatica') { $slot['label'] = 'Lab'; $slot['room'] = 'Lab 2'; }
             if ($subject === 'Scienze motorie') $slot['room'] = 'Palestra';
             $slots[] = $slot;
         }
@@ -79,11 +79,11 @@ function demoContent(): array {
             ['label' => '3FN: niente dipendenze transitive'],
         ]],
     ]];
-    $schemaOsi = ['title' => 'Modello ISO/OSI', 'children' => [
-        ['label' => 'Livelli alti', 'children' => [['label' => '7 Applicazione', 'note' => 'HTTP, SMTP, DNS'], ['label' => '6 Presentazione', 'note' => 'codifica, cifratura'], ['label' => '5 Sessione']]],
-        ['label' => 'Trasporto', 'children' => [['label' => '4 Trasporto', 'note' => 'TCP affidabile, UDP veloce']]],
-        ['label' => 'Livelli bassi', 'children' => [['label' => '3 Rete', 'note' => 'indirizzi IP, routing'], ['label' => '2 Collegamento', 'note' => 'MAC, switch'], ['label' => '1 Fisico', 'note' => 'cavi, segnali']]],
-        ['label' => 'TCP/IP', 'children' => [['label' => 'Applicazione (7-5)'], ['label' => 'Trasporto'], ['label' => 'Internet'], ['label' => 'Accesso alla rete (2-1)']]],
+    $schemaOsi = ['title' => 'Dinamica di Newton', 'children' => [
+        ['label' => 'Primo principio', 'note' => 'inerzia', 'children' => [['label' => 'risultante nulla → quiete o moto rettilineo uniforme']]],
+        ['label' => 'Secondo principio', 'children' => [['label' => 'F = m · a'], ['label' => 'F e a hanno la stessa direzione']]],
+        ['label' => 'Terzo principio', 'note' => 'azione e reazione', 'children' => [['label' => 'forze uguali e contrarie, su corpi diversi']]],
+        ['label' => 'Forze comuni', 'children' => [['label' => 'Peso P = m · g'], ['label' => 'Reazione normale N'], ['label' => 'Attrito', 'note' => 'statico ≥ dinamico']]],
     ]];
     $domandeSql = ['domande' => [
         ['domanda' => 'Che differenza c\'è tra WHERE e HAVING?', 'risposta' => 'WHERE filtra le **righe** prima del raggruppamento; HAVING filtra i **gruppi** dopo GROUP BY e può usare le funzioni di aggregazione.', 'origine' => 'prof', 'fonte' => '[4]'],
@@ -92,19 +92,19 @@ function demoContent(): array {
         ['domanda' => 'Che cos\'è l\'integrità referenziale?', 'risposta' => 'La garanzia che ogni valore di una chiave esterna esista davvero come chiave primaria nella tabella collegata.', 'origine' => 'ai', 'fonte' => '[1]'],
     ]];
     $domandeOsi = ['domande' => [
-        ['domanda' => 'Qual è la differenza tra TCP e UDP?', 'risposta' => 'TCP è orientato alla connessione e affidabile (conferme, ritrasmissioni, ordine); UDP non garantisce nulla ma è più veloce: adatto a streaming e giochi.', 'origine' => 'prof', 'fonte' => '[2]'],
-        ['domanda' => 'A quale livello lavora uno switch?', 'risposta' => 'Al livello 2 (collegamento dati), usando gli indirizzi MAC.', 'origine' => 'ai', 'fonte' => '[1]'],
+        ['domanda' => 'Che cosa afferma il principio di inerzia?', 'risposta' => 'Un corpo su cui la risultante delle forze è nulla resta fermo o continua a muoversi di moto rettilineo uniforme.', 'origine' => 'prof', 'fonte' => '[1]'],
+        ['domanda' => 'Che differenza c\'è tra massa e peso?', 'risposta' => 'La massa (kg) è la quantità di materia e non cambia; il peso (N) è la forza con cui la gravità attira il corpo: P = m · g, quindi cambia da un pianeta all\'altro.', 'origine' => 'ai', 'fonte' => '[1]'],
     ]];
 
     return [
         'topics' => [
             'Informatica' => [['Database relazionali e SQL', -22, null]],
-            'Sistemi e Reti' => [['Modello ISO/OSI e TCP/IP', -20, null]],
+            'Fisica' => [['Le leggi di Newton', -20, null]],
             'Storia' => [['La Prima guerra mondiale', -24, null]],
             'Italiano' => [['Luigi Pirandello', -21, null]],
             'Inglese' => [['Present perfect', -15, null]],
             'Matematica' => [['Gli integrali', -23, null]],
-            'TPSIT' => [['Servizi web e HTTP', -14, null]],
+            'Filosofia' => [['Kant e la ragion pura', -14, null]],
         ],
         // subject => list of [kind, author (index in DEMO_USERS), title, body, which lesson of the subject (0 = oldest shown)]
         'items' => [
@@ -115,9 +115,9 @@ function demoContent(): array {
                 ['domande', 3, 'Domande fatte dal prof', "- Differenza tra WHERE e HAVING?\n- Quando serve un LEFT JOIN?\n- Come si conta il numero di studenti per classe?"],
                 ['appunti', 4, 'GROUP BY e funzioni di aggregazione', "COUNT, SUM, AVG, MIN, MAX lavorano su più righe e restituiscono un solo valore.\nSELECT id_classe, COUNT(*) FROM studenti GROUP BY id_classe HAVING COUNT(*) > 20;\nOgni colonna del SELECT che non è aggregata deve comparire nel GROUP BY."],
             ],
-            'Sistemi e Reti' => [
-                ['appunti', 1, 'ISO/OSI: i sette livelli', "Dall'alto: Applicazione, Presentazione, Sessione, Trasporto, Rete, Collegamento dati, Fisico.\nOgni livello offre servizi a quello sopra e usa quello sotto (incapsulamento: ogni livello aggiunge la sua intestazione).\nTrucco per ricordarli: 'All People Seem To Need Data Processing'."],
-                ['slide', 0, 'Slide: TCP e UDP', "TCP: connessione (three-way handshake SYN, SYN-ACK, ACK), conferme, ritrasmissioni, controllo di flusso.\nUDP: nessuna connessione, nessuna garanzia, intestazione leggera. Usato da DNS, streaming, giochi."],
+            'Fisica' => [
+                ['appunti', 1, 'I tre principi della dinamica', "1° principio (inerzia): se la risultante delle forze è nulla, il corpo resta fermo o si muove di moto rettilineo uniforme.\n2° principio: F = m·a. La forza risultante dà al corpo un'accelerazione proporzionale e nella stessa direzione.\n3° principio (azione e reazione): se A esercita una forza su B, B esercita su A una forza uguale e contraria."],
+                ['slide', 0, 'Slide: forza peso e attrito', "Forza peso P = m·g (g ≈ 9,8 m/s²). Attrito statico: Fa ≤ μs·N; attrito dinamico: Fd = μd·N, di solito minore di quello statico."],
             ],
             'Storia' => [
                 ['appunti', 2, 'Le cause della Grande Guerra', "Cause profonde: rivalità imperialiste, nazionalismi, corsa agli armamenti, sistema di alleanze (Triplice Alleanza e Triplice Intesa).\nCausa immediata: attentato di Sarajevo, 28 giugno 1914. L'Austria dichiara guerra alla Serbia, le alleanze fanno il resto."],
@@ -135,8 +135,8 @@ function demoContent(): array {
             'Inglese' => [
                 ['appunti', 1, 'Present perfect', "Form: have/has + past participle. Uses: experience (I have visited London), recent actions with a result now, unfinished time (this week). Signal words: ever, never, already, yet, just, since, for."],
             ],
-            'TPSIT' => [
-                ['appunti', 0, 'HTTP: richieste e risposte', "Metodi: GET (leggere), POST (inviare), PUT/PATCH (modificare), DELETE.\nCodici di stato: 200 OK, 301 redirect, 404 non trovato, 500 errore del server.\nUn'API REST espone risorse con URL e usa i metodi HTTP."],
+            'Filosofia' => [
+                ['appunti', 3, 'Kant: la rivoluzione copernicana', "Nella Critica della ragion pura Kant sposta il centro della conoscenza: non è il soggetto che si adegua agli oggetti, ma gli oggetti (come fenomeni) che si adeguano alle forme del soggetto.\nFenomeno = la cosa come appare; noumeno (cosa in sé) = ciò che resta inconoscibile.\nForme a priori: spazio e tempo (sensibilità) e le 12 categorie (intelletto)."],
             ],
         ],
         // lesson documents (Markdown), made from the notes above: subject => [lesson index => [title, markdown]]
@@ -145,8 +145,8 @@ function demoContent(): array {
                 2 => ["# JOIN tra tabelle\n\nUn **JOIN** combina le righe di due tabelle in base a una condizione, di solito l'uguaglianza tra chiave esterna e chiave primaria.\n\n## INNER JOIN\nRestituisce solo le righe con corrispondenza in entrambe le tabelle.\n\n```sql\nSELECT s.nome, c.sezione\nFROM studenti s\nINNER JOIN classi c ON s.id_classe = c.id;\n```\n\n## LEFT JOIN\nTiene **tutte** le righe della tabella di sinistra; dove manca la corrispondenza le colonne dell'altra tabella valgono `NULL`. Utile per trovare, ad esempio, le classi senza studenti.\n\n## Da ricordare\n- Scrivi sempre la condizione `ON`: senza si ottiene il prodotto cartesiano.\n- Usa gli alias (`s`, `c`) per non ripetere il nome della tabella.\n- *Il prof ha chiesto:* quando serve un LEFT JOIN? [3]", $domandeSql, $schemaSql],
                 4 => ["# GROUP BY e aggregazioni\n\nLe funzioni di aggregazione (**COUNT, SUM, AVG, MIN, MAX**) lavorano su più righe e restituiscono un solo valore.\n\n```sql\nSELECT id_classe, COUNT(*) AS studenti\nFROM studenti\nGROUP BY id_classe\nHAVING COUNT(*) > 20;\n```\n\n- **GROUP BY** forma i gruppi.\n- **WHERE** filtra le righe *prima* dei gruppi; **HAVING** filtra i gruppi *dopo*.\n- Ogni colonna del `SELECT` che non è aggregata deve comparire nel `GROUP BY`. [5]", null, null],
             ],
-            'Sistemi e Reti' => [
-                0 => ["# Il modello ISO/OSI\n\nSette livelli, dal più vicino all'utente al più vicino al cavo: **Applicazione, Presentazione, Sessione, Trasporto, Rete, Collegamento dati, Fisico**.\n\nOgni livello offre servizi a quello superiore e usa quello inferiore: scendendo, ogni livello aggiunge la propria intestazione (*incapsulamento*).\n\n| Livello | Esempi |\n|---|---|\n| 7 Applicazione | HTTP, SMTP, DNS |\n| 4 Trasporto | TCP, UDP |\n| 3 Rete | IP, router |\n| 2 Collegamento | MAC, switch |\n| 1 Fisico | cavi, segnali |\n\n**TCP** è affidabile (handshake a tre vie, conferme); **UDP** è veloce ma senza garanzie. [1] [2]", $domandeOsi, $schemaOsi],
+            'Fisica' => [
+                0 => ["# I tre principi della dinamica\n\n**1° principio (inerzia).** Se la risultante delle forze su un corpo è nulla, il corpo resta fermo o si muove di moto rettilineo uniforme.\n\n**2° principio.** **F = m · a**: l'accelerazione è proporzionale alla forza risultante e ha la sua stessa direzione; a parità di forza, più massa vuol dire meno accelerazione.\n\n**3° principio (azione e reazione).** Se A esercita una forza su B, B esercita su A una forza di uguale intensità e verso opposto. Le due forze agiscono su corpi **diversi**, perciò non si annullano.\n\n| Forza | Formula |\n|---|---|\n| Peso | P = m · g |\n| Attrito dinamico | Fd = μd · N |\n\nLa massa (kg) non cambia; il peso (N) dipende dalla gravità. [1] [2]", $domandeOsi, $schemaOsi],
             ],
             'Storia' => [
                 0 => ["# Le cause della Prima guerra mondiale\n\n**Cause profonde**\n- rivalità imperialiste e commerciali tra le potenze europee;\n- nazionalismi (soprattutto nei Balcani);\n- corsa agli armamenti;\n- due blocchi di alleanze: Triplice Alleanza (Germania, Austria-Ungheria, Italia) e Triplice Intesa (Francia, Gran Bretagna, Russia).\n\n**Causa immediata**: l'attentato di Sarajevo (28 giugno 1914) contro l'arciduca Francesco Ferdinando. L'Austria attacca la Serbia e il sistema delle alleanze trascina in guerra l'intera Europa. [1]", null, null],

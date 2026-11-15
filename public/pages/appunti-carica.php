@@ -6,11 +6,7 @@ require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../includes/appunti-top.php';
 require_once __DIR__ . '/../api/database.php';
 
-initSession();
-if (empty($_SESSION['user_id'])) {
-    header('Location: appunti-guida.php');
-    exit();
-}
+initSession();       // a visitor with no account may open this page (example class only, nothing can be changed)
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 $v = filemtime(__DIR__ . '/../js/appunti-carica.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../js/appunti-upload.js') . '-' . filemtime(__DIR__ . '/../js/appunti-prompts.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
 $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers csrf.js too (the files are cached for a year)
@@ -41,6 +37,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
     <main class="wrap upload-page">
         <h1>Carica</h1>
         <p id="status" class="status" role="status" aria-live="polite"></p>
+        <p id="demo-banner" class="demo-banner" hidden><span><b>Classe di esempio.</b> Puoi provare le schermate, ma qui non si può caricare niente. Nella tua classe i pulsanti per caricare funzionano.</span> <a class="ghost-link" href="appunti.php">Torna agli Appunti</a></p>
 
         <div class="methods" role="tablist" aria-label="Come vuoi caricare">
             <button type="button" class="method" data-method="camera" role="tab"><span>📷</span>Scatta una foto<small>dal telefono</small></button>

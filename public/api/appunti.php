@@ -45,7 +45,7 @@ requireLoginOrDemoGuest();
 
 $me = (int)($_SESSION['user_id'] ?? 0);
 // A visitor with no account only reads the example class: no downloads of big packs, prompts, reviews, links
-if ($me === 0 && in_array((string)($_GET['action'] ?? ''), ['ai_prompt', 'zip', 'ai_pack', 'review', 'share_list', 'upload_status', 'question_pool'], true)) {
+if ($me === 0 && in_array((string)($_GET['action'] ?? ''), ['zip', 'ai_pack', 'review', 'share_list', 'upload_status', 'question_pool'], true)) {
     jsonResponse(['success' => false, 'error' => 'UNAUTHENTICATED: Login required'], 401);
 }
 $isAdmin = !empty($_SESSION['is_admin']);
