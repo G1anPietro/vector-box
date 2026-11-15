@@ -99,3 +99,28 @@ test('a link dies with its class and does not open other material; the public pa
     assert.match(await page.text(), /condiviso\.js\?v=/);
     assert.equal(page.headers.get('x-robots-tag'), 'noindex, nofollow');
 });
+
+test('a link can be limited to a number of openings; the class can switch all its links off and on again', async () => {
+    const once = await ap(luigi, { action: 'share_create', kind: 'item', id: itemId, days: 7, max_views: 1 });
+    assert.equal(once.status, 200);
+    const t1 = tokenOf(once.json.path);
+    assert.equal((await pub(t1)).status, 200, 'the first opening');
+    assert.equal((await pub(t1)).status, 404, 'the second one finds nothing');
+    assert.equal(site.db('SELECT max_views FROM share_links ORDER BY id DESC LIMIT 1')[0].max_views, 1);
+    const listed = (await ap(luigi, { action: 'x' }) && (await luigi.get('/api/appunti.php?action=share_list')).json.links.find((l) => l.max_views === 1));
+    assert.ok(listed, 'the list says the limit');
+    // an odd number is not a limit
+    const odd = await ap(luigi, { action: 'share_create', kind: 'item', id: itemId, days: 7, max_views: 7 });
+    assert.equal(site.db('SELECT max_views FROM share_links ORDER BY id DESC LIMIT 1')[0].max_views, 0);
+    const t2 = tokenOf(odd.json.path);
+    // the representative switches the links off: nobody makes new ones and the old ones stop opening
+    assert.equal((await pub(t2)).status, 200);
+    assert.equal((await mario.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '18:00', timezone: 'Europe/Rome', links_on: false })).status, 200);
+    assert.equal((await ap(luigi, { action: 'share_create', kind: 'item', id: itemId, days: 7 })).json.code, 'links_off');
+    assert.equal((await pub(t2)).status, 404);
+    assert.equal((await luigi.get(`/api/classi.php?action=class&id=${classId}`)).json.class.links_on, false);
+    // a member without the permission cannot switch them
+    assert.equal((await luigi.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '18:00', timezone: 'Europe/Rome', links_on: true })).status, 403);
+    await mario.post('/api/classi.php', { action: 'settings', id: classId, summary_time: '18:00', timezone: 'Europe/Rome', links_on: true });
+    assert.equal((await pub(t2)).status, 200, 'switched on again: the old link opens again');
+});

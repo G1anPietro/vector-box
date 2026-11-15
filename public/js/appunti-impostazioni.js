@@ -24,7 +24,7 @@
             try {
                 const { links } = await getJson('../api/appunti.php?action=share_list');
                 box.replaceChildren(...(links.length ? links.map((l) => el('div', { class: 'row link-row' },
-                    el('span', { class: 'grow' }, el('b', { text: l.title }), el('small', { class: 'muted', text: ` · scade il ${new Date(l.expires_at * 1000).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} · aperto ${l.views} ${l.views === 1 ? 'volta' : 'volte'}` })),
+                    el('span', { class: 'grow' }, el('b', { text: l.title }), el('small', { class: 'muted', text: ` · scade il ${new Date(l.expires_at * 1000).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} · aperto ${l.views} ${l.views === 1 ? 'volta' : 'volte'}${l.max_views ? ` su ${l.max_views}` : ''}` })),
                     el('button', { type: 'button', class: 'ghost mini danger', text: 'Revoca', onclick: async () => {
                         if (!confirm(`Revocare il link a «${l.title}»? Chi lo ha non potrà più aprirlo.`)) return;
                         try { await C.post('../api/appunti.php', { action: 'share_revoke', id: l.id }); await load(); } catch (e) { fail(e); }
@@ -315,6 +315,15 @@
             (() => { const r = el('div', { class: 'row' }, el('label', { text: 'Giorno' }, dayPick), el('label', { text: 'Ora' }, hourPick)); digestRow = r; r.hidden = !digestOn; return r; })(),
             el('p', { class: 'muted small', text: 'Verifiche, compiti, giorni senza lezione dei 7 giorni dopo e i turni di chi è interrogato. Non parte se non c\'è niente da dire.' + (canSettings ? '' : ' Lo sceglie il rappresentante (o chi ha il permesso).') }));
 
+        // temporary links: the representative (or who has the settings permission) can switch them off for the whole class
+        let linksOn = c.links_on !== false;
+        const linksBox = el('div', {},
+            sw('Permetti i link temporanei', linksOn, async (on, box) => {
+                try { await post('../api/classi.php', { action: 'settings', id: classId, summary_time: c.summary_time, timezone: c.timezone, links_on: on }); linksOn = on; saved(); }
+                catch (e) { box.checked = !on; fail(e); }
+            }, !canSettings),
+            el('p', { class: 'muted small', text: 'Con i link spenti nessuno può crearne di nuovi e quelli già mandati smettono di aprirsi (si riaprono se li riaccendi). Il materiale del prof può essere coperto da diritti: spegnili se non vuoi che giri fuori dalla classe.' + (canSettings ? '' : ' Lo cambia il rappresentante (o chi ha il permesso).') }));
+
         // which class the app shows; another class by code, or ask for a new one
         const picker = el('select', { 'aria-label': 'Classe', onchange: () => { classId = Number(picker.value); C.store(C.CLASS_KEY, String(classId)); draw().then(drawNotifs); } },
             ...classes.map((k) => el('option', { value: k.id, text: `${k.name} · ${k.school}`, selected: k.id === classId })));
@@ -370,6 +379,7 @@
             section('Codice della classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox,
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
             section('Riassunto automatico', null, summaryBox)),
+            section('Link temporanei della classe', null, linksBox),
             section('Riepilogo settimanale', null, digestBox),
             section('Appunti mancanti', null, missingBox),
             linksSection());

@@ -426,6 +426,7 @@ try {
         $settings = json_decode((string)($class['settings'] ?? '{}'), true);
         if (!is_array($settings)) $settings = [];
         if (array_key_exists('summary_on', $in)) $settings['summary_on'] = !empty($in['summary_on']);
+        if (array_key_exists('links_on', $in)) $settings['links_on'] = !empty($in['links_on']);      // temporary links of the class: on / off
         if (array_key_exists('missing_on', $in)) {
             // "Appunti mancanti": on/off, dates, subjects left out (the lessons marked "not needed" are kept)
             $m = notesMissingSettings($class);

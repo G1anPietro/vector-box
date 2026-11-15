@@ -367,8 +367,8 @@
     const markdownFile = (title, content) => ({ blob: new Blob([`# ${title}\n\n${content}\n`], { type: 'text/plain;charset=utf-8' }), name: String(title).replace(/[\\/:*?"<>|]+/g, '-') + '.md' });
 
     /** A temporary link to a file / document / note (the server makes it); returns the full address. */
-    async function makeShareLink(ref, days) {
-        const r = await post('../api/appunti.php', { action: 'share_create', kind: ref.kind, id: ref.id, days });
+    async function makeShareLink(ref, days, maxViews = 0) {
+        const r = await post('../api/appunti.php', { action: 'share_create', kind: ref.kind, id: ref.id, days, max_views: maxViews });
         return location.origin + r.path;
     }
 
@@ -383,6 +383,7 @@
         const fail = (e) => toast(e && e.message && !/^Failed|NetworkError|Load failed/.test(e.message) ? e.message : 'Non sono riuscito a preparare la condivisione.', 'err');
         const go = (fn) => async () => { dlg.close(); try { await fn(); } catch (e) { fail(e); } };
         const days = el('select', { 'aria-label': 'Quanto vale il link' }, el('option', { value: '1', text: '1 giorno' }), el('option', { value: '7', text: '7 giorni', selected: true }), el('option', { value: '30', text: '30 giorni' }));
+        const views = el('select', { 'aria-label': 'Quante volte si può aprire' }, el('option', { value: '0', text: 'quante volte vuole' }), el('option', { value: '1', text: 'una sola volta' }), el('option', { value: '5', text: 'al massimo 5 volte' }), el('option', { value: '20', text: 'al massimo 20 volte' }));
         const opt = (label, hint, fn) => el('button', { type: 'button', class: 'ghost share-opt', onclick: go(fn) }, el('b', { text: label }), el('small', { class: 'muted', text: hint }));
         // Firefox on a phone (and some others) cannot hand a FILE to the share sheet: there the link works everywhere, and files are downloaded
         const noFiles = !canShareFiles();
@@ -392,8 +393,9 @@
         const linkPart = ref ? [el('h3', { text: 'Link temporaneo' }),
             el('p', { class: 'muted small', text: noFiles ? 'È il modo che funziona con questo browser: chi apre il link vede il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere.' : 'Chi ha il link apre il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere. Si può revocare dalle Impostazioni.' }),
             el('label', { text: 'Il link vale' }, days),
-            opt('Manda il link', 'menu del telefono', async () => { await shareOut({ title, text: title, url: await makeShareLink(ref, Number(days.value)) }); }),
-            opt('Copia il link', 'da incollare dove vuoi', async () => { await navigator.clipboard.writeText(await makeShareLink(ref, Number(days.value))); toast('Link copiato.', 'ok'); })] : [];
+            el('label', { text: 'Si può aprire' }, views),
+            opt('Manda il link', 'menu del telefono', async () => { await shareOut({ title, text: title, url: await makeShareLink(ref, Number(days.value), Number(views.value)) }); }),
+            opt('Copia il link', 'da incollare dove vuoi', async () => { await navigator.clipboard.writeText(await makeShareLink(ref, Number(days.value), Number(views.value))); toast('Link copiato.', 'ok'); })] : [];
         dlg.append(el('div', { class: 'stack' },
             el('h3', { text: 'Condividi' }),
             el('p', { class: 'muted small', text: noFiles && ref ? 'Questo browser non può mandare file con il menu del telefono: usa il link. (Con Chrome i file escono allegati.)' : 'Scegli cosa mandare: poi si apre il menu del telefono con le tue app (Gmail, WhatsApp, Drive…).' }),

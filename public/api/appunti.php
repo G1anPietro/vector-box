@@ -31,7 +31,7 @@
 //      GET ?action=search&class_id&q&subject_id? -> full-text results (FTS5) with snippets ([[match]])
 //      custom quiz: {custom_quiz_create, class_id, subject_id?, n, type: mc|tf|mix, from: all|prof|wrong}; {custom_quiz_answer, id, i, choice}; GET ?action=question_pool
 //      {action:"delete_file", id}  -> one file of an item (author or "material" permission)
-//      temporary links: {share_create, kind: file|doc|item, id, days: 1|7|30} -> {path}; {share_revoke, id}; GET ?action=share_list (public side: api/condividi.php)
+//      temporary links: {share_create, kind: file|doc|item, id, days: 1|7|30, max_views?: 0|1|5|20} -> {path} (refused when the class switched links off); {share_revoke, id}; GET ?action=share_list (public side: api/condividi.php)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/appunti_lib.php';
@@ -347,10 +347,10 @@ try {
         header('Cache-Control: no-store');
 
         if ($action === 'share_list') {
-            $st = $db->prepare('SELECT l.id, l.kind, l.title, l.expires_at, l.views, l.revoked, l.created_at, c.name AS class_name FROM share_links l LEFT JOIN school_classes c ON c.id = l.class_id
+            $st = $db->prepare('SELECT l.id, l.kind, l.title, l.expires_at, l.views, l.max_views, l.revoked, l.created_at, c.name AS class_name FROM share_links l LEFT JOIN school_classes c ON c.id = l.class_id
                                 WHERE l.user_id = :u AND l.revoked = 0 AND l.expires_at > :t ORDER BY l.created_at DESC LIMIT 100');
             $st->execute([':u' => $me, ':t' => time()]);
-            jsonResponse(['success' => true, 'links' => array_map(fn($l) => ['id' => (int)$l['id'], 'kind' => $l['kind'], 'title' => $l['title'], 'expires_at' => (int)$l['expires_at'], 'views' => (int)$l['views'], 'class' => $l['class_name']], $st->fetchAll())]);
+            jsonResponse(['success' => true, 'links' => array_map(fn($l) => ['id' => (int)$l['id'], 'kind' => $l['kind'], 'title' => $l['title'], 'expires_at' => (int)$l['expires_at'], 'views' => (int)$l['views'], 'max_views' => (int)$l['max_views'], 'class' => $l['class_name']], $st->fetchAll())]);
         }
 
         if ($action === 'file_text') {
@@ -927,7 +927,10 @@ try {
         $st->execute([':id' => $refId]);
         $row = $st->fetch();
         if (!$row) apFail('not_found', 'Not found or not shareable', 404);
-        apClass($db, (int)$row['class_id'], $me, $isAdmin);
+        [$linkClass] = apClass($db, (int)$row['class_id'], $me, $isAdmin);
+        if ((json_decode((string)($linkClass['settings'] ?? '{}'), true)['links_on'] ?? true) === false) apFail('links_off', 'The representative switched temporary links off for this class', 403);
+        $maxViews = (int)($in['max_views'] ?? 0);
+        if (!in_array($maxViews, [0, 1, 5, 20], true)) $maxViews = 0;
         $days = (int)($in['days'] ?? 7);
         if (!in_array($days, [1, 7, 30], true)) $days = 7;
         $now = time();
@@ -936,8 +939,8 @@ try {
         $active->execute([':u' => $me, ':t' => $now]);
         if ((int)$active->fetchColumn() >= 100) apFail('too_many', 'You have too many active links: revoke some', 429);
         $token = bin2hex(random_bytes(16));
-        $db->prepare('INSERT INTO share_links (token_hash, class_id, user_id, kind, ref_id, title, expires_at, created_at) VALUES (:h, :c, :u, :k, :r, :t, :e, :n)')
-           ->execute([':h' => hash('sha256', $token), ':c' => $row['class_id'], ':u' => $me, ':k' => $kind, ':r' => $refId, ':t' => textCut((string)$row['title'], 120), ':e' => $now + $days * 86400, ':n' => $now]);
+        $db->prepare('INSERT INTO share_links (token_hash, class_id, user_id, kind, ref_id, title, expires_at, created_at, max_views) VALUES (:h, :c, :u, :k, :r, :t, :e, :n, :mv)')
+           ->execute([':h' => hash('sha256', $token), ':c' => $row['class_id'], ':u' => $me, ':k' => $kind, ':r' => $refId, ':t' => textCut((string)$row['title'], 120), ':e' => $now + $days * 86400, ':n' => $now, ':mv' => $maxViews]);
         classLog($db, (int)$row['class_id'], $me, 'share', 'Link temporaneo: ' . textCut((string)$row['title'], 60));
         jsonResponse(['success' => true, 'path' => '/pages/condiviso.php?t=' . $token, 'expires_at' => $now + $days * 86400, 'title' => $row['title']]);
     }

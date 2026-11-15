@@ -25,9 +25,15 @@ try {
     $st->execute([':h' => hash('sha256', $token), ':t' => time()]);
     $link = $st->fetch();
     if (!$link) cvGone();
-    $classOk = $db->prepare("SELECT 1 FROM school_classes WHERE id = :c AND status = 'active'");
+    $classOk = $db->prepare("SELECT settings FROM school_classes WHERE id = :c AND status = 'active'");
     $classOk->execute([':c' => $link['class_id']]);
-    if (!$classOk->fetchColumn()) cvGone();
+    $classSettings = $classOk->fetchColumn();
+    if ($classSettings === false) cvGone();
+    // the representative can switch every link of the class off; a link can also be limited to a number of openings
+    if ((json_decode((string)$classSettings, true)['links_on'] ?? true) === false) cvGone();
+    $maxViews = (int)($link['max_views'] ?? 0);
+    $action0 = (string)($_GET['action'] ?? 'info');
+    if ($maxViews > 0 && $action0 === 'info' && (int)$link['views'] >= $maxViews) cvGone();
     $action = (string)($_GET['action'] ?? 'info');
     $base = ['success' => true, 'kind' => $link['kind'], 'title' => $link['title'], 'expires_at' => (int)$link['expires_at']];
 

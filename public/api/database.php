@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 29;
+const DB_SCHEMA_VERSION = 30;
 
 /**
  * Session bootstrap.
@@ -565,6 +565,11 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+/** v30: a temporary link can be limited to a number of openings (0 = no limit). */
+function migrateV30(PDO $db): void {
+    addColumnIfMissing($db, 'share_links', 'max_views', 'INTEGER NOT NULL DEFAULT 0');
+}
+
 /** v29: the example class (fake data, read-only for everybody, made by bin/appunti-demo.php). */
 function migrateV29(PDO $db): void {
     addColumnIfMissing($db, 'school_classes', 'is_demo', 'INTEGER NOT NULL DEFAULT 0');
@@ -896,6 +901,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 29) {
             migrateV29($db);
+        }
+        if ($current < 30) {
+            migrateV30($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
