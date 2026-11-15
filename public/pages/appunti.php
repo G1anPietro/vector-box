@@ -56,6 +56,12 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
         <p id="status" class="status" role="status" aria-live="polite"></p>
 
 
+        <!-- The example class: invented data, read-only -->
+        <p id="demo-banner" class="demo-banner" hidden>
+            <span><b>Classe di esempio.</b> Orario, verifiche, appunti e documenti sono inventati, per far vedere cosa fanno gli Appunti. Puoi guardare tutto e provare i quiz, ma non modificare.</span>
+            <button type="button" id="demo-close" class="ghost mini">Chiudi l'esempio</button>
+        </p>
+
         <!-- No class yet: join with a code or ask for a new class -->
         <section id="welcome" class="card" hidden>
             <h2>Entra nella tua classe</h2>
@@ -75,6 +81,10 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                 <p id="requests-closed" class="muted" hidden>Le richieste di nuove classi sono chiuse in questo momento.</p>
             </details>
             <ul id="my-requests" class="plain"></ul>
+            <div id="demo-offer" class="demo-offer" hidden>
+                <p class="muted">Vuoi prima vedere come funziona? Guarda una classe di esempio, con orario, verifiche, appunti e quiz inventati.</p>
+                <button type="button" id="demo-open" class="ghost">Guarda la classe di esempio</button>
+            </div>
         </section>
 
         <nav id="tabs" class="tabs" hidden>

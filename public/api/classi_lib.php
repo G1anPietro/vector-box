@@ -97,6 +97,25 @@ function classCleanPerms($raw): array {
     return array_values(array_intersect(array_keys(CLASS_PERMS), array_map('strval', is_array($raw) ? $raw : [])));
 }
 
+/** True for the example class (fake data, read-only for everybody). */
+function classIsDemo(PDO $db, int $classId): bool {
+    $st = $db->prepare('SELECT is_demo FROM school_classes WHERE id = :c');
+    $st->execute([':c' => $classId]);
+    return (int)$st->fetchColumn() === 1;
+}
+
+/**
+ * May this user LOOK at the class? A member, or anybody for the example class: but only to read (GET) or, with
+ * $GLOBALS['demo_write_ok'] set by the few actions that are harmless there (answering a quiz). Writing is for members.
+ */
+function classCanView(PDO $db, int $classId, int $userId): bool {
+    if (classIsMember($db, $classId, $userId)) return true;
+    if (!classIsDemo($db, $classId)) return false;
+    return ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' || !empty($GLOBALS['demo_write_ok']);
+}
+
+const CLASS_DEMO_MESSAGE = 'Questa è la classe di esempio: puoi guardare tutto, ma non modificare. Per usare gli Appunti con la tua classe, entra con il codice d\'invito.';
+
 function classIsMember(PDO $db, int $classId, int $userId): bool {
     $st = $db->prepare('SELECT 1 FROM class_members WHERE class_id = :c AND user_id = :u');
     $st->execute([':c' => $classId, ':u' => $userId]);
@@ -306,6 +325,7 @@ function classSummaryRow(array $c, int $me): array {
         'id' => (int)$c['id'], 'name' => $c['name'], 'school' => $c['school'],
         'is_manager' => (int)$c['manager_id'] === $me, 'members' => (int)($c['members'] ?? 0),
         'is_member' => !isset($c['is_member']) || (bool)$c['is_member'],
+        'demo' => (int)($c['is_demo'] ?? 0) === 1,
     ];
 }
 
@@ -343,6 +363,7 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'name' => $class['name'],
         'school' => $class['school'],
         'status' => $class['status'],
+        'demo' => (int)($class['is_demo'] ?? 0) === 1,
         'is_manager' => (int)$class['manager_id'] === $me,
         'can_manage' => $canManage,
         'perms' => $perms,

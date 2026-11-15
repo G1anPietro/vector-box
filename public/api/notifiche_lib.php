@@ -85,7 +85,7 @@ function classMemberIds(PDO $db, int $classId): array {
  */
 function remindersRun(PDO $db, int $now): int {
     $sent = 0;
-    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active'")->fetchAll();
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active' AND is_demo = 0")->fetchAll();
     $mark = $db->prepare('INSERT OR IGNORE INTO class_event_reminders (event_id, slot, sent_at) VALUES (:e, :s, :t)');
     $done = $db->prepare('SELECT slot FROM class_event_reminders WHERE event_id = :e');
     foreach ($classes as $class) {
@@ -122,7 +122,7 @@ function remindersRun(PDO $db, int $now): int {
  */
 function bellsRun(PDO $db, int $now): int {
     $sent = 0;
-    $classes = $db->query("SELECT c.* FROM school_classes c WHERE c.status = 'active'
+    $classes = $db->query("SELECT c.* FROM school_classes c WHERE c.status = 'active' AND c.is_demo = 0
                            AND EXISTS (SELECT 1 FROM class_members m WHERE m.class_id = c.id AND m.bell_notify = 1)")->fetchAll();
     $mark = $db->prepare('INSERT OR IGNORE INTO class_bell_sent (class_id, lesson_date, period, sent_at) VALUES (:c, :d, :p, :t)');
     foreach ($classes as $class) {
@@ -153,7 +153,7 @@ function bellsRun(PDO $db, int $now): int {
 /** The afternoon before an oral-exam turn (from 16:00), a reminder to who is on it. Returns how many turns were announced. */
 function turnsRun(PDO $db, int $now): int {
     $sent = 0;
-    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active'")->fetchAll();
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active' AND is_demo = 0")->fetchAll();
     foreach ($classes as $class) {
         $local = (new DateTimeImmutable('@' . $now))->setTimezone(classTimezone($class));
         if ($local->format('H:i') < '16:00') continue;
@@ -196,7 +196,7 @@ function reminderText(PDO $db, array $ev, string $slot): array {
  */
 function digestRun(PDO $db, int $now): int {
     $sent = 0;
-    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active'")->fetchAll();
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active' AND is_demo = 0")->fetchAll();
     foreach ($classes as $class) {
         $set = digestSettings($class);
         if (!$set['on']) continue;
@@ -254,7 +254,7 @@ function digestRun(PDO $db, int $now): int {
  */
 function reviewRemindRun(PDO $db, int $now): int {
     $sent = 0;
-    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active'")->fetchAll();
+    $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active' AND is_demo = 0")->fetchAll();
     foreach ($classes as $class) {
         $cid = (int)$class['id'];
         $local = (new DateTimeImmutable('@' . $now))->setTimezone(classTimezone($class));

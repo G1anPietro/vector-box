@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 27;
+const DB_SCHEMA_VERSION = 29;
 
 /**
  * Session bootstrap.
@@ -36,7 +36,7 @@ function migrateV1(PDO $db): void {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username VARCHAR(50) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        theme VARCHAR(30) DEFAULT 'cyan',
+        theme VARCHAR(30) DEFAULT 'monochrome',
         is_admin INTEGER DEFAULT 0,
         can_read_books INTEGER DEFAULT 0,
         can_upload_books INTEGER DEFAULT 0,
@@ -565,6 +565,16 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+/** v29: the example class (fake data, read-only for everybody, made by bin/appunti-demo.php). */
+function migrateV29(PDO $db): void {
+    addColumnIfMissing($db, 'school_classes', 'is_demo', 'INTEGER NOT NULL DEFAULT 0');
+}
+
+/** v28: the default desktop theme is now the monochrome one (accounts that never chose still have the old 'cyan' default). */
+function migrateV28(PDO $db): void {
+    $db->exec("UPDATE accounts SET theme = 'monochrome' WHERE theme IS NULL OR theme IN ('', 'cyan', 'light', 'sepia', 'dark', 'black', 'emerald', 'slate', 'classic')");
+}
+
 function migrateV27(PDO $db): void {
     // Temporary links to one piece of class material (a file, a study document, a note): the token is stored only as a hash
     $db->exec("CREATE TABLE IF NOT EXISTS share_links (
@@ -880,6 +890,12 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 27) {
             migrateV27($db);
+        }
+        if ($current < 28) {
+            migrateV28($db);
+        }
+        if ($current < 29) {
+            migrateV29($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

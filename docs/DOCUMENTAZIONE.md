@@ -22,7 +22,12 @@ delle verifiche con promemoria). Gira su un piccolo server di casa (Ubuntu, ngin
 
 La home è un desktop: ogni funzione è una **finestra** che si apre dalla barra in basso, si trascina, si riduce, si
 ingrandisce e si chiude. Il **MENU** in alto a destra porta alle altre pagine (Giochi, Supporta, accesso, impostazioni
-dell'account) e ai temi grafici.
+dell'account) e ai temi grafici. Nel menu: **interruttore del Matrix** (sfondo a pioggia; si può spegnere, anche con `matrix off` dal terminale), scanlines
+(effetto CRT, solo qui, sopra tutto lo schermo) e il **tema**. Niente più modalità "night" né "high contrast". Il tema predefinito è il **monocromatico**.
+I temi sono un elenco solo, in `js/theme.js` (`THEMES`) e in `api/helpers.php` (`SYSTEM_THEMES`; `tests/temi.test.js` controlla che coincidano): menu, terminale
+(`theme`, `rice`) e Impostazioni dell'account usano lo stesso `setSystemTheme`, che salva la scelta sull'account (`api/save_theme.php`); le pagine scrivono il tema
+dell'account in `<meta name="vb-theme">` e `theme.js` lo applica, così tutti i luoghi e tutti i dispositivi coincidono. I temi del lettore di libri (chiaro, seppia, scuro,
+nero) restano nel browser e non toccano il tema del desktop.
 
 | Finestra | A cosa serve |
 |---|---|
@@ -219,7 +224,7 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
 |---|---|
 | **File (finti, solo nel browser)** | `ls`/`dir`, `cd`, `pwd`, `cat`, `nano`, `mkdir`, `touch`, `echo … > file`, `rm`, `find`, `grep` |
 | **Sistema e rete** | `whoami`/`id`, `uptime`, `history`, `ip` (il tuo IP pubblico), `ping`, `traceroute`, `scan`, `nmap`, `status`, `fetch` |
-| **Aspetto** | `theme <nome>` (cyberpunk, nord, catppuccin, gruvbox, dracula, synthwave, solarized), `rice`, `matrix <colore>`, `cmatrix`, `glitch`, `nuke`, `clear` |
+| **Aspetto** | `theme` (elenco) e `theme <nome>` (monochrome, cyan, matrix, amber, cyberpunk, dracula, synthwave, nord, blood, catppuccin, gruvbox, solarized, tokyonight, rosepine, ocean, forest, sunset, ice), `rice`, `matrix <on|off|colore>`, `cmatrix`, `glitch`, `nuke`, `clear` |
 | **Chat** | `rooms`, `join <stanza>`, `create <id> [nome]`, `whois <utente>` |
 | **Finestre e giochi** | `poker …`, `vault`, `tools`, `hack` |
 | **Varie** | `fortune`/`quote`, `ascii <testo>`, `decrypt`, `sudo` |
@@ -265,7 +270,7 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
   lezioni e delle verifiche, solo quelli il cui materiale è cambiato (il controllo è un hash del testo inviato all'AI).
   Le richieste a Gemini sono contate per modello e per giorno (`ai_usage`, giorno del Pacifico come Google) e restano al
   90% dei limiti gratuiti; i file Word/PowerPoint/testo sono letti dal sito senza AI. Se Google è sovraccarico
-  (503 "high demand") ogni richiesta viene ritentata due volte (`GEMINI_RETRY_WAITS`), poi si passa al modello di
+  (503 "high demand") nel giro automatico **non si ritenta** (vedi "15/11" in fondo); con "Genera ora" si passa ai modelli di
   riserva (`gemini-3.8-flash` → `gemini-3.7-flash` → `gemini-3.6-flash` → `gemini-3.5-flash-lite`; il tempo che il browser aspetta è diviso tra
   i modelli, così uno che non risponde non lo consuma tutto);
   se sono occupati tutti, il giro si ferma senza contarlo come guasto e riprende 5 minuti dopo. La lettura dell'orario,
@@ -458,7 +463,8 @@ Si parte da `.env.example`, che spiega ogni voce.
 | `GEMINI_API_KEY`, `GEMINI_AUTH` | chiave di Google AI Studio per gli Appunti; `bearer` per le chiavi nuove `AQ.` se Google rifiuta l'header |
 | `GEMINI_MODEL_FAST`, `GEMINI_FAST_RPM`, `GEMINI_FAST_RPD`, `GEMINI_MODEL_SMART`, `GEMINI_SMART_RPM`, `GEMINI_SMART_RPD` | modelli e limiti gratuiti (al minuto e al giorno); `php bin/appunti-ai.php --models` elenca i modelli della chiave |
 | `GEMINI_MODEL_SMART2`, `GEMINI_SMART2_*`, `GEMINI_MODEL_SMART3`, `GEMINI_SMART3_*` | modelli di riserva quando quello principale è sovraccarico (`gemini-3.7-flash`, `gemini-3.6-flash`) |
-| `GEMINI_RETRY_WAITS` | secondi di attesa prima di ritentare quando Google è sovraccarico (predefinito `2,5`) |
+| `GEMINI_RETRY_WAITS` | secondi di attesa prima di ritentare quando Google è sovraccarico, per esempio `2,5` (predefinito: vuoto = nessun ritentativo, perché ogni chiamata consuma la quota del giorno) |
+| `DEMO_CLASS` | `false` = il lavoratore non crea la classe di esempio degli Appunti (predefinito: acceso) |
 | `SITE_URL` | indirizzo del sito (anteprime dei link, contatto VAPID delle notifiche push) |
 | `WEBPUSH_EXTRA_HOSTS` | solo per i test: servizi push finti ammessi |
 
@@ -525,7 +531,7 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - Biblioteca: i PDF non hanno una copertina finché qualcuno che può caricare libri non apre la biblioteca: allora il browser
   disegna la prima pagina con pdf.js e la manda al server (`books.php?action=set_cover`, solo PDF senza copertina).
 
-## Appunti di classe — aggiunte della notte del 14–15/11 (schema v25, 214 test)
+## Appunti di classe — aggiunte della notte del 14–15/11 (schema v26, 218 test)
 - **Caricamenti a pezzi** (`api/appunti.php`: `upload_begin`, `upload_chunk`, `upload_status`, `upload_commit`, `upload_cancel`; `js/appunti-upload.js`; cartella temporanea `data/appunti-tmp/<utente>/<id>` ripulita dopo 24 h). Colonna `class_item_files.sha256` per i file doppi.
 - **Classifica** (`api/classifica.php`, `classifica_lib.php`; tabelle `quiz_answers`, `quiz_seen`, `score_events`). Il server giudica: `quiz_answer`, `review_answer` con `choice`; `apQuizForUser` toglie risposte e spiegazioni dal quiz inviato alla pagina.
 - **Ricerca** FTS5 (`notes_fts`, trigger su `class_items`, `class_item_files`, `class_docs`; GET `search`).
@@ -534,3 +540,24 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - **Appunti mancanti** (`notesMissing`, impostazioni in `school_classes.settings.missing`), **registro** (`class_log`, `classLog`), **segnalazioni dell'AI** (`aiClassifyItems`, `class_board` kind `segnalazione` / `proposta_verifica`, `class_items.ai_state`, `AI_CLASSIFY` nel .env), **avanzamento di lettura** (`read_progress`).
 - **PDF unico** (`api/pdf_lib.php` `SimplePdf`, `packPdf`, `ai_pack&format=pdf`), prompt per l'audio (`audio=1`).
 - Interfaccia: schede Classe, Bacheca, Calendario, Studio, Classifica, Materiale; pagina Impostazioni (`appunti-impostazioni.php`); trascinamento ovunque (`js/dropzone.js`); lettore PDF (`js/appunti-pdf.js`); modalità mancini (`html.lefty`).
+- **Materiale per data e argomento** (schema v26: `class_items.topic_id` / `topic_manual`, `class_docs.topic_id`): `notesAssignTopics` mette ogni caricamento sotto l'unico argomento confermato che copre il giorno (due argomenti insieme = nessuno, finché qualcuno sceglie; la scelta a mano non si tocca più); si richiama a ogni caricamento, modifica e a ogni cambio degli argomenti. Un giorno con caricamenti di argomenti diversi dà un documento per argomento (`lezione:S:D:tID`, `domande:S:D:tID`, `schema:S:D:tID`); un giorno con un solo argomento resta un documento come prima. Le verifiche escludono i caricamenti degli argomenti tolti (`notesEventItemFilter`), anche nel file "Per AI". Interfaccia: cartelle "Per argomento" nell'Archivio, filtro e scelta in Materiale, scelta nella pagina Carica; `tests/argomenti.test.js`.
+- **Orario, scheda e schemi (14/11 sera):** l'orario unisce le ore di fila della stessa materia in un blocco (`ttRuns`, celle con `grid-row: span`), colori scelti per distanza sul cerchio dei colori (`ttColors`, angolo aureo). Nuovo documento per le verifiche `scheda` (`AI_PROMPT_SCHEDA`, "Scheda da tenere sotto mano", dalla dispensa completa). Gli schemi si scaricano da `schemaSvg`/`downloadSchema` in `appunti-common.js`: SVG puro (modificabile) o PNG, a colori o bianco e nero. `aiClassifyItems` riceve gli argomenti già svolti della materia (ultimi 25) e, se il testo parla di uno di essi, l'upload va sotto quello (`topic_manual = 1`) senza nuove proposte.
+- **Condividi e schermo intero (14/11 sera):** `AppuntiCommon.shareOut` (Web Share API con file, poi testo; senza menu di condivisione scarica il file o apre `mailto:`), `toggleFull`/`fullButton` (Fullscreen API più classe `.is-fs` per iPhone, pulsante Chiudi), `schemaBlob` (SVG/PNG, radice al centro come sul sito). Pulsanti in Studio (documento), Archivio (anteprima) e negli schemi.
+- **Link temporanei (schema v27):** tabella `share_links` (hash sha256 del token da 128 bit, kind file|doc|item, ref_id, scadenza 1/7/30 giorni, aperture, revoca). Azioni `share_create` / `share_revoke` / `share_list` in `api/appunti.php` (membri della classe; quiz e domande non si condividono perché hanno le risposte); lato pubblico `api/condividi.php` (`info`, `file`, limite per IP, `noindex`, `no-referrer`) e pagina `pages/condiviso.php` + `js/condiviso.js`. Il token compare nel log di accesso di nginx (query string): tienilo in mente. Client: `shareDialog`/`schemaChoices`/`textChoices` in `appunti-common.js`, gesti `pinchZoom`/`enableZoom`. Pannello "Con un'altra AI": prima la materia, poi la verifica di quella materia, e un riquadro dice in che formato va la risposta (schema/quiz: JSON; altri: Markdown, PDF, Word, foto). Sezione "Link temporanei" nelle Impostazioni.
+- **Quiz in stile Moodle (14/11):** `renderQuiz` disegna per ogni domanda il riquadro grigio `.info` (numero, stato, punteggio max, contrassegna) e l'area azzurra `.formulation` con le risposte a–d, il riquadro arancio `.outcome` e il blocco `Navigazione del quiz` (quadratini verde/rosso/contrassegno). La logica (voto dal server, prima risposta, ripresa) non è cambiata. Schermo intero dello schema: padding per la tacca della fotocamera, mappa centrata e zoom minimo leggibile su telefono; senza condivisione di file (Firefox mobile) il Condividi propone prima il link temporaneo.
+
+## Appunti di classe — 15/11 (schema v29, test in `tests/temi.test.js` e `tests/demo.test.js`)
+- **Niente ritentativi automatici dell'AI.** `geminiRetryWaits()` ora è vuoto di serie; il giro automatico (`aiRetryErrors(false)`) non rifà i documenti
+  in errore con lo stesso materiale e non prova gli altri modelli quando Google è solo occupato (solo "Genera ora" lo fa); una trascrizione fallita è subito
+  `failed`. Così un guasto di Google non brucia le richieste del giorno.
+- **Classe di esempio** (schema v29: `school_classes.is_demo`). `api/appunti_demo.php` (`demoEnsure`) la scrive: 5 compagni finti (`demo_*`, password `!` = nessuno ci entra),
+  orario di 8 materie con ore doppie, argomenti, ~17 caricamenti, documenti scritti a mano (lezione, domande, schema, dispensa, riassunto, scheda, preparazione, quiz), una
+  verifica già fatta e quattro in arrivo, compiti, giorno senza lezione, annunci, classifica. Si rigenera ogni giorno (date relative a oggi) da `bin/appunti-demo.php` e dal
+  lavoratore `bin/appunti-ai.php`; il lavoratore e i promemoria la saltano (`is_demo = 0`). Tutti gli utenti registrati la **vedono in sola lettura**: `classCanView` = membro, oppure
+  classe di esempio in GET; le scritture rispondono `403 demo` con un messaggio chiaro. Unica eccezione: `quiz_answer`, che corregge ma non salva nulla (niente punti né ripasso).
+  Nella pagina: pulsante "Guarda la classe di esempio" (senza classi proprie, o dopo averlo chiesto), banner "Chiudi l'esempio", Carica/Calendario-aggiungi nascosti.
+- **Schemi:** riquadro dell'altezza fissa (non più `max-height` che faceva muovere la pagina allo zoom indietro); `.mm-canvas` non si restringe più (`flex: none`) così a schermo intero
+  si raggiunge ogni parte; modalità orizzontale del telefono (`@media (orientation: landscape) and (max-height: 520px)`: barre ridotte, "Chiudi" di lato, area sicura per la tacca);
+  la mappa si adatta di nuovo quando si gira il telefono.
+- **Desktop:** vedi "Il desktop" (temi unificati, interruttore del Matrix, scanlines solo nell'index). Migrazione v28: i vecchi `cyan` (e i temi del lettore finiti per errore
+  nell'account) diventano `monochrome`.

@@ -54,7 +54,10 @@ function apFail(string $code, string $message, int $status = 400): void {
 /** An active class the caller belongs to (or any class for the admin). Returns [class, my permissions]. */
 function apClass(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
-    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classIsMember($db, $id, $me))) {
+    if ($class && $class['status'] === 'active' && !$isAdmin && !classCanView($db, $id, $me) && (int)($class['is_demo'] ?? 0) === 1) {
+        apFail('demo', CLASS_DEMO_MESSAGE, 403);     // the example class: read-only
+    }
+    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) {
         apFail('not_found', 'Class not found', 404);
     }
     return [$class, classPerms($db, $class, $me, $isAdmin)];
@@ -1060,6 +1063,7 @@ try {
         // points; later ones (practising again) only move the spaced review. Answers given too fast after opening the quiz or
         // after the previous answer give no points.
         if (!checkRateLimit('quiz_answer', 1500, 3600, 'user:' . $me)) apFail('slow_down', 'Too many answers, try later', 429);
+        $GLOBALS['demo_write_ok'] = true;      // trying the quiz of the example class is allowed (no points: not a member)
         $docId = (int)($in['doc_id'] ?? 0);
         $q = (int)($in['q'] ?? -1);
         $choice = (int)($in['choice'] ?? -1);
@@ -1072,6 +1076,11 @@ try {
         if ($q < 0 || !is_array($question) || $choice < 0 || $choice >= count($question['options'] ?? [])) apFail('bad_question', 'Unknown question');
         $correct = $choice === (int)$question['answer'];
         $now = time();
+        if (!$isAdmin && !classIsMember($db, (int)$class['id'], $me)) {
+            // The example class: the answer is judged, but nothing is saved (no points, no review cards)
+            jsonResponse(['success' => true, 'correct' => $correct, 'answer' => (int)$question['answer'], 'explanation' => (string)($question['explanation'] ?? ''),
+                          'first' => true, 'points' => 0, 'too_fast' => false, 'state' => null, 'demo' => true]);
+        }
 
         $db->exec('BEGIN IMMEDIATE');
         try {

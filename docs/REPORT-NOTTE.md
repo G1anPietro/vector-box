@@ -32,3 +32,14 @@ Locale, non in git. Ogni voce: cosa è stato fatto, dove, versione in produzione
 2. Caricare una foto con "Lo decide l'AI" e controllare dopo qualche minuto la Bacheca › Da sistemare.
 3. Una prova di Whisper con un audio vero (la sessione del server lo ha installato ma non l'ha ancora provato).
 4. Se vuoi la cache lunga: dimmi sì e preparo il messaggio per la sessione del server.
+
+## Dopo il report (15/11, mattina)
+- **Cache di nginx fatta** (dalla sessione del server): i `/js` e `/css` con la versione automatica nell'indirizzo (data di modifica o `vX.Y.Z`) si tengono **un anno** (`public, max-age=31536000, immutable`); quelli con `?v=1` scritto a mano e senza `?v` restano con la verifica (ETag). Backup della configurazione in `/root/vector-box-ops/config-backup/2026-11-15/`. Anche `csrf.js` ora entra nella versione delle pagine Appunti.
+- Frecce degli schemi collegate (curve dal centro a ogni ramo), pagina "Con un'altra AI" in 4 passi con il prompt da copiare, barra uguale in tutte le pagine degli Appunti (Archivio, Carica, Guida, Impostazioni), modalità mancini specchiata in modo generale (`tools/make-lefty-css.py`), guida aggiornata, invito alla classe più corto con link e codice da mandare a parte.
+
+## Materiale per data e argomento (15/11, fatto)
+- Ogni caricamento sta sotto **l'argomento** che copre il suo giorno (se ce n'è uno solo); con due argomenti nello stesso giorno lo scegli tu o lo sceglie l'AI leggendo il testo; la scelta a mano non si cambia più da sola. Schema v26.
+- **L'AI lavora per pezzo:** un giorno con caricamenti di argomenti diversi dà **un documento per argomento** (appunti, domande, schema, ciascuno con il suo titolo "— Argomento"); un giorno con un argomento solo resta un documento come prima.
+- Le **verifiche** escludono il materiale degli argomenti tolti dalla loro lista, anche quando un giorno è condiviso con un altro argomento, e anche nel file "Per AI".
+- Interfaccia: cartelle **Per argomento** nell'Archivio, filtro per argomento e "Senza argomento" in Materiale, argomento scelto nella pagina Carica e nella modifica di un caricamento, etichetta dell'argomento su ogni scheda.
+- Aggiornati anche documentazione, guida, pagina Supporta, README, CLAUDE.md, "Il progetto" e il piano (Fase 8: si fa a ogni fase).

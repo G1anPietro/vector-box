@@ -38,7 +38,11 @@ function clFail(string $code, string $message, int $status = 400): void {
 /** Loads a class the caller may see (member or admin), or stops with 404. */
 function clVisible(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
-    if (!$class || (!$isAdmin && !classIsMember($db, $id, $me))) clFail('not_found', 'Class not found', 404);
+    if ($class && !$isAdmin && !classCanView($db, $id, $me)) {
+        if ((int)($class['is_demo'] ?? 0) === 1) clFail('demo', CLASS_DEMO_MESSAGE, 403);
+        $class = null;
+    }
+    if (!$class) clFail('not_found', 'Class not found', 404);
     return $class;
 }
 
@@ -83,7 +87,10 @@ try {
                                 " . ($isAdmin ? '' : 'AND EXISTS (SELECT 1 FROM class_members m WHERE m.class_id = c.id AND m.user_id = :me)') . "
                                 ORDER BY is_member DESC, c.school, c.name");
             $st->execute([':me' => $me]);
-            $classes = array_map(fn($c) => classSummaryRow($c, $me), $st->fetchAll());
+            $classes = array_map(fn($c) => classSummaryRow($c, $me), array_filter($st->fetchAll(), fn($c) => (int)$c['is_demo'] === 0));
+            $classes = array_values($classes);
+            // The example class is offered to everybody apart from the real ones (see the page: a button, or the last option of the list)
+            $demo = $db->query("SELECT * FROM school_classes WHERE is_demo = 1 AND status = 'active' LIMIT 1")->fetch();
 
             $st = $db->prepare("SELECT * FROM school_classes WHERE manager_id = :me AND status IN ('pending','rejected')
                                 ORDER BY created_at DESC LIMIT 10");
@@ -98,6 +105,7 @@ try {
                 'is_admin' => $isAdmin,
                 'requests_open' => classRequestsOpen($db),
                 'classes' => $classes,
+                'demo' => $demo ? ['id' => (int)$demo['id'], 'name' => $demo['name'], 'school' => $demo['school'], 'is_member' => false, 'demo' => true, 'is_manager' => false, 'members' => 0] : null,
                 'requests' => $requests,
             ]);
         }

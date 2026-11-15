@@ -118,7 +118,7 @@ $login = 'login.php?next=appunti.php';
                     (da allegare) o si apre la tua posta con il testo già scritto.</li>
                 <li><strong>Schemi:</strong> col pulsante <em>Scarica</em> sopra lo schema li prendi come <strong>SVG</strong> (si modifica con Inkscape,
                     Illustrator, Figma, LibreOffice Draw: testi e riquadri restano separati) o come <strong>PNG</strong> (immagine da mandare), a colori o in
-                    bianco e nero per stamparli.</li>
+                    bianco e nero per stamparli. A schermo intero puoi spostarti fino ai bordi e girare il telefono in orizzontale: lo schema si adatta.</li>
                 <li><strong>Genera ora:</strong> se non vuoi aspettare la sera, una volta l'ora per classe.</li>
                 <li>Ogni documento si scarica o si stampa in PDF. <strong>L'AI può sbagliare:</strong> controlla sempre con il libro e
                     con gli appunti originali (ogni parte dice da quali appunti viene).</li>
@@ -226,8 +226,8 @@ $login = 'login.php?next=appunti.php';
             <details><summary>Quanto costa?</summary><p>Niente. Il sito usa la versione gratuita di Gemini, che ha un limite di richieste
                 al giorno: con molte classi, qualche documento può arrivare il giorno dopo.</p></details>
             <details><summary>Il documento non è arrivato.</summary><p>Arriva all'ora del riassunto, o qualche minuto dopo
-                <em>Genera ora</em>, solo se c'è materiale nuovo e le foto sono già state trascritte. Se Google è sovraccarico, il sito
-                riprova da solo ogni 5 minuti.</p></details>
+                <em>Genera ora</em>, solo se c'è materiale nuovo e le foto sono già state trascritte. Se Google è sovraccarico o ha dato errore, il sito
+                <strong>non riprova da solo</strong> (ogni tentativo consuma le richieste gratuite del giorno): premi <em>Genera ora</em> quando vuoi riprovare.</p></details>
             <details><summary>L'AI ha scritto una cosa sbagliata.</summary><p>Succede. Ogni parte indica da quali appunti viene: controlla
                 lì e nel libro, e se serve carica gli appunti corretti; il documento si rifà da solo.</p></details>
             <details><summary>Posso usarlo per un'altra scuola?</summary><p>Sì: chiedi la tua classe, ogni classe è separata dalle altre.</p></details>

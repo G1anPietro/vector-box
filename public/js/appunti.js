@@ -13,6 +13,8 @@
     const EVENT_KINDS = { verifica: 'Verifica', interrogazione: 'Interrogazione', altro: 'Altro' };
     const DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
     const STORE_KEY = 'vb_appunti_class';
+    const DEMO_KEY = 'vb_appunti_demo';
+    let demoClass = null;
     const TAB_KEY = 'vb_appunti_tab';
     const DOC_KEY = 'vb_appunti_doc';
 
@@ -109,10 +111,15 @@
 
     async function loadMine(selectId) {
         const mine = await getJson('../api/classi.php?action=mine');
-        classes = mine.classes;
+        const real = mine.classes;
+        demoClass = mine.demo || null;
+        // The example class (invented data, read-only) is offered when you have no class yet, or after you asked to see it
+        const showDemo = !!demoClass && (stored(DEMO_KEY) === '1' || Number(selectId) === demoClass.id);
+        classes = showDemo ? [...real, demoClass] : real;
         isAdmin = mine.is_admin;
         const sel = $('#class-select');
-        sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: `${c.name} · ${c.school}${c.is_member ? '' : ' (admin)'}` })));
+        sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: c.demo ? `${c.name} · classe di esempio` : `${c.name} · ${c.school}${c.is_member ? '' : ' (admin)'}` })));
+        $('#demo-offer').hidden = !demoClass || showDemo;
         $('[data-tab="admin"]').hidden = !mine.is_admin;
 
         $('#request-form').hidden = !mine.requests_open && !mine.is_admin;
@@ -130,7 +137,7 @@
             current = null;
             return;
         }
-        $('#welcome').hidden = true;
+        $('#welcome').hidden = real.length > 0;      // no class of your own yet: the "join" box stays on top, under the example
         $('#tabs').hidden = false;
         $$('#tabs button').forEach((b) => { b.hidden = b.dataset.tab === 'admin' && !mine.is_admin; });
         const want = Number(selectId || stored(STORE_KEY));
@@ -142,6 +149,8 @@
     async function openClass(id) {
         current = (await getJson(`../api/classi.php?action=class&id=${id}`)).class;
         store(STORE_KEY, String(id));
+        document.body.classList.toggle('is-demo', !!current.demo);
+        $('#demo-banner').hidden = !current.demo;
         fillSubjectSelects();
         showTab(currentTab === 'admin' && !isAdmin ? 'material' : currentTab);
     }
@@ -498,6 +507,7 @@ ${lines.join('\n')}
 
     function renderAiBar(ai) {
         const bar = $('#ai-bar');
+        if (current.demo) { bar.replaceChildren(el('p', { class: 'muted', text: 'Questi documenti sono scritti a mano per l\'esempio: nella tua classe li scrive l\'AI, dal materiale che caricate.' })); return; }
         if (!ai.configured) { bar.replaceChildren(el('p', { class: 'muted', text: 'L\'AI non è ancora attiva su questo server: i riassunti arriveranno appena viene accesa.' })); return; }
         const now = Date.now() / 1000;
         const wait = ai.next_manual_at > now;
@@ -859,7 +869,7 @@ ${lines.join('\n')}
 
     function renderClass() {
         const c = current;
-        $('#admin-note').hidden = c.is_member;
+        $('#admin-note').hidden = c.is_member || c.demo;
 
         renderMembers(c);
         renderRoles(c);
@@ -867,7 +877,7 @@ ${lines.join('\n')}
         $('#rep-panel').hidden = !can('roles') && !can('subjects') && !can('settings');
         $('#log-card').hidden = !can('settings');
         $('#log-details').open = false;
-        $('#leave-btn').hidden = c.is_manager || !c.is_member;
+        $('#leave-btn').hidden = c.is_manager || !c.is_member || c.demo;
 
         $$('.tt-manage').forEach((x) => { x.hidden = !can('timetable'); });
         if (can('timetable')) $('#tt-from').value = c.timetable ? c.timetable.valid_from : todayStr();
@@ -1230,6 +1240,8 @@ ${lines.join('\n')}
         } catch (e) { status(e.message, 'err'); }
     }
     $('#join-form').addEventListener('submit', join);
+    $('#demo-open').addEventListener('click', () => { store(DEMO_KEY, '1'); loadMine(demoClass.id).catch((e) => status(e.message, 'err')); });
+    $('#demo-close').addEventListener('click', () => { try { localStorage.removeItem(DEMO_KEY); } catch (e) { /* private mode */ } loadMine().catch((e) => status(e.message, 'err')); });
 
     $('#request-form').addEventListener('submit', async (ev) => {
         ev.preventDefault();

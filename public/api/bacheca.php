@@ -27,7 +27,7 @@ function bbFail(string $code, string $msg, int $status = 400): void {
 /** An active class the caller belongs to (any class for the admin). Returns [class, my permissions]. */
 function bbClass(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
-    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classIsMember($db, $id, $me))) bbFail('not_found', 'Class not found', 404);
+    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) bbFail('not_found', 'Class not found', 404);
     return [$class, classPerms($db, $class, $me, $isAdmin)];
 }
 

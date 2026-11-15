@@ -10,6 +10,7 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/../public/api/database.php';
 require_once __DIR__ . '/../public/api/appunti_ai.php';
 require_once __DIR__ . '/../public/api/notifiche_lib.php';
+require_once __DIR__ . '/../public/api/appunti_demo.php';
 
 $now = time();
 foreach ($argv as $arg) {
@@ -33,6 +34,7 @@ if (in_array('--models', $argv, true)) {
 // "Next lesson" pushes and test reminders come before the lock: a long AI run must not delay them.
 // --bells-only does just this (for an optional timer every minute, more punctual than every 5).
 $bellsDb = getDbConnection();
+try { if (strtolower((string)envValue('DEMO_CLASS', 'true')) !== 'false' && demoEnsure($bellsDb)) echo date('Y-m-d H:i:s') . " example class refreshed\n"; } catch (Throwable $e) { echo date('Y-m-d H:i:s') . ' example class failed: ' . $e->getMessage() . "\n"; }
 $bells = bellsRun($bellsDb, $now);
 $turnsSent = turnsRun($bellsDb, $now);
 $digests = digestRun($bellsDb, $now);
