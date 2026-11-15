@@ -993,7 +993,7 @@
             };
             if (badge) { count(); setInterval(() => { if (document.visibilityState === 'visible') count(); }, 60000); }
             if (needs.length) {
-                try { const m = await getJson('../api/classi.php?action=mine'); const have = m.classes.length > 0 || (m.demo && stored('vb_appunti_demo') === '1'); needs.forEach((x) => { x.hidden = !have; }); } catch (e) { /* keep them */ }
+                try { const m = await getJson('../api/classi.php?action=mine'); const have = m.classes.length > 0 || m.guest || (m.demo && stored('vb_appunti_demo') === '1'); needs.forEach((x) => { x.hidden = !have; }); } catch (e) { /* keep them */ }
             }
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();

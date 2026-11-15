@@ -5,7 +5,7 @@
     const DEFAULT_THEME = 'monochrome';
     // bg = page, panel = windows, accent = main colour, muted = secondary text, prompt = terminal prompt, matrix = background rain
     const THEMES = {
-        monochrome: { label: 'Monocromatico', bg: '#050505', accent: '#f2f2f2', muted: '#b5b5b5', prompt: '#ffffff', panel: 'rgba(12, 12, 12, 0.95)', matrix: '#cfcfcf' },
+        monochrome: { label: 'Monochrome', bg: '#050505', accent: '#f2f2f2', muted: '#b5b5b5', prompt: '#ffffff', panel: 'rgba(12, 12, 12, 0.95)', matrix: '#cfcfcf' },
         cyan:       { label: 'Cyan',          bg: '#06080c', accent: '#00f3ff', muted: '#8ab4f8', prompt: '#00f3ff', panel: 'rgba(10, 14, 22, 0.95)', matrix: '#00f3ff' },
         matrix:     { label: 'Matrix',        bg: '#020b05', accent: '#00ff66', muted: '#55ff99', prompt: '#00ff66', panel: 'rgba(2, 16, 8, 0.96)', matrix: '#00ff66' },
         amber:      { label: 'Amber',         bg: '#0c0800', accent: '#ffb000', muted: '#ffd166', prompt: '#ffb000', panel: 'rgba(20, 13, 0, 0.95)', matrix: '#ffb000' },
@@ -19,10 +19,10 @@
         solarized:  { label: 'Solarized',     bg: '#002b36', accent: '#2aa198', muted: '#93a1a1', prompt: '#b58900', panel: 'rgba(0, 43, 54, 0.95)', matrix: '#2aa198' },
         tokyonight: { label: 'Tokyo Night',   bg: '#1a1b26', accent: '#7aa2f7', muted: '#a9b1d6', prompt: '#bb9af7', panel: 'rgba(26, 27, 38, 0.95)', matrix: '#7aa2f7' },
         rosepine:   { label: 'Rosé Pine',     bg: '#191724', accent: '#ebbcba', muted: '#e0def4', prompt: '#c4a7e7', panel: 'rgba(25, 23, 36, 0.95)', matrix: '#ebbcba' },
-        ocean:      { label: 'Oceano',        bg: '#021824', accent: '#29b6f6', muted: '#81d4fa', prompt: '#4dd0e1', panel: 'rgba(3, 28, 42, 0.95)', matrix: '#29b6f6' },
-        forest:     { label: 'Foresta',       bg: '#0b140d', accent: '#8bc34a', muted: '#c5e1a5', prompt: '#a5d6a7', panel: 'rgba(14, 26, 16, 0.95)', matrix: '#8bc34a' },
-        sunset:     { label: 'Tramonto',      bg: '#1a0b14', accent: '#ff7a59', muted: '#ffc09f', prompt: '#ffd166', panel: 'rgba(32, 13, 24, 0.95)', matrix: '#ff7a59' },
-        ice:        { label: 'Ghiaccio',      bg: '#0a1118', accent: '#b3e5fc', muted: '#e1f5fe', prompt: '#80deea', panel: 'rgba(12, 20, 28, 0.95)', matrix: '#b3e5fc' },
+        ocean:      { label: 'Ocean',        bg: '#021824', accent: '#29b6f6', muted: '#81d4fa', prompt: '#4dd0e1', panel: 'rgba(3, 28, 42, 0.95)', matrix: '#29b6f6' },
+        forest:     { label: 'Forest',       bg: '#0b140d', accent: '#8bc34a', muted: '#c5e1a5', prompt: '#a5d6a7', panel: 'rgba(14, 26, 16, 0.95)', matrix: '#8bc34a' },
+        sunset:     { label: 'Sunset',      bg: '#1a0b14', accent: '#ff7a59', muted: '#ffc09f', prompt: '#ffd166', panel: 'rgba(32, 13, 24, 0.95)', matrix: '#ff7a59' },
+        ice:        { label: 'Ice',      bg: '#0a1118', accent: '#b3e5fc', muted: '#e1f5fe', prompt: '#80deea', panel: 'rgba(12, 20, 28, 0.95)', matrix: '#b3e5fc' },
     };
     const SCRIPT_SRC = document.currentScript ? document.currentScript.src : '';
 
@@ -91,11 +91,23 @@
         if (document.body) document.body.setAttribute('data-rice', document.documentElement.getAttribute('data-rice') || start);
         document.querySelectorAll('select#rice-selector').forEach((sel) => {
             if (!sel.options.length) {
-                Object.keys(THEMES).forEach((id) => sel.add(new Option(THEMES[id].label + (id === DEFAULT_THEME ? ' (predefinito)' : ''), id)));
+                Object.keys(THEMES).forEach((id) => sel.add(new Option(THEMES[id].label + (id === DEFAULT_THEME ? ' (default)' : ''), id)));
             }
             sel.value = document.documentElement.getAttribute('data-rice') || start;
             sel.addEventListener('change', (e) => setTheme(e.target.value));
         });
+
+        // Frosted glass: the blurred, half-see-through look of the windows (it makes the background hazy); off = plain solid windows
+        const glassToggle = document.getElementById('glass-toggle');
+        if (glassToggle) {
+            const off = read('vb_glass') === 'off';
+            glassToggle.checked = !off;
+            document.body.classList.toggle('no-glass', off);
+            glassToggle.addEventListener('change', () => {
+                document.body.classList.toggle('no-glass', !glassToggle.checked);
+                write('vb_glass', glassToggle.checked ? 'on' : 'off');
+            });
+        }
 
         // Scanlines: only on the desktop (index), a CRT effect over the whole screen
         const scanlineToggle = document.getElementById('scanline-toggle');

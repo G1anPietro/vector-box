@@ -26,7 +26,10 @@ test('migration V12 created the tables', () => {
 
 test('guests are refused; CSRF is required', async () => {
     const guest = await new Client(site).init();
-    assert.equal((await guest.get('/api/classi.php?action=mine')).status, 401);
+    const mine = await guest.get('/api/classi.php?action=mine');
+    assert.equal(mine.json.guest, true);
+    assert.deepEqual(mine.json.classes, []);
+    assert.equal((await guest.post('/api/classi.php', { action: 'request', name: '5B', school: 'ITIS' })).status, 401);
     const r = await mario.post('/api/classi.php', { action: 'request', name: '5B', school: 'ITIS' }, { csrf: false });
     assert.equal(r.status, 403);
 });

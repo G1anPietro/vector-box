@@ -229,8 +229,7 @@ test('calendar: everyone adds, author or manager change', async () => {
 test('guests see the guide (with the login link) instead of the notes; the guide is public and in the sitemap', async () => {
     const guest = await new Client(site).init();
     const r = await fetch(`${site.base}/pages/appunti.php`, { headers: { Cookie: guest.cookieHeader() }, redirect: 'manual' });
-    assert.equal(r.status, 302);
-    assert.equal(r.headers.get('location'), 'appunti-guida.php');
+    assert.equal(r.status, 200, 'a visitor with no account may open the page: it shows the example class only');
     const g = await fetch(`${site.base}/pages/appunti-guida.php`);
     const html = await g.text();
     assert.equal(g.status, 200);
@@ -428,8 +427,8 @@ test('spaced review: wrong quiz answers come back after 1, 3, 7, 14, 30 days unt
 test('archive and upload pages: members only, no inline scripts', async () => {
     for (const page of ['appunti-archivio.php', 'appunti-carica.php']) {
         const guest = await fetch(`${site.base}/pages/${page}`, { redirect: 'manual' });
-        assert.equal(guest.status, 302, page);
-        assert.equal(guest.headers.get('location'), 'appunti-guida.php');
+        if (page === 'appunti-archivio.php') assert.equal(guest.status, 200, 'the archive opens for a visitor (example class only)');
+        else { assert.equal(guest.status, 302, page); assert.equal(guest.headers.get('location'), 'appunti-guida.php'); }
         const r = await fetch(`${site.base}/pages/${page}`, { headers: { Cookie: luigi.cookieHeader() } });
         const html = await r.text();
         assert.equal(r.status, 200, page);

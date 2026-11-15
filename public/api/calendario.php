@@ -16,9 +16,9 @@ require_once __DIR__ . '/classi_lib.php';
 require_once __DIR__ . '/appunti_lib.php';
 
 initSession();
-requireLogin();
+requireLoginOrDemoGuest();
 header('Cache-Control: no-store');
-$me = (int)$_SESSION['user_id'];
+$me = (int)($_SESSION['user_id'] ?? 0);
 $isAdmin = !empty($_SESSION['is_admin']);
 
 function caFail(string $code, string $msg, int $status = 400): void {

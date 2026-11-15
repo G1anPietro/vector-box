@@ -114,12 +114,15 @@
         const real = mine.classes;
         demoClass = mine.demo || null;
         // The example class (invented data, read-only) is offered when you have no class yet, or after you asked to see it
-        const showDemo = !!demoClass && (stored(DEMO_KEY) === '1' || Number(selectId) === demoClass.id);
+        const showDemo = !!demoClass && (!!mine.guest || stored(DEMO_KEY) === '1' || Number(selectId) === demoClass.id);
         classes = showDemo ? [...real, demoClass] : real;
         isAdmin = mine.is_admin;
         const sel = $('#class-select');
         sel.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: c.demo ? `${c.name} · classe di esempio` : `${c.name} · ${c.school}${c.is_member ? '' : ' (admin)'}` })));
         $('#demo-offer').hidden = !demoClass || showDemo;
+        // a visitor with no account: only the example class, no join/request forms
+        ['#join-form', '#request-box', '#demo-close'].forEach((q) => { $(q).hidden = !!mine.guest; });
+        $('#guest-note').hidden = !mine.guest;
         $('[data-tab="admin"]').hidden = !mine.is_admin;
 
         $('#request-form').hidden = !mine.requests_open && !mine.is_admin;

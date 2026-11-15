@@ -79,6 +79,14 @@ if ($userId && !$isAdmin) {
                     </div>
 
                     <div class="toggle-row" style="margin-top: 8px;">
+                        <span class="toggle-label">FROSTED GLASS</span>
+                        <label class="cyber-switch">
+                            <input type="checkbox" id="glass-toggle" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row" style="margin-top: 8px;">
                         <span class="toggle-label">SCANLINES</span>
                         <label class="cyber-switch">
                             <input type="checkbox" id="scanline-toggle">

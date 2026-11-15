@@ -7,15 +7,10 @@ require_once __DIR__ . '/../includes/appunti-top.php';
 require_once __DIR__ . '/../api/database.php';
 
 initSession(true);
-if (empty($_SESSION['user_id'])) {
-    // Guests first see what the notes are (with the login button)
-    session_write_close();
-    header('Location: appunti-guida.php');
-    exit();
-}
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 $csrf = $_SESSION['csrf_token'];
-$username = (string)$_SESSION['username'];
+$isGuest = empty($_SESSION['user_id']);     // no account: only the example class can be looked at
+$username = $isGuest ? '' : (string)$_SESSION['username'];
 $isAdmin = !empty($_SESSION['is_admin']);
 session_write_close();
 
@@ -64,6 +59,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
 
         <!-- No class yet: join with a code or ask for a new class -->
         <section id="welcome" class="card" hidden>
+            <p id="guest-note" class="muted" hidden>Per usare gli Appunti con la tua classe serve un account gratuito: <a href="login.php">accedi o registrati</a>. Intanto puoi guardare la classe di esempio.</p>
             <h2>Entra nella tua classe</h2>
             <p class="muted">Chiedi il codice d'invito al rappresentante della classe.</p>
             <form id="join-form" class="row">

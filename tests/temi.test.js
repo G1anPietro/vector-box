@@ -69,6 +69,9 @@ test('the desktop menu: no night mode and no high contrast; matrix switch and th
     const html = await (await fetch(`${site.base}/index.php`)).text();
     assert.doesNotMatch(html, /MODE: NIGHT|theme-toggle|contrast-toggle|HIGH CONTRAST/);
     assert.match(html, /id="matrix-toggle"/);
+    assert.match(html, /id="glass-toggle"/);
+    assert.match(html, /Monochrome \(default\)/);
+    assert.doesNotMatch(html, /Monocromatico|predefinito/);
     assert.match(html, /id="scanline-toggle"/);
     assert.match(html, /<body class="home">/);
     const css = fs.readFileSync(path.join(REPO, 'public/css/components.css'), 'utf8');

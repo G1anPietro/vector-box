@@ -38,7 +38,7 @@ test('migration V17 created the tables; guests, strangers and CSRF', async () =>
     assert.ok(site.db('PRAGMA user_version')[0].user_version >= 17);
     assert.equal(site.db(`SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN ('class_topics','class_homework','class_days_off','class_turns','class_board')`)[0].n, 5);
     const guest = await new Client(site).init();
-    assert.equal((await guest.get(`/api/calendario.php?action=overview&class_id=${classId}`)).status, 401);
+    assert.equal((await guest.get(`/api/calendario.php?action=overview&class_id=${classId}`)).status, 404);
     assert.equal((await peach.get(`/api/calendario.php?action=overview&class_id=${classId}`)).status, 404);
     assert.equal((await mario.post('/api/calendario.php', { action: 'save_homework', class_id: classId }, { csrf: false })).status, 403);
 });

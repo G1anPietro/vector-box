@@ -437,7 +437,7 @@
         try {
             const mine = await getJson('../api/classi.php?action=mine');
             classes = mine.classes;
-            if (mine.demo && (C.stored('vb_appunti_demo') === '1' || Number(new URLSearchParams(location.search).get('class')) === mine.demo.id)) classes = [...classes, mine.demo];   // the example class, read-only
+            if (mine.demo && (mine.guest || C.stored('vb_appunti_demo') === '1' || Number(new URLSearchParams(location.search).get('class')) === mine.demo.id)) classes = [...classes, mine.demo];   // the example class, read-only
             if (!classes.length) { location.href = 'appunti.php'; return; }
             const want = Number(new URLSearchParams(location.search).get('class') || C.stored(C.CLASS_KEY));
             const pick = classes.find((c) => c.id === want) || classes[0];

@@ -45,7 +45,7 @@
 
     function renderTools() {
         set($('#cal-tools'),
-            el('button', { type: 'button', class: 'ghost', text: '+ Compito', onclick: () => editHomework() }),
+            el('button', { type: 'button', class: 'ghost hw-add', text: '+ Compito', onclick: () => editHomework() }),
             can('topics') ? el('button', { type: 'button', class: 'ghost', text: '+ Argomento', onclick: () => editTopic() }) : null,
             can('daysoff') ? el('button', { type: 'button', class: 'ghost', text: '+ Giorno senza lezione', onclick: () => addDayOff() }) : null,
             can('turns') ? el('button', { type: 'button', class: 'ghost', text: 'Turni delle interrogazioni', onclick: () => turnsDialog() }) : null);

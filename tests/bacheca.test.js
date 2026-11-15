@@ -34,7 +34,7 @@ test.after(() => site.stop());
 
 test('overview: members only; lessons of today with rooms, the clock of the class, the next day', async () => {
     const guest = await new Client(site).init();
-    assert.equal((await overview(guest)).status, 401);
+    assert.equal((await overview(guest)).status, 404, 'a visitor with no account is not a member');
     assert.equal((await overview(peach)).status, 404, 'not a member');
     const r = (await overview(luigi)).json;
     assert.match(r.now, /^\d\d:\d\d:\d\d$/);

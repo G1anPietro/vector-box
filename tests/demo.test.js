@@ -95,11 +95,34 @@ test('a quiz of the example class is judged by the server but nothing is saved',
     assert.doesNotMatch(doc.content, /"answer"/);
 });
 
-test('guests cannot see it; the AI worker and reminders leave it alone', async () => {
+test('a visitor with no account sees the example class (read-only) and nothing else', async () => {
     const guest = new Client(site);
-    assert.equal((await guest.get('/api/classi.php?action=mine')).status, 401);
-    const q = site.db("SELECT COUNT(*) AS n FROM school_classes WHERE status = 'active' AND is_demo = 0")[0].n;
-    assert.equal(q, 0);
+    await guest.init();
+    const mine = (await guest.get('/api/classi.php?action=mine')).json;
+    assert.equal(mine.guest, true);
+    assert.deepEqual(mine.classes, []);
+    assert.equal(mine.demo.id, demoId);
+    assert.equal((await guest.get(`/api/classi.php?action=class&id=${demoId}`)).json.class.demo, true);
+    assert.ok((await guest.get(`/api/appunti.php?action=items&class_id=${demoId}`)).json.items.length >= 15);
+    assert.equal((await guest.get(`/api/classifica.php?action=board&class_id=${demoId}`)).status, 200);
+    // a real class stays closed to them
+    const other = (await anna.post('/api/classi.php', { action: 'request', name: '1A', school: 'X' })).json.id;
+    await admin.post('/api/classi.php', { action: 'decide', id: other, approve: true });
+    assert.equal((await guest.get(`/api/classi.php?action=class&id=${other}`)).status, 404);
+    assert.equal((await guest.get(`/api/appunti.php?action=items&class_id=${other}`)).status, 404);
+    // writing is refused: no account
+    const sid = site.db('SELECT id FROM class_subjects WHERE class_id = ? LIMIT 1', [demoId])[0].id;
+    assert.equal((await guest.post('/api/appunti.php', { action: 'add_event', class_id: demoId, subject_id: sid, kind: 'verifica', date: '2030-01-01' })).status, 401);
+    // but a quiz can be tried, and nothing is saved
+    const quiz = site.db("SELECT id FROM class_docs WHERE class_id = ? AND kind = 'quiz' LIMIT 1", [demoId])[0].id;
+    const r = await guest.post('/api/appunti.php', { action: 'quiz_answer', doc_id: quiz, q: 0, choice: 1 });
+    assert.equal(r.json.correct, true);
+    assert.equal(site.db('SELECT COUNT(*) AS n FROM quiz_answers WHERE class_id = ?', [demoId])[0].n, 0);
+    // the pages open for them too
+    for (const p of ['appunti.php', 'appunti-archivio.php']) {
+        const res = await fetch(`${site.base}/pages/${p}`, { redirect: 'manual', headers: { Cookie: guest.cookieHeader() } });
+        assert.equal(res.status, 200, p);
+    }
 });
 
 test('the worker writes the example class by itself (DEMO_CLASS, on by default) and can be told not to', async () => {

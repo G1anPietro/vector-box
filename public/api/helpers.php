@@ -90,6 +90,19 @@ function requireLogin(): void {
     }
 }
 
+/**
+ * For the class-notes API: a logged-in user, or (only for the example class) a visitor with no account, who may read (GET)
+ * and try a quiz (quiz_answer) and nothing else. The visitor counts as user 0: not a member of anything, so classCanView()
+ * lets them into the example class only.
+ */
+function requireLoginOrDemoGuest(): void {
+    if (!empty($_SESSION['user_id'])) return;
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') return;
+    $body = json_decode((string)file_get_contents('php://input'), true);
+    if (is_array($body) && ($body['action'] ?? '') === 'quiz_answer') return;
+    jsonResponse(['success' => false, 'error' => 'UNAUTHENTICATED: Login required'], 401);
+}
+
 function readJsonBody(): array {
     $data = json_decode(file_get_contents('php://input'), true);
     return is_array($data) ? $data : [];
@@ -430,10 +443,10 @@ function textCut(string $s, int $max): string {
  * tests/temi.test.js checks that the two lists match. Reader themes (light, sepia, dark, black) are separate.
  */
 const SYSTEM_THEMES = [
-    'monochrome' => 'Monocromatico', 'cyan' => 'Cyan', 'matrix' => 'Matrix', 'amber' => 'Amber', 'cyberpunk' => 'Cyberpunk',
+    'monochrome' => 'Monochrome', 'cyan' => 'Cyan', 'matrix' => 'Matrix', 'amber' => 'Amber', 'cyberpunk' => 'Cyberpunk',
     'dracula' => 'Dracula', 'synthwave' => 'Synthwave', 'nord' => 'Nord', 'blood' => 'Blood', 'catppuccin' => 'Catppuccin',
     'gruvbox' => 'Gruvbox', 'solarized' => 'Solarized', 'tokyonight' => 'Tokyo Night', 'rosepine' => 'Rosé Pine',
-    'ocean' => 'Oceano', 'forest' => 'Foresta', 'sunset' => 'Tramonto', 'ice' => 'Ghiaccio',
+    'ocean' => 'Ocean', 'forest' => 'Forest', 'sunset' => 'Sunset', 'ice' => 'Ice',
 ];
 const DEFAULT_SYSTEM_THEME = 'monochrome';
 const READER_THEMES = ['light', 'sepia', 'dark', 'black'];
@@ -442,7 +455,7 @@ const READER_THEMES = ['light', 'sepia', 'dark', 'black'];
 function systemThemeOptions(?string $current): string {
     $out = '';
     foreach (SYSTEM_THEMES as $id => $label) {
-        $out .= '<option value="' . $id . '"' . ($id === $current ? ' selected' : '') . '>' . htmlspecialchars($label . ($id === DEFAULT_SYSTEM_THEME ? ' (predefinito)' : '')) . '</option>';
+        $out .= '<option value="' . $id . '"' . ($id === $current ? ' selected' : '') . '>' . htmlspecialchars($label . ($id === DEFAULT_SYSTEM_THEME ? ' (default)' : '')) . '</option>';
     }
     return $out;
 }

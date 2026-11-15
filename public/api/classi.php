@@ -25,10 +25,10 @@ require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/classi_lib.php';
 
 initSession();
-requireLogin();
+requireLoginOrDemoGuest();
 header('Cache-Control: no-store');
 
-$me = (int)$_SESSION['user_id'];
+$me = (int)($_SESSION['user_id'] ?? 0);
 $isAdmin = !empty($_SESSION['is_admin']);
 
 function clFail(string $code, string $message, int $status = 400): void {
@@ -103,6 +103,7 @@ try {
             jsonResponse([
                 'success' => true,
                 'is_admin' => $isAdmin,
+                'guest' => $me === 0,
                 'requests_open' => classRequestsOpen($db),
                 'classes' => $classes,
                 'demo' => $demo ? ['id' => (int)$demo['id'], 'name' => $demo['name'], 'school' => $demo['school'], 'is_member' => false, 'demo' => true, 'is_manager' => false, 'members' => 0] : null,

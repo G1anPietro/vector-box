@@ -13,9 +13,9 @@ require_once __DIR__ . '/appunti_lib.php';
 require_once __DIR__ . '/notifiche_lib.php';
 
 initSession();
-requireLogin();
+requireLoginOrDemoGuest();
 header('Cache-Control: no-store');
-$me = (int)$_SESSION['user_id'];
+$me = (int)($_SESSION['user_id'] ?? 0);
 $isAdmin = !empty($_SESSION['is_admin']);
 
 const BOARD_MAX_ANNOUNCEMENTS = 50;   // per class: the oldest must be deleted before adding more
