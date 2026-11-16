@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 30;
+const DB_SCHEMA_VERSION = 31;
 
 /**
  * Session bootstrap.
@@ -566,6 +566,18 @@ function migrateV16(PDO $db): void {
 }
 
 /** v30: a temporary link can be limited to a number of openings (0 = no limit). */
+/** v31: daily counters of bot requests (see bots.php), shown on the statistics page. */
+function migrateV31(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS bot_stats (
+        day TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        label TEXT NOT NULL,
+        hits INTEGER NOT NULL DEFAULT 0,
+        blocked INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, kind, label)
+    ) WITHOUT ROWID");
+}
+
 function migrateV30(PDO $db): void {
     addColumnIfMissing($db, 'share_links', 'max_views', 'INTEGER NOT NULL DEFAULT 0');
 }
@@ -904,6 +916,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 30) {
             migrateV30($db);
+        }
+        if ($current < 31) {
+            migrateV31($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

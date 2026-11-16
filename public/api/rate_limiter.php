@@ -10,9 +10,10 @@ require_once __DIR__ . '/debug_logger.php';
  * @param int         $maxRequests  max hits inside the window
  * @param int         $decaySeconds window size
  * @param string|null $key          what to limit on (default: client IP; use a username for per-account limits)
+ * @param bool        $log          write RATE_LIMIT_EXCEEDED to the error log (false for floods we expect, e.g. scanners)
  * @return bool true if the request is allowed
  */
-function checkRateLimit(string $action = 'feed', int $maxRequests = 5, int $decaySeconds = 10, ?string $key = null): bool {
+function checkRateLimit(string $action = 'feed', int $maxRequests = 5, int $decaySeconds = 10, ?string $key = null, bool $log = true): bool {
     $bucket = substr($action . ':' . ($key ?? getClientIp()), 0, 200);
     $now = time();
 
@@ -29,7 +30,7 @@ function checkRateLimit(string $action = 'feed', int $maxRequests = 5, int $deca
 
         if ($count >= $maxRequests) {
             $db->exec('COMMIT');
-            logSystemError('RATE_LIMIT_EXCEEDED', "{$bucket} exceeded {$maxRequests}/{$decaySeconds}s");
+            if ($log) logSystemError('RATE_LIMIT_EXCEEDED', "{$bucket} exceeded {$maxRequests}/{$decaySeconds}s");
             return false;
         }
 

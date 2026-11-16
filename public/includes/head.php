@@ -3,6 +3,8 @@
 // Every page includes this before any output: send the security headers here.
 require_once __DIR__ . '/../api/helpers.php';
 sendPageSecurityHeaders();
+require_once __DIR__ . '/../api/bots.php';
+botBlockIfAbusive();
 require_once __DIR__ . '/../api/visits.php';
 recordVisit((string)parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
 

@@ -3,10 +3,24 @@
 // nginx sends every unknown path here (try_files fallback): only "/" is the home page, the rest is a 404.
 $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 if (!in_array($reqPath, ['/', '/index.php', null, false, ''], true)) {
-    http_response_code(404);
+    require_once __DIR__ . '/api/bots.php';
+    botBlockIfAbusive();
+    $ua = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 400);
+    $probe = botScanLabel((string)$reqPath);
+    $status = 404;
+    if ($probe !== '') {
+        // a scanner: after a few probes in an hour this address is told to go away without the page
+        require_once __DIR__ . '/api/rate_limiter.php';
+        if (!checkRateLimit('scanner', 8, 3600, null, false)) $status = 429;
+    }
+    $bot = botClassify($ua);
+    if ($probe !== '') botRecord('scanner', $probe, (string)$reqPath, $status);
+    elseif ($bot) botRecord($bot[0], $bot[1], (string)$reqPath, $status);
+    http_response_code($status);
     header('Content-Type: text/html; charset=UTF-8');
     header('X-Content-Type-Options: nosniff');
     header('Cache-Control: no-store');
+    if ($status === 429) { header('Retry-After: 3600'); exit("Too many requests.\n"); }
     readfile(__DIR__ . '/errors/404.html');
     exit;
 }

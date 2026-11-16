@@ -48,3 +48,4 @@ details .tbl { max-width: 320px; margin-top: 8px; }
 .tip { position: fixed; z-index: 3000; pointer-events: none; background: #161b22; color: var(--ink); border: 1px solid var(--grid);
        padding: 4px 8px; font-size: 0.78rem; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); }
 @media (max-width: 600px) { .tile .big { font-size: 1.7rem; } .cols { height: 140px; } }
+.sect-title { font-size: 1.05rem; letter-spacing: 2px; margin: 28px 0 12px; color: var(--ink); text-transform: uppercase; }

@@ -227,3 +227,36 @@ proxy_intercept_errors on;
 
 `internal` would also block the css/js the page loads, hence the two `location =` lines. Check with
 `curl -i https://SITE/nonexistent` (expect 404 with the cyberpunk page), then `sudo nginx -t && sudo systemctl reload nginx`.
+
+## Bots (what the code already does, and the nginx part that needs the owner's yes)
+
+In the code (`public/api/bots.php`): bots are classified by User-Agent and counted per day in `bot_stats` (schema v31), the
+latest lines go to `data/bots.log`, and the stats page shows them. SEO/data scrapers (Ahrefs, Semrush, MJ12, Bytespider...) get
+403 on every PHP page; an address probing wp-login, `.env`, phpmyadmin etc. more than 8 times an hour gets 429 for the rest of
+that hour. AI crawlers are only listed in `robots.txt`; `BOT_BLOCK_AI=true` in `.env` refuses them too.
+Only requests that reach PHP are counted. What nginx rejects before PHP is not seen by the stats page.
+
+Optional nginx hardening (http block + 443 server block), to drop junk before it reaches PHP:
+
+```nginx
+# http { ... }
+map $http_user_agent $bad_bot {
+    default 0;
+    "~*(AhrefsBot|SemrushBot|MJ12bot|DotBot|PetalBot|Bytespider|BLEXBot|DataForSeoBot|serpstatbot|MegaIndex|Barkrowler)" 1;
+}
+limit_req_zone $binary_remote_addr zone=scan_zone:5m rate=1r/s;
+log_format timed '$remote_addr [$time_local] "$request" $status $body_bytes_sent $request_time "$http_user_agent"';
+
+# server { ... 443 ... }
+access_log /var/log/nginx/access.log timed;                  # adds $request_time: slow endpoints become visible
+if ($bad_bot) { return 444; }                                # close the connection, no answer at all
+location ~* ^/(wp-(admin|login|content|includes)|xmlrpc\.php|phpmyadmin|pma|adminer|cgi-bin|boaform|HNAP1|\.env|\.git|vendor/phpunit|actuator) {
+    limit_req zone=scan_zone burst=3 nodelay;
+    return 444;
+}
+# books.php covers and the list share the 5 r/s zone with the whole API: give the book library its own bigger one
+# (limit_req_zone $binary_remote_addr zone=books_zone:5m rate=20r/s; then limit_req zone=books_zone burst=40 nodelay; in a
+#  `location = /api/books.php` block that repeats the fastcgi settings) and `limit_req_status 429;` so a refusal is not a 503.
+```
+
+Then `sudo nginx -t && sudo systemctl reload nginx`. Optional: fail2ban with a jail on 444/404 bursts from the access log.

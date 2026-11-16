@@ -516,7 +516,7 @@ try {
             $where = 'd.class_id = :c';
             $params = [':c' => $classId];
             if (!empty($_GET['subject_id'])) { $where .= ' AND d.subject_id = :s'; $params[':s'] = (int)$_GET['subject_id']; }
-            $st = $db->prepare("SELECT d.id, d.kind, d.subject_id, d.lesson_date, d.event_id, d.title, d.status, d.updated_at, d.author_id,
+            $st = $db->prepare("SELECT d.id, d.kind, d.subject_id, d.lesson_date, d.event_id, d.topic_id, d.title, d.status, d.updated_at, d.author_id,
                                        s.name AS subject, CASE WHEN LENGTH(cm.display_name) > 0 THEN cm.display_name ELSE a.username END AS author
                                 FROM class_docs d LEFT JOIN class_subjects s ON s.id = d.subject_id LEFT JOIN accounts a ON a.id = d.author_id LEFT JOIN class_members cm ON cm.class_id = d.class_id AND cm.user_id = d.author_id
                                 WHERE $where ORDER BY COALESCE(d.lesson_date, '') DESC, d.id DESC LIMIT 300");

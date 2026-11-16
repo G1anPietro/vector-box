@@ -7,20 +7,15 @@
 // goes to data/visits.log and one ntfy notification is sent, after the page has been
 // delivered (never slows the page down). Page views inside a visit are not logged.
 //
-// Skipped: bots and crawlers, the server itself (health checks), link previews/prefetch.
+// Skipped (but counted by bots.php): bots and crawlers, the server itself (health checks), link previews/prefetch.
 // Not notified (but logged): admins, and anything beyond VISIT_NOTIFY_MAX_PER_HOUR.
 // .env: VISIT_NTFY_URL (default: NTFY_TOPIC_URL), VISIT_NOTIFY=false to turn the
 // notifications off, VISIT_GAP_MIN, VISIT_NOTIFY_MAX_PER_HOUR (default 20).
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/bots.php';
 
 const VISIT_LOG_MAX_BYTES = 2 * 1024 * 1024;   // then rotated to visits.log.1
-
-function visitIsBot(string $ua): bool {
-    if ($ua === '') return true;
-    return (bool)preg_match('/bot|crawl|spider|slurp|preview|monitor|uptime|curl|wget|python|httpclient|go-http|java\/|'
-        . 'headless|lighthouse|facebookexternalhit|whatsapp|telegram|discord|mediapartners|adsbot|feedfetcher|scan/i', $ua);
-}
 
 /** "Firefox, Android" — just enough to recognise who it is. */
 function visitDescribeUa(string $ua): string {
@@ -54,7 +49,7 @@ function recordVisit(string $page): void {
         if (str_contains($purpose, 'prefetch') || str_contains($purpose, 'prerender')) return;
 
         $ua = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 400);
-        if (visitIsBot($ua)) return;
+        if (visitIsBot($ua)) { botNotePageRequest($ua, $page); return; }
         $ip = getClientIp();
         if ($ip === '127.0.0.1' || $ip === '::1') return; // the server checking itself
 

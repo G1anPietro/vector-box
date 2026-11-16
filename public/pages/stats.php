@@ -4,6 +4,7 @@
 // date time, ip, user, page, device, first|returning, referrer host.
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
+require_once __DIR__ . '/../api/bots.php';
 
 initSession();
 if (empty($_SESSION['is_admin'])) {
@@ -55,6 +56,36 @@ $months = ['01' => 'gen', '02' => 'feb', '03' => 'mar', '04' => 'apr', '05' => '
            '08' => 'ago', '09' => 'set', '10' => 'ott', '11' => 'nov', '12' => 'dic'];
 $fmtDay = fn($d) => (int)substr($d, 8, 2) . ' ' . $months[substr($d, 5, 2)];
 
+// ---- bots and automated requests (bot_stats counters + the latest lines of bots.log) ----
+$botDay = array_fill_keys(array_keys($perDay), 0);
+$botKind = []; $botLabel = []; $botBlocked = 0; $botTotal = 0;
+try {
+    $q = getDbConnection()->prepare('SELECT day, kind, label, hits, blocked FROM bot_stats WHERE day >= :s');
+    $q->execute([':s' => $since]);
+    foreach ($q->fetchAll() as $b) {
+        $n = (int)$b['hits'];
+        $botTotal += $n; $botBlocked += (int)$b['blocked'];
+        if (isset($botDay[$b['day']])) $botDay[$b['day']] += $n;
+        $kindName = BOT_KINDS[$b['kind']] ?? $b['kind'];
+        $botKind[$kindName] = ($botKind[$kindName] ?? 0) + $n;
+        $botLabel[$b['label']] = ($botLabel[$b['label']] ?? 0) + $n;
+    }
+} catch (Throwable $e) { /* table missing before the first migration: show zeros */ }
+arsort($botKind); arsort($botLabel);
+$botLabel = array_slice($botLabel, 0, 10, true);
+$botToday = $botDay[$today] ?? 0;
+$botMax = max(1, max($botDay));
+$botRecent = [];
+foreach (['bots.log', 'bots.log.1'] as $f) {   // newest file first, each read from the end
+    if (!is_file($dir . $f) || count($botRecent) >= 25) continue;
+    foreach (array_reverse(file($dir . $f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)) as $line) {
+        $c = explode("\t", $line);
+        if (count($c) < 6) continue;
+        $botRecent[] = ['at' => $c[0], 'ip' => $c[1], 'kind' => BOT_KINDS[$c[2]] ?? $c[2], 'label' => $c[3], 'page' => $c[4], 'status' => $c[5]];
+        if (count($botRecent) >= 25) break;
+    }
+}
+
 function barList(array $items, int $total, callable $h): void {
     if (!$items) { echo '<p class="empty">Ancora nessun dato.</p>'; return; }
     $max = max($items);
@@ -74,7 +105,7 @@ function barList(array $items, int $total, callable $h): void {
 <head>
     <?php renderHead('Statistiche // Vector-Box', true); ?>
     <meta name="robots" content="noindex">
-    <link rel="stylesheet" href="../css/stats.css?v=2">
+    <link rel="stylesheet" href="../css/stats.css?v=3">
     <script src="../js/stats.js?v=1" defer></script>
 </head>
 <body class="stats-page">
@@ -140,6 +171,48 @@ function barList(array $items, int $total, callable $h): void {
             </table></div>
             <?php endif; ?>
         </section>
+        <h2 class="sect-title" id="bot">Bot e richieste automatiche</h2>
+        <section class="tiles">
+            <div class="tile"><span class="big"><?= $botToday ?></span><span>richieste di bot oggi</span></div>
+            <div class="tile"><span class="big"><?= $botTotal ?></span><span>in <?= $days ?> giorni</span></div>
+            <div class="tile"><span class="big"><?= $botBlocked ?></span><span>respinte (403 / 429)</span></div>
+            <div class="tile"><span class="big"><?= ($total + $botTotal) ? round(100 * $botTotal / ($total + $botTotal)) : 0 ?>%</span><span>del traffico PHP è dei bot</span></div>
+        </section>
+
+        <section class="panel-s">
+            <h2>Richieste di bot al giorno</h2>
+            <div class="cols" role="img" aria-label="Richieste di bot al giorno, massimo <?= $botMax ?>">
+                <span class="ymax"><?= $botMax ?></span>
+                <?php $i = 0; foreach ($botDay as $d => $n): ?>
+                    <span class="col<?= $d === $today ? ' today' : '' ?>" data-tip="<?= $h($fmtDay($d)) ?>: <?= $n ?> richiest<?= $n === 1 ? 'a' : 'e' ?>">
+                        <span class="bar" style="height:<?= $n ? max(2, round(100 * $n / $botMax)) : 0 ?>%"></span>
+                        <?php $step = max(1, intdiv($days, 7));
+                              if ($d === $today || ($i % $step === 0 && $i < $days - max(2, intdiv($step, 2) + 1))): ?><span class="x"><?= $h($fmtDay($d)) ?></span><?php endif; ?>
+                    </span>
+                <?php $i++; endforeach; ?>
+            </div>
+        </section>
+
+        <div class="grid">
+            <section class="panel-s"><h2>Tipo di bot</h2><?php barList($botKind, $botTotal, $h); ?></section>
+            <section class="panel-s"><h2>Chi sono / cosa cercano</h2><?php barList($botLabel, $botTotal, $h); ?></section>
+        </div>
+
+        <section class="panel-s">
+            <h2>Ultime richieste di bot</h2>
+            <?php if (!$botRecent): ?><p class="empty">Ancora nessuna richiesta di bot registrata.</p><?php else: ?>
+            <div class="scroll"><table class="tbl">
+                <thead><tr><th>Quando</th><th>Tipo</th><th>Chi / cosa</th><th>Percorso</th><th>Esito</th><th>IP</th></tr></thead>
+                <tbody>
+                <?php foreach ($botRecent as $r): ?>
+                    <tr><td><?= $h(substr($r['at'], 5, 11)) ?></td><td><?= $h($r['kind']) ?></td><td><?= $h($r['label']) ?></td>
+                        <td><?= $h($r['page']) ?></td><td><?= $h($r['status']) ?></td><td class="mono"><?= $h($r['ip']) ?></td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+            <?php endif; ?>
+        </section>
+        <p class="note">I bot sono contati solo quando la richiesta arriva a PHP (pagine e indirizzi sconosciuti); quello che nginx scarta da solo non si vede qui. Gli scraper noti (SEO, dati) e chi sonda indirizzi come wp-login o .env più di 8 volte in un'ora vengono respinti. Non sono visite: la tabella "Ultime visite" non li include.</p>
         <p class="note">Una visita è nuova quando lo stesso IP con lo stesso browser non si vedeva da 30 minuti. Robot, controlli del server e anteprime dei link non sono contati.</p>
     </main>
     <div class="tip" id="tip" hidden></div>

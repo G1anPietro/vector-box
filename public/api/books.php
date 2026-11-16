@@ -107,7 +107,8 @@ try {
         }
         header('Content-Type: ' . $types[$ext]);
         header('Content-Length: ' . filesize($file));
-        header('Cache-Control: private, max-age=86400');
+        // the list gives every cover a ?v= (its file time): a changed cover has a new URL, so the browser may keep this one for good
+        header('Cache-Control: private, max-age=31536000, immutable');
         readfile($file);
         exit();
     }
@@ -189,7 +190,8 @@ try {
 
         // Never expose server paths: covers are served by ?action=cover
         $books = array_map(function ($b) {
-            $b['cover_path'] = !empty($b['cover_path']) ? '../api/books.php?action=cover&id=' . (int)$b['id'] : '';
+            $coverFile = !empty($b['cover_path']) ? dirname(__DIR__, 2) . '/data/covers/' . basename((string)$b['cover_path']) : '';
+            $b['cover_path'] = $coverFile !== '' ? '../api/books.php?action=cover&id=' . (int)$b['id'] . '&v=' . (int)@filemtime($coverFile) : '';
             unset($b['file_path']);
             return $b;
         }, $books);
