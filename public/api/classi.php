@@ -459,7 +459,7 @@ try {
     if ($action === 'ai_switch') {
         // The AI (Google Gemini) reads the class material only if the class says all its students are adults.
         // Switching it on needs that declaration again (people grow up, but it must be true); switching off is always allowed.
-        $class = clRepresentative($db, $id, $me, $isAdmin);   // the declaration "all adults" is the representative's, not any settings holder's
+        $class = empty($in['on']) ? clManaged($db, $id, $me, $isAdmin, 'settings') : clRepresentative($db, $id, $me, $isAdmin);   // off: anyone with settings; on (the adults declaration): only the representative   // the declaration "all adults" is the representative's, not any settings holder's
         if (!empty($in['on'])) {
             if (empty($in['adults_confirm'])) clFail('adults_needed', 'Confirm that all the students of the class are adults to switch the AI on', 400);
             $db->prepare('UPDATE school_classes SET ai_allowed = 1, ai_adults_at = :t, ai_adults_by = :u WHERE id = :id')->execute([':t' => time(), ':u' => $me, ':id' => $id]);

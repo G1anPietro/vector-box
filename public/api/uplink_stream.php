@@ -11,7 +11,7 @@ require_once __DIR__ . '/rate_limiter.php';
 initSession();
 
 // Each stream holds a PHP worker for ~20 s: too many opened from one address are told to wait (EventSource obeys retry)
-if (!checkRateLimit('sse_open', 40, 60, null, false)) {
+if (!checkRateLimit('sse_open', 240, 60, null, false)) {
     header('Content-Type: text/event-stream');
     echo "retry: 30000\n\n";
     exit();
@@ -73,7 +73,7 @@ $stmt = $db->prepare("SELECT id, room_id, username, message, created_at
 
 $startTime = time();
 $maxDuration = 20; // 20-second clean cycle to avoid PHP-FPM worker exhaustion
-$lastActivity = time();
+$lastActivity = time() - 30;   // a quiet room starts in the slow rhythm; a message makes it fast for 30 s
 
 while ((time() - $startTime) < $maxDuration) {
     if (connection_aborted()) {

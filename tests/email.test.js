@@ -13,6 +13,7 @@ test.describe('e-mail box', () => {
         headers: { Cookie: c.cookieHeader(), 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ csrf_token: c.csrf, ...fields }) });
     const mailLog = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '');
     const mail = (c, body) => c.post('/api/mail.php', body);
+    const press = (url) => fetch(url, { method: 'POST' });          // the links only SHOW a button on GET; the press is a POST
 
     test.before(async () => {
         site = await startSite({ MAIL_DRIVER: 'log', SITE_URL: 'https://example.org', MAIL_FROM: 'vector-box <no-reply@example.org>' });
@@ -33,7 +34,9 @@ test.describe('e-mail box', () => {
         const token = /mail_link\.php\?a=verify&t=([0-9a-f.]+)/.exec(sent)[1];
         assert.equal((await fetch(`${site.base}/api/mail_link.php?a=verify&t=${token}x`)).status, 400, 'a forged token');
         assert.equal((await fetch(`${site.base}/api/mail_link.php?a=unsub&t=${token}`)).status, 400, 'a verify token is not an unsubscribe token');
-        assert.equal((await fetch(`${site.base}/api/mail_link.php?a=verify&t=${token}`)).status, 200);
+        assert.equal((await fetch(`${site.base}/api/mail_link.php?a=verify&t=${token}`)).status, 200, 'opening the link shows a page');
+        assert.equal(site.db("SELECT email_verified FROM accounts WHERE username = 'em_ada'")[0].email_verified, 0, 'a scanner that only opens the link confirms nothing');
+        assert.equal((await press(`${site.base}/api/mail_link.php?a=verify&t=${token}`)).status, 200);
         assert.equal(site.db("SELECT email_verified FROM accounts WHERE username = 'em_ada'")[0].email_verified, 1);
         // bob confirms nothing and says no to news
         await form(bob, { action: 'save_email', email: 'bob@example.com' });
@@ -63,6 +66,12 @@ test.describe('e-mail box', () => {
         const sent = await mail(admin, { action: 'send', id });
         assert.equal(sent.json.queued, 1);
         assert.equal((await mail(admin, { action: 'send', id })).json.code, 'not_draft', 'cannot be sent twice');
+        const d3 = (await mail(admin, { action: 'save_draft', subject: 'Doppio', body: 'x', audience: 'optin' })).json.id;
+        site.db("UPDATE accounts SET email_optin = 1 WHERE username = 'em_ada'");
+        const both = await Promise.all([mail(admin, { action: 'send', id: d3 }), mail(admin, { action: 'send', id: d3 })]);
+        assert.deepEqual(both.map((r) => r.status).sort(), [200, 409], 'two parallel sends: one wins');
+        assert.equal(site.db("SELECT COUNT(*) AS n FROM mail_queue WHERE subject = 'Doppio'")[0].n, 1, 'queued once');
+        site.db("DELETE FROM mail_queue WHERE subject = 'Doppio'");
         const proc = await mail(admin, { action: 'process' });
         assert.equal(proc.json.sent, 1);
         const text = mailLog();
@@ -70,6 +79,8 @@ test.describe('e-mail box', () => {
         assert.ok(!text.includes('bob@example.com\tsubject=Novità'), 'bob never agreed to news');
         const unsub = /mail_link\.php\?a=unsub&t=([0-9a-f.]+)/.exec(text.split('Novità')[1])[1];
         assert.equal((await fetch(`${site.base}/api/mail_link.php?a=unsub&t=${unsub}`)).status, 200);
+        assert.equal(site.db("SELECT email_optin FROM accounts WHERE username = 'em_ada'")[0].email_optin, 1, 'opening the unsubscribe link does not unsubscribe');
+        assert.equal((await press(`${site.base}/api/mail_link.php?a=unsub&t=${unsub}`)).status, 200);
         assert.equal(site.db("SELECT email_optin FROM accounts WHERE username = 'em_ada'")[0].email_optin, 0);
         const d2 = (await mail(admin, { action: 'save_draft', subject: 'Ancora', body: 'x', audience: 'optin' })).json.id;
         assert.equal((await mail(admin, { action: 'send', id: d2 })).json.code, 'nobody');
@@ -90,10 +101,10 @@ test.describe('e-mail box', () => {
         await form(cat, { action: 'save_email', email: 'cat@example.com', email_optin: '1' });
         const oldToken = [...mailLog().matchAll(/mail_link\.php\?a=verify&t=([0-9a-f.]+)/g)].pop()[1];
         await form(cat, { action: 'save_email', email: 'someone-else@example.com', email_optin: '1' });
-        assert.equal((await fetch(`${site.base}/api/mail_link.php?a=verify&t=${oldToken}`)).status, 400, 'the link of the old address');
+        assert.equal((await press(`${site.base}/api/mail_link.php?a=verify&t=${oldToken}`)).status, 400, 'the link of the old address');
         assert.equal(site.db("SELECT email_verified FROM accounts WHERE username = 'em_cat'")[0].email_verified, 0);
         const newToken = [...mailLog().matchAll(/mail_link\.php\?a=verify&t=([0-9a-f.]+)/g)].pop()[1];
-        assert.equal((await fetch(`${site.base}/api/mail_link.php?a=verify&t=${newToken}`)).status, 200);
+        assert.equal((await press(`${site.base}/api/mail_link.php?a=verify&t=${newToken}`)).status, 200);
         assert.equal(site.db("SELECT email_verified FROM accounts WHERE username = 'em_cat'")[0].email_verified, 1);
     });
 

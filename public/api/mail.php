@@ -92,10 +92,10 @@ try {
         if ($m['folder'] !== 'draft') mailFail('not_draft', 'Already sent', 409);
         if (mailLine($m['subject']) === '' || trim($m['body']) === '') mailFail('empty', 'Write a subject and a text first');
         if ($action === 'send_test') {
-            $st = $db->prepare("SELECT email FROM accounts WHERE id = :id AND email != ''");
+            $st = $db->prepare("SELECT email FROM accounts WHERE id = :id AND email != '' AND email_verified = 1");
             $st->execute([':id' => $me]);
             $to = (string)$st->fetchColumn();
-            if ($to === '') mailFail('no_address', 'Add your own e-mail address in the account settings first');
+            if ($to === '') mailFail('no_address', 'Add and confirm your own e-mail address in the account settings first');
             mailEnqueue($db, null, $me, $to, '[TEST] ' . $m['subject'], $m['body'] . mailFooter($db, $me), 'test');
             jsonResponse(['success' => true, 'queued' => 1]);
         }
@@ -103,8 +103,11 @@ try {
         if (!$people) mailFail('nobody', 'Nobody has verified an address and agreed to news yet');
         $db->exec('BEGIN IMMEDIATE');
         try {
+            // claim the draft first: a double click or a second tab must not queue everybody twice
+            $claim = $db->prepare("UPDATE mail_messages SET folder = 'sent', recipients = :n, sent_at = :t WHERE id = :id AND folder = 'draft'");
+            $claim->execute([':n' => count($people), ':t' => time(), ':id' => $m['id']]);
+            if ($claim->rowCount() !== 1) { $db->exec('ROLLBACK'); mailFail('not_draft', 'Already sent', 409); }
             foreach ($people as $p) mailEnqueue($db, (int)$m['id'], (int)$p['id'], $p['email'], $m['subject'], $m['body'] . mailFooter($db, (int)$p['id']), 'bulk');
-            $db->prepare("UPDATE mail_messages SET folder = 'sent', recipients = :n, sent_at = :t WHERE id = :id")->execute([':n' => count($people), ':t' => time(), ':id' => $m['id']]);
             $db->exec('COMMIT');
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->exec('ROLLBACK');

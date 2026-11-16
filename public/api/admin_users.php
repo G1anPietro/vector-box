@@ -27,6 +27,7 @@ function auRow(PDO $db, array $a): array {
         'can_read_books' => (int)$a['can_read_books'], 'can_upload_books' => (int)$a['can_upload_books'],
         'can_view_resume' => (int)($a['can_view_resume'] ?? 0), 'ads_free' => (int)$a['ads_free'],
         'is_banned' => (int)$a['is_banned'], 'banned_until' => $a['banned_until'],
+        'timed_out' => !empty($a['banned_until']) && strtotime((string)$a['banned_until']) > time(),   // judged here, in the server's own time zone
         'supporter' => accountIsSupporter($db, (int)$a['id']),
         'email' => (string)$a['email'], 'email_verified' => (int)$a['email_verified'], 'email_optin' => (int)$a['email_optin'],
     ];
@@ -54,13 +55,14 @@ try {
             }
             $where[] = match ($filter) {
                 'admins' => 'is_admin = 1',
-                'banned' => '(is_banned = 1 OR (banned_until IS NOT NULL AND banned_until > datetime(\'now\')))',
+                'banned' => '(is_banned = 1 OR (banned_until IS NOT NULL AND banned_until > :now))',
                 'email' => "email != ''",
                 'news' => 'email_verified = 1 AND email_optin = 1',
                 'nobooks' => 'can_read_books = 0',
                 'supporters' => "id IN (SELECT account_id FROM donors WHERE account_id IS NOT NULL)",
                 default => '1 = 1',
             };
+            if ($filter === 'banned') $p[':now'] = date('Y-m-d H:i:s');   // same clock as the one that wrote banned_until
             $page = max(1, (int)($_GET['page'] ?? 1));
             $cnt = $db->prepare('SELECT COUNT(*) FROM accounts WHERE ' . implode(' AND ', $where));
             $cnt->execute($p);

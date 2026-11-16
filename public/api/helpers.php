@@ -88,9 +88,15 @@ function requireCsrf(): void {
 function sessionAccountRow(): ?array {
     static $row = false;
     if ($row === false) {
-        $st = getDbConnection()->prepare('SELECT is_admin FROM accounts WHERE id = :id');
-        $st->execute([':id' => (int)($_SESSION['user_id'] ?? 0)]);
-        $row = $st->fetch() ?: null;
+        try {
+            $st = getDbConnection()->prepare('SELECT is_admin FROM accounts WHERE id = :id');
+            $st->execute([':id' => (int)($_SESSION['user_id'] ?? 0)]);
+            $row = $st->fetch() ?: null;
+            $st->closeCursor();
+        } catch (Throwable $e) {
+            // the database is busy: believe the session for this one request (initSession does the same) instead of a bare 500
+            $row = ['is_admin' => (int)($_SESSION['is_admin'] ?? 0)];
+        }
     }
     return $row;
 }

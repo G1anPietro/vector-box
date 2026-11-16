@@ -760,8 +760,9 @@ try {
         $limits = classLimits($db, $class);
         if ($name === '' || $size <= 0) apFail('bad_file', 'Empty file');
         if ($size > $limits['file'] * 1048576) apFail('file_too_large', "\"$name\" is larger than {$limits['file']} MB", 413);
-        $openBytes = 0;   // what the user has already announced and not finished counts against the space too
-        foreach (glob(apTmpRoot() . "/$me/*", GLOB_ONLYDIR) ?: [] as $od) $openBytes += (int)(apTmpMeta($od)['size'] ?? 0);
+        apTmpClean();   // expired folders first
+        $openBytes = 0;   // what the user has already announced and not finished, in THIS class, counts against its space too
+        foreach (glob(apTmpRoot() . "/$me/*", GLOB_ONLYDIR) ?: [] as $od) { $om = apTmpMeta($od); if ((int)($om['class_id'] ?? 0) === (int)$class['id']) $openBytes += (int)($om['size'] ?? 0); }
         if (notesUsedBytes($db, (int)$class['id']) + $openBytes + $size > $limits['class'] * 1048576) apFail('class_full', 'The class has used all its space', 413);
         if (preg_match('/^[a-f0-9]{64}$/', $hash)) {
             $dup = $db->prepare('SELECT f.original_name, i.lesson_date FROM class_item_files f JOIN class_items i ON i.id = f.item_id WHERE f.class_id = :c AND f.sha256 = :h LIMIT 1');
@@ -831,8 +832,13 @@ try {
             $uploads[] = ['name' => $meta['name'], 'tmp' => "$dir/data.part", 'size' => $have, 'error' => UPLOAD_ERR_OK, 'local' => true];
             $dirs[] = $dir;
         }
+        // one commit at a time per person: a retry that arrives while the first is still working must not make a second item
+        @mkdir(apTmpRoot() . "/$me", 0750, true);
+        $commitLock = fopen(apTmpRoot() . "/$me/.commit.lock", 'c');
+        if (!$commitLock || !flock($commitLock, LOCK_EX | LOCK_NB)) jsonResponse(['success' => false, 'code' => 'busy', 'error' => 'The previous upload is still being saved'], 503);
         $itemId = apCommitUploads($db, $class, $me, $fields, $uploads);
         foreach ($dirs as $d) apTmpRemove($d);
+        flock($commitLock, LOCK_UN); fclose($commitLock);
         jsonResponse(['success' => true, 'id' => $itemId]);
     }
 
@@ -1182,7 +1188,9 @@ try {
             if (!empty($item['src'])) {
                 [$sd, $sq] = $item['src'];
                 $db->prepare('INSERT OR IGNORE INTO quiz_answers (user_id, doc_id, q_index, class_id, choice, correct, points, answered_at) VALUES (:u, :d, :q, :c, :ch, :ok, 0, :t)')
-                   ->execute([':u' => $me, ':d' => (int)$sd, ':q' => (int)$sq, ':c' => (int)$quiz['class_id'], ':ch' => $choice, ':ok' => $correct ? 1 : 0, ':t' => time()]);
+                   ->execute([':u' => $me, ':d' => (int)$sd, ':q' => (int)$sq, ':c' => (int)$quiz['class_id'],
+                           ':ch' => ($item['type'] ?? 'mc') === 'tf' ? -1 : $choice,   // a true/false tap is not an option of the real question
+                           ':ok' => ($item['type'] ?? 'mc') === 'tf' ? 0 : ($correct ? 1 : 0), ':t' => time()]);
             }
             // a wrong answer puts the original question in the daily review (no points in a custom quiz: it is practice)
             if (!$correct && !empty($item['src'])) {

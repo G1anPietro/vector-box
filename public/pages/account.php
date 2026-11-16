@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mailProcessQueue($db, 1, [$verifyRow]);   // only this confirmation, not whatever else waits
                     $msg = 'Saved. We sent you a message: click the link in it to confirm the address.';
                 } else {
-                    $msg = 'Saved. E-mail is not switched on yet: the address will be confirmed when it is.';
+                    $msg = 'Saved. E-mail is not switched on yet: when it is, save the address again to get the confirmation link.';
                 }
             } else {
                 $msg = 'Saved.';

@@ -57,7 +57,8 @@ try {
 
     // ---- login ----
     // per account AND address: a stranger's wrong guesses must not lock the real owner out
-    if (!checkRateLimit('login_ip', 10, 300, null, true, true) || !checkRateLimit('login_user', 5, 300, strtolower($username) . '|' . getClientIp(), true, true)) {
+    if (!checkRateLimit('login_ip', 10, 300, null, true, true) || !checkRateLimit('login_user', 5, 300, strtolower($username) . '|' . getClientIp(), true, true)
+        || !checkRateLimit('login_acct', 60, 3600, strtolower($username), true, true)) {   // wide cap on one account from ALL addresses
         jsonResponse(['success' => false, 'error' => 'Too many attempts. Try again in a few minutes'], 429);
     }
 

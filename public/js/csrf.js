@@ -5,8 +5,8 @@
     const origFetch = window.fetch.bind(window);
     let tokenPromise = null;
 
-    const getToken = () => {
-        const known = window.SESSION_STATE && window.SESSION_STATE.csrfToken;
+    const getToken = (fresh) => {
+        const known = !fresh && window.SESSION_STATE && window.SESSION_STATE.csrfToken;
         if (known) return Promise.resolve(known);
         if (!tokenPromise) {
             tokenPromise = origFetch(checkUrl, { credentials: 'same-origin', cache: 'no-store' })
@@ -36,8 +36,9 @@
             const body = init.body;
             if (res.status === 403 && ours && !isRequest && !(body && typeof body.getReader === 'function')) {
                 tokenPromise = null;
-                const fresh = await getToken();
+                const fresh = await getToken(true);            // ask the server again, not the token the page was built with
                 if (fresh && fresh !== headers.get('X-CSRF-Token')) {
+                    if (window.SESSION_STATE) window.SESSION_STATE.csrfToken = fresh;
                     headers.set('X-CSRF-Token', fresh);
                     return origFetch(input, { ...init, headers });
                 }

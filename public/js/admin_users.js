@@ -20,7 +20,7 @@
         return n;
     };
     const tag = (text, cls) => h('span', { class: 'au-tag ' + (cls || ''), text });
-    const banned = (u) => u.is_banned || (u.banned_until && new Date(u.banned_until.replace(' ', 'T')) > new Date());
+    const banned = (u) => u.is_banned || u.timed_out;
 
     function totals(t) {
         $('au-totals').replaceChildren(...[['People', t.all], ['New (7 days)', t.new_7d], ['Admins', t.admins], ['Banned', t.banned], ['With e-mail', t.with_email], ['Want news', t.news]]

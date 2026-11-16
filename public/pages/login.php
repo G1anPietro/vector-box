@@ -57,7 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else {
                 // per account AND address (a stranger's guesses must not lock the owner out); a limiter error refuses instead of allowing
-                if (!checkRateLimit('login_ip', 10, 300, null, true, true) || !checkRateLimit('login_user', 5, 300, strtolower($username) . '|' . getClientIp(), true, true)) {
+                if (!checkRateLimit('login_ip', 10, 300, null, true, true) || !checkRateLimit('login_user', 5, 300, strtolower($username) . '|' . getClientIp(), true, true)
+        || !checkRateLimit('login_acct', 60, 3600, strtolower($username), true, true)) {   // wide cap on one account from ALL addresses
                     $errorMessage = "Too many attempts. Try again in a few minutes.";
                 } else {
                     $stmt = $db->prepare("SELECT * FROM accounts WHERE username = :u");
