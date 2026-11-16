@@ -68,6 +68,14 @@ function clGrantable(PDO $db, array $class, int $me, bool $isAdmin, array $wante
     return array_values(array_intersect($wanted, classPerms($db, $class, $me, $isAdmin)));
 }
 
+/** On an edit the editor may touch only what they could grant: permissions they do not hold stay as they were. */
+function clGrantableKeep(PDO $db, array $class, int $me, bool $isAdmin, array $wanted, array $old): array {
+    $given = clGrantable($db, $class, $me, $isAdmin, $wanted);
+    $mine = ($isAdmin || (int)$class['manager_id'] === $me) ? null : classPerms($db, $class, $me, $isAdmin);
+    $kept = $mine === null ? [] : array_values(array_diff($old, $mine));
+    return array_values(array_unique(array_merge($given, $kept)));
+}
+
 function clRoleOf(PDO $db, int $classId, int $roleId): ?array {
     $st = $db->prepare('SELECT * FROM class_roles WHERE id = :r AND class_id = :c');
     $st->execute([':r' => $roleId, ':c' => $classId]);
@@ -339,10 +347,12 @@ try {
         $name = clText($in['name'] ?? '', 30);
         if ($name === '') clFail('bad_name', 'Give the role a name');
         $color = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($in['color'] ?? '')) ? (string)$in['color'] : '#5b8def';
-        $perms = json_encode(clGrantable($db, $class0, $me, $isAdmin, classCleanPerms($in['perms'] ?? [])));
         $roleId = (int)($in['role_id'] ?? 0);
+        $oldRole = $roleId ? clRoleOf($db, $id, $roleId) : null;
+        $oldPerms = $oldRole ? (json_decode((string)$oldRole['perms'], true) ?: []) : [];
+        $perms = json_encode(clGrantableKeep($db, $class0, $me, $isAdmin, classCleanPerms($in['perms'] ?? []), $oldPerms));
         if ($roleId) {
-            if (!clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
+            if (!$oldRole) clFail('not_found', 'Role not found', 404);
             $db->prepare('UPDATE class_roles SET name = :n, color = :col, perms = :p WHERE id = :r')
                ->execute([':n' => $name, ':col' => $color, ':p' => $perms, ':r' => $roleId]);
         } else {
@@ -380,8 +390,11 @@ try {
             $rp = json_decode((string)$role['perms'], true);
             if (is_array($rp) && count(clGrantable($db, $class, $me, $isAdmin, $rp)) !== count($rp)) clFail('not_allowed', 'That role has permissions you do not hold', 403);
         }
+        $cur = $db->prepare('SELECT perms FROM class_members WHERE class_id = :c AND user_id = :u');
+        $cur->execute([':c' => $id, ':u' => $userId]);
+        $oldMine = json_decode((string)$cur->fetchColumn(), true) ?: [];
         $db->prepare('UPDATE class_members SET role_id = :r, perms = :p WHERE class_id = :c AND user_id = :u')
-           ->execute([':r' => $roleId ?: null, ':p' => json_encode(clGrantable($db, $class, $me, $isAdmin, classCleanPerms($in['perms'] ?? []))), ':c' => $id, ':u' => $userId]);
+           ->execute([':r' => $roleId ?: null, ':p' => json_encode(clGrantableKeep($db, $class, $me, $isAdmin, classCleanPerms($in['perms'] ?? []), $oldMine)), ':c' => $id, ':u' => $userId]);
         classLog($db, $id, $me, 'Ruolo o permessi di un compagno cambiati', 'utente ' . $userId);
         jsonResponse(['success' => true]);
     }

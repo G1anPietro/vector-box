@@ -55,3 +55,18 @@ test('hands are recorded for humans only; leaderboard ranks by hands won', async
     const anon = (await (await new Client(site).init()).get('/api/poker_leaderboard.php')).json;
     assert.equal(anon.me, null);
 });
+
+test('rooms: the code is found in any case, creation is rate limited and the names are capped', async () => {
+    const form = (c, q, fields) => fetch(`${site.base}/api/poker.php?${q}`, { method: 'POST', body: new URLSearchParams(fields),
+        headers: { Cookie: c.cookieHeader(), 'X-CSRF-Token': c.csrf } }).then(async (r) => ({ status: r.status, json: await r.json() }));
+    try { site.db('DELETE FROM rate_limits'); } catch (e) { /* none yet */ }
+    const made = await form(alice, 'action=create_room', { room_name: 'x'.repeat(60), room_code: 'abc-12', bot_count: '1' });
+    assert.equal(made.json.success, true, JSON.stringify(made.json));
+    assert.equal(made.json.room_id.length, 24, 'the name is cut');
+    assert.equal(made.json.room_code, 'ABC-12');
+    const viaCode = (await alice.get('/api/poker.php?action=state&table_id=abc-12')).json;
+    assert.equal(viaCode.table.id, made.json.room_id, 'joining by code, typed in lower case, finds the room');
+    for (let i = 0; i < 6; i++) await form(alice, 'action=create_room', { room_name: 'room' + i, room_code: 'C' + i });
+    const over = await form(alice, 'action=create_room', { room_name: 'one-too-many', room_code: 'ZZZ' });
+    assert.equal(over.json.success, false, 'at most 6 rooms an hour from one address');
+});

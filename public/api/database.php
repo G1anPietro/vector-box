@@ -13,6 +13,21 @@ const DB_SCHEMA_VERSION = 34;
 function initSession(bool $writable = false) {
     startWritableSession();
 
+    // The session caches user_id / is_admin for days: believe the database instead. A deleted account is a guest again,
+    // a demoted admin is no longer admin (one primary-key read, and only for logged-in sessions).
+    if (!empty($_SESSION['user_id'])) {
+        try {
+            $st = getDbConnection()->prepare('SELECT is_admin FROM accounts WHERE id = :id');
+            $st->execute([':id' => (int)$_SESSION['user_id']]);
+            $acc = $st->fetch();
+            if (!$acc) {
+                unset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['is_admin'], $_SESSION['theme']);
+            } else {
+                $_SESSION['is_admin'] = (int)$acc['is_admin'];
+            }
+        } catch (Throwable $e) { /* the DB is busy: keep what the session says rather than logging everybody out */ }
+    }
+
     // Ensure guest sessions get a unique session-bound handle (8 hex chars: collisions are negligible)
     if (!isset($_SESSION['username'])) {
         $_SESSION['username'] = 'guest_' . substr(hash('sha256', session_id()), 0, 8);

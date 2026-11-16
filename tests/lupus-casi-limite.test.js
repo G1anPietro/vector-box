@@ -175,3 +175,19 @@ test('four players with every role switched on: the deal still works and keeps a
     assert.equal(Object.keys(g.roles).length, 4);
     assert.ok(Object.values(g.roles).some((x) => x === 'wolf' || x === 'white_wolf'));
 });
+
+test('wolves who do not know each other: aiming at a fellow wolf is accepted like any other target (no leak), and the night still ends', async () => {
+    const r = await lupusRoom({ ...fixed, seer: false, guard: false, witch: false, wolves_know: false });
+    await r.a.post({ action: 'start' });
+    await seeAll(r);
+    const g = r.game();
+    const [w1] = r.byRole('wolf');
+    const v = r.byRole('villager');
+    g.roles[v[0]] = 'wolf';           // a second wolf, made by hand
+    g.rules.wolves_know = false;
+    r.setGame(g);
+    const hit = await r.as(w1, { action: 'night', target: v[0] });
+    assert.equal(hit.status, 200, 'a wolf aiming at a wolf must look like any other move');
+    for (const pid of g.alive) if (pid !== w1) await r.as(pid, { action: 'night', target: pid === v[0] ? v[1] : (g.roles[pid] === 'wolf' ? v[1] : 0) });
+    assert.notEqual(r.game().phase, 'night', 'the night ended');
+});

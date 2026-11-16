@@ -92,4 +92,17 @@ test.describe('AI only for classes of adults', () => {
         assert.equal(site.db('SELECT ai_allowed FROM school_classes WHERE id = ?', [minorsId])[0].ai_allowed, 0);
         assert.equal((await luigi.post('/api/appunti.php', { action: 'generate', class_id: minorsId })).status, 403);
     });
+
+    test('reading a timetable photo (Gemini) is refused too when the class is not adults-only', async () => {
+        const fd = new FormData();
+        fd.set('action', 'read_timetable');
+        fd.set('id', String(minorsId));
+        fd.append('files[]', new Blob([PNG], { type: 'image/png' }), 'orario.png');
+        const before = calls;
+        // luigi is the representative of the minors class
+        const r = await fetch(site.base + '/api/classi.php', { method: 'POST', body: fd, headers: { Cookie: luigi.cookieHeader(), 'X-CSRF-Token': luigi.csrf } });
+        assert.equal(r.status, 403);
+        assert.equal((await r.json()).code, 'ai_not_allowed');
+        assert.equal(calls, before, 'nothing was sent to Google');
+    });
 });

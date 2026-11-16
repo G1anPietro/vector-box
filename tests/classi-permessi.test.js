@@ -33,4 +33,14 @@ test.describe('class permissions', () => {
         assert.deepEqual(JSON.parse(site.db('SELECT perms FROM class_members WHERE user_id = ?', [luigiId])[0].perms), []);
         assert.equal((await api(luigi, { action: 'ai_switch', id: classId, on: true, adults_confirm: true })).status, 403);
     });
+
+    test('a "roles" holder editing a role keeps the permissions they could not grant', async () => {
+        const capo = site.db("SELECT id FROM class_roles WHERE name = 'Capo ruoli'")[0].id;
+        await api(mario, { action: 'set_member_access', id: classId, user_id: luigiId, role_id: capo, perms: [] });
+        const r = await api(mario, { action: 'save_role', id: classId, name: 'Orario', perms: ['timetable', 'settings'] });
+        const roleId = r.json.role_id;
+        assert.equal((await api(luigi, { action: 'save_role', id: classId, role_id: roleId, name: 'Orario 2', perms: ['timetable'] })).status, 200);
+        const saved = JSON.parse(site.db('SELECT perms FROM class_roles WHERE id = ?', [roleId])[0].perms).sort();
+        assert.deepEqual(saved, ['settings', 'timetable'].sort(), 'a rename must not strip settings');
+    });
 });

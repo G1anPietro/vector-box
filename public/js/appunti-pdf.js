@@ -13,7 +13,7 @@
         if (window.pdfjsLib) return Promise.resolve();
         if (!loading) {
             loading = new Promise((resolve, reject) => {
-                const s = el('script', { src: PDFJS + 'pdf.min.js' });
+                const s = el('script', { src: PDFJS + 'pdf.min.js', integrity: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e', crossorigin: 'anonymous' });
                 s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; resolve(); };
                 s.onerror = () => { loading = null; reject(new Error('Non riesco a caricare il lettore PDF')); };
                 document.head.append(s);
@@ -211,7 +211,7 @@
 
         paintTheme();
         pages.append(el('p', { class: 'muted', text: 'Carico il PDF…' }));
-        loadLib().then(() => window.pdfjsLib.getDocument({ url }).promise).then((doc) => { pdf = doc; drawPages(); if (startText) setMode('text'); })
+        loadLib().then(() => window.pdfjsLib.getDocument({ url, isEvalSupported: false }).promise).then((doc) => { pdf = doc; drawPages(); if (startText) setMode('text'); })
             .catch((e) => { pages.replaceChildren(el('p', { class: 'err', text: e.message || 'PDF non leggibile.' }), el('a', { class: 'ghost-link', href: url, target: '_blank', rel: 'noopener', text: 'Aprilo in una nuova scheda' })); });
         return root;
     }

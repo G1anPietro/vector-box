@@ -436,6 +436,27 @@ test('archive and upload pages: open to visitors too (look only), no inline scri
     }
 });
 
+test('security: the quiz is not in the event zip; no points for your own quiz, nor for a question a custom quiz already showed', async () => {
+    const quiz = { questions: [0, 1, 2].map((i) => ({ topic: 'Napoleone', question: `Sicura ${i}?`, options: ['a', 'b', 'c', 'd'], answer: 1, explanation: 'spiegazione-segreta' })) };
+    const now = Math.floor(Date.now() / 1000);
+    const evId = (await ap(mario, { action: 'add_event', class_id: classId, subject_id: subj_Storia(), kind: 'verifica', date: '2026-11-26', title: 'Sicurezza', topics: 'Impero', period_from: '2026-11-01', period_to: '2026-11-26' })).json.id;
+    site.db(`INSERT INTO class_docs (class_id, doc_key, subject_id, kind, event_id, title, content, sources, input_hash, model, status, created_at, updated_at)
+             VALUES (?, 'quiz:zipsec', ?, 'quiz', ?, 'Quiz segreto', ?, '[]', 'h', 'test', 'ok', ?, ?)`, [classId, subj_Storia(), evId, JSON.stringify(quiz), now, now]);
+    const docId = site.db("SELECT id FROM class_docs WHERE doc_key = 'quiz:zipsec'")[0].id;
+    const z = await fetch(`${site.base}/api/appunti.php?action=zip&class_id=${classId}&scope=event&event_id=${evId}`, { headers: { Cookie: mario.cookieHeader() } });
+    assert.equal(z.status, 200, await z.clone().text());
+    const bin = Buffer.from(await z.arrayBuffer()).toString('latin1');
+    assert.ok(!bin.includes('Quiz segreto'), 'the quiz JSON (with its answers) must not be in the zip');
+
+    // a quiz you wrote yourself gives no points
+    site.db('UPDATE class_docs SET author_id = (SELECT id FROM accounts WHERE username = ?) WHERE id = ?', ['ap_mario', docId]);
+    site.db('DELETE FROM quiz_seen'); site.db('DELETE FROM quiz_answers');
+    site.db('UPDATE quiz_seen SET seen_at = 0');
+    const own = await ap(mario, { action: 'quiz_answer', doc_id: docId, q: 0, choice: 1 });
+    assert.equal(own.json.correct, true);
+    assert.equal(own.json.points, 0, 'no points on your own quiz');
+});
+
 test('deleting the class removes its material from disk', async () => {
     const dir = path.join(site.root, 'data/appunti', String(classId));
     assert.ok(fs.existsSync(dir));
