@@ -63,6 +63,19 @@ test.describe('donors, badge, ad-free accounts and the money page', () => {
         assert.ok(hasAd((await mario.get('/pages/ads.php')).text), 'and sees them again');
     });
 
+    test('the badge can be given and taken by hand, without counting as a donation', async () => {
+        const luigi = new Client(site); await luigi.register('luigi_don');
+        assert.ok(!/SUPPORTER/.test((await luigi.get('/pages/account.php')).text));
+        assert.equal((await post(admin, { action: 'badge', username: 'luigi_don', value: true })).status, 200);
+        assert.equal((await post(admin, { action: 'badge', username: 'luigi_don', value: true })).status, 200);   // twice: one row
+        assert.equal(site.db("SELECT COUNT(*) AS n FROM donors WHERE note = 'badge'")[0].n, 1);
+        assert.match((await luigi.get('/pages/account.php')).text, /SUPPORTER/);
+        assert.match(await (await fetch(`${site.base}/pages/soldi.php?lang=it`)).text(), /da <strong>2<\/strong> donazioni/);   // the badge row is not a donation
+        assert.equal((await post(admin, { action: 'badge', username: 'luigi_don', value: false })).status, 200);
+        assert.ok(!/SUPPORTER/.test((await luigi.get('/pages/account.php')).text));
+        assert.equal((await post(admin, { action: 'badge', username: 'nobody_x', value: true })).status, 404);
+    });
+
     test('remove deletes a donation', async () => {
         const id = (await admin.get('/api/donors.php')).json.donors[0].id;
         assert.equal((await post(admin, { action: 'remove', id })).status, 200);

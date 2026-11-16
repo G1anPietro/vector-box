@@ -3,6 +3,7 @@
 //   GET  ?action=list                                            -> every row (admin only)
 //   POST {action:'add', amount, username?, name?, date?, public?, note?}
 //   POST {action:'remove', id}
+//   POST {action:'badge', username, value}                      -> the supporter badge by hand (a row of 0 euro, note 'badge')
 //   POST {action:'ads_free', username, value}                    -> accounts that never see ads
 // A donor with an account gets the supporter badge. Public = may appear on pages/soldi.php (name chosen by the donor).
 require_once __DIR__ . '/database.php';
@@ -54,6 +55,25 @@ try {
         $st = $db->prepare('DELETE FROM donors WHERE id = :i');
         $st->execute([':i' => (int)($in['id'] ?? 0)]);
         jsonResponse($st->rowCount() ? ['success' => true, 'message' => 'Removed.'] : ['success' => false, 'error' => 'Not found.'], $st->rowCount() ? 200 : 404);
+    }
+
+    if ($action === 'badge') {
+        $username = trim((string)($in['username'] ?? ''));
+        $st = $db->prepare('SELECT id FROM accounts WHERE username = :u');
+        $st->execute([':u' => $username]);
+        $id = $st->fetchColumn();
+        if ($id === false) jsonResponse(['success' => false, 'error' => "User '$username' not found."], 404);
+        if (!empty($in['value'])) {
+            $has = $db->prepare("SELECT 1 FROM donors WHERE account_id = :a AND note = 'badge'");
+            $has->execute([':a' => $id]);
+            if (!$has->fetchColumn()) {
+                $db->prepare("INSERT INTO donors (account_id, display_name, amount_cents, currency, donated_at, is_public, note, created_at)
+                              VALUES (:a, '', 0, 'EUR', :d, 0, 'badge', :t)")->execute([':a' => $id, ':d' => date('Y-m-d'), ':t' => time()]);
+            }
+            jsonResponse(['success' => true, 'message' => "Supporter badge given to '$username'."]);
+        }
+        $db->prepare("DELETE FROM donors WHERE account_id = :a AND note = 'badge'")->execute([':a' => $id]);
+        jsonResponse(['success' => true, 'message' => "Manual badge removed from '$username' (a real donation keeps it)."]);
     }
 
     if ($action === 'ads_free') {

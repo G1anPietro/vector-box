@@ -71,6 +71,7 @@ const COMMAND_DESCRIPTIONS = {
     "/revokebook": "Revoke book reader permissions from a user (Admin only). Usage: /revokebook <username>",
     "/grantcv": "Let a user see the CV page (Admin only). Usage: /grantcv <username>",
     "/donor": "Record who donated, by hand (Admin only). Usage: /donor add <amount> [user=<username>] [name=<shown name>] [public] [date=YYYY-MM-DD] | /donor list | /donor remove <id>",
+    "/badge": "Give or take the supporter badge by hand (Admin only). Usage: /badge add|remove <username>",
     "/adsfree": "Accounts that never see ads (Admin only). Usage: /adsfree add|remove <username> | /adsfree list",
     "/revokecv": "Hide the CV page from a user (Admin only). Usage: /revokecv <username>",
     "revokebook": "Revoke book reader permissions from a user (Admin only). Usage: revokebook <username>",

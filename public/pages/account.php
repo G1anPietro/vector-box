@@ -78,6 +78,7 @@ session_write_close();
 <html lang="en">
 <head>
     <?php renderHead("SYSTEM // ACCOUNT_MANAGEMENT", true); ?>
+    <script src="../js/account_data.js?v=<?php echo APP_VERSION; ?>" defer></script>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -130,6 +131,23 @@ session_write_close();
                 <select name="theme" id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 6px; background: #020304;"><?php echo systemThemeOptions($account['theme'] ?? null); ?></select>
                 <button type="submit" name="action" value="save_theme" class="nav-btn">>_ SAVE THEME PREFERENCE</button>
             </form>
+
+            <!-- Your data (GDPR): download everything, or delete the account -->
+            <div id="your-data" style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <span class="settings-title">>_ YOUR DATA</span>
+                <p class="term-muted" style="margin: 0; font-size: 0.8rem;">You can download everything vector-box keeps about this account, or delete the account and its data. See the <a href="privacy.php" style="color: var(--accent-color);">privacy page</a> for the details.</p>
+                <a href="../api/account_data.php?action=export" class="nav-btn" style="display: block; text-align: center; text-decoration: none;">>_ DOWNLOAD MY DATA (JSON)</a>
+                <?php if (empty($account['is_admin'])): ?>
+                <form id="delete-account-form" style="display: flex; flex-direction: column; gap: 8px;">
+                    <span class="settings-title" style="color: #ff3333;">>_ DELETE MY ACCOUNT</span>
+                    <p class="term-muted" style="margin: 0; font-size: 0.8rem;">Deletes your account, chat and private messages, progress, bookmarks and class membership. This cannot be undone. A class manager must hand the class over first.</p>
+                    <label class="term-muted" style="font-size: 0.8rem;"><input type="checkbox" id="delete-materials" checked> Also delete the class material I uploaded (otherwise it stays in the class, without my name)</label>
+                    <input type="password" id="delete-password" placeholder="Your password, to confirm" autocomplete="current-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
+                    <button type="submit" class="nav-btn" style="border-color: #ff3333; color: #ff3333;">>_ DELETE ACCOUNT FOR GOOD</button>
+                    <div id="delete-result" class="term-muted" style="font-size: 0.85rem;" role="status"></div>
+                </form>
+                <?php endif; ?>
+            </div>
 
             <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
                 <a href="../api/logout.php" class="nav-btn" style="display: block; text-align: center; border-color: #ff3333; color: #ff3333; text-decoration: none;">>_ LOGOUT SESSION</a>

@@ -2,6 +2,9 @@
 // public/api/helpers.php
 // Shared helpers: env loading, client IP, JSON responses, CSRF/admin guards, credentials.
 
+/** Shown when someone registers without confirming the privacy page and the minimum age (14, or a parent's consent). */
+const REGISTER_TERMS_ERROR = 'To register you must confirm you have read the privacy page and are at least 14 years old (or have a parent\'s consent).';
+
 function envValue(string $key, ?string $default = null): ?string {
     static $fileVars = null;
 

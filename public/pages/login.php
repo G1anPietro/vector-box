@@ -38,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errorMessage = "Too many registrations from this address. Try again later.";
                 } elseif ($err = validateNewUsername($username) ?? validateNewPassword($password)) {
                     $errorMessage = $err;
+                } elseif (empty($_POST['accept_terms'])) {
+                    $errorMessage = REGISTER_TERMS_ERROR;
                 } else {
                     try {
                         $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'cyan', 0)");
@@ -107,6 +109,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">PASSWORD:</label>
                     <input type="password" name="password" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px; outline: none;" required>
                 </div>
+
+                <label class="toggle-label" style="font-size: 0.72rem; color: var(--text-muted); display: flex; gap: 6px; align-items: flex-start;">
+                    <input type="checkbox" name="accept_terms" value="1">
+                    <span>Only to REGISTER: I have read the <a href="privacy.php" style="color: var(--accent-color);">privacy page</a> and I am at least 14 years old (or a parent agrees).</span>
+                </label>
 
                 <div style="display: flex; gap: 8px; margin-top: 10px;">
                     <button type="submit" name="action" value="login" class="nav-btn" style="flex: 1; padding: 8px;">>_ LOGIN</button>

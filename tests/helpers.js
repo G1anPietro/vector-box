@@ -123,7 +123,7 @@ class Client {
 
     async register(username, password = 'password123') {
         await this.init();
-        const r = await this.post('/api/login.php', { action: 'register', username, password });
+        const r = await this.post('/api/login.php', { action: 'register', username, password, accept_terms: true });
         if (r.json && r.json.csrf_token) this.csrf = r.json.csrf_token;
         return r;
     }

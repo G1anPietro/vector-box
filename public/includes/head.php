@@ -7,6 +7,8 @@ require_once __DIR__ . '/../api/bots.php';
 botBlockIfAbusive();
 require_once __DIR__ . '/../api/visits.php';
 recordVisit((string)parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+require_once __DIR__ . '/../api/retention.php';
+maybeRunRetention();
 
 // updatesite.sh writes version.php in the project root, outside public/ (it is not web-reachable).
 // APP_VERSION is the ?v= cache-buster of every CSS/JS file, so it must change on each deploy.

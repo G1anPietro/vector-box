@@ -32,10 +32,10 @@ $monthly = array_sum(array_column($costs, 'eur'));
 
 // ---- what came in ----
 $db = getDbConnection();
-$in = $db->query('SELECT COUNT(*) AS n, COALESCE(SUM(amount_cents), 0) AS cents FROM donors')->fetch();
+$in = $db->query('SELECT COUNT(*) AS n, COALESCE(SUM(amount_cents), 0) AS cents FROM donors WHERE amount_cents > 0')->fetch();
 $raised = ((int)$in['cents']) / 100;
 $count = (int)$in['n'];
-$since = $db->query('SELECT MIN(donated_at) FROM donors')->fetchColumn();
+$since = $db->query('SELECT MIN(donated_at) FROM donors WHERE amount_cents > 0')->fetchColumn();
 $wall = $db->query("SELECT CASE WHEN LENGTH(d.display_name) > 0 THEN d.display_name ELSE a.username END AS who, MAX(d.donated_at) AS last
                     FROM donors d LEFT JOIN accounts a ON a.id = d.account_id
                     WHERE d.is_public = 1 AND (LENGTH(d.display_name) > 0 OR a.username IS NOT NULL)

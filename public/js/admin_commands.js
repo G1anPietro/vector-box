@@ -182,6 +182,17 @@
     };
     commandHandlers['donor'] = commandHandlers['/donor'];
 
+    const badgeCommand = async function(args, printGuestLog) {
+        const sub = (args[0] || '').toLowerCase();
+        if ((sub === 'add' || sub === 'remove') && args[1]) {
+            const res = await donorsApi('POST', { action: 'badge', username: args[1], value: sub === 'add' });
+            return printGuestLog(res.success ? `>> SUCCESS: ${res.message}` : `>> ERROR: ${res.error}`, res.success ? COLORS.PRIMARY : COLORS.ERROR);
+        }
+        printGuestLog('>> USAGE: /badge add <username> | /badge remove <username>  (the supporter badge, by hand)', COLORS.ERROR);
+    };
+    commandHandlers['/badge'] = badgeCommand;
+    commandHandlers['badge'] = badgeCommand;
+
     const adsFreeCommand = async function(args, printGuestLog) {
         const sub = (args[0] || '').toLowerCase();
         if (sub === 'list') {

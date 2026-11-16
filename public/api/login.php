@@ -29,6 +29,9 @@ try {
         if ($err = validateNewUsername($username) ?? validateNewPassword($password)) {
             jsonResponse(['success' => false, 'error' => $err], 400);
         }
+        if (empty($input['accept_terms'])) {
+            jsonResponse(['success' => false, 'error' => REGISTER_TERMS_ERROR], 400);
+        }
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
