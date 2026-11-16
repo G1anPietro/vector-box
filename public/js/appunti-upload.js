@@ -44,7 +44,7 @@
         });
     };
     const req = (r) => new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
-    const saveJob = (job) => tx(['jobs'], 'readwrite', (t) => t.objectStore('jobs').put(job));
+    const saveJob = (job) => (job.cancelled ? Promise.resolve() : tx(['jobs'], 'readwrite', (t) => t.objectStore('jobs').put(job)));   // a cancelled job is not written back
     const loadJobs = () => tx(['jobs'], 'readonly', (t) => req(t.objectStore('jobs').getAll()));
     const blobKey = (job, i) => `${job.id}:${i}`;
     const getBlob = (job, i) => tx(['blobs'], 'readonly', (t) => req(t.objectStore('blobs').get(blobKey(job, i))));
@@ -142,6 +142,7 @@
             const r = await fn();
             if (r.status >= 200 && r.status < 300 && r.json && r.json.success !== false) { attempts = 0; return r; }
             if (r.status === 409) return r;   // the caller knows what to do (a different offset, an incomplete file)
+            if (r.status === 401) { setState('paused', 'Sessione scaduta: accedi di nuovo, poi premi Riprendi'); throw new Tired(); }   // nothing is lost
             const transient = r.status === 0 || r.status >= 500 || r.status === 429 || r.status === 408;
             if (!transient) throw new Fatal((r.json && (MESSAGES[r.json.code] || r.json.error)) || 'Caricamento non riuscito.');
             if (++attempts > MAX_ATTEMPTS) throw new Tired();
@@ -168,6 +169,7 @@
             if (st.json && st.json.success) f.received = st.json.received;
         }
         while (f.received < f.size) {
+            if (job.cancelled) throw new Tired();
             const end = Math.min(f.size, f.received + (f.chunk || 2097152));
             const piece = blob.slice(f.received, end);
             const r = await withRetry(() => {
@@ -239,6 +241,7 @@
         state = { phase: 'paused', text: '' };
         if (cancelWait) cancelWait();
         for (const j of list) {
+            j.cancelled = true;   // the running loop checks it: it must not write the job back or send one more piece
             for (const f of j.files) if (f.upload_id) postJson({ action: 'upload_cancel', upload_id: f.upload_id });
             await removeJob(j);
             jobs = jobs.filter((x) => x !== j);

@@ -269,7 +269,7 @@
         const sumForm = el('form', { class: 'row' }, el('label', { text: 'Ogni giorno alle' }, time), canSettings ? el('button', { class: 'ghost', text: 'Salva l\'ora' }) : null);
         const sendSummary = async (on) => post('../api/classi.php', { action: 'settings', id: classId, summary_time: time.value, timezone: c.timezone, summary_on: on });
         let summaryOn = c.summary_on;
-        sumForm.addEventListener('submit', async (ev) => { ev.preventDefault(); try { await sendSummary(summaryOn); saved(); } catch (e) { fail(e); } });
+        sumForm.addEventListener('submit', async (ev) => { ev.preventDefault(); try { await sendSummary(summaryOn); c.summary_time = time.value; saved(); } catch (e) { fail(e); } });
         // the AI (Google Gemini) only reads the class if every student is an adult: declared when the class is requested, switched on here later
         const aiOn = c.ai_allowed !== false;
         const aiBox = el('div', {},
