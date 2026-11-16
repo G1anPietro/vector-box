@@ -13,6 +13,7 @@ $pages = [
     ['/pages/solitario.html', 'monthly', '0.8'],
     ['/pages/cucu.html', 'monthly', '0.8'],
     ['/pages/minato.html', 'monthly', '0.7'],
+    ['/pages/dueamila.html', 'monthly', '0.7'],
     ['/pages/progetto.php', 'monthly', '0.6'],
     ['/pages/appunti-guida.php', 'monthly', '0.6'],
     ['/pages/ads.php', 'monthly', '0.4'],

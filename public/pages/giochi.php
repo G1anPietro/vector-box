@@ -59,6 +59,14 @@ $GAMES = [
         'how'  => ['it' => 'funziona anche offline', 'en' => 'works offline too'],
     ],
     [
+        'group' => 'solo', 'look' => 'breach', 'href' => 'dueamila.html', 'icon' => '../assets/dueamila/icon.svg',
+        'name' => ['it' => '2048', 'en' => '2048'],
+        'line' => ['it' => 'Scorri per unire i numeri uguali e arriva a 2048. Frecce, tasti W A S D o dito sulla griglia.',
+                   'en' => 'Slide to merge equal numbers and reach 2048. Arrow keys, W A S D or a finger on the grid.'],
+        'who'  => ['it' => '1 giocatore', 'en' => '1 player'],
+        'how'  => ['it' => 'record personale, senza account', 'en' => 'personal best, no account'],
+    ],
+    [
         'group' => 'solo', 'look' => 'breach', 'href' => 'minato.html', 'icon' => '../assets/minato/icon.svg',
         'name' => ['it' => 'Campo minato', 'en' => 'Minesweeper'],
         'line' => ['it' => 'Tre livelli, bandierine, tocco lungo sul telefono e frecce sulla tastiera. Il primo clic è sempre sicuro.',
