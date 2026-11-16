@@ -81,14 +81,29 @@ function requireCsrf(): void {
     }
 }
 
+/**
+ * The session caches user_id / is_admin for days: ask the DB whether the account still exists (deleted on another
+ * device) and is still an admin (demoted). One indexed primary-key read, cached for the request.
+ */
+function sessionAccountRow(): ?array {
+    static $row = false;
+    if ($row === false) {
+        $st = getDbConnection()->prepare('SELECT is_admin FROM accounts WHERE id = :id');
+        $st->execute([':id' => (int)($_SESSION['user_id'] ?? 0)]);
+        $row = $st->fetch() ?: null;
+    }
+    return $row;
+}
+
 function requireAdmin(): void {
-    if (empty($_SESSION['is_admin'])) {
+    $row = empty($_SESSION['is_admin']) || empty($_SESSION['user_id']) ? null : sessionAccountRow();
+    if (!$row || empty($row['is_admin'])) {
         jsonResponse(['success' => false, 'error' => 'UNAUTHORIZED: Admin privileges required'], 403);
     }
 }
 
 function requireLogin(): void {
-    if (empty($_SESSION['user_id'])) {
+    if (empty($_SESSION['user_id']) || !sessionAccountRow()) {
         jsonResponse(['success' => false, 'error' => 'UNAUTHENTICATED: Login required'], 401);
     }
 }

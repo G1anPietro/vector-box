@@ -7,7 +7,7 @@ header('Content-Type: application/json');
 
 $roomId = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower($_GET['room_id'] ?? 'general'));
 $beforeId = isset($_GET['before_id']) ? (int)$_GET['before_id'] : 0;
-$limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 50) : 25;
+$limit = isset($_GET['limit']) ? max(1, min((int)$_GET['limit'], 50)) : 25;
 
 try {
     $db = getDbConnection();

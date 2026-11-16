@@ -71,7 +71,10 @@ app.use(session({
 
 // Never serve server-side sources / config straight from the static folder
 app.use((req, res, next) => {
-    if (/\.(php|ini|inc|sqlite|log)$/i.test(req.path)) return res.status(404).end();
+    // express.static decodes the path, so test the decoded one (/x.p%68p must not slip through)
+    let p;
+    try { p = decodeURIComponent(req.path); } catch { return res.status(400).end(); }
+    if (/\.(php|ini|inc|sqlite|db|log|env|sql|bak|md)$/i.test(p) || p.includes('\0')) return res.status(404).end();
     next();
 });
 app.use(express.static(path.join(__dirname, 'public'), { index: false, dotfiles: 'ignore' }));

@@ -33,7 +33,7 @@ try {
     if ((json_decode((string)$classSettings, true)['links_on'] ?? true) === false) cvGone();
     $maxViews = (int)($link['max_views'] ?? 0);
     $action0 = (string)($_GET['action'] ?? 'info');
-    if ($maxViews > 0 && $action0 === 'info' && (int)$link['views'] >= $maxViews) cvGone();
+    if ($maxViews > 0 && (int)$link['views'] >= $maxViews) cvGone();
     $action = (string)($_GET['action'] ?? 'info');
     $base = ['success' => true, 'kind' => $link['kind'], 'title' => $link['title'], 'expires_at' => (int)$link['expires_at']];
 
@@ -45,6 +45,8 @@ try {
         if ($action === 'file') {
             $path = notesDir((int)$file['class_id']) . '/' . basename($file['stored_name']);
             if (!is_file($path)) cvGone();
+            // a limited file link counts the download itself (info alone must not be a way round the cap)
+            if ($maxViews > 0) $db->prepare('UPDATE share_links SET views = views + 1 WHERE id = :id')->execute([':id' => $link['id']]);
             $mime = (string)$file['mime'];
             $inline = empty($_GET['dl']) && (str_starts_with($mime, 'image/') || str_starts_with($mime, 'audio/') || $mime === 'application/pdf');
             $name = str_replace(['"', '\\'], '', $file['original_name']);
@@ -56,7 +58,7 @@ try {
             readfile($path);
             exit();
         }
-        $db->prepare('UPDATE share_links SET views = views + 1 WHERE id = :id')->execute([':id' => $link['id']]);
+        if ($maxViews <= 0) $db->prepare('UPDATE share_links SET views = views + 1 WHERE id = :id')->execute([':id' => $link['id']]);
         jsonResponse($base + ['name' => $file['original_name'], 'mime' => $file['mime'], 'size' => (int)$file['size'],
             'text' => $file['text_status'] === 'done' ? $file['text'] : null]);
     }
