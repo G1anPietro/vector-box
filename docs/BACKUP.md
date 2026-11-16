@@ -11,6 +11,16 @@ The script refuses to run if the stick is not mounted, so it can never fill the 
 The stick is a **second copy**: the live database stays on the internal disk (sticks wear out
 with many small writes and break if unplugged).
 
+Since the 2026-11 update the script also:
+
+- **checks the copy three ways** (SQLite integrity check, `gzip -t`, and the unpacked copy is opened and must have the site's tables);
+- keeps **30 daily, 12 weekly (Sunday) and 12 monthly (day 1)** database copies, so a mistake noticed late can still be undone;
+- writes a **manifest** (`manifest-DATE.txt`: code version, schema version, size, SHA-256 of the copy; no secrets);
+- **leaves out** half-finished uploads (`appunti-tmp/`), temp zips, lock files and the e-mail test log;
+- refuses to run when the stick is **too full**, and cannot run twice at once;
+- sends **one short push** to `NTFY_TOPIC_URL` (from `.env`) if anything fails: no paths, no data in the message;
+- has `--check`, which writes nothing and says whether the newest backup is fresh (under 26 hours) and restorable.
+
 Nothing here runs automatically until you do the steps below.
 
 ## 1. Find the stick
@@ -65,6 +75,14 @@ echo '30 3 * * * root bash /var/www/vector-box/tools/backup.sh >> /var/log/vecto
 
 Check it the next morning: `tail /var/log/vector-box-backup.log`.
 
+And a weekly proof that the backup is really usable (exit code 1 plus a push if it is not):
+
+```bash
+echo '15 9 * * 1 root bash /var/www/vector-box/tools/backup.sh --check >> /var/log/vector-box-backup.log 2>&1' | sudo tee /etc/cron.d/vector-box-backup-check
+```
+
+The script lives in the repository, so a normal deploy updates it: nothing to copy by hand.
+
 ## Restoring the database
 
 ```bash
@@ -80,7 +98,7 @@ sudo systemctl start php8.5-fpm
 ## Options
 
 Environment variables for `tools/backup.sh`: `BACKUP_MOUNT` (default `/mnt/usb`), `BACKUP_DIR`,
-`KEEP_DAYS` (default 30), `PROJECT_DIR` (default `/var/www/vector-box`).
+`KEEP_DAYS` (30), `KEEP_WEEKS` (12), `KEEP_MONTHS` (12), `PROJECT_DIR` (default `/var/www/vector-box`), `BACKUP_MAX_AGE_HOURS` (26, for `--check`), `BACKUP_NOTIFY=0` to stay silent.
 
 The Minecraft server now runs on the other machine under Crafty Controller, which has its own
 scheduled backups (Crafty → server → Backups): use those for the worlds.
