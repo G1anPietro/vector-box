@@ -101,13 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" action="login.php" style="display: flex; flex-direction: column; gap: 12px;">
                 <?php if ($next !== ''): ?><input type="hidden" name="next" value="<?php echo htmlspecialchars($next); ?>"><?php endif; ?>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <label class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">USERNAME:</label>
-                    <input type="text" name="username" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px; outline: none;" required autocomplete="off">
+                    <label class="toggle-label" for="login-username" style="font-size: 0.75rem; color: var(--text-muted);">USERNAME:</label>
+                    <input type="text" id="login-username" name="username" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px;" required autocomplete="username" autocapitalize="none" spellcheck="false">
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <label class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">PASSWORD:</label>
-                    <input type="password" name="password" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px; outline: none;" required>
+                    <label class="toggle-label" for="login-password" style="font-size: 0.75rem; color: var(--text-muted);">PASSWORD:</label>
+                    <input type="password" id="login-password" name="password" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px;" required autocomplete="current-password">
                 </div>
 
                 <label class="toggle-label" style="font-size: 0.72rem; color: var(--text-muted); display: flex; gap: 6px; align-items: flex-start;">

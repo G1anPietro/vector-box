@@ -111,7 +111,7 @@ session_write_close();
             <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <span class="settings-title">>_ PUBLIC USER BIO (MAX 250 CHARS)</span>
-                <textarea name="bio" class="tools-textarea" maxlength="250" placeholder="Enter custom biography..." style="height: 70px; resize: none;"><?php echo htmlspecialchars($account['bio'] ?? ''); ?></textarea>
+                <textarea name="bio" aria-label="Public user bio" class="tools-textarea" maxlength="250" placeholder="Enter custom biography..." style="height: 70px; resize: none;"><?php echo htmlspecialchars($account['bio'] ?? ''); ?></textarea>
                 <button type="submit" name="action" value="update_profile" class="nav-btn">>_ SAVE BIO</button>
             </form>
 
@@ -119,8 +119,8 @@ session_write_close();
             <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
                 <span class="settings-title">>_ CHANGE PASSWORD</span>
-                <input type="password" name="old_password" placeholder="Current Password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
-                <input type="password" name="new_password" placeholder="New Password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
+                <input type="password" name="old_password" placeholder="Current Password" aria-label="Current password" autocomplete="current-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
+                <input type="password" name="new_password" placeholder="New Password" aria-label="New password" autocomplete="new-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
                 <button type="submit" name="action" value="change_password" class="nav-btn">>_ UPDATE PASSWORD</button>
             </form>
 

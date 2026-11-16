@@ -42,3 +42,19 @@ div.cyber-panel.hidden {
 @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
 /* The themes themselves are in js/theme.js (one list for the menu, the terminal and the account settings) */
+
+/* Keyboard focus is always visible (several controls switch the default outline off; important beats those and inline styles) */
+:is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent-color, #00ff66) !important;
+    outline-offset: 2px;
+}
+
+/* People who asked their system for less motion get (nearly) none: blinking cursors, glitch, transitions */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
