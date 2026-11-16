@@ -34,12 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db = getDbConnection();
 
             if ($action === 'register') {
-                if (!checkRateLimit('register', 5, 3600)) {
+                if (!checkRateLimit('register', 5, 3600, null, true, true)) {
                     $errorMessage = "Too many registrations from this address. Try again later.";
                 } elseif ($err = validateNewUsername($username) ?? validateNewPassword($password)) {
                     $errorMessage = $err;
                 } elseif (empty($_POST['accept_terms'])) {
                     $errorMessage = REGISTER_TERMS_ERROR;
+                } elseif (($same = $db->prepare('SELECT 1 FROM accounts WHERE LOWER(username) = LOWER(:u)')) && $same->execute([':u' => $username]) && $same->fetchColumn()) {
+                    $errorMessage = "Username is already taken.";
                 } else {
                     try {
                         $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'cyan', 0)");
@@ -54,7 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } else {
-                if (!checkRateLimit('login_ip', 10, 300) || !checkRateLimit('login_user', 5, 300, strtolower($username))) {
+                // per account AND address (a stranger's guesses must not lock the owner out); a limiter error refuses instead of allowing
+                if (!checkRateLimit('login_ip', 10, 300, null, true, true) || !checkRateLimit('login_user', 5, 300, strtolower($username) . '|' . getClientIp(), true, true)) {
                     $errorMessage = "Too many attempts. Try again in a few minutes.";
                 } else {
                     $stmt = $db->prepare("SELECT * FROM accounts WHERE username = :u");
