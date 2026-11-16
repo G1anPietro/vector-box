@@ -204,7 +204,7 @@ sudo -u www-data php -r 'require "public/api/database.php"; echo getDbConnection
 ```
 
 The first web request also runs the migrations; doing it by hand just shows errors right away.
-Expected schema version: the `DB_SCHEMA_VERSION` constant in `public/api/database.php` (34 at the time of writing).
+Expected schema version: the `DB_SCHEMA_VERSION` constant in `public/api/database.php` (35 at the time of writing).
 
 Open each page with the browser console open and look for `Content-Security-Policy` report
 messages. When there are none, set `CSP_ENFORCE=true`.

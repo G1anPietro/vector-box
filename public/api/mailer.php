@@ -2,8 +2,9 @@
 // public/api/mailer.php — sending e-mail through a queue. Present in the code, OFF until MAIL_DRIVER is set in .env:
 //   MAIL_DRIVER=            nothing is sent (the box still works, messages wait in the queue)
 //   MAIL_DRIVER=log         "sends" to data/mail.log (tests, trying the box without a provider)
-//   MAIL_DRIVER=http        POST to MAIL_HTTP_URL with "Authorization: Bearer MAIL_API_KEY" and a JSON body
-//                           {from, to:[address], subject, text}: the shape Resend, Brevo's v3 relay and most services accept
+//   MAIL_DRIVER=http        POST to MAIL_HTTP_URL (Resend) with "Authorization: Bearer MAIL_API_KEY" and a JSON body
+//                           {from, to:[address], subject, text}: Resend's shape (https://api.resend.com/emails). Other services
+//                           (Brevo, Mailgun...) use different bodies and need their own small driver here
 // MAIL_FROM="Name <address@your-domain>"   MAIL_DAILY_LIMIT=200 (messages a day, all kinds)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/classi_lib.php';   // appSetting / appSettingSet
