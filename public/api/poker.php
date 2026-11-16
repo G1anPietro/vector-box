@@ -39,52 +39,58 @@ if (!$table && $action !== 'create_room') {
     $tableId = $table['id'];
 }
 
-function evaluateHand($holeCards, $communityCards) {
-    $allCards = array_merge($holeCards, $communityCards);
-    if (count($allCards) < 5) return ['score' => 0, 'name' => 'High Card'];
-
-    $ranks = [];
-    $suits = [];
+/** Category and tie-break ranks of exactly five cards, as a comparable list: [category, r1, r2, ...] (higher is better). */
+function scoreFive(array $cards): array {
     $valMap = ['2'=>2,'3'=>3,'4'=>4,'5'=>5,'6'=>6,'7'=>7,'8'=>8,'9'=>9,'10'=>10,'J'=>11,'Q'=>12,'K'=>13,'A'=>14];
-
-    foreach ($allCards as $c) {
-        if ($c === '??') continue;
-        $s = substr($c, -1);
-        $rStr = substr($c, 0, -1);
-        $v = $valMap[$rStr] ?? 0;
-        $ranks[] = $v;
-        $suits[$s] = ($suits[$s] ?? 0) + 1;
+    $ranks = []; $suits = [];
+    foreach ($cards as $c) {
+        $ranks[] = $valMap[substr($c, 0, -1)] ?? 0;
+        $suits[substr($c, -1)] = true;
     }
-
     rsort($ranks);
+    $flush = count($suits) === 1;
+    $uniq = array_values(array_unique($ranks));
+    $straightHigh = 0;
+    if (count($uniq) === 5) {
+        if ($uniq[0] - $uniq[4] === 4) $straightHigh = $uniq[0];
+        elseif ($uniq === [14, 5, 4, 3, 2]) $straightHigh = 5;   // the wheel: A-2-3-4-5
+    }
     $counts = array_count_values($ranks);
-    arsort($counts);
+    // groups ordered by size, then by rank: the tie-break order of paired hands
+    uksort($counts, fn($a, $b) => $counts[$b] <=> $counts[$a] ?: $b <=> $a);
+    $groups = array_keys($counts);
+    $sizes = array_values($counts);
+    if ($flush && $straightHigh) return [8, $straightHigh];
+    if ($sizes[0] === 4) return [7, ...$groups];
+    if ($sizes[0] === 3 && ($sizes[1] ?? 0) === 2) return [6, ...$groups];
+    if ($flush) return [5, ...$ranks];
+    if ($straightHigh) return [4, $straightHigh];
+    if ($sizes[0] === 3) return [3, ...$groups];
+    if ($sizes[0] === 2 && ($sizes[1] ?? 0) === 2) return [2, ...$groups];
+    if ($sizes[0] === 2) return [1, ...$groups];
+    return [0, ...$ranks];
+}
 
-    $isFlush = false;
-    foreach ($suits as $cnt) {
-        if ($cnt >= 5) $isFlush = true;
-    }
-
-    $uniqueRanks = array_values(array_unique($ranks));
-    $isStraight = false;
-    for ($i=0; $i <= count($uniqueRanks)-5; $i++) {
-        if ($uniqueRanks[$i] - $uniqueRanks[$i+4] === 4) {
-            $isStraight = true;
-            break;
+/** Best five of the (up to seven) cards. 'key' is comparable with compareHands(); 'score' is the category 0-8. */
+function evaluateHand($holeCards, $communityCards) {
+    $names = ['High Card', 'Pair', 'Two Pair', 'Three of a Kind', 'Straight', 'Flush', 'Full House', 'Four of a Kind', 'Straight Flush'];
+    $all = array_values(array_filter(array_merge($holeCards, $communityCards), fn($c) => $c !== '??'));
+    $n = count($all);
+    if ($n < 5) return ['score' => 0, 'name' => 'High Card', 'key' => [0]];
+    $best = null;
+    for ($a = 0; $a < $n - 4; $a++) for ($b = $a + 1; $b < $n - 3; $b++) for ($c = $b + 1; $c < $n - 2; $c++)
+        for ($d = $c + 1; $d < $n - 1; $d++) for ($e = $d + 1; $e < $n; $e++) {
+            $k = scoreFive([$all[$a], $all[$b], $all[$c], $all[$d], $all[$e]]);
+            if ($best === null || compareHands($k, $best) > 0) $best = $k;
         }
+    return ['score' => $best[0], 'name' => $names[$best[0]], 'key' => $best];
+}
+
+function compareHands(array $x, array $y): int {
+    for ($i = 0, $n = max(count($x), count($y)); $i < $n; $i++) {
+        if (($x[$i] ?? 0) !== ($y[$i] ?? 0)) return ($x[$i] ?? 0) <=> ($y[$i] ?? 0);
     }
-
-    $cValues = array_values($counts);
-    if ($isFlush && $isStraight) return ['score' => 8, 'name' => 'Straight Flush'];
-    if ($cValues[0] === 4) return ['score' => 7, 'name' => 'Four of a Kind'];
-    if ($cValues[0] === 3 && ($cValues[1] ?? 0) >= 2) return ['score' => 6, 'name' => 'Full House'];
-    if ($isFlush) return ['score' => 5, 'name' => 'Flush'];
-    if ($isStraight) return ['score' => 4, 'name' => 'Straight'];
-    if ($cValues[0] === 3) return ['score' => 3, 'name' => 'Three of a Kind'];
-    if ($cValues[0] === 2 && ($cValues[1] ?? 0) === 2) return ['score' => 2, 'name' => 'Two Pair'];
-    if ($cValues[0] === 2) return ['score' => 1, 'name' => 'Pair'];
-
-    return ['score' => 0, 'name' => 'High Card'];
+    return 0;
 }
 
 function advanceStage($db, $tableId, &$table) {
@@ -147,23 +153,29 @@ function resolveWinner($db, $tableId, $community) {
         $db->prepare("UPDATE poker_players SET chips = chips + :pot WHERE id = :id")->execute([':pot' => $pot, ':id' => $winner['id']]);
         $msg = "{$winner['username']} won {$pot} CR (Everyone else folded)!";
     } else {
-        $bestScore = -1;
-        $winner = null;
+        $bestKey = null;
+        $winners = [];
         $winningCombo = "";
 
         foreach ($activePlayers as $p) {
             $holes = json_decode($p['hole_cards'], true) ?: [];
+            if (count($holes) < 2) continue;   // joined during the hand: no cards, no showdown
             $res = evaluateHand($holes, $community);
-            if ($res['score'] > $bestScore) {
-                $bestScore = $res['score'];
-                $winner = $p;
-                $winningCombo = $res['name'];
-            }
+            $cmp = $bestKey === null ? 1 : compareHands($res['key'], $bestKey);
+            if ($cmp > 0) { $bestKey = $res['key']; $winners = [$p]; $winningCombo = $res['name']; }
+            elseif ($cmp === 0) $winners[] = $p;   // a true tie: the pot is split
         }
+        $winner = $winners[0] ?? null;
 
-        if ($winner) {
-            $db->prepare("UPDATE poker_players SET chips = chips + :pot WHERE id = :id")->execute([':pot' => $pot, ':id' => $winner['id']]);
-            $msg = "{$winner['username']} WON {$pot} CR WITH A {$winningCombo}!";
+        if ($winners) {
+            $share = intdiv($pot, count($winners));
+            $rest = $pot - $share * count($winners);
+            foreach ($winners as $k => $w) {
+                $db->prepare("UPDATE poker_players SET chips = chips + :pot WHERE id = :id")->execute([':pot' => $share + ($k === 0 ? $rest : 0), ':id' => $w['id']]);
+            }
+            $msg = count($winners) > 1
+                ? 'SPLIT POT ' . $pot . ' CR (' . implode(', ', array_column($winners, 'username')) . ') WITH A ' . strtoupper($winningCombo) . '!'
+                : "{$winner['username']} WON {$pot} CR WITH A {$winningCombo}!";
         } else {
             $msg = "SHOWDOWN COMPLETE!";
         }
