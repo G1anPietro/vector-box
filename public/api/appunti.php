@@ -146,8 +146,14 @@ function apLoadItem(PDO $db, int $id): ?array {
 function apDeleteFiles(PDO $db, int $itemId): void {
     $st = $db->prepare('SELECT class_id, stored_name FROM class_item_files WHERE item_id = :i');
     $st->execute([':i' => $itemId]);
-    foreach ($st->fetchAll() as $f) @unlink(notesDir((int)$f['class_id']) . '/' . basename($f['stored_name']));
+    // the files go only AFTER the transaction commits (apFlushDeletes): a rollback must not leave rows pointing at missing files
+    foreach ($st->fetchAll() as $f) $GLOBALS['ap_unlink'][] = notesDir((int)$f['class_id']) . '/' . basename($f['stored_name']);
     $db->prepare('DELETE FROM class_item_files WHERE item_id = :i')->execute([':i' => $itemId]);
+}
+
+function apFlushDeletes(): void {
+    foreach ($GLOBALS['ap_unlink'] ?? [] as $path) @unlink($path);
+    $GLOBALS['ap_unlink'] = [];
 }
 
 /** A quiz as the page may see it: the right answer and the explanation only for the questions this user already answered. */
@@ -892,7 +898,9 @@ try {
                 $done++;
             }
             $db->exec('COMMIT');
+            apFlushDeletes();
         } catch (Throwable $e) {
+            $GLOBALS['ap_unlink'] = [];
             if ($db->inTransaction()) $db->exec('ROLLBACK');
             throw $e;
         }
@@ -913,7 +921,9 @@ try {
                 apDeleteFiles($db, (int)$item['id']);
                 $db->prepare('DELETE FROM class_items WHERE id = :id')->execute([':id' => $item['id']]);
                 $db->exec('COMMIT');
+                apFlushDeletes();
             } catch (Throwable $e) {
+                $GLOBALS['ap_unlink'] = [];
                 $db->exec('ROLLBACK');
                 throw $e;
             }

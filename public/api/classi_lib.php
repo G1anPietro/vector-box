@@ -195,8 +195,10 @@ function classNewInviteCode(PDO $db): string {
 function classDelete(PDO $db, int $id): void {
     $db->exec('BEGIN IMMEDIATE');
     try {
+        $db->prepare('DELETE FROM quiz_seen WHERE doc_id IN (SELECT id FROM class_docs WHERE class_id = :id)')->execute([':id' => $id]);   // no class_id column
         foreach (['class_members', 'class_subjects', 'class_timetables', 'class_items', 'class_item_files', 'class_events', 'class_docs', 'class_bell_sent', 'review_cards',
-                  'class_roles', 'class_topics', 'class_homework', 'class_days_off', 'class_turns', 'class_board'] as $table) {
+                  'class_roles', 'class_topics', 'class_homework', 'class_days_off', 'class_turns', 'class_board',
+                  'share_links', 'class_log', 'quiz_answers', 'custom_quizzes', 'score_events'] as $table) {
             $db->prepare("DELETE FROM $table WHERE class_id = :id")->execute([':id' => $id]);
         }
         $db->prepare('DELETE FROM school_classes WHERE id = :id')->execute([':id' => $id]);

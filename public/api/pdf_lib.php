@@ -156,6 +156,7 @@ final class SimplePdf {
             return null;
         }
         if (str_starts_with($b, "\x89PNG\r\n\x1A\n")) {   // PNG: the compressed data goes in as is (Predictor 15)
+            if (strlen($b) < 33) return null;   // truncated file
             $w = unpack('N', substr($b, 16, 4))[1]; $h = unpack('N', substr($b, 20, 4))[1];
             $depth = ord($b[24]); $type = ord($b[25]); $interlace = ord($b[28]);
             if ($depth !== 8 || !in_array($type, [0, 2], true) || $interlace !== 0) return null;
