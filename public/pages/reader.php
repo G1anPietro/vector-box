@@ -149,6 +149,14 @@ if (!$canRead) {
                             <input type="range" id="blue-light-slider" min="0" max="60" value="0" step="5" class="slider-bar">
                         </div>
                         <div class="set-row">
+                            <span class="set-label">Cambio pagina</span>
+                            <div class="segmented" role="group" aria-label="Cambio pagina">
+                                <button class="btn" data-flip="none">Subito</button>
+                                <button class="btn" data-flip="book">Come un libro</button>
+                            </div>
+                            <span class="set-hint">"Come un libro": la pagina si gira come un foglio di carta (si spegne da sola se il telefono chiede meno animazioni).</span>
+                        </div>
+                        <div class="set-row">
                             <span class="set-label">Barra in basso</span>
                             <div class="segmented" role="group" aria-label="Barra in basso">
                                 <button class="btn" data-footer="auto">Quando serve</button>

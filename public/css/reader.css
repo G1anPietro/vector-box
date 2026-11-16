@@ -598,3 +598,19 @@ body.reading { overflow: hidden; }
 .exit-full.faint:hover, .exit-full.faint:focus-visible { opacity: 1; }
 .howto summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; }
 .howto ul { margin: 6px 0 0 18px; font-size: 0.85rem; display: grid; gap: 4px; }
+
+/* ---- Page turn "like a book" (js/reader.js playFlip) ---- */
+.flip-layer { position: absolute; inset: 0; z-index: 6; perspective: 1800px; overflow: hidden; pointer-events: none; }
+.flip-sheet { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: left center; animation: flip-fwd 700ms cubic-bezier(.45, .05, .25, 1) forwards; will-change: transform; }
+.flip-sheet.back { transform-origin: right center; animation-name: flip-back; }
+.flip-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--bg-secondary, #fff); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 0 24px rgba(0, 0, 0, 0.35); }
+.flip-face.front::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to right, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0) 14%); }
+.flip-sheet.back .flip-face.front::after { background: linear-gradient(to left, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0) 14%); }
+.flip-face.rear { transform: rotateY(180deg); background: linear-gradient(to left, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0) 40%), var(--bg-tertiary, #e9ecef); }
+.flip-sheet.back .flip-face.rear { background: linear-gradient(to right, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0) 40%), var(--bg-tertiary, #e9ecef); }
+.flip-shade { position: absolute; inset: 0; background: linear-gradient(to right, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0) 55%); opacity: 0; animation: flip-shade 700ms ease-in-out forwards; }
+.flip-shade.back { background: linear-gradient(to left, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0) 55%); }
+@keyframes flip-fwd { from { transform: rotateY(0deg); } to { transform: rotateY(-180deg); } }
+@keyframes flip-back { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
+@keyframes flip-shade { 0% { opacity: 0; } 45% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .flip-layer { display: none; } }

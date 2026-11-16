@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let pdfZoom = Math.min(3, Math.max(0.5, parseFloat(pref('vector_reader_pdf_zoom', '1')) || 1));
     let spread = pref('vector_reader_spread', 'none') === 'auto' ? 'auto' : 'none';
     // Bottom bar: 'auto' = hidden while reading, shown by a tap in the middle of the page; 'always' = fixed
+    // Page turn: 'none' (instant) or 'book' (a sheet of paper swings over the page, like a real book)
+    let flipMode = pref('vector_reader_flip', 'none') === 'book' ? 'book' : 'none';
     let footerMode = pref('vector_reader_footer', 'auto') === 'always' ? 'always' : 'auto';
     let pdfRenderTask = null;
 
@@ -727,7 +729,58 @@ document.addEventListener('DOMContentLoaded', () => {
         bookmarksPanel.addEventListener('click', (e) => e.stopPropagation());
     }
 
+    const FLIP_MS = 700;
+    function paintFlipButtons() { document.querySelectorAll('[data-flip]').forEach((b) => b.classList.toggle('on', b.dataset.flip === flipMode)); }
+    document.querySelectorAll('[data-flip]').forEach((b) => b.addEventListener('click', () => {
+        flipMode = b.dataset.flip === 'book' ? 'book' : 'none';
+        setPref('vector_reader_flip', flipMode);
+        paintFlipButtons();
+        if (flipMode === 'book') playFlip(1);   // shows what it looks like
+    }));
+    paintFlipButtons();
+
+    /** A sheet turns over the page for FLIP_MS. The real page change happens under it, so the new page is there when it has gone.
+     *  direction > 0 = forward (the sheet turns about its left edge, from right to left), < 0 = back (mirrored).
+     *  A PDF page is copied onto the sheet (a canvas can be copied); an EPUB page is inside an iframe, so its sheet is plain paper. */
+    function playFlip(direction) {
+        const box = viewerStageContainer;
+        if (flipMode !== 'book' || !box || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        box.querySelectorAll('.flip-layer').forEach((n) => n.remove());     // a quick second turn replaces the first
+        const layer = document.createElement('div');
+        layer.className = 'flip-layer';
+        const shade = document.createElement('div');
+        shade.className = 'flip-shade ' + (direction > 0 ? 'fwd' : 'back');
+        const sheet = document.createElement('div');
+        sheet.className = 'flip-sheet ' + (direction > 0 ? 'fwd' : 'back');
+        const front = document.createElement('div');
+        front.className = 'flip-face front';
+        const src = currentFormat === 'pdf' && pdfStage ? pdfStage.querySelector('canvas') : null;
+        if (src && src.width && src.height) {
+            const copy = document.createElement('canvas');
+            copy.width = src.width; copy.height = src.height;
+            copy.style.cssText = 'width: 100%; height: 100%; display: block;';
+            copy.getContext('2d').drawImage(src, 0, 0);
+            front.append(copy);
+        }
+        // the sheet is as big as the page it turns (the PDF page, or the whole reading area for a book), not the whole screen
+        const base = box.getBoundingClientRect();
+        const r = (src || box).getBoundingClientRect();
+        const geo = `inset: auto; left: ${r.left - base.left}px; top: ${r.top - base.top}px; width: ${r.width}px; height: ${r.height}px;`;
+        sheet.style.cssText = geo;
+        shade.style.cssText = geo;
+        const rear = document.createElement('div');
+        rear.className = 'flip-face rear';
+        sheet.append(front, rear);
+        layer.append(shade, sheet);
+        box.append(layer);
+        const done = () => layer.remove();
+        sheet.addEventListener('animationend', done, { once: true });
+        setTimeout(done, FLIP_MS + 300);                                      // if the event never comes
+    }
+
     function turnPage(direction) {
+        if (currentFormat === 'epub' && epubRendition) playFlip(direction);
+        else if (currentFormat === 'pdf' && pdfDoc && pdfCurrentPage + direction >= 1 && pdfCurrentPage + direction <= pdfTotalPages) playFlip(direction);
         if (currentFormat === 'epub' && epubRendition) {
             if (direction > 0) epubRendition.next();
             else epubRendition.prev();
