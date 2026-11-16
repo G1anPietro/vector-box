@@ -118,7 +118,8 @@ test('a tie in the vote: nobody is executed and the day goes on (or the final vo
     let i = 0;
     for (const pid of alive) { const t = i++ % 2 ? x : y; await r.as(pid, { action: 'vote', target: pid === t ? (t === x ? y : x) : t }); }
     const g = r.game();
-    assert.equal(g.status, 'play');
+    // with an odd number alive the vote is not a tie: if the one executed is the only wolf the village wins (the roles are random)
+    assert.ok(g.status === 'play' || g.status === 'ended', g.status);
     assert.ok(g.alive.length === alive.length || g.alive.length === alive.length - 1);
     const s = await r.a.state();
     assert.equal(typeof s.lupus, 'object');
