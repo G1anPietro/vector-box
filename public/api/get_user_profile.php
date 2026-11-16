@@ -1,6 +1,7 @@
 <?php
 // public/api/get_user_profile.php
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/rate_limiter.php';
 
 initSession();
 header('Content-Type: application/json');
@@ -14,6 +15,11 @@ if (empty($targetUser)) {
 }
 
 try {
+    if (!checkRateLimit('profile', 60, 60)) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'error' => 'Too many requests']);
+        exit();
+    }
     $db = getDbConnection();
     
     $stmt = $db->prepare("SELECT username, is_admin, created_at, bio FROM accounts WHERE username = :u");

@@ -122,7 +122,6 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
 
         // donations stay for accounting, without the person
         $run("UPDATE donors SET account_id = NULL, display_name = '', is_public = 0, note = '' WHERE account_id = :i", $u);
-        $run('DELETE FROM rate_limits WHERE bucket LIKE :b', [':b' => '%:user:' . $username]);
         $gone['account'] = $run('DELETE FROM accounts WHERE id = :i', $u);
         $db->exec('COMMIT');
     } catch (Throwable $e) {

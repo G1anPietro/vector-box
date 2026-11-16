@@ -37,7 +37,7 @@ $clientIp = getClientIp();
 $ch = curl_init($ntfyTopicUrl);
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => "IP Address: {$clientIp}\nMessage: {$message}",
+    CURLOPT_POSTFIELDS     => "IP Address: {$clientIp}\nMessage: " . preg_replace('/\s*[\r\n]+\s*/', ' / ', $message),
     CURLOPT_HTTPHEADER     => ['Title: New Public Terminal Transmission', 'Tags: incoming_envelope,warning'],
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 5,

@@ -11,9 +11,10 @@ require_once __DIR__ . '/debug_logger.php';
  * @param int         $decaySeconds window size
  * @param string|null $key          what to limit on (default: client IP; use a username for per-account limits)
  * @param bool        $log          write RATE_LIMIT_EXCEEDED to the error log (false for floods we expect, e.g. scanners)
+ * @param bool        $failClosed on a limiter error refuse instead of allow (login, register: a lock must not switch the brake off)
  * @return bool true if the request is allowed
  */
-function checkRateLimit(string $action = 'feed', int $maxRequests = 5, int $decaySeconds = 10, ?string $key = null, bool $log = true): bool {
+function checkRateLimit(string $action = 'feed', int $maxRequests = 5, int $decaySeconds = 10, ?string $key = null, bool $log = true, bool $failClosed = false): bool {
     $bucket = substr($action . ':' . ($key ?? getClientIp()), 0, 200);
     $now = time();
 
@@ -49,6 +50,6 @@ function checkRateLimit(string $action = 'feed', int $maxRequests = 5, int $deca
             try { $db->exec('ROLLBACK'); } catch (Throwable $ignored) { /* no active transaction */ }
         }
         logSystemError('RATE_LIMITER_FAIL', $e->getMessage());
-        return true; // fail open: a limiter error must not take the site down
+        return !$failClosed; // fail open by default: a limiter error must not take the site down
     }
 }

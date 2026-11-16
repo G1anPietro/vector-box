@@ -83,7 +83,8 @@ try {
         if (strlen(b64uDecode($p256dh)) !== 65 || strlen(b64uDecode($auth)) !== 16) ntFail('bad_keys', 'Invalid subscription keys');
         // One device = one endpoint; it moves to whoever is logged in on it now
         $db->prepare('INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at) VALUES (:u, :e, :p, :a, :t)
-                      ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, failures = 0')
+                      ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, failures = 0
+                      WHERE push_subscriptions.user_id = excluded.user_id OR (push_subscriptions.p256dh = excluded.p256dh AND push_subscriptions.auth = excluded.auth)')
            ->execute([':u' => $me, ':e' => $endpoint, ':p' => $p256dh, ':a' => $auth, ':t' => time()]);
         $st = $db->prepare('SELECT COUNT(*) FROM push_subscriptions WHERE user_id = :u');
         $st->execute([':u' => $me]);

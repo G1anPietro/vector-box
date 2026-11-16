@@ -23,7 +23,7 @@ try {
     $db = getDbConnection();
 
     if ($action === 'register') {
-        if (!checkRateLimit('register', 5, 3600)) {
+        if (!checkRateLimit('register', 5, 3600, null, true, true)) {
             jsonResponse(['success' => false, 'error' => 'Too many registrations from this address, try later'], 429);
         }
         if ($err = validateNewUsername($username) ?? validateNewPassword($password)) {
@@ -52,7 +52,8 @@ try {
     }
 
     // ---- login ----
-    if (!checkRateLimit('login_ip', 10, 300) || !checkRateLimit('login_user', 5, 300, strtolower($username))) {
+    // per account AND address: a stranger's wrong guesses must not lock the real owner out
+    if (!checkRateLimit('login_ip', 10, 300, null, true, true) || !checkRateLimit('login_user', 5, 300, strtolower($username) . '|' . getClientIp(), true, true)) {
         jsonResponse(['success' => false, 'error' => 'Too many attempts. Try again in a few minutes'], 429);
     }
 

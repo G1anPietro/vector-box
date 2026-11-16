@@ -127,6 +127,7 @@ try {
         if ($action === 'users') {
             $q = trim((string)($_GET['q'] ?? ''));
             if ($q === '') jsonResponse(['success' => true, 'users' => []]);
+            if (!checkRateLimit('dm_users', 30, 60, 'user:' . $me)) jsonResponse(['success' => false, 'error' => 'Too many searches'], 429);
             $like = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
             $st = $db->prepare("SELECT id, username FROM accounts WHERE username LIKE :q ESCAPE '\\' AND id != :me ORDER BY username LIMIT 10");
             $st->execute([':q' => $like, ':me' => $me]);
