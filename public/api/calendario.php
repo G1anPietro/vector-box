@@ -238,16 +238,24 @@ try {
         if (!$order) caFail('no_order', 'Set the order of the turns first');
         $groups = array_chunk($order, $per);
         $day = new DateTimeImmutable($start);
-        $made = [];
+        $made = []; $plan = [];
         $ins = $db->prepare('INSERT INTO class_turns (class_id, subject_id, turn_date, user_ids, author_id, created_at) VALUES (:c, :s, :d, :u, :a, :t)');
         for ($i = 0; $i < 200 && $groups; $i++, $day = $day->modify('+1 day')) {
             $date = $day->format('Y-m-d');
             $has = array_filter(notesLessonsOn($db, $class, $date), fn($l) => $l['subject_id'] === $subjectId);
             if (!$has) continue;
-            $ins->execute([':c' => $classId, ':s' => $subjectId, ':d' => $date, ':u' => json_encode(array_shift($groups)), ':a' => $me, ':t' => $now]);
+            $plan[] = [$date, json_encode(array_shift($groups))];
             $made[] = $date;
         }
-        if ($groups) caFail('no_lessons', 'Not enough lessons of this subject in the timetable: check the timetable');
+        if ($groups) caFail('no_lessons', 'Not enough lessons of this subject in the timetable: check the timetable');   // nothing was written yet
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            foreach ($plan as [$date, $users]) $ins->execute([':c' => $classId, ':s' => $subjectId, ':d' => $date, ':u' => $users, ':a' => $me, ':t' => $now]);
+            $db->exec('COMMIT');
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->exec('ROLLBACK');
+            throw $e;
+        }
         jsonResponse(['success' => true, 'dates' => $made]);
     }
 

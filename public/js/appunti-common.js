@@ -102,6 +102,8 @@
     // **bold**, __bold__, *italic*, _italic_, `code`, ~~strike~~, [L1]/[2] source references
     function inline(text) {
         const frag = document.createDocumentFragment();
+        // shortcut: a very long line is shown as plain text (the lazy patterns below go quadratic on thousands of unclosed ** ); no styling above 4000 chars
+        if (text.length > 4000) { frag.append(text); return frag; }
         const re = /(`[^`]+`|\*\*(?=\S)[\s\S]*?\S\*\*|__(?=\S)[\s\S]*?\S__|~~(?=\S)[\s\S]*?\S~~|\*(?=[^\s*])[^*]*?[^\s*]\*|\*[^\s*]\*|(?<![\w])_(?=\S)[^_]*?\S_(?![\w])|\[L?\d+\])/g;
         let last = 0;
         for (const m of text.matchAll(re)) {
@@ -128,7 +130,7 @@
         return i;
     }
 
-    function md(src) {
+    function md(src, depth = 0) {
         const out = document.createDocumentFragment();
         const lines = String(src || '').replace(/\r/g, '').replace(/ /g, ' ').split('\n');
         let i = 0;
@@ -149,7 +151,7 @@
             if (/^\s*>/.test(line)) {
                 const buf = [];
                 while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ''));
-                out.append(el('blockquote', {}, md(buf.join('\n'))));
+                out.append(el('blockquote', {}, depth < 6 ? md(buf.join('\n'), depth + 1) : inline(buf.join('\n'))));
                 continue;
             }
             if (line.includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1])) {

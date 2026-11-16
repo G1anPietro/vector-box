@@ -505,6 +505,12 @@ function lupusResolveVote(array &$g): void {
 
 /** Someone left the room mid-game: they are out, and they no longer block the night or the vote. */
 function lupusPlayerLeft(array &$g, int $pid): void {
+    // the hunter is already dead during his shot: if he leaves then, nobody will shoot, so the game goes on without it
+    if ($g['status'] === 'play' && $g['phase'] === 'hunter' && $g['hunter'] === $pid && !lupusIsAlive($g, $pid)) {
+        $g['hunter'] = null;
+        lupusContinue($g, $g['after_hunter'] ?? 'night');
+        return;
+    }
     if ($g['status'] !== 'play' || !lupusIsAlive($g, $pid)) return;
     lupusKill($g, $pid, 'left');
     lupusLog($g, ['t' => 'left', 'p' => $pid]);
