@@ -256,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
         tabMatchIndex = -1;
         lastTabPrefix = "";
 
-        printGuestLog(`${typeof getPromptText === 'function' ? getPromptText() : 'guest@vector-box:$'} ${rawVal}`, "#8ab4f8");
+        printGuestLog(`${typeof getPromptText === 'function' ? getPromptText() : 'guest@vector-box:$'} ${rawVal}`, "#8ab4f8", true);   // what the user typed is text, never HTML
         guestCmdInput.value = '';
         if (ghostText) ghostText.textContent = '';
         scrollToBottom();
