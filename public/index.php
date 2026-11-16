@@ -1,5 +1,15 @@
 <?php
 // public/index.php
+// nginx sends every unknown path here (try_files fallback): only "/" is the home page, the rest is a 404.
+$reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if (!in_array($reqPath, ['/', '/index.php', null, false, ''], true)) {
+    http_response_code(404);
+    header('Content-Type: text/html; charset=UTF-8');
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: no-store');
+    readfile(__DIR__ . '/errors/404.html');
+    exit;
+}
 require_once __DIR__ . '/includes/head.php';
 require_once __DIR__ . '/api/database.php';
 
