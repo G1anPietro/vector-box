@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 33;
+const DB_SCHEMA_VERSION = 34;
 
 /**
  * Session bootstrap.
@@ -568,6 +568,13 @@ function migrateV16(PDO $db): void {
 /** v30: a temporary link can be limited to a number of openings (0 = no limit). */
 /** v33: the AI (Google Gemini) only reads the material of a class declared to have adult students only: the requester says so
  *  (adults_declared) and the representative can switch it on later (the students grow up). Classes that already existed keep it on. */
+/** v34: user names are unique regardless of case (no "Admin" next to "admin"). Skipped, not failed, if old accounts already clash:
+ *  the registration check in login.php covers new ones anyway. */
+function migrateV34(PDO $db): void {
+    $clash = (int)$db->query('SELECT COUNT(*) FROM (SELECT 1 FROM accounts GROUP BY LOWER(username) HAVING COUNT(*) > 1)')->fetchColumn();
+    if ($clash === 0) $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_username_nocase ON accounts(username COLLATE NOCASE)');
+}
+
 function migrateV33(PDO $db): void {
     addColumnIfMissing($db, 'school_classes', 'ai_allowed', 'INTEGER NOT NULL DEFAULT 1');
     addColumnIfMissing($db, 'school_classes', 'ai_adults_at', 'INTEGER');      // when someone declared "all adults" (NULL: before this rule)
@@ -951,6 +958,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 33) {
             migrateV33($db);
+        }
+        if ($current < 34) {
+            migrateV34($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

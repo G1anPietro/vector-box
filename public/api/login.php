@@ -33,6 +33,10 @@ try {
             jsonResponse(['success' => false, 'error' => REGISTER_TERMS_ERROR], 400);
         }
 
+        $same = $db->prepare('SELECT 1 FROM accounts WHERE LOWER(username) = LOWER(:u)');
+        $same->execute([':u' => $username]);
+        if ($same->fetchColumn()) jsonResponse(['success' => false, 'error' => 'Username already taken'], 409);
+
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
             $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'monochrome', 0)");

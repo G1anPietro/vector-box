@@ -248,6 +248,15 @@ function aiMaterial(PDO $db, array $items): array {
 
 function aiSaveDoc(PDO $db, array $doc): void {
     $now = time();
+    // a regenerated quiz keeps its id: answers given to the OLD questions must not apply to the new ones
+    if ($doc['kind'] === 'quiz' && $doc['status'] === 'ok') {
+        $old = $db->prepare('SELECT id, content FROM class_docs WHERE class_id = :c AND doc_key = :k');
+        $old->execute([':c' => $doc['class_id'], ':k' => $doc['doc_key']]);
+        $o = $old->fetch();
+        if ($o && $o['content'] !== $doc['content']) {
+            foreach (['quiz_answers', 'review_cards', 'quiz_seen'] as $t) $db->prepare("DELETE FROM $t WHERE doc_id = :d")->execute([':d' => $o['id']]);
+        }
+    }
     $db->prepare('INSERT INTO class_docs (class_id, doc_key, subject_id, kind, lesson_date, event_id, title, content, sources, input_hash, model, status, error, created_at, updated_at)
                   VALUES (:c, :k, :s, :kind, :d, :e, :t, :content, :src, :h, :m, :st, :err, :now, :now)
                   ON CONFLICT(class_id, doc_key) DO UPDATE SET title = excluded.title, content = excluded.content, sources = excluded.sources,

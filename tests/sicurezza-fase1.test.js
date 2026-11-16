@@ -31,4 +31,13 @@ test.describe('security pass 1', () => {
         site.db("UPDATE accounts SET is_admin = 0 WHERE username = 'sx_admin'");
         assert.equal((await admin.get('/api/get_log.php')).status, 403);
     });
+
+    test('user names: reserved staff-like names and case-only duplicates are refused', async () => {
+        const reg = async (u) => { try { site.db('DELETE FROM rate_limits'); } catch (e) { /* none yet */ }
+            return fetch(`${site.base}/api/login.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'register', username: u, password: 'password123', accept_terms: true, age_confirm: true }) }); };
+        assert.equal((await reg('Admin')).status, 400);
+        assert.equal((await reg('system_1')).status, 400);
+        assert.equal((await reg('SX_ADMIN')).status, 409, 'same as sx_admin apart from case');
+    });
 });
