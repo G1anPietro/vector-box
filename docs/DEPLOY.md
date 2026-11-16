@@ -245,14 +245,14 @@ map $http_user_agent $bad_bot {
     "~*(AhrefsBot|SemrushBot|MJ12bot|DotBot|PetalBot|Bytespider|BLEXBot|DataForSeoBot|serpstatbot|MegaIndex|Barkrowler)" 1;
 }
 limit_req_zone $binary_remote_addr zone=scan_zone:5m rate=1r/s;
-log_format timed '$remote_addr [$time_local] "$request" $status $body_bytes_sent $request_time "$http_user_agent"';
+# combined + $request_time at the end (keeps fail2ban and log tools working)
+log_format timed '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" $request_time';
 
 # server { ... 443 ... }
 access_log /var/log/nginx/access.log timed;                  # adds $request_time: slow endpoints become visible
 if ($bad_bot) { return 444; }                                # close the connection, no answer at all
 location ~* ^/(wp-(admin|login|content|includes)|xmlrpc\.php|phpmyadmin|pma|adminer|cgi-bin|boaform|HNAP1|\.env|\.git|vendor/phpunit|actuator) {
-    limit_req zone=scan_zone burst=3 nodelay;
-    return 444;
+    return 444;   # (limit_req would never fire here: `return` runs first, so it was left out in production)
 }
 # books.php covers and the list share the 5 r/s zone with the whole API: give the book library its own bigger one
 # (limit_req_zone $binary_remote_addr zone=books_zone:5m rate=20r/s; then limit_req zone=books_zone burst=40 nodelay; in a
