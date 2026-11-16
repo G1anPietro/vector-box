@@ -38,7 +38,9 @@ mkdir -p "$BACKUP_DIR/db" "$BACKUP_DIR/env" "$BACKUP_DIR/files"
 # Run as the PHP user: running PHP as root on the live DB could leave root-owned -wal/-shm files.
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-chmod 777 "$TMP"
+# the web user writes the copy here: give it the folder, nobody else (not world-writable)
+if [ "$(id -u)" -eq 0 ] && id "$WEB_USER" >/dev/null 2>&1; then chown "$WEB_USER" "$TMP"; fi
+chmod 700 "$TMP"
 as_web() {
     if [ "$(id -u)" -eq 0 ] && id "$WEB_USER" >/dev/null 2>&1; then sudo -u "$WEB_USER" "$@"; else "$@"; fi
 }

@@ -984,6 +984,8 @@ function getDbConnection() {
     $db->exec("PRAGMA busy_timeout = 5000;");
     $db->exec("PRAGMA journal_mode = WAL;");
     $db->exec("PRAGMA synchronous = NORMAL;");
+    $db->exec("PRAGMA temp_store = MEMORY;");
+    $db->exec("PRAGMA cache_size = -8000;");   // 8 MB of page cache per connection
 
     // Schema work happens only when the DB is behind, not on every request
     if ((int)$db->query('PRAGMA user_version')->fetchColumn() < DB_SCHEMA_VERSION) {

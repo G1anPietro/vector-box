@@ -73,6 +73,7 @@ $stmt = $db->prepare("SELECT id, room_id, username, message, created_at
 
 $startTime = time();
 $maxDuration = 20; // 20-second clean cycle to avoid PHP-FPM worker exhaustion
+$lastActivity = time();
 
 while ((time() - $startTime) < $maxDuration) {
     if (connection_aborted()) {
@@ -85,6 +86,7 @@ while ((time() - $startTime) < $maxDuration) {
         $stmt->closeCursor();
 
         if (!empty($messages)) {
+            $lastActivity = time();
             foreach ($messages as $msg) {
                 $lastId = (int)$msg['id'];
                 echo "id: {$lastId}\ndata: " . json_encode(formatTransmission($msg)) . "\n\n";
@@ -101,7 +103,7 @@ while ((time() - $startTime) < $maxDuration) {
         break;
     }
 
-    sleep(1);
+    sleep(time() - $lastActivity < 30 ? 1 : 2);   // a quiet room is polled half as often
 }
 
 exit();

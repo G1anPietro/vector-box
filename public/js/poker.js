@@ -307,6 +307,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    setInterval(fetchPokerState, 2000);
+    setInterval(() => { if (!document.hidden) fetchPokerState(); }, 2000);   // a hidden tab does not poll (it runs bots and writes)
     fetchPokerState();
 });
