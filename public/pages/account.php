@@ -95,11 +95,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($changed) $account['email_verified'] = 0;
             if (!(int)$account['email_verified']) {
                 if (mailEnabled()) {
-                    mailEnqueue($db, null, (int)$account['id'], $email, 'Confirm your e-mail address',
+                    $verifyRow = mailEnqueue($db, null, (int)$account['id'], $email, 'Confirm your e-mail address',
                         "Hello,\n\nsomeone (hopefully you) added this address to the account \"{$account['username']}\" on vector-box.\nConfirm it here: "
-                        . siteUrl() . '/api/mail_link.php?a=verify&t=' . mailToken($db, 'verify', (int)$account['id'])
+                        . siteUrl() . '/api/mail_link.php?a=verify&t=' . mailToken($db, mailVerifyKind($email), (int)$account['id'])
                         . "\n\nIf it was not you, ignore this message: nothing happens without the click.\n", 'verify');
-                    mailProcessQueue($db, 3);
+                    mailProcessQueue($db, 1, [$verifyRow]);   // only this confirmation, not whatever else waits
                     $msg = 'Saved. We sent you a message: click the link in it to confirm the address.';
                 } else {
                     $msg = 'Saved. E-mail is not switched on yet: the address will be confirmed when it is.';

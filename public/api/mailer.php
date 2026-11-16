@@ -42,6 +42,14 @@ function mailTokenCheck(PDO $db, string $kind, string $token): ?int {
     return hash_equals(mailToken($db, $kind, (int)$m[1]), $token) ? (int)$m[1] : null;
 }
 
+/** The id inside a token (no check yet): to find the account whose current address the token must be signed for. */
+function mailTokenId(string $token): ?int {
+    return preg_match('/^(\d{1,12})\.[a-f0-9]{40}$/', $token, $m) ? (int)$m[1] : null;
+}
+
+/** The confirmation token is signed with the address itself: a link for the old address is worthless after a change. */
+function mailVerifyKind(string $email): string { return 'verify:' . strtolower($email); }
+
 function mailSentToday(PDO $db): int {
     $st = $db->prepare("SELECT COUNT(*) FROM mail_queue WHERE status = 'sent' AND sent_at >= :t");
     $st->execute([':t' => strtotime('today')]);
@@ -100,24 +108,49 @@ function mailTransport(array $row): void {
 }
 
 /**
- * Sends up to $limit pending rows (oldest first), within the daily limit. A failed row is retried (up to MAIL_MAX_ATTEMPTS)
- * on later runs, then marked failed. Returns ['sent' => n, 'failed' => n, 'left' => pending now, 'off' => bool].
+ * Sends up to $limit pending rows (oldest first, or only $ids), within the daily limit. Each row is CLAIMED first (a conditional
+ * update), so the worker, "send now" and the account page can overlap without sending twice. News (kind bulk) are re-checked
+ * at the moment of sending: a person who unsubscribed, removed or changed the address since is skipped. A failed row is
+ * retried (up to MAIL_MAX_ATTEMPTS), then marked failed. Returns ['sent','failed','left','off'].
  */
-function mailProcessQueue(PDO $db, int $limit = 20): array {
+function mailProcessQueue(PDO $db, int $limit = 20, ?array $ids = null): array {
     $out = ['sent' => 0, 'failed' => 0, 'left' => 0, 'off' => mailDriver() === ''];
     if (!$out['off']) {
+        // a row claimed by a run that died is given back after ten minutes
+        $db->prepare("UPDATE mail_queue SET status = 'pending' WHERE status = 'sending' AND sent_at < :t")->execute([':t' => time() - 600]);
         $room = max(0, (int)envValue('MAIL_DAILY_LIMIT', '200') - mailSentToday($db));
-        $st = $db->prepare("SELECT * FROM mail_queue WHERE status = 'pending' ORDER BY id LIMIT :l");
-        $st->bindValue(':l', min($limit, $room), PDO::PARAM_INT);
-        $st->execute();
-        foreach ($st->fetchAll() as $row) {
+        if ($ids === null) {
+            $st = $db->prepare("SELECT * FROM mail_queue WHERE status = 'pending' ORDER BY id LIMIT :l");
+            $st->bindValue(':l', min($limit, $room), PDO::PARAM_INT);
+            $st->execute();
+            $rows = $st->fetchAll();
+        } else {
+            $rows = [];
+            foreach (array_slice(array_map('intval', $ids), 0, min($limit, $room)) as $id) {
+                $st = $db->prepare("SELECT * FROM mail_queue WHERE id = :id AND status = 'pending'");
+                $st->execute([':id' => $id]);
+                if ($r = $st->fetch()) $rows[] = $r;
+            }
+        }
+        $claim = $db->prepare("UPDATE mail_queue SET status = 'sending', sent_at = :t WHERE id = :id AND status = 'pending'");
+        foreach ($rows as $row) {
+            $claim->execute([':t' => time(), ':id' => $row['id']]);
+            if ($claim->rowCount() !== 1) continue;                // somebody else took it
             try {
+                if ($row['kind'] === 'bulk') {
+                    $ok = $db->prepare('SELECT 1 FROM accounts WHERE id = :a AND email = :e AND email_verified = 1 AND email_optin = 1 AND is_banned = 0');
+                    $ok->execute([':a' => (int)$row['account_id'], ':e' => $row['to_email']]);
+                    if (!$ok->fetchColumn()) {
+                        $db->prepare("UPDATE mail_queue SET status = 'failed', last_error = 'no longer subscribed', sent_at = NULL WHERE id = :id")->execute([':id' => $row['id']]);
+                        continue;
+                    }
+                }
                 mailTransport($row);
                 $db->prepare("UPDATE mail_queue SET status = 'sent', sent_at = :t, attempts = attempts + 1, last_error = '' WHERE id = :id")->execute([':t' => time(), ':id' => $row['id']]);
                 $out['sent']++;
             } catch (Throwable $e) {
                 $final = (int)$row['attempts'] + 1 >= MAIL_MAX_ATTEMPTS;
-                $db->prepare('UPDATE mail_queue SET status = :s, attempts = attempts + 1, last_error = :e WHERE id = :id')
+                $db->prepare('UPDATE mail_queue SET status = :s, attempts = attempts + 1, last_error = :e, sent_at = NULL WHERE id = :id')
                    ->execute([':s' => $final ? 'failed' : 'pending', ':e' => textCut($e->getMessage(), 300), ':id' => $row['id']]);
                 if ($final) $out['failed']++;
             }

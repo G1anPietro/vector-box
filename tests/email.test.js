@@ -84,4 +84,34 @@ test.describe('e-mail box', () => {
         assert.equal(del.status, 200, del.text);
         assert.equal(site.db("SELECT COUNT(*) AS n FROM mail_queue WHERE to_email = 'ada@example.com'")[0].n, 0);
     });
+
+    test('a confirmation link works only for the address it was sent for', async () => {
+        clear(); const cat = new Client(site); await cat.register('em_cat');
+        await form(cat, { action: 'save_email', email: 'cat@example.com', email_optin: '1' });
+        const oldToken = [...mailLog().matchAll(/mail_link\.php\?a=verify&t=([0-9a-f.]+)/g)].pop()[1];
+        await form(cat, { action: 'save_email', email: 'someone-else@example.com', email_optin: '1' });
+        assert.equal((await fetch(`${site.base}/api/mail_link.php?a=verify&t=${oldToken}`)).status, 400, 'the link of the old address');
+        assert.equal(site.db("SELECT email_verified FROM accounts WHERE username = 'em_cat'")[0].email_verified, 0);
+        const newToken = [...mailLog().matchAll(/mail_link\.php\?a=verify&t=([0-9a-f.]+)/g)].pop()[1];
+        assert.equal((await fetch(`${site.base}/api/mail_link.php?a=verify&t=${newToken}`)).status, 200);
+        assert.equal(site.db("SELECT email_verified FROM accounts WHERE username = 'em_cat'")[0].email_verified, 1);
+    });
+
+    test('news already queued are not sent to someone who unsubscribed or changed address since; a row is sent once', async () => {
+        const id = (await mail(admin, { action: 'save_draft', subject: 'Seconda', body: 'testo', audience: 'optin' })).json.id;
+        assert.equal((await mail(admin, { action: 'send', id })).json.queued, 1, 'cat only');
+        site.db("UPDATE accounts SET email_optin = 0 WHERE username = 'em_cat'");   // she unsubscribes before the worker runs
+        const before = mailLog().length;
+        const r = await mail(admin, { action: 'process' });
+        assert.equal(r.json.sent, 0);
+        assert.equal(mailLog().length, before, 'nothing was written');
+        const row = site.db("SELECT status, last_error FROM mail_queue WHERE subject = 'Seconda'")[0];
+        assert.deepEqual([row.status, row.last_error], ['failed', 'no longer subscribed']);
+        // one row, two parallel runs: sent once
+        site.db("UPDATE accounts SET email_optin = 1 WHERE username = 'em_cat'");
+        const id2 = (await mail(admin, { action: 'save_draft', subject: 'Terza', body: 'testo', audience: 'optin' })).json.id;
+        await mail(admin, { action: 'send', id: id2 });
+        await Promise.all([mail(admin, { action: 'process' }), mail(admin, { action: 'process' }), mail(admin, { action: 'process' })]);
+        assert.equal((mailLog().match(/subject=Terza/g) || []).length, 1);
+    });
 });
