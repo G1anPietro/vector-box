@@ -106,6 +106,7 @@ try {
             exit();
         }
         header('Content-Type: ' . $types[$ext]);
+        header('X-Content-Type-Options: nosniff');
         header('Content-Length: ' . filesize($file));
         // the list gives every cover a ?v= (its file time): a changed cover has a new URL, so the browser may keep this one for good
         header('Cache-Control: private, max-age=31536000, immutable');
@@ -127,13 +128,13 @@ try {
                 LEFT JOIN reading_progress p ON (b.id = p.book_id AND p.user_id = :uid)";
         
         if (!empty($query)) {
-            $sql .= " WHERE b.title LIKE :q OR b.author LIKE :q";
+            $sql .= " WHERE b.title LIKE :q ESCAPE '\\' OR b.author LIKE :q ESCAPE '\\'";
         }
         $sql .= " ORDER BY b.id DESC";
 
         $stmt = $db->prepare($sql);
         $params = [':uid' => $userId ?? 0];
-        if (!empty($query)) $params[':q'] = "%{$query}%";
+        if (!empty($query)) $params[':q'] = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string)$query) . '%';
         $stmt->execute($params);
         $books = $stmt->fetchAll();
 
@@ -332,11 +333,16 @@ try {
             $coverRelPath = null;
 
             if ($ext === 'epub') {
-                $meta = readEpubMetadata($targetPath);
-                if ($meta['title'] !== null) $title = $meta['title'];
-                if ($meta['author'] !== null) $author = $meta['author'];
+                try {
+                    $meta = readEpubMetadata($targetPath);
+                } catch (Throwable $e) {
+                    @unlink($targetPath);   // no orphan file without a DB row
+                    throw $e;
+                }
+                if ($meta['title'] !== null) $title = textCut($meta['title'], 200);
+                if ($meta['author'] !== null) $author = textCut($meta['author'], 120);
 
-                if ($meta['cover_data'] !== null) {
+                if ($meta['cover_data'] !== null && @getimagesizefromstring($meta['cover_data']) !== false) {
                     $coverFileName = $uniquePrefix . '_' . $safeName . '_cover.' . $meta['cover_ext'];
                     if (file_put_contents($coverDir . $coverFileName, $meta['cover_data']) !== false) {
                         $coverRelPath = '../data/covers/' . $coverFileName;

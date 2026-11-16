@@ -363,9 +363,10 @@ function notesExtractText(string $path, string $ext): array {
 
     $zip = new ZipArchive();
     if ($zip->open($path, ZipArchive::RDONLY) !== true) return [null, 'failed'];
+    if ($zip->numFiles > 5000) { $zip->close(); return [null, 'failed']; }
     $parts = [];
     if ($ext === 'docx') {
-        $parts[] = notesXmlText((string)$zip->getFromName('word/document.xml'), 'w:p');
+        $parts[] = notesXmlText((string)notesZipEntry($zip, 'word/document.xml'), 'w:p');
     } elseif ($ext === 'pptx') {
         $slides = [];
         for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -374,17 +375,24 @@ function notesExtractText(string $path, string $ext): array {
         }
         ksort($slides);
         foreach ($slides as $n => $name) {
-            $text = notesXmlText((string)$zip->getFromName($name), 'a:p');
-            $notes = $zip->getFromName("ppt/notesSlides/notesSlide$n.xml");
+            $text = notesXmlText((string)notesZipEntry($zip, $name), 'a:p');
+            $notes = notesZipEntry($zip, "ppt/notesSlides/notesSlide$n.xml");
             $parts[] = "--- Slide $n ---\n" . $text
                 . ($notes !== false && ($nt = notesXmlText($notes, 'a:p')) !== '' ? "\n[Note: $nt]" : '');
         }
     } else {
-        $parts[] = notesXmlText((string)$zip->getFromName('content.xml'), 'text:p');
+        $parts[] = notesXmlText((string)notesZipEntry($zip, 'content.xml'), 'text:p');
     }
     $zip->close();
     $text = trim(implode("\n\n", $parts));
     return $text === '' ? [null, 'failed'] : [textCut($text, NOTE_TEXT_MAX), 'done'];
+}
+
+/** One entry of an office zip, refused (false) when it would inflate past 8 MB: a zip bomb must not fill the memory. */
+function notesZipEntry(ZipArchive $zip, string $name) {
+    $st = $zip->statName($name);
+    if (!$st || $st['size'] > 8 * 1048576) return false;
+    return $zip->getFromName($name);
 }
 
 function notesFormatItem(array $item, array $files, int $me, bool $canManage): array {

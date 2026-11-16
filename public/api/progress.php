@@ -57,7 +57,7 @@ try {
         $input = json_decode($rawInput, true) ?? [];
 
         $bookId = (int)($input['book_id'] ?? 0);
-        $cfiOrPage = trim($input['cfi_or_page'] ?? '');
+        $cfiOrPage = is_string($input['cfi_or_page'] ?? null) ? trim($input['cfi_or_page']) : '';
         $percentage = max(0.0, min(100.0, (float)($input['percentage'] ?? 0)));
         if (strlen($cfiOrPage) > 2000) {
             jsonResponse(['success' => false, 'error' => 'Invalid progress payload.'], 400);

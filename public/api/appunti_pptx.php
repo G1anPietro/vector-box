@@ -14,7 +14,7 @@ const PPTX_MAX_IMAGE = 4 * 1048576;
 const PPTX_MAX_OUT = 24 * 1048576;
 
 function pptxXpath(ZipArchive $z, string $name): ?DOMXPath {
-    $xml = $z->getFromName($name);
+    $xml = notesZipEntry($z, $name);
     if ($xml === false || strlen($xml) > 6 * 1048576) return null;
     $dom = new DOMDocument();
     $prev = libxml_use_internal_errors(true);
