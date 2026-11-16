@@ -2,6 +2,7 @@
 // public/api/poker.php
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/poker_stats.php';
+require_once __DIR__ . '/rate_limiter.php';
 
 initSession();
 header('Content-Type: application/json');
@@ -19,8 +20,8 @@ $userId = $_SESSION['user_id'] ?? null;
 $db = getDbConnection();
 
 // Resolve room by ID or Room Code
-$stmt = $db->prepare("SELECT * FROM poker_tables WHERE id = :t OR room_code = :t");
-$stmt->execute([':t' => strtolower($inputTarget)]);
+$stmt = $db->prepare("SELECT * FROM poker_tables WHERE id = :t OR room_code = :c");
+$stmt->execute([':t' => strtolower($inputTarget), ':c' => strtoupper($inputTarget)]);   // ids are stored lower case, codes upper case
 $table = $stmt->fetch();
 
 if (!$table && $action !== 'create_room') {
@@ -242,6 +243,12 @@ try {
         $newRoomId = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower($_POST['room_name'] ?? ''));
         $roomCode = strtoupper(trim($_POST['room_code'] ?? ''));
         $botCount = min(3, max(0, (int)($_POST['bot_count'] ?? 1)));
+        if (!checkRateLimit('poker_create', 6, 3600, null, true, true)) {
+            echo json_encode(['success' => false, 'error' => 'Too many rooms created, try later.']);
+            exit();
+        }
+        $newRoomId = substr($newRoomId, 0, 24);
+        $roomCode = substr(preg_replace('/[^A-Z0-9_\-]/', '', $roomCode), 0, 12);
 
         if (!$newRoomId) {
             echo json_encode(['success' => false, 'error' => 'Invalid room name.']);
@@ -303,7 +310,7 @@ try {
                 'current_bet' => (int)$p['current_bet'],
                 'is_folded' => (int)$p['is_folded'],
                 'is_bot' => (int)$p['is_bot'],
-                'hole_cards' => ($isOwner || $isShowdown) ? json_decode($p['hole_cards']) : ['??', '??']
+                'hole_cards' => ($isOwner || ($isShowdown && !(int)$p['is_folded'])) ? json_decode($p['hole_cards']) : ['??', '??']
             ];
         }, $players);
 
@@ -449,7 +456,7 @@ try {
         $stmt->execute([':tid' => $tableId, ':u' => $username]);
         $player = $stmt->fetch();
 
-        if ($player && $table['current_turn_seat'] == $player['seat']) {
+        if ($player && !in_array($table['game_stage'], ['waiting', 'showdown'], true) && $table['current_turn_seat'] == $player['seat']) {
             if ($userAction === 'fold') {
                 $upd = $db->prepare("UPDATE poker_players SET is_folded = 1 WHERE id = :id");
                 $upd->execute([':id' => $player['id']]);
