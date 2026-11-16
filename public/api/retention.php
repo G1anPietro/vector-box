@@ -50,6 +50,9 @@ function runRetention(PDO $db): array {
     $done['visits_log'] = retentionTrimLog("$dataDir/visits.log", $visitsCutoff) + retentionTrimLog("$dataDir/visits.log.1", $visitsCutoff);
     $botsCutoff = date('Y-m-d', $day(retentionDays('BOTS')));
     $done['bots_log'] = retentionTrimLog("$dataDir/bots.log", $botsCutoff) + retentionTrimLog("$dataDir/bots.log.1", $botsCutoff);
+    // daily upkeep after the clean-up: fresh query-planner statistics and a compact full-text index (both cheap; never fatal)
+    try { $db->exec('PRAGMA optimize'); } catch (Throwable $e) { /* busy: tomorrow */ }
+    try { $db->exec("INSERT INTO notes_fts(notes_fts) VALUES('optimize')"); } catch (Throwable $e) { /* no FTS table */ }
     return $done;
 }
 

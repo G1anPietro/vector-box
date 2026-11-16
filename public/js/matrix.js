@@ -73,7 +73,9 @@
 
     const KEY = 'vb_matrix';
     const stored = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
-    let enabled = stored() !== 'off';
+    // nobody chose yet: people who asked their system for less motion get no rain (they can still switch it on)
+    const reduced = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
+    let enabled = stored() === null ? !reduced() : stored() !== 'off';
     window.isMatrixEnabled = () => enabled;
 
     /** Switches the rain on or off (it stays off in this browser until switched on again). Off: no drawing at all, no battery used. */
