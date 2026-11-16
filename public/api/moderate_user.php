@@ -16,7 +16,7 @@ if (empty($sessionToken) || !hash_equals($sessionToken, $csrfHeader)) {
 }
 
 // Verify Admin Status
-if (empty($_SESSION['is_admin'])) {
+if (!sessionIsAdmin()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'UNAUTHORIZED: Admin privileges required']);
     exit();

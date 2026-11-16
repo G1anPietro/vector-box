@@ -200,7 +200,7 @@ session_write_close();
             </div>
 
             <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                <?php if (!empty($account['is_admin'])): ?><a href="mail.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ MAIL BOX</a><?php endif; ?>
+                <?php if (!empty($account['is_admin'])): ?><a href="admin_users.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ USERS</a><a href="mail.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ MAIL BOX</a><?php endif; ?>
                 <a href="../api/logout.php" class="nav-btn" style="display: block; text-align: center; border-color: #ff3333; color: #ff3333; text-decoration: none;">>_ LOGOUT SESSION</a>
             </div>
         </div>

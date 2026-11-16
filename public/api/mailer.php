@@ -138,8 +138,9 @@ function mailProcessQueue(PDO $db, int $limit = 20, ?array $ids = null): array {
             $claim->execute([':t' => time(), ':id' => $row['id']]);
             if ($claim->rowCount() !== 1) continue;                // somebody else took it
             try {
-                if ($row['kind'] === 'bulk') {
-                    $ok = $db->prepare('SELECT 1 FROM accounts WHERE id = :a AND email = :e AND email_verified = 1 AND email_optin = 1 AND is_banned = 0');
+                if ($row['kind'] === 'bulk' || $row['kind'] === 'direct') {
+                    // news need the consent too; a direct message from the admin only needs the address to be the confirmed one
+                    $ok = $db->prepare('SELECT 1 FROM accounts WHERE id = :a AND email = :e AND email_verified = 1' . ($row['kind'] === 'bulk' ? ' AND email_optin = 1 AND is_banned = 0' : ''));
                     $ok->execute([':a' => (int)$row['account_id'], ':e' => $row['to_email']]);
                     if (!$ok->fetchColumn()) {
                         $db->prepare("UPDATE mail_queue SET status = 'failed', last_error = 'no longer subscribed', sent_at = NULL WHERE id = :id")->execute([':id' => $row['id']]);

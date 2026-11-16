@@ -23,7 +23,7 @@ $v = max(filemtime(__DIR__ . '/../js/mail.js'), filemtime(__DIR__ . '/../css/mai
     <canvas id="canvas"></canvas>
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // MAIL_BOX</div>
-        <a href="account.php" class="nav-btn"><_ BACK_TO_ACCOUNT</a>
+        <span><a href="admin_users.php" class="nav-btn">USERS</a> <a href="account.php" class="nav-btn"><_ BACK_TO_ACCOUNT</a></span>
     </header>
     <main class="mailbox">
         <aside class="mb-side" aria-label="Folders">
