@@ -1165,6 +1165,12 @@ try {
         if ($first) {
             $answered[$i] = $choice;
             $db->prepare('UPDATE custom_quizzes SET answered = :a WHERE id = :id')->execute([':a' => json_encode($answered), ':id' => $quiz['id']]);
+            // the custom quiz showed the answer: the real quiz can no longer give points for this question
+            if (!empty($item['src'])) {
+                [$sd, $sq] = $item['src'];
+                $db->prepare('INSERT OR IGNORE INTO quiz_answers (user_id, doc_id, q_index, class_id, choice, correct, points, answered_at) VALUES (:u, :d, :q, :c, :ch, :ok, 0, :t)')
+                   ->execute([':u' => $me, ':d' => (int)$sd, ':q' => (int)$sq, ':c' => (int)$quiz['class_id'], ':ch' => $choice, ':ok' => $correct ? 1 : 0, ':t' => time()]);
+            }
             // a wrong answer puts the original question in the daily review (no points in a custom quiz: it is practice)
             if (!$correct && !empty($item['src'])) {
                 [$docId, $qi] = $item['src'];
@@ -1190,7 +1196,7 @@ try {
         $docId = (int)($in['doc_id'] ?? 0);
         $q = (int)($in['q'] ?? -1);
         $choice = (int)($in['choice'] ?? -1);
-        $st = $db->prepare("SELECT class_id, content FROM class_docs WHERE id = :id AND kind = 'quiz' AND status = 'ok'");
+        $st = $db->prepare("SELECT class_id, content, author_id FROM class_docs WHERE id = :id AND kind = 'quiz' AND status = 'ok'");
         $st->execute([':id' => $docId]);
         $doc = $st->fetch();
         if (!$doc) apFail('not_found', 'Quiz not found', 404);
@@ -1215,7 +1221,8 @@ try {
                 $ref = $db->prepare('SELECT MAX(t) FROM (SELECT seen_at AS t FROM quiz_seen WHERE user_id = :u AND doc_id = :d UNION ALL SELECT MAX(answered_at) FROM quiz_answers WHERE user_id = :u)');
                 $ref->execute([':u' => $me, ':d' => $docId]);
                 $fast = $now - (int)$ref->fetchColumn() < SCORE_MIN_GAP;
-                if ($correct && !$fast) $points = scoreAward($db, $class, $me, 'quiz', SCORE_QUIZ, "quiz:$docId:$q");
+                // no points on a quiz you wrote yourself (you chose its answers)
+                if ($correct && !$fast && (int)$doc['author_id'] !== $me) $points = scoreAward($db, $class, $me, 'quiz', SCORE_QUIZ, "quiz:$docId:$q");
                 $db->prepare('INSERT INTO quiz_answers (user_id, doc_id, q_index, class_id, choice, correct, points, answered_at) VALUES (:u, :d, :q, :c, :ch, :ok, :p, :t)')
                    ->execute([':u' => $me, ':d' => $docId, ':q' => $q, ':c' => $class['id'], ':ch' => $choice, ':ok' => $correct ? 1 : 0, ':p' => $points, ':t' => $now]);
             }
