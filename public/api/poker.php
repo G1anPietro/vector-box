@@ -346,8 +346,26 @@ try {
 
     if ($action === 'leave') {
         // Remove current user seat
+        $me = $db->prepare("SELECT seat FROM poker_players WHERE table_id = :tid AND username = :u");
+        $me->execute([':tid' => $tableId, ':u' => $username]);
+        $leftSeat = $me->fetchColumn();
         $stmt = $db->prepare("DELETE FROM poker_players WHERE table_id = :tid AND username = :u");
         $stmt->execute([':tid' => $tableId, ':u' => $username]);
+
+        // Leaving in the middle of a hand must not freeze the table: the pot goes on (or to the last one left)
+        if ($leftSeat !== false && !in_array($table['game_stage'], ['waiting', 'showdown'], true)) {
+            $live = $db->prepare("SELECT seat FROM poker_players WHERE table_id = :tid AND is_folded = 0 ORDER BY seat");
+            $live->execute([':tid' => $tableId]);
+            $seats = array_map('intval', $live->fetchAll(PDO::FETCH_COLUMN));
+            if (count($seats) <= 1) {
+                $db->prepare("UPDATE poker_tables SET game_stage = 'showdown' WHERE id = :tid")->execute([':tid' => $tableId]);
+                resolveWinner($db, $tableId, json_decode($table['community_cards'], true) ?: []);
+            } elseif ((int)$table['current_turn_seat'] === (int)$leftSeat) {
+                $next = null;
+                foreach ($seats as $sn) { if ($sn > (int)$leftSeat) { $next = $sn; break; } }
+                $db->prepare("UPDATE poker_tables SET current_turn_seat = :s WHERE id = :tid")->execute([':s' => $next ?? $seats[0], ':tid' => $tableId]);
+            }
+        }
 
         // If no non-bot human players remain, clear table state & bots
         $stmtHumans = $db->prepare("SELECT COUNT(*) FROM poker_players WHERE table_id = :tid AND is_folded = 0 AND is_bot = 0");
