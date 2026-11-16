@@ -101,6 +101,9 @@ session_write_close();
             <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">
                 <p class="term-muted" style="margin: 4px 0;">USER: <span style="color: var(--accent-color); font-weight: bold;"><?php echo htmlspecialchars($username); ?></span></p>
                 <p class="term-muted" style="margin: 4px 0;">ROLE: <span style="color: #ffaa00;"><?php echo !empty($account['is_admin']) ? 'ADMINISTRATOR' : 'STANDARD USER'; ?></span></p>
+                <?php if (accountIsSupporter($db, (int)$_SESSION['user_id'])): ?>
+                <p class="term-muted" style="margin: 4px 0;">BADGE: <span style="color: #f2c66d; font-weight: bold;">&#9829; SUPPORTER</span> <small>(thank you)</small></p>
+                <?php endif; ?>
             </div>
 
             <!-- Profile Bio Form -->

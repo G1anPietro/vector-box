@@ -1,0 +1,10 @@
+{
+  "updated": "2026-11-16",
+  "note": "Cifre indicative: la corrente è stimata dal consumo del portatile (circa 15 W, 24 ore su 24).",
+  "costs": [
+    { "label": "Corrente del server", "eur_month": 3.5, "note": "Portatile acceso giorno e notte" },
+    { "label": "Dominio", "eur_month": 1.0, "note": "Circa 12 € all'anno" },
+    { "label": "Ricambi (disco, ventola)", "eur_month": 3.0, "note": "Accantonati ogni mese" },
+    { "label": "Seconda copia dei backup", "eur_month": 2.0, "note": "Un secondo computer in un altro posto" }
+  ]
+}

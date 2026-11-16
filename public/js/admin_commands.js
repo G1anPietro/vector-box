@@ -137,6 +137,66 @@
     commandHandlers['grantcv'] = commandHandlers['/grantcv'];
     commandHandlers['revokecv'] = commandHandlers['/revokecv'];
 
+    // Donors and ad-free accounts (api/donors.php): the site never sees payments, the admin records them by hand
+    async function donorsApi(method, body) {
+        const csrfToken = window.SESSION_STATE?.csrfToken || '';
+        try {
+            const res = await fetch('api/donors.php', {
+                method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                credentials: 'same-origin',
+                body: method === 'GET' ? undefined : JSON.stringify(body)
+            });
+            return await res.json();
+        } catch (err) {
+            return { success: false, error: 'Network request failed' };
+        }
+    }
+    const USAGE_DONOR = '>> USAGE: /donor add <amount> [user=<username>] [name=<shown name>] [public] [date=YYYY-MM-DD] | /donor list | /donor remove <id>';
+    commandHandlers['/donor'] = async function(args, printGuestLog) {
+        const sub = (args[0] || '').toLowerCase();
+        if (sub === 'list') {
+            const res = await donorsApi('GET');
+            if (!res.success) return printGuestLog(`>> ERROR: ${res.error}`, COLORS.ERROR);
+            if (!res.donors.length) return printGuestLog('>> No donations recorded yet.', COLORS.INFO);
+            res.donors.forEach((d) => printGuestLog(`>> #${d.id} ${d.donated_at} ${(d.amount_cents / 100).toFixed(2)} ${d.currency}`
+                + ` | account: ${d.username || '-'} | name: ${d.display_name || '-'} | ${d.is_public ? 'public' : 'private'}`, COLORS.PRIMARY));
+            return;
+        }
+        if (sub === 'remove' && args[1]) {
+            const res = await donorsApi('POST', { action: 'remove', id: Number(args[1]) });
+            return printGuestLog(res.success ? `>> SUCCESS: ${res.message}` : `>> ERROR: ${res.error}`, res.success ? COLORS.PRIMARY : COLORS.ERROR);
+        }
+        if (sub === 'add' && args[1]) {
+            const body = { action: 'add', amount: args[1], public: false };
+            for (const a of args.slice(2)) {
+                if (a === 'public') body.public = true;
+                else if (a.startsWith('user=')) body.username = a.slice(5);
+                else if (a.startsWith('name=')) body.name = a.slice(5).replace(/_/g, ' ');
+                else if (a.startsWith('date=')) body.date = a.slice(5);
+            }
+            const res = await donorsApi('POST', body);
+            return printGuestLog(res.success ? `>> SUCCESS: ${res.message}` : `>> ERROR: ${res.error}`, res.success ? COLORS.PRIMARY : COLORS.ERROR);
+        }
+        printGuestLog(USAGE_DONOR, COLORS.ERROR);
+    };
+    commandHandlers['donor'] = commandHandlers['/donor'];
+
+    const adsFreeCommand = async function(args, printGuestLog) {
+        const sub = (args[0] || '').toLowerCase();
+        if (sub === 'list') {
+            const res = await donorsApi('GET');
+            return printGuestLog(res.success ? `>> Ad-free accounts: ${res.ads_free.join(', ') || '(none)'}` : `>> ERROR: ${res.error}`, res.success ? COLORS.PRIMARY : COLORS.ERROR);
+        }
+        if ((sub === 'add' || sub === 'remove') && args[1]) {
+            const res = await donorsApi('POST', { action: 'ads_free', username: args[1], value: sub === 'add' });
+            return printGuestLog(res.success ? `>> SUCCESS: ${res.message}` : `>> ERROR: ${res.error}`, res.success ? COLORS.PRIMARY : COLORS.ERROR);
+        }
+        printGuestLog('>> USAGE: /adsfree add <username> | /adsfree remove <username> | /adsfree list  (the admin never sees ads)', COLORS.ERROR);
+    };
+    commandHandlers['/adsfree'] = adsFreeCommand;
+    commandHandlers['adsfree'] = adsFreeCommand;
+
     // Aliases without leading slashes
     commandHandlers['ban'] = commandHandlers['/ban'];
     commandHandlers['timeout'] = commandHandlers['/timeout'];

@@ -63,6 +63,8 @@ $service = $main ? (preg_match('#ko-fi\.com#', $main) ? 'Ko-fi' : (preg_match('#
             <p class="notice"><?= $it ? 'Le donazioni non sono ancora attive. Intanto puoi aiutare giocando e facendo conoscere il sito.' : "Donations aren't open yet. Meanwhile you can help by playing and telling people about the site." ?></p>
         <?php endif; ?>
 
+        <p class="muted small"><a href="soldi.php"><?= $it ? 'Vedi dove vanno i soldi, con le cifre' : 'See where the money goes, with the figures' ?></a></p>
+
         <h2><?= $it ? 'A cosa servono' : 'What it pays for' ?></h2>
         <ul>
             <?php if ($it): ?>
@@ -90,6 +92,7 @@ $service = $main ? (preg_match('#ko-fi\.com#', $main) ? 'Ko-fi' : (preg_match('#
     <footer class="foot">
         <a href="giochi.php"><?= $it ? 'Giochi' : 'Games' ?></a>
         <a href="ads.php"><?= $it ? 'Supporta vector-box' : 'Support vector-box' ?></a>
+        <a href="soldi.php"><?= $it ? 'Dove vanno i soldi' : 'Where the money goes' ?></a>
         <a href="privacy.php">Privacy</a>
         <a href="../index.php"><?= $it ? 'Torna al sito' : 'Back to the site' ?></a>
     </footer>

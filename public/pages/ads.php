@@ -77,6 +77,7 @@ $other = $it ? 'en' : 'it';
 
     <footer class="foot">
         <a href="giochi.php"><?= $it ? 'Giochi' : 'Games' ?></a>
+        <a href="soldi.php"><?= $it ? 'Dove vanno i soldi' : 'Where the money goes' ?></a>
         <a href="privacy.php">Privacy</a>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>
         <a href="../index.php"><?= $it ? 'Torna al sito' : 'Back to the site' ?></a>

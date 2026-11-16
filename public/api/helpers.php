@@ -339,6 +339,14 @@ function donateGoal(): ?array {
     return [textCut($what, 80), $goal, max(0.0, (float)envValue('DONATE_RAISED_EUR', '0'))];
 }
 
+/** True when this account has at least one donation recorded by the admin (shows the supporter badge). */
+function accountIsSupporter(PDO $db, int $userId): bool {
+    if ($userId <= 0) return false;
+    $st = $db->prepare('SELECT 1 FROM donors WHERE account_id = :a LIMIT 1');
+    $st->execute([':a' => $userId]);
+    return (bool)$st->fetchColumn();
+}
+
 /** AdSense publisher id from .env (ca-pub-…), or '' when ads are off. */
 function adsenseClient(): string {
     $c = trim((string)envValue('ADSENSE_CLIENT', ''));

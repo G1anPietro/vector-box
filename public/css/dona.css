@@ -10,3 +10,5 @@
 .small { font-size: 15px; }
 .notice { margin-top: 22px; padding: 14px 16px; border: 1px dashed var(--plank); border-radius: 8px; color: var(--muted); }
 .thanks { margin-top: 28px; font-weight: 700; }
+.costs { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 14px; }
+.supporters span { display: inline-block; margin: 2px 0; }

@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 31;
+const DB_SCHEMA_VERSION = 32;
 
 /**
  * Session bootstrap.
@@ -566,6 +566,24 @@ function migrateV16(PDO $db): void {
 }
 
 /** v30: a temporary link can be limited to a number of openings (0 = no limit). */
+/** v32: people who donated (kept by the admin by hand: name as they want it shown, amount, optional account for the badge)
+ *  and accounts that never see ads. No e-mail, no payment data: the donation services keep those. */
+function migrateV32(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS donors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
+        display_name TEXT NOT NULL DEFAULT '',
+        amount_cents INTEGER NOT NULL DEFAULT 0,
+        currency TEXT NOT NULL DEFAULT 'EUR',
+        donated_at TEXT NOT NULL,
+        is_public INTEGER NOT NULL DEFAULT 0,
+        note TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_donors_account ON donors(account_id)");
+    addColumnIfMissing($db, 'accounts', 'ads_free', 'INTEGER NOT NULL DEFAULT 0');
+}
+
 /** v31: daily counters of bot requests (see bots.php), shown on the statistics page. */
 function migrateV31(PDO $db): void {
     $db->exec("CREATE TABLE IF NOT EXISTS bot_stats (
@@ -919,6 +937,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 31) {
             migrateV31($db);
+        }
+        if ($current < 32) {
+            migrateV32($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
