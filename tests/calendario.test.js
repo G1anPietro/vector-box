@@ -18,7 +18,7 @@ test.before(async () => {
     mario = new Client(site); await mario.register('ca_mario');
     luigi = new Client(site); await luigi.register('ca_luigi');
     peach = new Client(site); await peach.register('ca_peach');
-    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5B-I', school: 'ITIS' })).json.id;
+    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5B-I', school: 'ITIS', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: classId, approve: true });
     const code = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.invite_code;
     await luigi.post('/api/classi.php', { action: 'join', code });
@@ -139,7 +139,7 @@ test('turns: one class order, put on the next lessons of a subject; days off are
 
 test('another class cannot read or change this class\'s topics, homework, days off or turns by their ids', async () => {
     // peach has her own class, where she is the representative (every permission there)
-    const other = (await peach.post('/api/classi.php', { action: 'request', name: '4A', school: 'Liceo' })).json.id;
+    const other = (await peach.post('/api/classi.php', { action: 'request', name: '4A', school: 'Liceo', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: other, approve: true });
     await peach.post('/api/classi.php', { action: 'save_timetable', id: other, valid_from: '2026-09-01',
         periods: [{ start: '08:00', end: '09:00' }], slots: [{ day: 1, period: 1, subject: 'Arte' }] });

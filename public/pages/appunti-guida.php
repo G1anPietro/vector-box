@@ -121,6 +121,7 @@ $login = 'login.php?next=appunti.php';
                 <li><strong>Schemi:</strong> col pulsante <em>Scarica</em> sopra lo schema li prendi come <strong>SVG</strong> (si modifica con Inkscape,
                     Illustrator, Figma, LibreOffice Draw: testi e riquadri restano separati) o come <strong>PNG</strong> (immagine da mandare), a colori o in
                     bianco e nero per stamparli. A schermo intero puoi spostarti fino ai bordi e girare il telefono in orizzontale: lo schema si adatta.</li>
+                <li><strong>Solo per classi di maggiorenni:</strong> l'AI legge gli appunti solo se, quando si chiede la classe, si spunta "tutti gli studenti sono maggiorenni". Altrimenti l'AI resta spenta (gli appunti si caricano e si leggono comunque) e il rappresentante può accenderla più avanti dalle Impostazioni, confermando di nuovo.</li>
                 <li><strong>Genera ora:</strong> se non vuoi aspettare la sera, una volta l'ora per classe.</li>
                 <li>Ogni documento si scarica o si stampa in PDF. <strong>L'AI può sbagliare:</strong> controlla sempre con il libro e
                     con gli appunti originali (ogni parte dice da quali appunti viene).</li>

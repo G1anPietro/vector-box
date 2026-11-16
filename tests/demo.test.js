@@ -108,7 +108,7 @@ test('a visitor with no account sees the example class (read-only) and nothing e
     assert.ok((await guest.get(`/api/appunti.php?action=items&class_id=${demoId}`)).json.items.length >= 15);
     assert.equal((await guest.get(`/api/classifica.php?action=board&class_id=${demoId}`)).status, 200);
     // a real class stays closed to them
-    const other = (await anna.post('/api/classi.php', { action: 'request', name: '1A', school: 'X' })).json.id;
+    const other = (await anna.post('/api/classi.php', { action: 'request', name: '1A', school: 'X', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: other, approve: true });
     assert.equal((await guest.get(`/api/classi.php?action=class&id=${other}`)).status, 404);
     assert.equal((await guest.get(`/api/appunti.php?action=items&class_id=${other}`)).status, 404);

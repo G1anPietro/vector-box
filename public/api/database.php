@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 32;
+const DB_SCHEMA_VERSION = 33;
 
 /**
  * Session bootstrap.
@@ -566,6 +566,14 @@ function migrateV16(PDO $db): void {
 }
 
 /** v30: a temporary link can be limited to a number of openings (0 = no limit). */
+/** v33: the AI (Google Gemini) only reads the material of a class declared to have adult students only: the requester says so
+ *  (adults_declared) and the representative can switch it on later (the students grow up). Classes that already existed keep it on. */
+function migrateV33(PDO $db): void {
+    addColumnIfMissing($db, 'school_classes', 'ai_allowed', 'INTEGER NOT NULL DEFAULT 1');
+    addColumnIfMissing($db, 'school_classes', 'ai_adults_at', 'INTEGER');      // when someone declared "all adults" (NULL: before this rule)
+    addColumnIfMissing($db, 'school_classes', 'ai_adults_by', 'INTEGER');      // who declared it
+}
+
 /** v32: people who donated (kept by the admin by hand: name as they want it shown, amount, optional account for the badge)
  *  and accounts that never see ads. No e-mail, no payment data: the donation services keep those. */
 function migrateV32(PDO $db): void {
@@ -940,6 +948,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 32) {
             migrateV32($db);
+        }
+        if ($current < 33) {
+            migrateV33($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

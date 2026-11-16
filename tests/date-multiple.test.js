@@ -21,7 +21,7 @@ test.before(async () => {
     admin = await makeAdmin(site, 'dm_admin');
     mario = new Client(site); await mario.register('dm_mario');       // creates the class: representative
     luigi = new Client(site); await luigi.register('dm_luigi');
-    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5D', school: 'ITIS Test' })).json.id;
+    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5D', school: 'ITIS Test', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: classId, approve: true });
     await mario.post('/api/classi.php', { action: 'save_timetable', id: classId, valid_from: '2026-01-01', periods: { 1: [{ start: '08:00', end: '09:00' }] }, slots: [{ day: 1, period: 1, subject: 'Storia' }] });
     subj = site.db('SELECT id FROM class_subjects WHERE class_id = ?', [classId])[0].id;

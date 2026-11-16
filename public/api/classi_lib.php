@@ -392,6 +392,8 @@ function classDetail(PDO $db, array $class, int $me, bool $isAdmin): array {
         'summary_time' => $class['summary_time'],
         'summary_on' => (json_decode((string)($class['settings'] ?? '{}'), true)['summary_on'] ?? true) !== false,
         'links_on' => (json_decode((string)($class['settings'] ?? '{}'), true)['links_on'] ?? true) !== false,
+        'ai_allowed' => !empty($class['ai_allowed']),
+        'ai_adults_at' => !empty($class['ai_adults_at']) ? (int)$class['ai_adults_at'] : null,
         'digest' => digestSettings($class),
         'missing' => notesMissingSettings($class),
         'topics' => (function () use ($db, $id) {

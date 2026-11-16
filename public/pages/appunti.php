@@ -72,6 +72,8 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
                     <input name="name" placeholder="Classe (es. 5B-I)" required maxlength="40">
                     <input name="school" placeholder="Scuola" required maxlength="100">
                     <textarea name="note" placeholder="Note per l'amministratore (facoltative)" maxlength="300" rows="2"></textarea>
+                    <label class="check-row"><input type="checkbox" name="adults"> <span>Tutti gli studenti della classe sono maggiorenni (18 anni compiuti)</span></label>
+                    <p class="muted small">Se lo spunti, l'AI di Google può riassumere gli appunti della classe. Se non lo spunti, l'AI resta spenta: il rappresentante potrà accenderla più avanti nelle impostazioni, quando tutti saranno maggiorenni. Gli appunti si possono caricare e leggere comunque.</p>
                     <button>Invia la richiesta</button>
                 </form>
                 <p id="requests-closed" class="muted" hidden>Le richieste di nuove classi sono chiuse in questo momento.</p>

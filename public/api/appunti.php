@@ -534,6 +534,7 @@ try {
                 ], $st->fetchAll()),
                 'ai' => [
                     'configured' => geminiConfigured(),
+                    'allowed' => !empty($class['ai_allowed']),
                     'requested' => !empty($class['ai_requested_at']),
                     'next_manual_at' => $lastManual ? $lastManual + AI_MANUAL_EVERY_SEC : 0,
                     'pending_files' => (int)$pending->fetchColumn(),
@@ -933,6 +934,7 @@ try {
     if ($action === 'generate') {
         [$class, ] = apClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         if (!geminiConfigured()) apFail('ai_off', 'The AI is not configured on this server', 503);
+        if (empty($class['ai_allowed'])) apFail('ai_not_allowed', 'The AI is off for this class: the representative can switch it on in the class settings once all the students are adults', 403);
         // Optional range of lesson days to (re)write: notes, questions and schemas of those days
         $rFrom = trim((string)($in['from'] ?? ''));
         $rTo = trim((string)($in['to'] ?? ''));

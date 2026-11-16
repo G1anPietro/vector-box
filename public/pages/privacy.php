@@ -3,6 +3,7 @@
 // Keep it true: if the site starts storing something new, update this page.
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/retention.php';
+require_once __DIR__ . '/../includes/ads.php';
 
 $lang = pageLang();
 $it = $lang === 'it';
@@ -19,6 +20,7 @@ $updated = '2026-11-16';
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#16141c">
     <title>Privacy — vector-box</title>
+    <?php if ($adsOn && !adsHiddenForViewer()): ?><meta name="vb-ads" content="<?= adsConsentMode() ?>"><script src="../js/cookie_consent.js?v=<?= htmlspecialchars(defined('APP_VERSION') ? APP_VERSION : '1') ?>"></script><?php endif; ?>
     <link rel="stylesheet" href="../css/giochi.css?v=3">
 </head>
 <body>
@@ -69,7 +71,7 @@ $updated = '2026-11-16';
 
         <h2>Con chi li condivido e dove vanno</h2>
         <ul>
-            <li><strong>Google Gemini</strong> (intelligenza artificiale, Google, anche negli Stati Uniti): per trascrivere le foto e preparare riassunti, dispense e quiz, il materiale caricato in una classe (con i nomi utente di chi l’ha caricato) viene inviato a Gemini, sul livello gratuito: secondo i termini di Google, in questo caso Google può usare i contenuti per migliorare i propri prodotti e alcune persone possono leggerli. Per questo <strong>non caricare dati personali</strong> (tuoi o di altri), voti, documenti d’identità o informazioni sulla salute. I testi che ne escono sono generati automaticamente e possono contenere errori; nessuna decisione che riguarda le persone è presa da un sistema automatico. Termini di Google: <a href="https://ai.google.dev/gemini-api/terms" rel="noopener">ai.google.dev/gemini-api/terms</a>.</li>
+            <li><strong>Google Gemini</strong> (intelligenza artificiale, Google, anche negli Stati Uniti): per trascrivere le foto e preparare riassunti, dispense e quiz, il materiale caricato in una classe (con i nomi utente di chi l’ha caricato) viene inviato a Gemini, <strong>solo se la classe è stata dichiarata di soli studenti maggiorenni</strong> (lo si dichiara quando si chiede la classe; il rappresentante può accendere o spegnere l’AI dalle impostazioni, per esempio quando tutti diventano maggiorenni), sul livello gratuito: secondo i termini di Google, in questo caso Google può usare i contenuti per migliorare i propri prodotti e alcune persone possono leggerli. Per questo <strong>non caricare dati personali</strong> (tuoi o di altri), voti, documenti d’identità o informazioni sulla salute. I testi che ne escono sono generati automaticamente e possono contenere errori; nessuna decisione che riguarda le persone è presa da un sistema automatico. Termini di Google: <a href="https://ai.google.dev/gemini-api/terms" rel="noopener">ai.google.dev/gemini-api/terms</a>.</li>
             <li><strong>Notifiche al gestore (ntfy):</strong> alcuni avvisi (nuova visita, errori, backup) arrivano al telefono del gestore tramite un servizio di notifiche; contengono tra l’altro IP, pagina e browser di chi visita.</li>
             <li><strong>Librerie del lettore</strong> (cdnjs.cloudflare.com, cdn.jsdelivr.net): vedono il tuo indirizzo IP, come ogni sito che visiti.</li>
             <li><strong>Pubblicità (Google AdSense):</strong> <?= $adsOn ? 'attiva sulle pagine dei giochi' : 'non ancora attiva; quando lo sarà, comparirà sulle pagine dei giochi' ?>. Google e i suoi partner usano cookie e identificatori solo dopo il tuo consenso nel messaggio di Google. Non vedono i tuoi messaggi né i tuoi appunti. Come li usa Google: <a href="https://policies.google.com/technologies/partner-sites?hl=it" rel="noopener">policies.google.com/technologies/partner-sites</a>.</li>
@@ -93,11 +95,17 @@ $updated = '2026-11-16';
         <p>Il sito usa HTTPS, le password sono salvate cifrate, l’accesso ai dati è limitato al gestore e il server è aggiornato e protetto da limiti contro gli abusi. Se capitasse una violazione che mette a rischio i tuoi dati, la segnalerei al Garante entro 72 ore e avviserei chi è coinvolto.</p>
 
         <h2>Cookie e memoria del browser</h2>
+        <p>Un cookie è un piccolo file che il browser salva; la "memoria locale" (localStorage) è lo stesso, ma resta solo nel tuo browser. Qui trovi tutto quello che il sito salva, diviso per tipo.</p>
         <ul>
-            <li><strong>Tecnici, sempre attivi (non serve consenso):</strong> il cookie di sessione (restare collegati e proteggere i moduli), <code>vb_lang</code> (la lingua scelta, un anno) e <code>vb_chat_ticket</code> (collega la chat in tempo reale a chi sei).</li>
-            <li><strong>Preferenze, solo se accetti:</strong> <code>cookie_consent</code>, il tema grafico e le opzioni del menu (sfondo matrix, vetro smerigliato, mano sinistra), le finestre aperte e le schede; se hai un account il tema si salva anche lì. Sono memorie del tuo browser: non vengono inviate a terzi.</li>
-            <li><strong>Il lettore e i giochi</strong> salvano nella memoria locale il tema di lettura, l’avanzamento e i dati delle partite.</li>
-            <li><strong>Pubblicità (Google AdSense):</strong> <?= $adsOn ? 'le pagine dei giochi mostrano annunci di Google.' : 'quando saranno attivi, le pagine dei giochi mostreranno annunci di Google.' ?> I cookie di Google si usano solo dopo che hai dato il consenso; puoi rifiutare o cambiare idea in ogni momento. Non c’è pubblicità negli appunti di classe, nell’account né nel lettore.</li>
+            <li><strong>Tecnici e di funzionalità (non serve il tuo consenso):</strong> servono a darti il servizio che chiedi o a ricordare una scelta che hai fatto tu, e non vanno a nessun altro.
+                <ul>
+                    <li>Il cookie di sessione (<code>PHPSESSID</code> o simile): restare collegati e proteggere i moduli. Finisce quando chiudi il browser o dopo pochi giorni.</li>
+                    <li><code>vb_lang</code> (la lingua scelta, un anno) e <code>vb_chat_ticket</code> (collega la chat in tempo reale a chi sei).</li>
+                    <li><code>vb_consent</code> (6 mesi): ricorda cosa hai scelto sulla pubblicità, così non ti chiedo ogni volta.</li>
+                    <li>Il tema grafico e le opzioni del menu (sfondo matrix, vetro smerigliato, mano sinistra), la posizione delle finestre, la scheda aperta, il tema e l’avanzamento del lettore, le partite dei giochi: nel cookie <code>selected_theme</code> e nella memoria locale del tuo browser. Se hai un account il tema si salva anche lì.</li>
+                </ul></li>
+            <li><strong>Pubblicità (Google AdSense), solo con il tuo consenso:</strong> <?= $adsOn ? 'le pagine dei giochi mostrano annunci di Google' : 'quando saranno attivi, le pagine dei giochi mostreranno annunci di Google' ?>. Finché non premi "Accetta" nel messaggio sui cookie, il sito <strong>non carica nulla da Google</strong> e non compare nessun annuncio. Se accetti, Google e i suoi partner possono usare cookie e identificatori per mostrare e misurare gli annunci. "Rifiuta" e "Accetta" valgono allo stesso modo; puoi cambiare idea in ogni momento con il link "Cookie" in fondo alle pagine dei giochi<?= $adsOn ? '' : ' (comparirà quando gli annunci saranno attivi)' ?>, e la scelta si richiede dopo 6 mesi. Non c’è pubblicità negli appunti di classe, nell’account né nel lettore.<?= ($adsOn && !adsHiddenForViewer()) ? ' <button type="button" data-vb-cookie>Cambia la tua scelta sulla pubblicità</button>' : '' ?></li>
+            <li><strong>Statistiche:</strong> il sito non usa Google Analytics né altri strumenti di statistica di terzi: le visite si contano solo sul server (vedi sopra).</li>
         </ul>
 
         <h2>Modifiche</h2>
@@ -143,7 +151,7 @@ $updated = '2026-11-16';
 
         <h2>Who it is shared with and where it goes</h2>
         <ul>
-            <li><strong>Google Gemini</strong> (artificial intelligence, Google, also in the United States): to transcribe photos and write summaries, handouts and quizzes, the material uploaded to a class (with the usernames of who uploaded it) is sent to Gemini, on its free tier: under Google’s terms, Google may then use the content to improve its products and some people may read it. So <strong>do not upload personal data</strong> (yours or others’), grades, ID documents or health information. The texts it produces are generated automatically and may contain mistakes; no decision about people is taken by an automatic system. Google’s terms: <a href="https://ai.google.dev/gemini-api/terms" rel="noopener">ai.google.dev/gemini-api/terms</a>.</li>
+            <li><strong>Google Gemini</strong> (artificial intelligence, Google, also in the United States): to transcribe photos and write summaries, handouts and quizzes, the material uploaded to a class (with the usernames of who uploaded it) is sent to Gemini, <strong>only if the class has been declared to have adult students only</strong> (declared when the class is requested; the representative can switch the AI on or off in the settings, for instance once everybody is of age), on its free tier: under Google’s terms, Google may then use the content to improve its products and some people may read it. So <strong>do not upload personal data</strong> (yours or others’), grades, ID documents or health information. The texts it produces are generated automatically and may contain mistakes; no decision about people is taken by an automatic system. Google’s terms: <a href="https://ai.google.dev/gemini-api/terms" rel="noopener">ai.google.dev/gemini-api/terms</a>.</li>
             <li><strong>Notifications to the owner (ntfy):</strong> some alerts (new visit, errors, backups) reach the owner’s phone through a notification service; they include, among other things, the IP, page and browser of the visitor.</li>
             <li><strong>Reader libraries</strong> (cdnjs.cloudflare.com, cdn.jsdelivr.net): they see your IP address, like any site you visit.</li>
             <li><strong>Advertising (Google AdSense):</strong> <?= $adsOn ? 'active on the games pages' : 'not active yet; when it is, it will appear on the games pages' ?>. Google and its partners use cookies and identifiers only after you consent in Google’s message. They do not see your messages or your notes. How Google uses them: <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">policies.google.com/technologies/partner-sites</a>.</li>
@@ -167,11 +175,17 @@ $updated = '2026-11-16';
         <p>The site uses HTTPS, passwords are stored hashed, access to the data is limited to the owner and the server is kept updated and protected by limits against abuse. If a breach put your data at risk, I would report it to the Italian authority within 72 hours and tell the people involved.</p>
 
         <h2>Cookies and browser storage</h2>
+        <p>A cookie is a small file the browser keeps; "local storage" is the same, but stays only in your own browser. Here is everything the site keeps, by type.</p>
         <ul>
-            <li><strong>Technical, always on (no consent needed):</strong> the session cookie (stay logged in and protect forms), <code>vb_lang</code> (your chosen language, one year) and <code>vb_chat_ticket</code> (ties the live chat to who you are).</li>
-            <li><strong>Preferences, only if you accept:</strong> <code>cookie_consent</code>, the visual theme and the menu options (matrix background, frosted glass, left-handed mode), open windows and tabs; with an account the theme is also saved there. These are in your own browser: they are not sent to third parties.</li>
-            <li><strong>The reader and the games</strong> keep in local storage the reading theme, progress and game data.</li>
-            <li><strong>Advertising (Google AdSense):</strong> <?= $adsOn ? 'the games pages show Google ads.' : 'once enabled, the games pages will show Google ads.' ?> Google’s cookies are used only after you consent; you can refuse or change your mind at any time. There are no ads in class notes, the account or the reader.</li>
+            <li><strong>Technical and functional (no consent needed):</strong> they give you the service you ask for or remember a choice you made, and go to nobody else.
+                <ul>
+                    <li>The session cookie (<code>PHPSESSID</code> or similar): stay logged in and protect forms. It ends when you close the browser or after a few days.</li>
+                    <li><code>vb_lang</code> (your chosen language, one year) and <code>vb_chat_ticket</code> (ties the live chat to who you are).</li>
+                    <li><code>vb_consent</code> (6 months): remembers what you chose about ads, so I do not ask every time.</li>
+                    <li>The visual theme and the menu options (matrix background, frosted glass, left-handed mode), window positions, the open tab, the reader theme and progress, the games’ data: in the <code>selected_theme</code> cookie and in your browser’s local storage. With an account the theme is also saved there.</li>
+                </ul></li>
+            <li><strong>Advertising (Google AdSense), only with your consent:</strong> <?= $adsOn ? 'the games pages show Google ads' : 'once enabled, the games pages will show Google ads' ?>. Until you press "Accept" in the cookie message the site <strong>loads nothing from Google</strong> and no ad appears. If you accept, Google and its partners may use cookies and identifiers to show and measure ads. "Reject" and "Accept" count the same; you can change your mind any time with the "Cookies" link at the bottom of the games pages<?= $adsOn ? '' : ' (it appears once ads are enabled)' ?>, and the choice is asked again after 6 months. There are no ads in class notes, the account or the reader.<?= ($adsOn && !adsHiddenForViewer()) ? ' <button type="button" data-vb-cookie>Change your choice about ads</button>' : '' ?></li>
+            <li><strong>Statistics:</strong> the site uses no Google Analytics or other third-party statistics: visits are counted only on the server (see above).</li>
         </ul>
 
         <h2>Changes</h2>
@@ -182,6 +196,7 @@ $updated = '2026-11-16';
     <footer class="foot">
         <a href="giochi.php"><?= $it ? 'Giochi' : 'Games' ?></a>
         <a href="ads.php"><?= $it ? 'Supporta vector-box' : 'Support vector-box' ?></a>
+        <?= adsCookieLink($lang) ?>
         <a href="../index.php"><?= $it ? 'Torna al sito' : 'Back to the site' ?></a>
     </footer>
 </body>

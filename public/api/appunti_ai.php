@@ -177,7 +177,7 @@ function aiLog(string $msg): void {
 
 /** Transcribes pending photos/PDFs, oldest first. Returns how many were done; stops when the quota is used up. */
 function aiTranscribePending(PDO $db, int $max): int {
-    $st = $db->prepare("SELECT f.* FROM class_item_files f JOIN school_classes c ON c.id = f.class_id AND c.status = 'active'
+    $st = $db->prepare("SELECT f.* FROM class_item_files f JOIN school_classes c ON c.id = f.class_id AND c.status = 'active' AND c.ai_allowed = 1
                         WHERE f.text_status = 'pending' AND f.text_attempts < :a"
                         // with Whisper on the server, recordings are transcribed there (bin/appunti-whisper.php)
                         . (trim((string)envValue('WHISPER_CMD', '')) !== '' ? " AND f.mime NOT LIKE 'audio/%'" : '')
@@ -533,7 +533,7 @@ function aiCleanQuestions(string $raw): string {
  * the board ("Da sistemare") for who has the "reports" permission. Returns how many uploads were checked.
  */
 function aiClassifyItems(PDO $db, int $now, int $max = 8): int {
-    $st = $db->prepare("SELECT i.* FROM class_items i JOIN school_classes c ON c.id = i.class_id AND c.status = 'active'
+    $st = $db->prepare("SELECT i.* FROM class_items i JOIN school_classes c ON c.id = i.class_id AND c.status = 'active' AND c.ai_allowed = 1
                         WHERE i.ai_state IN ('', 'auto') AND i.created_at > :since
                           AND NOT EXISTS (SELECT 1 FROM class_item_files f WHERE f.item_id = i.id AND f.text_status = 'pending')
                         ORDER BY i.id LIMIT :n");
@@ -818,6 +818,10 @@ function aiRun(PDO $db, int $now): array {
 
     $classes = $db->query("SELECT * FROM school_classes WHERE status = 'active' AND is_demo = 0 ORDER BY id")->fetchAll();   // the example class has hand-made documents
     foreach ($classes as $class) {
+        if (empty($class['ai_allowed'])) {   // not declared adults-only: the AI never reads this class; forget a request made before it was switched off
+            if (!empty($class['ai_requested_at'])) $db->prepare('UPDATE school_classes SET ai_requested_at = NULL WHERE id = :id')->execute([':id' => $class['id']]);
+            continue;
+        }
         if (!aiClassDue($class, $now)) continue;
         $manual = !empty($class['ai_requested_at']);
         aiRetryErrors($manual);

@@ -14,7 +14,7 @@ test.before(async () => {
     mario = new Client(site); await mario.register('bb_mario');
     luigi = new Client(site); await luigi.register('bb_luigi');
     peach = new Client(site); await peach.register('bb_peach');
-    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5B-I', school: 'ITIS' })).json.id;
+    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5B-I', school: 'ITIS', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: classId, approve: true });
     const code = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.invite_code;
     await luigi.post('/api/classi.php', { action: 'join', code });
@@ -92,7 +92,7 @@ test('another class cannot read, edit or delete this class\'s announcements by i
     const notes = site.db("SELECT user_id, title FROM notifications WHERE kind = 'annuncio'");
     assert.ok(notes.every((n) => n.user_id !== marioId), 'not to the author');
     assert.ok(notes.some((n) => n.title === 'Riservato'), 'to the classmates');
-    const other = (await peach.post('/api/classi.php', { action: 'request', name: '4A', school: 'Liceo' })).json.id;
+    const other = (await peach.post('/api/classi.php', { action: 'request', name: '4A', school: 'Liceo', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: other, approve: true });
     assert.equal((await bb(peach, { action: 'delete_announcement', id })).status, 404);
     assert.equal((await bb(peach, { action: 'save_announcement', class_id: other, id, title: 'Rubato' })).status, 404);

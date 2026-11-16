@@ -21,8 +21,8 @@ test.before(async () => {
     admin = await makeAdmin(site, 'rc_admin');
     mario = new Client(site); await mario.register('rc_mario');
     peach = new Client(site); await peach.register('rc_peach');
-    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5G', school: 'ITIS Test' })).json.id;
-    other = (await peach.post('/api/classi.php', { action: 'request', name: '4G', school: 'Liceo Test' })).json.id;
+    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5G', school: 'ITIS Test', adults: true })).json.id;
+    other = (await peach.post('/api/classi.php', { action: 'request', name: '4G', school: 'Liceo Test', adults: true })).json.id;
     for (const id of [classId, other]) await admin.post('/api/classi.php', { action: 'decide', id, approve: true });
     for (const [c, id] of [[mario, classId], [peach, other]]) {
         await c.post('/api/classi.php', { action: 'save_timetable', id, valid_from: '2026-01-01', periods: { 1: [{ start: '08:00', end: '09:00' }] }, slots: [{ day: 1, period: 1, subject: 'Storia' }] });

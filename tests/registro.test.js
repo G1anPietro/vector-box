@@ -13,7 +13,7 @@ test.before(async () => {
     mario = new Client(site); await mario.register('lg_mario');
     luigi = new Client(site); await luigi.register('lg_luigi');
     peach = new Client(site); await peach.register('lg_peach');
-    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5N', school: 'ITIS Test' })).json.id;
+    classId = (await mario.post('/api/classi.php', { action: 'request', name: '5N', school: 'ITIS Test', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: classId, approve: true });
     const code = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.invite_code;
     await luigi.post('/api/classi.php', { action: 'join', code });

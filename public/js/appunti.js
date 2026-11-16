@@ -512,6 +512,7 @@ ${lines.join('\n')}
         const bar = $('#ai-bar');
         if (current.demo) { bar.replaceChildren(el('p', { class: 'muted', text: 'Questi documenti sono scritti a mano per l\'esempio: nella tua classe li scrive l\'AI, dal materiale che caricate.' })); return; }
         if (!ai.configured) { bar.replaceChildren(el('p', { class: 'muted', text: 'L\'AI non è ancora attiva su questo server: i riassunti arriveranno appena viene accesa.' })); return; }
+        if (ai.allowed === false) { bar.replaceChildren(el('p', { class: 'muted', text: 'L\'AI è spenta per questa classe (non tutti gli studenti sono maggiorenni). Gli appunti si caricano e si leggono come sempre; il rappresentante può accendere l\'AI dalle Impostazioni quando tutti lo saranno.' })); return; }
         const now = Date.now() / 1000;
         const wait = ai.next_manual_at > now;
         const at = new Date(ai.next_manual_at * 1000).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -1250,7 +1251,7 @@ ${lines.join('\n')}
         ev.preventDefault();
         const f = ev.target;
         try {
-            await classes_({ action: 'request', name: f.name.value, school: f.school.value, note: f.note.value });
+            await classes_({ action: 'request', name: f.name.value, school: f.school.value, note: f.note.value, adults: f.adults.checked });
             f.reset();
             status('Richiesta inviata: la vedrai attiva quando l\'amministratore la approva.', 'ok');
             await loadMine(current && current.id);
@@ -1271,7 +1272,7 @@ ${lines.join('\n')}
             const pending = all.classes.filter((c) => c.status === 'pending');
             $('#admin-requests').replaceChildren(...(pending.length ? pending.map((c) => el('li', {},
                 el('span', {}, el('b', { text: `${c.name} · ${c.school}` }), el('br'),
-                    el('span', { class: 'muted small', text: `da ${c.manager || '?'}${c.note ? ' — ' + c.note : ''}` })),
+                    el('span', { class: 'muted small', text: `da ${c.manager || '?'}${c.note ? ' — ' + c.note : ''} — ${c.all_adults ? 'tutti maggiorenni' : 'non tutti maggiorenni (AI spenta)'}` })),
                 el('span', {},
                     el('button', { class: 'mini', text: 'Approva', onclick: () => decide(c, true) }), ' ',
                     el('button', { class: 'danger mini', text: 'Rifiuta', onclick: () => decide(c, false) }))))

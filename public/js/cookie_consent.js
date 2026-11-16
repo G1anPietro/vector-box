@@ -1,76 +1,106 @@
-// public/js/cookie_consent.js
+// public/js/cookie_consent.js — the only thing on this site that needs your consent is Google advertising (AdSense).
+// Everything else that the browser keeps (session, language, theme, window positions, reading progress...) is technical or
+// functional: it is there because you asked for the service or chose the setting, and it never leaves your browser.
+//
+// So the banner appears only on pages that carry ads (<meta name="vb-ads" content="own|google">): "Reject" and "Accept" look the
+// same, nothing is ticked beforehand, the choice is remembered for 6 months in the cookie vb_consent, and it can be changed any
+// time with any element marked data-vb-cookie (or VBConsent.open()). Ads load only after "Accept" (see ads.js).
+// With content="google" Google's own certified message does the asking instead (ADSENSE_CMP=google in .env) and this banner stays quiet.
 (function () {
-    // Utility to parse cookies safely
-    function getCookie(name) {
-        // If user explicitly declined during this session, ignore all non-essential cookies
-        if (sessionStorage.getItem('cookie_consent') === 'declined') {
-            return null;
-        }
-        const match = document.cookie.match(new RegExp(`(?:^|; )${encodeURIComponent(name)}=([^;]*)`));
-        return match ? decodeURIComponent(match[1]) : null;
+    'use strict';
+    if (window.VBConsent) return;
+
+    var COOKIE = 'vb_consent';
+    var MAX_AGE_DAYS = 180;          // ask again after 6 months (Garante's guidelines)
+    var listeners = [];
+
+    function readCookie(name) {
+        var m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+        return m ? m[1] : null;
+    }
+    /** {ads: bool, t: ms} from the cookie text, or null when missing, damaged or older than 6 months. */
+    function parse(raw, now) {
+        if (!raw) return null;
+        try {
+            var v = JSON.parse(decodeURIComponent(raw));
+            if (!v || v.v !== 1 || typeof v.t !== 'number') return null;
+            if ((now || Date.now()) - v.t > MAX_AGE_DAYS * 86400000) return null;
+            return { ads: v.ads === true, t: v.t };
+        } catch (e) { return null; }
+    }
+    function get() { return parse(readCookie(COOKIE)); }
+    function save(ads) {
+        var value = encodeURIComponent(JSON.stringify({ v: 1, ads: !!ads, t: Date.now() }));
+        var secure = location.protocol === 'https:' ? ';Secure' : '';
+        document.cookie = COOKIE + '=' + value + ';max-age=' + (MAX_AGE_DAYS * 86400) + ';path=/;SameSite=Lax' + secure;
+        document.cookie = 'cookie_consent=;max-age=0;path=/';     // the old banner's cookie
+    }
+    function has(category) { var c = get(); return !!(c && c[category]); }
+
+    function decide(ads) {
+        var before = has('ads');
+        save(ads);
+        removeBanner();
+        listeners.forEach(function (fn) { try { fn(get()); } catch (e) { /* a listener must not break the others */ } });
+        if (before && !ads) location.reload();       // withdrawn: the ad scripts are already running, a reload stops them
     }
 
-    // Set a cookie only if consent is accepted
-    function setCookie(name, value, days = 30) {
-        if (getCookie("cookie_consent") !== "accepted") return;
-        
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        const isSecure = window.location.protocol === 'https:' ? ';Secure' : '';
-        document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)};expires=${date.toUTCString()};path=/;SameSite=Lax${isSecure}`;
+    // ---------- the banner ----------
+    var CSS = '#vb-consent{position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:560px;margin:0 auto;padding:16px;'
+        + 'background:#16141c;color:#f2f2f2;border:1px solid rgba(242,242,242,.45);border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.6);'
+        + 'font:15px/1.45 system-ui,sans-serif}#vb-consent h2{margin:0 0 6px;font-size:1.05em}#vb-consent p{margin:0 0 12px;color:#d6d6d6}'
+        + '#vb-consent a{color:#f2c66d}#vb-consent .vb-row{display:flex;gap:10px;flex-wrap:wrap}'
+        + '#vb-consent button{flex:1 1 140px;min-height:44px;padding:10px 14px;border-radius:8px;border:1px solid #f2f2f2;background:#f2f2f2;color:#16141c;'
+        + 'font:inherit;font-weight:700;cursor:pointer}#vb-consent button:focus-visible{outline:3px solid #f2c66d;outline-offset:2px}';
+    var bannerEl = null;
+    function removeBanner() { if (bannerEl && bannerEl.parentNode) bannerEl.parentNode.removeChild(bannerEl); bannerEl = null; }
+    function open() {
+        if (bannerEl) return;
+        var it = (document.documentElement.lang || 'it').slice(0, 2) !== 'en';
+        var t = it
+            ? { title: 'Pubblicità e cookie', body: 'Questo sito mostra annunci di Google solo se acconsenti: servono cookie e identificatori di Google. Tutto il resto (accesso, lingua, tema) non ha bisogno del tuo consenso. Puoi cambiare idea in ogni momento dal link "Cookie".', no: 'Rifiuta', yes: 'Accetta', more: 'Leggi la privacy' }
+            : { title: 'Ads and cookies', body: 'This site shows Google ads only if you agree: they need Google cookies and identifiers. Everything else (login, language, theme) needs no consent. You can change your mind any time from the "Cookies" link.', no: 'Reject', yes: 'Accept', more: 'Read the privacy page' };
+        var style = document.createElement('style'); style.textContent = CSS;
+        var box = document.createElement('div');
+        box.id = 'vb-consent'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', t.title);
+        var h = document.createElement('h2'); h.textContent = t.title;
+        var p = document.createElement('p'); p.textContent = t.body + ' ';
+        var a = document.createElement('a'); a.href = (location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/') + 'privacy.php'; a.textContent = t.more; p.appendChild(a);
+        var row = document.createElement('div'); row.className = 'vb-row';
+        var no = document.createElement('button'); no.type = 'button'; no.textContent = t.no; no.addEventListener('click', function () { decide(false); });
+        var yes = document.createElement('button'); yes.type = 'button'; yes.textContent = t.yes; yes.addEventListener('click', function () { decide(true); });
+        row.appendChild(no); row.appendChild(yes);        // same look, same size: refusing is as easy as accepting
+        box.appendChild(style); box.appendChild(h); box.appendChild(p); box.appendChild(row);
+        document.body.appendChild(box);
+        bannerEl = box;
     }
 
-    // Completely wipe all non-essential browser cookies
-    function clearAllCookies() {
-        const cookies = document.cookie.split(";");
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-        }
+    function mode() {
+        var m = document.querySelector('meta[name="vb-ads"]');
+        return m ? (m.getAttribute('content') === 'google' ? 'google' : 'own') : '';
     }
 
-    // Expose global utilities
-    window.getSystemCookie = getCookie;
-    window.setSystemCookie = setCookie;
-    window.clearAllCookies = clearAllCookies;
+    window.VBConsent = {
+        get: get, has: has, open: open, mode: mode,
+        onChange: function (fn) { listeners.push(fn); },
+        _parse: parse,        // for the tests
+    };
 
-    document.addEventListener("DOMContentLoaded", () => {
-        const cookieBanner = document.getElementById('cookie-banner');
-        const acceptBtn = document.getElementById('cookie-accept-btn');
-        const declineBtn = document.getElementById('cookie-decline-btn');
+    // Small helpers other scripts already use (window states): functional storage, no consent needed.
+    window.getSystemCookie = function (name) {
+        var m = document.cookie.match(new RegExp('(?:^|; )' + encodeURIComponent(name) + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    };
+    window.setSystemCookie = function (name, value, days) {
+        var d = new Date(); d.setTime(d.getTime() + (days || 30) * 86400000);
+        var secure = location.protocol === 'https:' ? ';Secure' : '';
+        document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax' + secure;
+    };
 
-        const consentStatus = getCookie("cookie_consent");
-        const sessionDeclined = sessionStorage.getItem('cookie_consent') === 'declined';
-
-        // Show banner only if no consent cookie is saved and user hasn't already declined in this session
-        if (!consentStatus && !sessionDeclined && cookieBanner) {
-            cookieBanner.classList.remove('hidden');
-        }
-
-        // Handle Accept
-        acceptBtn?.addEventListener('click', () => {
-            sessionStorage.removeItem('cookie_consent');
-            
-            const date = new Date();
-            date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000)); // 1 Year
-            const isSecure = window.location.protocol === 'https:' ? ';Secure' : '';
-            document.cookie = `cookie_consent=accepted;expires=${date.toUTCString()};path=/;SameSite=Lax${isSecure}`;
-            
-            cookieBanner?.classList.add('hidden');
+    document.addEventListener('DOMContentLoaded', function () {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-vb-cookie]'), function (el) {
+            el.addEventListener('click', function (e) { e.preventDefault(); open(); });
         });
-
-        // Handle Decline (Fixes saved state on decline)
-        declineBtn?.addEventListener('click', () => {
-            // 1. Wipe all existing persistent cookies immediately
-            clearAllCookies();
-
-            // 2. Use sessionStorage ONLY so the banner stays hidden for this browsing tab without writing persistent cookies
-            sessionStorage.setItem('cookie_consent', 'declined');
-
-            // 3. Hide banner
-            cookieBanner?.classList.add('hidden');
-        });
+        if (mode() === 'own' && !get()) open();
     });
 })();

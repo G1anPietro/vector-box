@@ -141,7 +141,7 @@ try {
                 'upload_limits' => classUploadLimits($db),
                 'classes' => array_map(fn($c) => [
                     'id' => (int)$c['id'], 'name' => $c['name'], 'school' => $c['school'],
-                    'status' => $c['status'], 'note' => $c['request_note'],
+                    'status' => $c['status'], 'note' => $c['request_note'], 'all_adults' => !empty($c['ai_adults_at']) && !empty($c['ai_allowed']),
                     'manager' => $c['manager_name'], 'members' => (int)$c['members'],
                     'limits_mb' => classLimits($db, $c),
                     'created_at' => (int)$c['created_at'],
@@ -187,10 +187,14 @@ try {
         $dup->execute([':n' => $name, ':s' => $school]);
         if ($dup->fetchColumn()) clFail('duplicate', 'This class was already requested and is waiting for approval');
 
-        $db->prepare("INSERT INTO school_classes (name, school, status, manager_id, request_note, periods, created_at)
-                      VALUES (:n, :s, 'pending', :me, :note, :p, :t)")
+        // "All the students are adults": only then the AI may read the class material (Google Gemini). Unticked = AI off,
+        // and the representative can switch it on later in the class settings.
+        $adults = !empty($in['adults']);
+        $db->prepare("INSERT INTO school_classes (name, school, status, manager_id, request_note, periods, created_at, ai_allowed, ai_adults_at, ai_adults_by)
+                      VALUES (:n, :s, 'pending', :me, :note, :p, :t, :ai, :at, :by)")
            ->execute([':n' => $name, ':s' => $school, ':me' => $me, ':note' => $note,
-                      ':p' => json_encode(classDefaultPeriods()), ':t' => time()]);
+                      ':p' => json_encode(classDefaultPeriods()), ':t' => time(),
+                      ':ai' => $adults ? 1 : 0, ':at' => $adults ? time() : null, ':by' => $adults ? $me : null]);
         jsonResponse(['success' => true, 'id' => (int)$db->lastInsertId(), 'status' => 'pending']);
     }
 
@@ -421,6 +425,21 @@ try {
         }
         classLog($db, $id, $me, $action === 'merge_subject' ? 'Materie unite' : 'Materia eliminata', 'materia ' . $from);
         jsonResponse(['success' => true]);
+    }
+
+    if ($action === 'ai_switch') {
+        // The AI (Google Gemini) reads the class material only if the class says all its students are adults.
+        // Switching it on needs that declaration again (people grow up, but it must be true); switching off is always allowed.
+        $class = clManaged($db, $id, $me, $isAdmin, 'settings');
+        if (!empty($in['on'])) {
+            if (empty($in['adults_confirm'])) clFail('adults_needed', 'Confirm that all the students of the class are adults to switch the AI on', 400);
+            $db->prepare('UPDATE school_classes SET ai_allowed = 1, ai_adults_at = :t, ai_adults_by = :u WHERE id = :id')->execute([':t' => time(), ':u' => $me, ':id' => $id]);
+            classLog($db, $id, $me, 'AI attivata', 'dichiarati tutti maggiorenni');
+        } else {
+            $db->prepare('UPDATE school_classes SET ai_allowed = 0, ai_requested_at = NULL WHERE id = :id')->execute([':id' => $id]);
+            classLog($db, $id, $me, 'AI disattivata');
+        }
+        jsonResponse(['success' => true, 'ai_allowed' => !empty($in['on'])]);
     }
 
     if ($action === 'settings') {

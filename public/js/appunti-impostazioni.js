@@ -270,6 +270,27 @@
         const sendSummary = async (on) => post('../api/classi.php', { action: 'settings', id: classId, summary_time: time.value, timezone: c.timezone, summary_on: on });
         let summaryOn = c.summary_on;
         sumForm.addEventListener('submit', async (ev) => { ev.preventDefault(); try { await sendSummary(summaryOn); saved(); } catch (e) { fail(e); } });
+        // the AI (Google Gemini) only reads the class if every student is an adult: declared when the class is requested, switched on here later
+        const aiOn = c.ai_allowed !== false;
+        const aiBox = el('div', {},
+            el('p', {}, el('b', { text: aiOn ? 'L\'AI è accesa per questa classe.' : 'L\'AI è spenta per questa classe.' })),
+            el('p', { class: 'muted small', text: aiOn
+                ? 'È accesa perché tutti gli studenti sono maggiorenni' + (c.ai_adults_at ? ` (dichiarato il ${new Date(c.ai_adults_at * 1000).toLocaleDateString('it-IT')})` : '') + '. L\'AI di Google legge il materiale della classe per trascriverlo e riassumerlo. Puoi spegnerla quando vuoi.'
+                : 'Finché non tutti gli studenti sono maggiorenni, nessun materiale della classe viene mandato all\'AI di Google. Gli appunti si caricano, si leggono e si scaricano come sempre.' }),
+            canSettings
+                ? (aiOn
+                    ? el('button', { type: 'button', class: 'ghost mini danger-soft', text: 'Spegni l\'AI', onclick: async () => {
+                        if (!confirm('Spegnere l\'AI per questa classe? I documenti già fatti restano.')) return;
+                        try { await post('../api/classi.php', { action: 'ai_switch', id: classId, on: false }); await draw(); drawNotifs(); saved('AI spenta.'); } catch (e) { fail(e); }
+                    } })
+                    : el('button', { type: 'button', class: 'ghost mini', text: 'Accendi l\'AI…', onclick: () => C.dialogForm('Accendi l\'AI per la classe', (form) => {
+                        form.append(el('p', { class: 'muted small', text: 'Il materiale della classe verrà mandato all\'AI di Google (livello gratuito: Google può usarlo per migliorare i suoi prodotti). Si può fare solo se tutti gli studenti della classe sono maggiorenni.' }),
+                            el('label', { class: 'check-row' }, el('input', { type: 'checkbox', name: 'adults', required: true }), el('span', { text: ' Confermo che tutti gli studenti della classe sono maggiorenni (18 anni compiuti)' })));
+                    }, async (form) => {
+                        await post('../api/classi.php', { action: 'ai_switch', id: classId, on: true, adults_confirm: form.adults.checked });
+                        await draw(); drawNotifs(); saved('AI accesa.');
+                    }, 'Accendi') }))
+                : el('p', { class: 'muted small', text: 'Lo cambia il rappresentante (o chi ha il permesso).' }));
         const summaryBox = el('div', {},
             sw('Riassunto automatico degli appunti', summaryOn, async (on, box) => {
                 try { await sendSummary(on); summaryOn = on; sumForm.hidden = !on; saved(); } catch (e) { box.checked = !on; fail(e); }
@@ -337,9 +358,11 @@
         const askClass = el('button', { type: 'button', class: 'ghost', text: 'Chiedi una nuova classe', onclick: () => C.dialogForm('Chiedi una nuova classe', (form) => {
             form.append(el('label', { text: 'Classe' }, el('input', { name: 'name', required: true, maxLength: 40 })),
                 el('label', { text: 'Scuola' }, el('input', { name: 'school', required: true, maxLength: 100 })),
-                el('label', { text: 'Note per l\'amministratore (facoltative)' }, el('textarea', { name: 'note', rows: 2, maxLength: 300 })));
+                el('label', { text: 'Note per l\'amministratore (facoltative)' }, el('textarea', { name: 'note', rows: 2, maxLength: 300 })),
+                el('label', { class: 'check-row' }, el('input', { type: 'checkbox', name: 'adults' }), el('span', { text: ' Tutti gli studenti della classe sono maggiorenni (18 anni compiuti)' })),
+                el('p', { class: 'muted small', text: 'Se lo spunti, l\'AI di Google può riassumere gli appunti della classe. Se non lo spunti, l\'AI resta spenta: il rappresentante potrà accenderla più avanti, quando tutti saranno maggiorenni. Gli appunti si caricano e si leggono comunque.' }));
         }, async (form) => {
-            await post('../api/classi.php', { action: 'request', name: form.name.value, school: form.school.value, note: form.note.value });
+            await post('../api/classi.php', { action: 'request', name: form.name.value, school: form.school.value, note: form.note.value, adults: form.adults.checked });
             saved('Richiesta inviata: la vedrai attiva quando l\'amministratore la approva.');
         }, 'Invia la richiesta') });
         const classesSection = section('Le tue classi', 'La classe che vedi negli Appunti e nell\'archivio.',
@@ -378,6 +401,7 @@
             el('div', { class: 'set-pair' },
             section('Codice della classe', 'Compagni, ruoli, materie e orario si gestiscono dalla scheda Classe.', codeBox,
                 el('a', { class: 'ghost-link', href: 'appunti.php?class=' + classId + '&tab=class', text: 'Apri la scheda Classe' })),
+            section('Intelligenza artificiale', null, aiBox),
             section('Riassunto automatico', null, summaryBox)),
             section('Link temporanei della classe', null, linksBox),
             section('Riepilogo settimanale', null, digestBox),

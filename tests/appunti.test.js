@@ -57,7 +57,7 @@ test.before(async () => {
     toad = new Client(site); await toad.register('ap_toad');
     peach = new Client(site); await peach.register('ap_peach');
 
-    classId = (await cl(mario, { action: 'request', name: '5B-I', school: 'ITIS' })).json.id;
+    classId = (await cl(mario, { action: 'request', name: '5B-I', school: 'ITIS', adults: true })).json.id;
     await cl(admin, { action: 'decide', id: classId, approve: true });
     const code = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.invite_code;
     await cl(luigi, { action: 'join', code });
