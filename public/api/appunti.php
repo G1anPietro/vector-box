@@ -478,7 +478,7 @@ try {
             $files = [];
             if ($items) {
                 $ids = implode(',', array_map(fn($i) => (int)$i['id'], $items));
-                foreach ($db->query("SELECT * FROM class_item_files WHERE item_id IN ($ids) ORDER BY id")->fetchAll() as $f) {
+                foreach ($db->query("SELECT id, item_id, original_name, mime, size, text_status FROM class_item_files WHERE item_id IN ($ids) ORDER BY id")->fetchAll() as $f) {
                     $files[(int)$f['item_id']][] = $f;
                 }
             }
