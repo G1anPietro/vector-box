@@ -1,4 +1,4 @@
-.mailbox { display: grid; grid-template-columns: 220px 1fr; gap: 16px; max-width: 1000px; margin: 20px auto; padding: 0 16px; align-items: start; }
+.mailbox { position: relative; z-index: 2; display: grid; grid-template-columns: 220px 1fr; gap: 16px; max-width: 1000px; margin: 76px auto 20px; padding: 0 16px; align-items: start; }
 .mb-side { display: flex; flex-direction: column; gap: 8px; }
 .mb-side .nav-btn { text-align: left; }
 .mb-folder.active { border-color: var(--accent-color); }
@@ -14,3 +14,7 @@
 .mb-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .mb-danger { border-color: #ff3333; color: #ff3333; }
 @media (max-width: 700px) { .mailbox { grid-template-columns: 1fr; } .mb-side { flex-direction: row; flex-wrap: wrap; } .mb-status { width: 100%; } }
+.mb-side, .mb-main { background: rgba(0, 0, 0, 0.55); padding: 12px; border: 1px solid var(--border-color); }
+.mb-row, .mb-main label { color: var(--text-primary, #eee); }
+.mb-form input, .mb-form textarea, .mb-form select { width: 100%; box-sizing: border-box; }
+.mb-list[hidden], .mb-form[hidden] { display: none; }

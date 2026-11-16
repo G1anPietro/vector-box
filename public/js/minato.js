@@ -92,7 +92,7 @@
             $('mn-mines').textContent = String(Math.max(-99, g.mines - g.flags)).padStart(3, '0');
             $('mn-time').textContent = String(secs()).padStart(3, '0');
             $('mn-best').textContent = best[level] ? best[level] + ' s' : '—';
-            $('mn-face').textContent = g.status === 'won' ? '😎' : g.status === 'lost' ? '💥' : '🙂';
+            $('mn-face').textContent = g.status === 'won' ? ':D' : g.status === 'lost' ? 'X(' : ':)';
             $('mn-flag').setAttribute('aria-pressed', String(flagMode));
         }
 
@@ -101,10 +101,10 @@
             let txt = '', cls = 'cell';
             if (g.open[i]) {
                 cls += ' open';
-                if (g.bomb[i]) { txt = '💣'; if (i === g.boom) cls += ' boom'; }
+                if (g.bomb[i]) { txt = '✹'; if (i === g.boom) cls += ' boom'; }
                 else if (g.count[i]) { txt = String(g.count[i]); cls += ' n' + g.count[i]; }
-            } else if (g.flag[i]) { txt = '🚩'; cls += ' flag'; if (g.status === 'lost' && !g.bomb[i]) { txt = '❌'; } }
-            else if (g.status === 'lost' && g.bomb[i]) { txt = '💣'; cls += ' open'; }
+            } else if (g.flag[i]) { txt = '⚑'; cls += ' flag'; if (g.status === 'lost' && !g.bomb[i]) { txt = '✗'; } }
+            else if (g.status === 'lost' && g.bomb[i]) { txt = '✹'; cls += ' open'; }
             el.className = cls + (i === cursor ? ' cur' : '');
             el.textContent = txt;
             el.setAttribute('aria-label', g.open[i] ? (g.bomb[i] ? 'mina' : g.count[i] ? g.count[i] + ' mine vicine' : 'vuota') : g.flag[i] ? 'bandiera' : 'coperta');
