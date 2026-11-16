@@ -262,7 +262,7 @@ function apCommitUploads(PDO $db, array $class, int $me, array $fields, array $u
         foreach ($uploads as $u) {
             [$ext, $mime] = $u['type'];
             $name = bin2hex(random_bytes(16)) . '.' . $ext;
-            if (!empty($u['local']) ? !rename($u['tmp'], "$dir/$name") : !move_uploaded_file($u['tmp'], "$dir/$name")) throw new RuntimeException('cannot store the file');
+            if (!empty($u['local']) ? !copy($u['tmp'], "$dir/$name") : !move_uploaded_file($u['tmp'], "$dir/$name")) throw new RuntimeException('cannot store the file');
             $stored[] = ['stored' => $name, 'original' => textCut(basename(str_replace('\\', '/', $u['name'])), 200),
                          'mime' => $mime, 'size' => $u['size'], 'ext' => $ext, 'sha256' => (string)@hash_file('sha256', "$dir/$name")];
             if ($ext === 'html' || $ext === 'htm') {
@@ -760,7 +760,9 @@ try {
         $limits = classLimits($db, $class);
         if ($name === '' || $size <= 0) apFail('bad_file', 'Empty file');
         if ($size > $limits['file'] * 1048576) apFail('file_too_large', "\"$name\" is larger than {$limits['file']} MB", 413);
-        if (notesUsedBytes($db, (int)$class['id']) + $size > $limits['class'] * 1048576) apFail('class_full', 'The class has used all its space', 413);
+        $openBytes = 0;   // what the user has already announced and not finished counts against the space too
+        foreach (glob(apTmpRoot() . "/$me/*", GLOB_ONLYDIR) ?: [] as $od) $openBytes += (int)(apTmpMeta($od)['size'] ?? 0);
+        if (notesUsedBytes($db, (int)$class['id']) + $openBytes + $size > $limits['class'] * 1048576) apFail('class_full', 'The class has used all its space', 413);
         if (preg_match('/^[a-f0-9]{64}$/', $hash)) {
             $dup = $db->prepare('SELECT f.original_name, i.lesson_date FROM class_item_files f JOIN class_items i ON i.id = f.item_id WHERE f.class_id = :c AND f.sha256 = :h LIMIT 1');
             $dup->execute([':c' => $class['id'], ':h' => $hash]);
@@ -785,12 +787,13 @@ try {
         apClass($db, (int)$meta["class_id"], $me, $isAdmin);
         $part = $_FILES['chunk'] ?? null;
         if (!is_array($part) || $part['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($part['tmp_name']) || $part['size'] > 2 * UP_CHUNK) apFail('bad_chunk', 'Bad piece');
-        clearstatcache(true, "$dir/data.part");
-        $have = is_file("$dir/data.part") ? (int)filesize("$dir/data.part") : 0;
-        if ((int)($in['offset'] ?? -1) !== $have) jsonResponse(['success' => false, 'code' => 'offset', 'error' => 'Wrong offset', 'received' => $have], 409);
-        if ($have + $part['size'] > (int)$meta['size']) { apTmpRemove($dir); apFail('too_big', 'More data than announced', 413); }
+        // lock FIRST, then read the size: a retry that arrives while the first copy is still being written must not append twice
         $fh = fopen("$dir/data.part", 'ab');
         if (!$fh || !flock($fh, LOCK_EX)) throw new RuntimeException('cannot write the piece');
+        clearstatcache(true, "$dir/data.part");
+        $have = (int)filesize("$dir/data.part");
+        if ((int)($in['offset'] ?? -1) !== $have) { flock($fh, LOCK_UN); fclose($fh); jsonResponse(['success' => false, 'code' => 'offset', 'error' => 'Wrong offset', 'received' => $have], 409); }
+        if ($have + $part['size'] > (int)$meta['size']) { flock($fh, LOCK_UN); fclose($fh); apTmpRemove($dir); apFail('too_big', 'More data than announced', 413); }
         $src = fopen($part['tmp_name'], 'rb');
         stream_copy_to_stream($src, $fh);
         fclose($src);
