@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let made = 0;
         for (const book of missing) {
             try {
-                const pdf = await pdfjsLib.getDocument({ url: `../api/books.php?action=stream&id=${book.id}`, disableAutoFetch: true }).promise;
+                const pdf = await pdfjsLib.getDocument({ url: `../api/books.php?action=stream&id=${book.id}`, disableAutoFetch: true, isEvalSupported: false }).promise;
                 const page = await pdf.getPage(1);
                 const base = page.getViewport({ scale: 1 });
                 const viewport = page.getViewport({ scale: Math.min(2, 480 / base.width) });
@@ -861,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         try {
-            pdfDoc = await pdfjsLib.getDocument(url).promise;
+            pdfDoc = await pdfjsLib.getDocument({ url, isEvalSupported: false }).promise;
             pdfTotalPages = pdfDoc.numPages;
             pdfCurrentPage = parseInt(savedPage, 10) || 1;
 

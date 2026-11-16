@@ -62,6 +62,12 @@ function clRepresentative(PDO $db, int $id, int $me, bool $isAdmin): array {
     return $class;
 }
 
+/** A "roles" holder may hand out only the permissions they hold themselves (the representative and the site admin: all). */
+function clGrantable(PDO $db, array $class, int $me, bool $isAdmin, array $wanted): array {
+    if ($isAdmin || (int)$class['manager_id'] === $me) return $wanted;
+    return array_values(array_intersect($wanted, classPerms($db, $class, $me, $isAdmin)));
+}
+
 function clRoleOf(PDO $db, int $classId, int $roleId): ?array {
     $st = $db->prepare('SELECT * FROM class_roles WHERE id = :r AND class_id = :c');
     $st->execute([':r' => $roleId, ':c' => $classId]);
@@ -329,11 +335,11 @@ try {
 
     if ($action === 'save_role') {
         // Create (no role_id) or change a role: name, colour, permissions
-        clManaged($db, $id, $me, $isAdmin, 'roles');
+        $class0 = clManaged($db, $id, $me, $isAdmin, 'roles');
         $name = clText($in['name'] ?? '', 30);
         if ($name === '') clFail('bad_name', 'Give the role a name');
         $color = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($in['color'] ?? '')) ? (string)$in['color'] : '#5b8def';
-        $perms = json_encode(classCleanPerms($in['perms'] ?? []));
+        $perms = json_encode(clGrantable($db, $class0, $me, $isAdmin, classCleanPerms($in['perms'] ?? [])));
         $roleId = (int)($in['role_id'] ?? 0);
         if ($roleId) {
             if (!clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
@@ -368,9 +374,14 @@ try {
         if (!classIsMember($db, $id, $userId)) clFail('not_member', 'That user is not in the class', 404);
         if ($userId === (int)$class['manager_id']) clFail('is_manager', 'The representative already has every permission', 409);
         $roleId = (int)($in['role_id'] ?? 0);
-        if ($roleId && !clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
+        $role = $roleId ? clRoleOf($db, $id, $roleId) : null;
+        if ($roleId && !$role) clFail('not_found', 'Role not found', 404);
+        if ($role) {
+            $rp = json_decode((string)$role['perms'], true);
+            if (is_array($rp) && count(clGrantable($db, $class, $me, $isAdmin, $rp)) !== count($rp)) clFail('not_allowed', 'That role has permissions you do not hold', 403);
+        }
         $db->prepare('UPDATE class_members SET role_id = :r, perms = :p WHERE class_id = :c AND user_id = :u')
-           ->execute([':r' => $roleId ?: null, ':p' => json_encode(classCleanPerms($in['perms'] ?? [])), ':c' => $id, ':u' => $userId]);
+           ->execute([':r' => $roleId ?: null, ':p' => json_encode(clGrantable($db, $class, $me, $isAdmin, classCleanPerms($in['perms'] ?? []))), ':c' => $id, ':u' => $userId]);
         classLog($db, $id, $me, 'Ruolo o permessi di un compagno cambiati', 'utente ' . $userId);
         jsonResponse(['success' => true]);
     }
@@ -430,7 +441,7 @@ try {
     if ($action === 'ai_switch') {
         // The AI (Google Gemini) reads the class material only if the class says all its students are adults.
         // Switching it on needs that declaration again (people grow up, but it must be true); switching off is always allowed.
-        $class = clManaged($db, $id, $me, $isAdmin, 'settings');
+        $class = clRepresentative($db, $id, $me, $isAdmin);   // the declaration "all adults" is the representative's, not any settings holder's
         if (!empty($in['on'])) {
             if (empty($in['adults_confirm'])) clFail('adults_needed', 'Confirm that all the students of the class are adults to switch the AI on', 400);
             $db->prepare('UPDATE school_classes SET ai_allowed = 1, ai_adults_at = :t, ai_adults_by = :u WHERE id = :id')->execute([':t' => time(), ':u' => $me, ':id' => $id]);
@@ -478,7 +489,8 @@ try {
 
     if ($action === 'read_timetable') {
         require_once __DIR__ . '/classi_ai.php';
-        $class = clManaged($db, $id, $me, $isAdmin);
+        $class = clManaged($db, $id, $me, $isAdmin, 'timetable');
+        if (empty($class['ai_allowed'])) clFail('ai_not_allowed', 'The AI is off for this class', 403);
         if (!geminiConfigured()) clFail('ai_off', 'The AI is not configured on this server', 503);
         if (!checkRateLimit('timetable_ai', 5, 3600, 'class:' . $id)) clFail('slow_down', 'Too many attempts, try again later', 429);
         $files = [];
@@ -511,7 +523,7 @@ try {
     }
 
     if ($action === 'save_timetable') {
-        $class = clManaged($db, $id, $me, $isAdmin);
+        $class = clManaged($db, $id, $me, $isAdmin, 'timetable');
         $periods = classParsePeriods($in['periods'] ?? null);
         if (is_string($periods)) clFail('bad_periods', $periods);
         $slots = classParseSlots($in['slots'] ?? null, $periods);

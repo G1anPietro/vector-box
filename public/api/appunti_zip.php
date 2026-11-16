@@ -151,6 +151,7 @@ function zipWrite(PDO $db, array $class, array $scope, array $items, array $file
     // AI documents of the same scope (written by the site, or uploaded by hand)
     $dw = ['d.class_id = :c', "d.status = 'ok'"];
     $dp = [':c' => $classId];
+    $dw[] = "d.kind != 'quiz'";   // the quiz JSON holds the answers: they are never sent before they are given
     if ($event) { $dw[] = 'd.event_id = :e'; $dp[':e'] = $event['id']; }
     else {
         $dw[] = "d.kind = 'lezione'";
