@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>503 // Servizio non disponibile</title>
+<link rel="stylesheet" href="/errors/errors.css">
+</head>
+<body data-retry="1">
+<main class="err">
+  <div class="err-tag">// SYSTEM_OFFLINE</div>
+  <h1 class="err-code" data-text="503">503</h1>
+  <h2 class="err-title">Servizio non disponibile</h2>
+  <p class="err-text">Il sito è in manutenzione o sovraccarico. Riprovo da solo.</p>
+  <p class="err-retry" id="err-retry" hidden>Nuovo tentativo tra <b id="err-count">15</b>s</p>
+  <div class="err-actions">
+    <a class="err-btn" href="/">// RETURN_HOME</a>
+    <a class="err-btn err-btn-alt" href="#" id="err-back">// GO_BACK</a>
+  </div>
+  <p class="err-foot">vector-box · error 503</p>
+</main>
+<script src="/errors/errors.js"></script>
+</body>
+</html>

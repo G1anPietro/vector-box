@@ -1,0 +1,25 @@
+:root { --bg:#050505; --fg:#f2f2f2; --muted:#b5b5b5; --line:rgba(242,242,242,.45); }
+* { box-sizing: border-box; }
+html, body { margin:0; min-height:100%; background:var(--bg); color:var(--fg);
+  font-family:'Courier New', Courier, monospace; }
+body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:16px;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px); }
+.err { width:100%; max-width:560px; padding:32px 24px; text-align:center;
+  border:1px solid var(--line); background:rgba(12,12,12,.95); box-shadow:0 0 24px rgba(242,242,242,.08); }
+.err-tag { color:var(--muted); font-size:.85rem; letter-spacing:.15em; }
+.err-code { position:relative; margin:12px 0 4px; font-size:clamp(4rem, 22vw, 7rem); line-height:1;
+  letter-spacing:.08em; text-shadow:0 0 12px rgba(242,242,242,.5); animation:flick 4s steps(1) infinite; }
+.err-code::before, .err-code::after { content:attr(data-text); position:absolute; left:0; right:0; top:0; overflow:hidden; }
+.err-code::before { color:#8ff; transform:translate(-3px,0); clip-path:inset(0 0 60% 0); opacity:.5; }
+.err-code::after  { color:#f8a; transform:translate(3px,0);  clip-path:inset(60% 0 0 0); opacity:.5; }
+.err-title { margin:0 0 12px; font-size:1.15rem; font-weight:normal; text-transform:uppercase; letter-spacing:.12em; }
+.err-text { margin:0 0 20px; color:var(--muted); line-height:1.5; }
+.err-retry { margin:0 0 20px; color:var(--fg); }
+.err-actions { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.err-btn { padding:10px 16px; border:1px solid var(--fg); color:var(--bg); background:var(--fg);
+  text-decoration:none; font:inherit; font-size:.9rem; letter-spacing:.08em; }
+.err-btn-alt { background:transparent; color:var(--fg); border-color:var(--line); }
+.err-btn:hover, .err-btn:focus-visible { box-shadow:0 0 10px var(--fg); outline:none; }
+.err-foot { margin:24px 0 0; color:var(--muted); font-size:.75rem; opacity:.7; }
+@keyframes flick { 0%,94%,100% { opacity:1; } 95% { opacity:.6; } 97% { opacity:1; } 98% { opacity:.7; } }
+@media (prefers-reduced-motion: reduce) { .err-code { animation:none; } }

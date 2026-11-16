@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>504 // Il server non risponde</title>
+<link rel="stylesheet" href="/errors/errors.css">
+</head>
+<body data-retry="1">
+<main class="err">
+  <div class="err-tag">// GATEWAY_TIMEOUT</div>
+  <h1 class="err-code" data-text="504">504</h1>
+  <h2 class="err-title">Il server non risponde</h2>
+  <p class="err-text">Il server ci sta mettendo troppo. Riprovo da solo.</p>
+  <p class="err-retry" id="err-retry" hidden>Nuovo tentativo tra <b id="err-count">15</b>s</p>
+  <div class="err-actions">
+    <a class="err-btn" href="/">// RETURN_HOME</a>
+    <a class="err-btn err-btn-alt" href="#" id="err-back">// GO_BACK</a>
+  </div>
+  <p class="err-foot">vector-box · error 504</p>
+</main>
+<script src="/errors/errors.js"></script>
+</body>
+</html>
