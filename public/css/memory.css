@@ -1,0 +1,4 @@
+#ar-board { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 8px; width: min(94vw, 440px); }
+.card { aspect-ratio: 3 / 4; padding: 0; border-radius: 10px; background: #38334d; font-size: clamp(1.4rem, 7vw, 2.2rem); color: var(--ink); }
+.card.up { background: var(--ink); color: #16141c; }
+.card.done { background: #1d6b3f; color: #e8ffe8; border-color: var(--accent); }

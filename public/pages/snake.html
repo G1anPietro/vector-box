@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#16141c">
+    <title>Snake — vector-box</title>
+    <!-- link previews; the domain is written out here (static page): change it with the domain -->
+    <meta name="description" content="Snake gratis nel browser: mangia, cresci, non toccare i muri né te stesso. Frecce, scorrimento o tasti sullo schermo. Nessun account.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="vector-box">
+    <meta property="og:title" content="Snake — vector-box">
+    <meta property="og:description" content="Snake gratis nel browser: mangia, cresci, non toccare i muri né te stesso. Frecce, scorrimento o tasti sullo schermo. Nessun account.">
+    <meta property="og:url" content="https://vector-box.duckdns.org/pages/snake.html">
+    <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" href="../assets/snake/icon.svg?v=1" type="image/svg+xml">
+    <link rel="stylesheet" href="../css/arcade.css?v=1">
+    <link rel="stylesheet" href="../css/snake.css?v=1">
+    <script src="../js/snake.js?v=1" defer></script>
+</head>
+<body>
+    <header class="ar-top"><a href="giochi.php">← Giochi</a><h1>Snake</h1><button type="button" id="sn-new">Nuova</button></header>
+    <div class="ar-bar">
+        <div class="ar-box"><small>Punti</small><strong id="sn-score">0</strong></div>
+        <div class="ar-box"><small>Record</small><strong id="sn-best">0</strong></div>
+    </div>
+    <canvas id="sn-canvas" width="400" height="400" aria-label="Campo di gioco"></canvas>
+    <div id="sn-msg" class="ar-msg" role="status"></div>
+    <div class="sn-pad" aria-label="Frecce">
+        <span></span><button type="button" data-dir="up" aria-label="Su">▲</button><span></span>
+        <button type="button" data-dir="left" aria-label="Sinistra">◀</button><button type="button" data-dir="down" aria-label="Giù">▼</button><button type="button" data-dir="right" aria-label="Destra">▶</button>
+    </div>
+    <p class="ar-help">Frecce, W A S D, scorri sul campo o usa i tasti. Ogni cibo ti fa crescere e andare più veloce. In pausa se cambi scheda.</p>
+</body>
+</html>

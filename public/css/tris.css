@@ -1,0 +1,5 @@
+#tr-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(90vw, 360px); aspect-ratio: 1; }
+.cell { padding: 0; border-radius: 12px; background: #2a2639; font: 700 clamp(2.4rem, 14vw, 4rem) ui-monospace, monospace; line-height: 1; color: var(--ink); }
+.cell.x { color: var(--accent); }
+.cell.o { color: #ffb74d; }
+.cell.win { background: #1d6b3f; border-color: var(--accent); }
