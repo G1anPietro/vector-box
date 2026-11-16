@@ -59,6 +59,14 @@ $GAMES = [
         'how'  => ['it' => 'funziona anche offline', 'en' => 'works offline too'],
     ],
     [
+        'group' => 'solo', 'look' => 'breach', 'href' => 'minato.html', 'icon' => '../assets/minato/icon.svg',
+        'name' => ['it' => 'Campo minato', 'en' => 'Minesweeper'],
+        'line' => ['it' => 'Tre livelli, bandierine, tocco lungo sul telefono e frecce sulla tastiera. Il primo clic è sempre sicuro.',
+                   'en' => 'Three levels, flags, long-press on a phone and arrow keys on a keyboard. The first click is always safe.'],
+        'who'  => ['it' => '1 giocatore', 'en' => '1 player'],
+        'how'  => ['it' => 'record personali, senza account', 'en' => 'personal bests, no account'],
+    ],
+    [
         'group' => 'solo', 'look' => 'breach', 'href' => 'hack.php', 'icon' => '⌗',
         'name' => ['it' => 'Node Breach', 'en' => 'Node Breach'],
         'line' => ['it' => 'Trova la sequenza esadecimale nella griglia prima che scada il tempo.',
