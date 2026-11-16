@@ -59,15 +59,18 @@ function notifyUsers(PDO $db, array $userIds, ?int $classId, string $kind, strin
         try {
             $code = webpushSend($sub, ['title' => $title, 'body' => $body, 'url' => $url, 'tag' => $kind . ':' . $classId]);
         } catch (Throwable $e) {
-            $code = 410;   // keys we cannot use: drop the subscription
+            $code = 0;     // our own side (VAPID key file, openssl, bad keys): neither "subscription gone" nor the subscriber's fault
+            logSystemError('PUSH_SEND', get_class($e));
         }
         if ($code >= 200 && $code < 300) {
             $db->prepare('UPDATE push_subscriptions SET last_ok_at = :t, failures = 0 WHERE id = :id')->execute([':t' => $now, ':id' => $sub['id']]);
             $delivered++;
-        } elseif ($code === 404 || $code === 410 || (int)$sub['failures'] + 1 >= NOTIFY_PUSH_MAX_FAILURES) {
+        } elseif ($code === 404 || $code === 410) {
             $db->prepare('DELETE FROM push_subscriptions WHERE id = :id')->execute([':id' => $sub['id']]);
-        } else {
-            $db->prepare('UPDATE push_subscriptions SET failures = failures + 1 WHERE id = :id')->execute([':id' => $sub['id']]);
+        } elseif ($code >= 400 && $code < 500 && $code !== 429) {
+            // only a refusal that is the subscription's own fault counts; a network error, a 5xx or "slow down" does not
+            if ((int)$sub['failures'] + 1 >= NOTIFY_PUSH_MAX_FAILURES) $db->prepare('DELETE FROM push_subscriptions WHERE id = :id')->execute([':id' => $sub['id']]);
+            else $db->prepare('UPDATE push_subscriptions SET failures = failures + 1 WHERE id = :id')->execute([':id' => $sub['id']]);
         }
     }
     return $delivered;
@@ -161,7 +164,9 @@ function turnsRun(PDO $db, int $now): int {
                             WHERE t.class_id = :c AND t.turn_date = :d AND t.notified_at IS NULL');
         $st->execute([':c' => $class['id'], ':d' => $local->modify('+1 day')->format('Y-m-d')]);
         foreach ($st->fetchAll() as $t) {
-            $db->prepare('UPDATE class_turns SET notified_at = :n WHERE id = :id AND notified_at IS NULL')->execute([':n' => $now, ':id' => $t['id']]);
+            $claim = $db->prepare('UPDATE class_turns SET notified_at = :n WHERE id = :id AND notified_at IS NULL');
+            $claim->execute([':n' => $now, ':id' => $t['id']]);
+            if ($claim->rowCount() !== 1) continue;   // another run took it: announce once
             $users = array_values(array_intersect(array_map('intval', json_decode($t['user_ids'], true) ?: []), classMemberIds($db, (int)$class['id'])));
             if (!$users) continue;
             notifyUsers($db, $users, (int)$class['id'], 'turno', "Domani sei interrogato in {$t['subject']}",

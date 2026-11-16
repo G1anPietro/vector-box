@@ -35,10 +35,12 @@ if (in_array('--models', $argv, true)) {
 // --bells-only does just this (for an optional timer every minute, more punctual than every 5).
 $bellsDb = getDbConnection();
 try { if (strtolower((string)envValue('DEMO_CLASS', 'true')) !== 'false' && demoEnsure($bellsDb)) echo date('Y-m-d H:i:s') . " example class refreshed\n"; } catch (Throwable $e) { echo date('Y-m-d H:i:s') . ' example class failed: ' . $e->getMessage() . "\n"; }
-$bells = bellsRun($bellsDb, $now);
-$turnsSent = turnsRun($bellsDb, $now);
-$digests = digestRun($bellsDb, $now);
-$reviews = reviewRemindRun($bellsDb, $now);
+// each runner on its own: "database is locked" or one bad class in one of them must not skip the others (nor the AI run below)
+$safe = function (string $name, callable $fn) { try { return $fn(); } catch (Throwable $e) { echo date('Y-m-d H:i:s') . " $name failed: " . $e->getMessage() . "\n"; return 0; } };
+$bells = $safe('bells', fn() => bellsRun($bellsDb, $now));
+$turnsSent = $safe('turns', fn() => turnsRun($bellsDb, $now));
+$digests = $safe('digests', fn() => digestRun($bellsDb, $now));
+$reviews = $safe('review reminders', fn() => reviewRemindRun($bellsDb, $now));
 if ($reviews) echo date('Y-m-d H:i:s') . " review reminders: $reviews\n";
 if ($digests) echo date('Y-m-d H:i:s') . " weekly digests: $digests\n";
 if ($turnsSent) echo date('Y-m-d H:i:s') . " turn reminders: $turnsSent\n";

@@ -1316,6 +1316,8 @@ try {
             jsonResponse(['success' => true]);
         }
         $f = apEventFields($db, $class, $in);
+        // a moved test is a new date: its reminders (marked as sent for the old one) must go out again
+        if ($f['event_date'] !== $event['event_date']) $db->prepare('DELETE FROM class_event_reminders WHERE event_id = :id')->execute([':id' => $event['id']]);
         $db->prepare('UPDATE class_events SET subject_id = :s, kind = :k, event_date = :d, title = :t, topics = :tp,
                       period_from = :pf, period_to = :pt, topics_off = :off, updated_at = :now WHERE id = :id')
            ->execute([':s' => $f['subject_id'], ':k' => $f['kind'], ':d' => $f['event_date'], ':t' => $f['title'], ':off' => $f['topics_off'],

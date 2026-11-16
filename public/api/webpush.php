@@ -22,6 +22,7 @@ function webpushEndpointAllowed(string $endpoint): bool {
     $p = parse_url($endpoint);
     if (!$p || empty($p['host']) || strlen($endpoint) > 1000) return false;
     $host = strtolower($p['host']);
+    if (!preg_match('/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/', $host)) return false;   // plain host names only: parse_url and curl must agree
     $hostPort = $host . (isset($p['port']) ? ':' . $p['port'] : '');
     $extra = array_filter(array_map('trim', explode(',', (string)envValue('WEBPUSH_EXTRA_HOSTS', ''))));
     if (in_array($hostPort, $extra, true)) return in_array($p['scheme'] ?? '', ['http', 'https'], true);

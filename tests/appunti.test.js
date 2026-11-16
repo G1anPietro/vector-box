@@ -457,6 +457,33 @@ test('security: the quiz is not in the event zip; no points for your own quiz, n
     assert.equal(own.json.points, 0, 'no points on your own quiz');
 });
 
+test('security: a custom quiz that showed an answer closes that question for points; others still earn them', async () => {
+    const quiz = { questions: [0, 1, 2, 3].map((i) => ({ topic: 'Napoleone', question: `Pool ${i}?`, options: ['a', 'b', 'c', 'd'], answer: 2, explanation: 'x' })) };
+    const now = Math.floor(Date.now() / 1000);
+    site.db(`INSERT INTO class_docs (class_id, doc_key, subject_id, kind, title, content, sources, input_hash, model, status, created_at, updated_at)
+             VALUES (?, 'quiz:pool', ?, 'quiz', 'Pool', ?, '[]', 'h', 'test', 'ok', ?, ?)`, [classId, subj_Storia(), JSON.stringify(quiz), now, now]);
+    const docId = site.db("SELECT id FROM class_docs WHERE doc_key = 'quiz:pool'")[0].id;
+    const real = (c, q) => ap(c, { action: 'quiz_answer', doc_id: docId, q, choice: 2 });
+    const made = await ap(luigi, { action: 'custom_quiz_create', class_id: classId, subject_id: subj_Storia(), n: 4, type: 'mc', from: 'all' });
+    assert.equal(made.status, 200, made.text);
+    const qs = made.json.questions;
+    let src = null;
+    for (let i = 0; i < qs.length && !src; i++) {                      // find a custom question coming from our pool doc
+        const row = site.db('SELECT items FROM custom_quizzes WHERE id = ?', [made.json.id])[0];
+        const item = JSON.parse(row.items)[i];
+        if (item && item.src && item.src[0] === docId) src = { i, q: item.src[1] };
+    }
+    assert.ok(src, 'the custom quiz drew from the pool');
+    site.db('DELETE FROM quiz_seen'); site.db('UPDATE rate_limits SET ts = 0');
+    const shown = await ap(luigi, { action: 'custom_quiz_answer', id: made.json.id, i: src.i, choice: 2 });
+    assert.equal(shown.json.answer, 2, 'the custom quiz tells the answer');
+    const luigiReal = await real(luigi, src.q);
+    assert.equal(luigiReal.json.points, 0, 'luigi already saw this answer');
+    const toadReal = await real(toad, src.q);
+    assert.equal(toadReal.json.correct, true);
+    assert.ok(toadReal.json.points > 0, 'someone who did not see it still earns points');
+});
+
 test('deleting the class removes its material from disk', async () => {
     const dir = path.join(site.root, 'data/appunti', String(classId));
     assert.ok(fs.existsSync(dir));

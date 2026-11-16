@@ -16,7 +16,7 @@ initSession();
 requireLoginOrDemoGuest();
 header('Cache-Control: no-store');
 $me = (int)($_SESSION['user_id'] ?? 0);
-$isAdmin = !empty($_SESSION['is_admin']);
+$isAdmin = sessionIsAdmin();
 
 const BOARD_MAX_ANNOUNCEMENTS = 50;   // per class: the oldest must be deleted before adding more
 

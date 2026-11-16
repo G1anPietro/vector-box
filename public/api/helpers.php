@@ -142,7 +142,7 @@ function validateNewUsername(string $username): ?string {
         return 'Username prefix "guest_" is reserved';
     }
     // names that look like staff: nobody may pose as the admin in the chat
-    if (preg_match('/^(admin|administrator|root|system|mod|moderator|staff|support|vector[-_]?box)[-_0-9]*$/i', $username)) {
+    if (preg_match('/^(admin|administrator|root|system|mod|moderator|staff|support|vector[-_]?box)[-_0-9]*$|^demo_/i', $username)) {
         return 'That username is reserved';
     }
     return null;
