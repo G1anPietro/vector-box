@@ -1,0 +1,11 @@
+#im-svg { width: 200px; height: 170px; fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+#im-svg circle { stroke: #ffb74d; }
+#im-svg path:nth-last-child(-n+2) { stroke: #ffb74d; }
+#im-word { font: 700 clamp(1.4rem, 7vw, 2.2rem) ui-monospace, monospace; letter-spacing: 0.15em; margin: 10px 0; text-align: center; overflow-wrap: anywhere; min-height: 1.4em; }
+.im-cat { color: var(--muted); text-transform: uppercase; font-size: 0.8rem; }
+#im-keys { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; width: min(96vw, 460px); margin-top: 8px; }
+.key { padding: 0; min-height: 44px; font: 700 1rem ui-monospace, monospace; }
+.key.hit { background: #1d6b3f; border-color: var(--accent); }
+.key.miss { background: #4a1c1c; color: #ff9b9b; }
+.key:disabled { opacity: 0.55; cursor: default; }
+select.ar-select { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 40px; font: inherit; }

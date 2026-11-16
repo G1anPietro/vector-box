@@ -1,0 +1,6 @@
+#f4-board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: min(94vw, 440px); padding: 10px; background: #2a3a7a; border-radius: 14px; }
+.slot { aspect-ratio: 1; padding: 0; border-radius: 50%; border: 0; background: #16141c; min-height: 0; }
+.slot.p1 { background: #ff5e5e; }
+.slot.p2 { background: #ffb74d; }
+.slot.win { box-shadow: 0 0 0 3px #fff inset; }
+.slot:focus-visible { outline: 2px solid #fff; }

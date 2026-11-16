@@ -1,0 +1,7 @@
+#sm-board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(88vw, 340px); aspect-ratio: 1; margin-top: 6px; }
+.pad { border: 0; border-radius: 18px; min-height: 0; opacity: 0.55; transition: opacity 0.08s, transform 0.08s; }
+.pad.on, .pad:active { opacity: 1; transform: scale(1.03); filter: brightness(1.25); }
+.pad:nth-child(1) { background: #3ddc84; border-top-left-radius: 100%; }
+.pad:nth-child(2) { background: #ff5e5e; border-top-right-radius: 100%; }
+.pad:nth-child(3) { background: #ffb74d; border-bottom-left-radius: 100%; }
+.pad:nth-child(4) { background: #4da3ff; border-bottom-right-radius: 100%; }
