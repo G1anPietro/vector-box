@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
+require_once __DIR__ . '/../api/mailer.php';
+require_once __DIR__ . '/../api/rate_limiter.php';
 
 initSession(true);
 
@@ -24,6 +26,7 @@ $error = '';
 $stmt = $db->prepare("SELECT * FROM accounts WHERE username = :u");
 $stmt->execute([':u' => $username]);
 $account = $stmt->fetch();
+$stmt->closeCursor();   // an open read would make a later write (after the rate limiter's own commit) fail with "database is locked"
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -70,6 +73,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $upd->execute([':t' => $selectedTheme, ':id' => $account['id']]);
         $_SESSION['theme'] = $selectedTheme;
         $msg = "Default theme updated.";
+    } elseif ($action === 'save_email') {
+        // The address is optional. A new or re-sent address must be confirmed by a link; news only go to confirmed addresses
+        // that also said yes (two separate things: the address, and the consent to news).
+        $email = mailLine((string)($_POST['email'] ?? ''), 254);
+        $optin = !empty($_POST['email_optin']) ? 1 : 0;
+        if ($email === '') {
+            $db->prepare("UPDATE accounts SET email = '', email_verified = 0, email_optin = 0, email_optin_at = NULL WHERE id = :id")->execute([':id' => $account['id']]);
+            $account['email'] = ''; $account['email_verified'] = 0; $account['email_optin'] = 0;
+            $msg = 'E-mail address removed.';
+        } elseif (!mailValidAddress($email)) {
+            $error = 'That e-mail address does not look right.';
+        } elseif (!checkRateLimit('account_email', 5, 3600, 'user:' . (int)$account['id'])) {
+            $error = 'Too many changes, try again later.';
+        } else {
+            $changed = strcasecmp($email, (string)($account['email'] ?? '')) !== 0;
+            $at = $optin ? ((int)($account['email_optin'] ?? 0) && !$changed ? ($account['email_optin_at'] ?: time()) : time()) : null;
+            $db->prepare('UPDATE accounts SET email = :e, email_verified = :v, email_optin = :o, email_optin_at = :t WHERE id = :id')
+               ->execute([':e' => $email, ':v' => $changed ? 0 : (int)$account['email_verified'], ':o' => $optin, ':t' => $at, ':id' => $account['id']]);
+            $account['email'] = $email; $account['email_optin'] = $optin;
+            if ($changed) $account['email_verified'] = 0;
+            if (!(int)$account['email_verified']) {
+                if (mailEnabled()) {
+                    mailEnqueue($db, null, (int)$account['id'], $email, 'Confirm your e-mail address',
+                        "Hello,\n\nsomeone (hopefully you) added this address to the account \"{$account['username']}\" on vector-box.\nConfirm it here: "
+                        . siteUrl() . '/api/mail_link.php?a=verify&t=' . mailToken($db, 'verify', (int)$account['id'])
+                        . "\n\nIf it was not you, ignore this message: nothing happens without the click.\n", 'verify');
+                    mailProcessQueue($db, 3);
+                    $msg = 'Saved. We sent you a message: click the link in it to confirm the address.';
+                } else {
+                    $msg = 'Saved. E-mail is not switched on yet: the address will be confirmed when it is.';
+                }
+            } else {
+                $msg = 'Saved.';
+            }
+        }
     }
 }
 session_write_close();
@@ -132,6 +170,18 @@ session_write_close();
                 <button type="submit" name="action" value="save_theme" class="nav-btn">>_ SAVE THEME PREFERENCE</button>
             </form>
 
+            <!-- E-mail (optional) -->
+            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <span class="settings-title">>_ E-MAIL (OPTIONAL)</span>
+                <input type="email" name="email" value="<?php echo htmlspecialchars((string)($account['email'] ?? '')); ?>" placeholder="you@example.com" aria-label="E-mail address" autocomplete="email" maxlength="254" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;">
+                <?php if (!empty($account['email'])): ?>
+                <p class="term-muted" style="margin: 0; font-size: 0.8rem;"><?php echo !empty($account['email_verified']) ? 'Address confirmed.' : 'Address not confirmed yet (check your inbox; saving again sends the link again).'; ?></p>
+                <?php endif; ?>
+                <label class="term-muted" style="font-size: 0.8rem;"><input type="checkbox" name="email_optin" value="1" <?php echo !empty($account['email_optin']) ? 'checked' : ''; ?>> Send me news about vector-box (rare; one click to stop). Leave it unticked and you get only messages about your account.</label>
+                <button type="submit" name="action" value="save_email" class="nav-btn">>_ SAVE E-MAIL</button>
+            </form>
+
             <!-- Your data (GDPR): download everything, or delete the account -->
             <div id="your-data" style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
                 <span class="settings-title">>_ YOUR DATA</span>
@@ -150,6 +200,7 @@ session_write_close();
             </div>
 
             <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <?php if (!empty($account['is_admin'])): ?><a href="mail.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ MAIL BOX</a><?php endif; ?>
                 <a href="../api/logout.php" class="nav-btn" style="display: block; text-align: center; border-color: #ff3333; color: #ff3333; text-decoration: none;">>_ LOGOUT SESSION</a>
             </div>
         </div>

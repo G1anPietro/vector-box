@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 34;
+const DB_SCHEMA_VERSION = 35;
 
 /**
  * Session bootstrap.
@@ -583,6 +583,43 @@ function migrateV16(PDO $db): void {
 /** v30: a temporary link can be limited to a number of openings (0 = no limit). */
 /** v33: the AI (Google Gemini) only reads the material of a class declared to have adult students only: the requester says so
  *  (adults_declared) and the representative can switch it on later (the students grow up). Classes that already existed keep it on. */
+/** v35: the e-mail box. An account may give an e-mail address (optional; verified by a link) and agree to site news;
+ *  the admin writes messages (drafts / sent) and the site sends them through a queue (api/mailer.php). Nothing is sent
+ *  unless MAIL_DRIVER is set in .env. */
+function migrateV35(PDO $db): void {
+    addColumnIfMissing($db, 'accounts', 'email', "TEXT NOT NULL DEFAULT ''");
+    addColumnIfMissing($db, 'accounts', 'email_verified', 'INTEGER NOT NULL DEFAULT 0');
+    addColumnIfMissing($db, 'accounts', 'email_optin', 'INTEGER NOT NULL DEFAULT 0');       // agreed to site news (separate from the address)
+    addColumnIfMissing($db, 'accounts', 'email_optin_at', 'INTEGER');                         // when: proof of consent
+    $db->exec("CREATE TABLE IF NOT EXISTS mail_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        folder TEXT NOT NULL DEFAULT 'draft',          -- draft | sent
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL DEFAULT '',
+        audience TEXT NOT NULL DEFAULT 'optin',        -- optin | supporters | test
+        created_by INTEGER,
+        recipients INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        sent_at INTEGER
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS mail_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER,
+        account_id INTEGER,
+        to_email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        body TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'bulk',             -- bulk | verify | test
+        status TEXT NOT NULL DEFAULT 'pending',        -- pending | sent | failed
+        attempts INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        sent_at INTEGER
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_mail_queue_status ON mail_queue(status, id)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_mail_queue_message ON mail_queue(message_id)');
+}
+
 /** v34: user names are unique regardless of case (no "Admin" next to "admin"). Skipped, not failed, if old accounts already clash:
  *  the registration check in login.php covers new ones anyway. */
 function migrateV34(PDO $db): void {
@@ -976,6 +1013,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 34) {
             migrateV34($db);
+        }
+        if ($current < 35) {
+            migrateV35($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

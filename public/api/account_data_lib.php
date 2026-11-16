@@ -35,7 +35,7 @@ function accountEraseBlocker(PDO $db, int $userId): ?string {
 function accountExport(PDO $db, int $userId): array {
     $one = function (string $sql, array $p = []) use ($db) { $st = $db->prepare($sql); $st->execute($p); return $st->fetch() ?: null; };
     $all = function (string $sql, array $p = []) use ($db) { $st = $db->prepare($sql); $st->execute($p); return $st->fetchAll(); };
-    $acc = $one('SELECT id, username, theme, is_admin, can_read_books, can_upload_books, is_banned, banned_until, created_at, bio, can_view_resume, ads_free
+    $acc = $one('SELECT id, username, theme, is_admin, can_read_books, can_upload_books, is_banned, banned_until, created_at, bio, can_view_resume, ads_free, email, email_verified, email_optin, email_optin_at
                  FROM accounts WHERE id = :i', [':i' => $userId]);
     if (!$acc) return [];
     $u = [':i' => $userId];
@@ -122,6 +122,7 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
 
         // donations stay for accounting, without the person
         $run("UPDATE donors SET account_id = NULL, display_name = '', is_public = 0, note = '' WHERE account_id = :i", $u);
+        $run('DELETE FROM mail_queue WHERE account_id = :i', $u);   // messages written for this person
         $gone['account'] = $run('DELETE FROM accounts WHERE id = :i', $u);
         $db->exec('COMMIT');
     } catch (Throwable $e) {

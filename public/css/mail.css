@@ -1,0 +1,16 @@
+.mailbox { display: grid; grid-template-columns: 220px 1fr; gap: 16px; max-width: 1000px; margin: 20px auto; padding: 0 16px; align-items: start; }
+.mb-side { display: flex; flex-direction: column; gap: 8px; }
+.mb-side .nav-btn { text-align: left; }
+.mb-folder.active { border-color: var(--accent-color); }
+.mb-status { font-size: 0.8rem; line-height: 1.5; }
+.mb-main { min-width: 0; }
+.mb-list { display: flex; flex-direction: column; gap: 6px; }
+.mb-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; text-align: left; padding: 8px 10px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.6); color: inherit; font: inherit; cursor: pointer; }
+.mb-row .mb-sub { font-weight: bold; overflow-wrap: anywhere; }
+.mb-row .mb-meta { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+.mb-row.fail { border-color: #ff3333; }
+.mb-form { display: flex; flex-direction: column; gap: 8px; }
+.mb-form input, .mb-form textarea { background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff; }
+.mb-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mb-danger { border-color: #ff3333; color: #ff3333; }
+@media (max-width: 700px) { .mailbox { grid-template-columns: 1fr; } .mb-side { flex-direction: row; flex-wrap: wrap; } .mb-status { width: 100%; } }
