@@ -19,7 +19,7 @@ initSession();
 requireLoginOrDemoGuest();
 header('Cache-Control: no-store');
 $me = (int)($_SESSION['user_id'] ?? 0);
-$isAdmin = !empty($_SESSION['is_admin']);
+$isAdmin = sessionIsAdmin();
 
 function caFail(string $code, string $msg, int $status = 400): void {
     jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);

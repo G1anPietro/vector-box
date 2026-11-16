@@ -7,7 +7,7 @@ require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/visits.php';
 
 header('Cache-Control: no-store');
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET' || !checkRateLimit('visit_beacon', 30, 60)) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET' || !checkRateLimit('visit_beacon', 30, 60, null, false)) {
     http_response_code(204);
     exit();
 }

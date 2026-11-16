@@ -16,7 +16,7 @@ require_once __DIR__ . '/cucu_lib.php';
 initSession();
 header('Cache-Control: no-store');
 
-$isAdmin = !empty($_SESSION['is_admin']);
+$isAdmin = sessionIsAdmin();
 $method = $_SERVER['REQUEST_METHOD'];
 
 function spiaFail(string $code, int $status = 400): void {
@@ -104,6 +104,13 @@ try {
             exit;
         }
         if ($action !== 'state') spiaUnknown();
+
+        // check the phone BEFORE taking the write lock: anonymous polls must not queue behind the chat and poker writes
+        $tk = (string)($_SERVER['HTTP_X_SPIA_DEVICE'] ?? '');
+        if (!preg_match('/^[a-f0-9]{48}$/', $tk)) spiaFail('no_device', 401);
+        $known = $db->prepare('SELECT 1 FROM spia_devices WHERE token_hash = :h');
+        $known->execute([':h' => spiaTokenHash($tk)]);
+        if (!$known->fetchColumn()) spiaFail('gone', 404);
 
         $db->exec('BEGIN IMMEDIATE');
         $device = spiaDevice($db);
@@ -234,6 +241,12 @@ try {
             $other = $st->fetch();
             if (!$other || $target === (int)$device['id']) $fail('bad_target', 404);
             if (time() - (int)$other['last_seen'] <= SPIA_OFFLINE_AFTER) $fail('still_online', 409);
+            // only the host takes over a sleeping phone (or anyone, when the host's own phone is gone too): a player
+            // must not be able to read another player's secret card by waiting for the screen to lock
+            $hostRow = $db->prepare('SELECT last_seen FROM spia_devices WHERE id = :h');
+            $hostRow->execute([':h' => (int)$room['host_device_id']]);
+            $hostSeen = $hostRow->fetchColumn();
+            if ((int)$room['host_device_id'] !== (int)$device['id'] && $hostSeen !== false && time() - (int)$hostSeen <= SPIA_OFFLINE_AFTER) $fail('not_host', 403);
             $db->prepare('UPDATE spia_players SET device_id = :me WHERE device_id = :d AND removed = 0')
                ->execute([':me' => $device['id'], ':d' => $target]);
             if ((int)$room['host_device_id'] === $target) {

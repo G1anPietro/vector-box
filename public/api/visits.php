@@ -81,7 +81,7 @@ function recordVisit(string $page): void {
         $page = substr(preg_replace('/[^\x20-\x7E]/', '', $page) ?? '', 0, 120);
         $ref = (string)parse_url((string)($_SERVER['HTTP_REFERER'] ?? ''), PHP_URL_HOST);
         $self = (string)($_SERVER['HTTP_HOST'] ?? '');
-        $ref = ($ref !== '' && strcasecmp($ref, $self) !== 0) ? substr($ref, 0, 80) : '';
+        $ref = ($ref !== '' && strcasecmp($ref, $self) !== 0) ? substr(preg_replace('/[^\x20-\x7E]/', '', $ref) ?? '', 0, 80) : '';
 
         // ---- the log file (data/, outside the web root) ----
         $logFile = dirname(__DIR__, 2) . '/data/visits.log';

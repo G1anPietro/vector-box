@@ -8,7 +8,7 @@ header('Content-Type: application/json');
 
 $userId = $_SESSION['user_id'] ?? null;
 $username = $_SESSION['username'] ?? 'guest';
-$isAdmin = !empty($_SESSION['is_admin']);
+$isAdmin = sessionIsAdmin();
 
 try {
     $db = getDbConnection();

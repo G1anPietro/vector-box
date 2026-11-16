@@ -285,7 +285,13 @@ function lupusNightAct(array &$g, int $pid, int $target, int $target2 = LUPUS_NO
     switch ($role) {
         case 'wolf':
         case 'white_wolf':
-            if (!$validOther || lupusWolfish(lupusRole($g, $target))) return 'bad_target';
+            if (!$validOther) return 'bad_target';
+            // when the pack does not know itself, refusing a fellow wolf would reveal who the wolves are: accept it and count nothing
+            if (lupusWolfish(lupusRole($g, $target))) {
+                if (!empty($g['rules']['wolves_know'])) return 'bad_target';
+                unset($g['night']['wolf'][$key]);
+                break;
+            }
             $g['night']['wolf'][$key] = $target;
             if ($role === 'white_wolf') {
                 unset($g['night']['white'][$key]);

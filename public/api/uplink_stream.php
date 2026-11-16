@@ -5,9 +5,17 @@
 // (Last-Event-ID) resumes exactly where it left off and no message is lost
 // between the 20-second cycles.
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/rate_limiter.php';
 
 // Read-only session: released immediately so the stream never holds the lock
 initSession();
+
+// Each stream holds a PHP worker for ~20 s: too many opened from one address are told to wait (EventSource obeys retry)
+if (!checkRateLimit('sse_open', 40, 60, null, false)) {
+    header('Content-Type: text/event-stream');
+    echo "retry: 30000\n\n";
+    exit();
+}
 
 // Disable execution timeouts for long polling
 @ini_set('max_execution_time', 0);
@@ -30,7 +38,7 @@ while (ob_get_level() > 0) {
 }
 @ob_implicit_flush(true);
 
-$isAdmin = !empty($_SESSION['is_admin']);
+$isAdmin = sessionIsAdmin();
 $db = getDbConnection();
 
 // Resume point: Last-Event-ID (automatic reconnect) wins over ?last_id (first connect)

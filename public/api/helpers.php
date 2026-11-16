@@ -95,6 +95,13 @@ function sessionAccountRow(): ?array {
     return $row;
 }
 
+/** Admin by the database, not by the cached session flag (a demoted admin must not keep admin rights for days). */
+function sessionIsAdmin(): bool {
+    if (empty($_SESSION['is_admin']) || empty($_SESSION['user_id'])) return false;
+    $row = sessionAccountRow();
+    return !empty($row['is_admin']);
+}
+
 function requireAdmin(): void {
     $row = empty($_SESSION['is_admin']) || empty($_SESSION['user_id']) ? null : sessionAccountRow();
     if (!$row || empty($row['is_admin'])) {
