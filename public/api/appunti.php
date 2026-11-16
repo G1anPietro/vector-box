@@ -1296,6 +1296,9 @@ try {
         if (!in_array('calendar', $perms, true) && (int)$event['author_id'] !== $me) apFail('forbidden', 'Only the author or the class manager can change this', 403);
         if ($action === 'delete_event') {
             $db->prepare('DELETE FROM class_events WHERE id = :id')->execute([':id' => $event['id']]);
+            foreach (['quiz_answers', 'review_cards', 'quiz_seen'] as $t) {
+                $db->prepare("DELETE FROM $t WHERE doc_id IN (SELECT id FROM class_docs WHERE event_id = :id)")->execute([':id' => $event['id']]);
+            }
             $db->prepare('DELETE FROM class_docs WHERE event_id = :id')->execute([':id' => $event['id']]);
             jsonResponse(['success' => true]);
         }

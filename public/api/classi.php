@@ -412,6 +412,11 @@ try {
                    ->execute([':to' => $into, ':c' => $id, ':s' => $from]);
                 $db->prepare('DELETE FROM class_docs WHERE class_id = :c AND (subject_id = :s OR subject_id = :to) AND author_id IS NULL AND event_id IS NULL')
                    ->execute([':c' => $id, ':s' => $from, ':to' => $into]);
+                // the site's documents of an event follow the event (which moved above); topics follow the subject
+                $db->prepare('UPDATE class_docs SET subject_id = :to WHERE class_id = :c AND subject_id = :s AND event_id IS NOT NULL')
+                   ->execute([':to' => $into, ':c' => $id, ':s' => $from]);
+                $db->prepare('UPDATE class_topics SET subject_id = :to WHERE class_id = :c AND subject_id = :s')
+                   ->execute([':to' => $into, ':c' => $id, ':s' => $from]);
             }
             // Timetable versions: the hours of the old subject become the new one's (merge) or free hours (delete)
             $tts = $db->prepare('SELECT id, slots FROM class_timetables WHERE class_id = :c');
