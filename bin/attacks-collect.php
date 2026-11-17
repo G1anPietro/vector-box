@@ -36,7 +36,9 @@ if ($disk < 15 && ($st['disk_alert_date'] ?? '') !== $today) {
     $st['disk_alert_date'] = $today; $dirty = true;
 }
 if (attacksShouldDigest($st, $now)) {
-    [$errs, $off] = attacksNewErrors(dirname(attacksFile()) . '/system_errors.log', (int)($st['err_offset'] ?? 0));
+    $errLog = dirname(attacksFile()) . '/system_errors.log';
+    // the first digest has nothing to compare with: start counting from now instead of reporting the whole history as new
+    [$errs, $off] = isset($st['err_offset']) ? attacksNewErrors($errLog, (int)$st['err_offset']) : [0, (int)@filesize($errLog)];
     if ($m = attacksDigest($d, $errs, $disk, $now)) attacksNotify($m[0], $m[1]);
     $st['digest_date'] = $today; $st['err_offset'] = $off; $dirty = true;
 }

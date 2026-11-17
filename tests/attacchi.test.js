@@ -54,3 +54,12 @@ test('alerts: new bans and bursts only, nothing on the first run, never more tha
     const quiet = php(`echo json_encode(attacksAlerts(json_decode('${JSON.stringify({ generated_at: 300, ssh: { logins: 125 } })}', true), json_decode('${JSON.stringify(now)}', true)));`);
     assert.deepEqual(quiet, []);
 });
+
+test('timestamps keep the server offset: a ban at 12:00+0100 is 11:00 UTC, so it is not "in the future" and does not alert again and again', () => {
+    const ban = '2026-11-18T12:00:00+0100 laptop0 fail2ban-server[1]: 2026-11-18 12:00:00,000 fail2ban.actions [1]: NOTICE  [sshd] Ban 8.8.8.8';
+    const ssh = '2026-11-18T12:00:00+0100 laptop0 sshd-session[3]: Invalid user admin from 1.2.3.4 port 5';
+    const utc = Date.UTC(2026, 10, 18, 11, 0, 0) / 1000;
+    assert.equal(php(`echo json_encode(attacksParseBan('${ban}')['ts']);`), utc);
+    assert.equal(php(`echo json_encode(attacksParseSsh('${ssh}')['ts']);`), utc);
+    assert.equal(php(`echo json_encode(attacksParseBan(str_replace('+0100', 'Z', '${ban}'))['ts']);`), utc + 3600);
+});

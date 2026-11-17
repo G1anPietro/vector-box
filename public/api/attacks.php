@@ -17,8 +17,9 @@ function attackIsLocal(string $ip): bool {
 
 /** One sshd log line (journalctl -o short-iso) -> ['ts','ip','kind'=>'login'|'scan','user'] or null. 'login' = someone tried a user name. */
 function attacksParseSsh(string $line): ?array {
-    if (!preg_match('/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)\S*\s+\S+\s+sshd(?:-session)?\[\d+\]:\s+(.*)$/', $line, $m)) return null;
-    $msg = $m[2];
+    if (!preg_match('/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(Z|[+-]\d\d:?\d\d)?\S*\s+\S+\s+sshd(?:-session)?\[\d+\]:\s+(.*)$/', $line, $m)) return null;
+    $ofs = $m[2] ?: 'Z';                       // journalctl -o short-iso writes the server's own offset: honour it (the day buckets and the alerts are in UTC)
+    $msg = $m[3];
     $ip = ''; $kind = ''; $user = '';
     // one event per attempt: "Invalid user X from IP", or "Failed password for X from IP" for a real account (the other lines repeat these)
     if (preg_match('/^(?:Invalid user|Failed \w+ for (?!invalid user))\s*(\S+)\s+from\s+(\S+)/', $msg, $x)
@@ -26,7 +27,7 @@ function attacksParseSsh(string $line): ?array {
     elseif (preg_match('/(?:Connection closed by|Connection reset by|Timeout before authentication for|Unable to negotiate with|banner exchange: Connection from|Did not receive identification string from|Bad protocol version identification .* from)\s+(?:connection from\s+)?(\d[\d.]+|[0-9a-f:]{3,})/i', $msg, $x)
         && filter_var($x[1], FILTER_VALIDATE_IP) && (str_contains($msg, 'preauth') || !str_contains($msg, 'authenticating') && !str_contains($msg, 'user'))) { $kind = 'scan'; $ip = $x[1]; }
     if ($kind === '' || attackIsLocal($ip)) return null;
-    return ['ts' => strtotime($m[1] . 'Z') ?: 0, 'ip' => $ip, 'kind' => $kind, 'user' => mb_substr($user, 0, 32)];
+    return ['ts' => strtotime($m[1] . $ofs) ?: 0, 'ip' => $ip, 'kind' => $kind, 'user' => textCut($user, 32)];
 }
 
 /** One nginx combined-log line -> ['ts','ip','path','status'] when the request is a probe (see ATTACK_WEB_RE), else null. */
@@ -34,13 +35,13 @@ function attacksParseWeb(string $line): ?array {
     if (!preg_match('/^(\S+) \S+ \S+ \[([^\]]+)\] "(?:GET|POST|HEAD|PUT|PROPFIND)\s+(\S+)[^"]*" (\d{3})/', $line, $m)) return null;
     if (!preg_match(ATTACK_WEB_RE, $m[3]) || attackIsLocal($m[1])) return null;
     $ts = DateTime::createFromFormat('d/M/Y:H:i:s O', $m[2]);
-    return ['ts' => $ts ? $ts->getTimestamp() : 0, 'ip' => $m[1], 'path' => mb_substr(strtok($m[3], '?'), 0, 80), 'status' => (int)$m[4]];
+    return ['ts' => $ts ? $ts->getTimestamp() : 0, 'ip' => $m[1], 'path' => textCut((string)strtok($m[3], '?'), 80), 'status' => (int)$m[4]];
 }
 
 /** "Ban 1.2.3.4" lines of fail2ban (journalctl -o short-iso) -> ['ts','ip'] or null. */
 function attacksParseBan(string $line): ?array {
-    if (!preg_match('/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)\S*\s.*\]:?\s+NOTICE\s+\[(\S+)\]\s+Ban\s+(\S+)/', $line, $m) || !filter_var($m[3], FILTER_VALIDATE_IP)) return null;
-    return ['ts' => strtotime($m[1] . 'Z') ?: 0, 'ip' => $m[3], 'jail' => $m[2]];
+    if (!preg_match('/^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(Z|[+-]\d\d:?\d\d)?\S*\s.*\]:?\s+NOTICE\s+\[(\S+)\]\s+Ban\s+(\S+)/', $line, $m) || !filter_var($m[4], FILTER_VALIDATE_IP)) return null;
+    return ['ts' => strtotime($m[1] . ($m[2] ?: 'Z')) ?: 0, 'ip' => $m[4], 'jail' => $m[3]];
 }
 
 /** Count events (each with ts, ip, optional user/path/kind) per day, per address and per extra key. */
@@ -93,7 +94,7 @@ function attacksSpeed(array $lines, int $now): array {
         $ts = DateTime::createFromFormat('d/M/Y:H:i:s O', $m[1]);
         if (!$ts || $ts->getTimestamp() < $now - 86400) continue;
         $ms = (float)$m[3] * 1000;
-        $key = preg_match('#^/(?:js|css)/|\.(?:png|jpe?g|gif|webp|svg|ico|avif)$#i', $path) ? 'static' : mb_substr($path, 0, 80);
+        $key = preg_match('#^/(?:js|css)/|\.(?:png|jpe?g|gif|webp|svg|ico|avif)$#i', $path) ? 'static' : textCut($path, 80);
         $all[] = $ms; $per[$key][] = $ms;
     }
     sort($all);
