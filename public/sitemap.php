@@ -19,6 +19,7 @@ $pages = [
     ['/pages/snake.html', 'monthly', '0.7'],
     ['/pages/forza4.html', 'monthly', '0.7'],
     ['/pages/tetris.html', 'monthly', '0.7'],
+    ['/pages/dungeon.html', 'monthly', '0.7'],
     ['/pages/impiccato.html', 'monthly', '0.7'],
     ['/pages/simon.html', 'monthly', '0.7'],
     ['/pages/progetto.php', 'monthly', '0.6'],

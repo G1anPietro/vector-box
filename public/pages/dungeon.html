@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#05080a">
+    <title>Il Dungeon del Server — vector-box</title>
+    <!-- link previews; the domain is written out here (static page): change it with the domain -->
+    <meta name="description" content="Il Dungeon del Server: un roguelike a turni nel browser. Scendi nel datacentre dimenticato sotto la scuola, tra bug, script e chiavette USB. Si gioca col pollice, salva da solo a ogni turno, nessun account.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="vector-box">
+    <meta property="og:title" content="Il Dungeon del Server — vector-box">
+    <meta property="og:description" content="Roguelike a turni nel browser: scendi nel datacentre sotto la scuola. Si gioca col pollice, salva da solo a ogni turno.">
+    <meta property="og:url" content="https://vector-box.duckdns.org/pages/dungeon.html">
+    <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" href="../assets/dungeon/icon.svg?v=2" type="image/svg+xml">
+    <link rel="stylesheet" href="../css/dungeon.css?v=2">
+    <script src="../js/rogue/rng.js?v=2" defer></script>
+    <script src="../js/rogue/map.js?v=2" defer></script>
+    <script src="../js/rogue/mobs.js?v=2" defer></script>
+    <script src="../js/rogue/items.js?v=2" defer></script>
+    <script src="../js/rogue/classes.js?v=2" defer></script>
+    <script src="../js/rogue/sprites.js?v=2" defer></script>
+    <script src="../js/rogue/meta.js?v=2" defer></script>
+    <script src="../js/rogue/game.js?v=2" defer></script>
+    <script src="../js/dungeon.js?v=2" defer></script>
+</head>
+<body>
+    <header class="dg-top">
+        <a href="giochi.php">← Giochi</a>
+        <h1>Il Dungeon del Server</h1>
+        <button type="button" id="dg-menu" aria-label="Menu">Menu</button>
+        <button type="button" id="dg-hide" aria-label="Nascondi lo schermo">Nascondi</button>
+    </header>
+
+    <main id="dg-title" class="dg-screen">
+        <p class="dg-lead">Sotto la scuola c'è un datacentre dimenticato. Scendi piano dopo piano, raccogli script e lattine, e spegni il server.</p>
+        <div id="dg-stats" class="dg-stats"></div>
+        <h2>Scegli chi sei</h2>
+        <div id="dg-classes" class="dg-classes"></div>
+        <div id="dg-classinfo" class="dg-classinfo"></div>
+        <div class="dg-row">
+            <button type="button" id="dg-start" class="dg-big">Inizia la discesa</button>
+        </div>
+        <div class="dg-row">
+            <button type="button" id="dg-daily">Sfida del giorno</button>
+            <button type="button" id="dg-archive">Archivio</button>
+            <button type="button" id="dg-tier" hidden>Livello di accesso: 0</button>
+            <button type="button" id="dg-help">Come si gioca</button>
+        </div>
+    </main>
+
+    <main id="dg-game" class="dg-screen" hidden>
+        <div class="dg-hud">
+            <div class="dg-bars">
+                <div class="dg-bar" aria-label="Vita"><i id="dg-hp"></i><span id="dg-hptxt"></span></div>
+                <div class="dg-bar dg-food" aria-label="Fame"><i id="dg-fd"></i><span id="dg-fdtxt"></span></div>
+            </div>
+            <div id="dg-info" class="dg-infoline"></div>
+        </div>
+        <div class="dg-stage" id="dg-stage"><canvas id="dg-canvas" aria-label="Mappa del dungeon"></canvas></div>
+        <button type="button" id="dg-log" class="dg-log" aria-label="Apri il registro completo"></button>
+        <div class="dg-controls">
+            <div class="dg-dpad" aria-label="Direzioni">
+                <button type="button" data-d="0,-1" aria-label="Su" class="up">▲</button>
+                <button type="button" data-d="-1,0" aria-label="Sinistra" class="lf">◀</button>
+                <button type="button" data-a="wait" aria-label="Aspetta" class="ce">z</button>
+                <button type="button" data-d="1,0" aria-label="Destra" class="rt">▶</button>
+                <button type="button" data-d="0,1" aria-label="Giù" class="dn">▼</button>
+            </div>
+            <div class="dg-acts">
+                <button type="button" data-a="bag">Zaino</button>
+                <button type="button" data-a="skill" id="dg-skill">Abilità</button>
+                <button type="button" data-a="explore">Esplora</button>
+                <button type="button" data-a="stairs">Scale</button>
+                <button type="button" data-a="eat">Mangia</button>
+                <button type="button" data-a="heal">Bevi</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="dg-modal" class="dg-modal" hidden><div class="dg-sheet" role="dialog" aria-modal="true" aria-labelledby="dg-mtitle"><div class="dg-mhead"><h2 id="dg-mtitle"></h2><button type="button" id="dg-mclose">Chiudi</button></div><div id="dg-mbody"></div></div></div>
+
+    <div id="dg-cover" class="dg-cover" hidden>
+        <article>
+            <h2>Appunti di Storia — Capitolo 7</h2>
+            <p>Le guerre puniche opposero Roma e Cartagine per il controllo del Mediterraneo occidentale tra il 264 e il 146 a.C.</p>
+            <ul><li>Prima guerra punica (264-241): la Sicilia</li><li>Seconda guerra punica (218-201): Annibale e le Alpi</li><li>Terza guerra punica (149-146): la distruzione di Cartagine</li></ul>
+            <p class="dg-tapnote">Tocca per continuare a studiare.</p>
+        </article>
+    </div>
+</body>
+</html>
