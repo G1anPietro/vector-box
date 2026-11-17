@@ -51,6 +51,7 @@ $updated = '2026-11-17';
             Le registrazioni sono al massimo 5 all'ora per indirizzo. Se il contatore stesso si guasta, accesso e registrazione
             rifiutano invece di lasciar passare.</li>
             <li><strong>Stessa risposta</strong> ("credenziali non valide") sia per un nome che non esiste sia per una password sbagliata.</li>
+            <li><strong>Verifica in due passaggi per gli amministratori:</strong> chi gestisce il sito entra con la password e un codice a 6 cifre che cambia ogni 30 secondi (app tipo Aegis o Google Authenticator), e ogni codice vale una volta sola. Il segreto è salvato cifrato; i codici di emergenza sono salvati solo come impronta.</li>
             <li><strong>Nomi unici</strong> anche cambiando maiuscole e minuscole, e i nomi che sembrano dello staff
             (admin, moderator, support…) sono riservati: nessuno può fingersi il gestore.</li>
             <li><strong>Puoi andartene:</strong> dalla pagina Account scarichi tutti i tuoi dati e cancelli l'account da solo
@@ -151,6 +152,7 @@ $updated = '2026-11-17';
             account + address pair, so someone trying passwords in bulk is stopped without locking the real owner out. Sign-ups are
             limited to 5 an hour per address. If the counter itself breaks, login and sign-up refuse instead of letting requests through.</li>
             <li><strong>The same answer</strong> ("invalid credentials") for a name that does not exist and for a wrong password.</li>
+            <li><strong>Two-step login for administrators:</strong> whoever runs the site signs in with the password and a 6-digit code that changes every 30 seconds (an app like Aegis or Google Authenticator), and each code works only once. The secret is stored encrypted; backup codes are stored only as hashes.</li>
             <li><strong>Names are unique</strong> even when only the capital letters differ, and names that look like staff
             (admin, moderator, support…) are reserved: nobody can pose as the owner.</li>
             <li><strong>You can leave:</strong> on the Account page you can download all your data and delete the account yourself

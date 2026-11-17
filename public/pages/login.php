@@ -2,6 +2,7 @@
 // public/pages/login.php — login / registration page: a server-rendered form that handles its own POST (sessions via establishSession()).
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
+require_once __DIR__ . '/../api/totp_lib.php';
 
 initSession();
 
@@ -17,8 +18,45 @@ if (!empty($_SESSION['username']) && !str_starts_with($_SESSION['username'], 'gu
 }
 
 $errorMessage = '';
+$needCode = false;   // step two: the password was right and this account asks for a code
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Step two of a two-step login: only the code comes in; WHO is trying was decided by the password step and lives in the session for 5 minutes.
+$step2 = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'totp';
+if ($step2) {
+    require_once __DIR__ . '/../api/rate_limiter.php';
+    $p = $_SESSION['totp_pending'] ?? null;
+    if (!is_array($p) || (int)($p['until'] ?? 0) < time()) {
+        $errorMessage = tt('The sign-in expired: enter your username and password again.', 'L’accesso è scaduto: inserisci di nuovo nome utente e password.');
+    } else {
+        $needCode = true;
+        try {
+            $db = getDbConnection();
+            if (!checkRateLimit('totp_login', 5, 300, (string)(int)$p['id'], true, true)) {
+                $errorMessage = tt('Too many attempts. Try again in a few minutes.', 'Troppi tentativi. Riprova tra qualche minuto.');
+            } else {
+                $st = $db->prepare('SELECT * FROM accounts WHERE id = :i');
+                $st->execute([':i' => (int)$p['id']]);
+                $acc = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+                $st->closeCursor();
+                if ($acc && totpEnabled($acc) && totpVerifyLogin($db, $acc, trim((string)($_POST['code'] ?? '')))) {
+                    initSession(true);
+                    unset($_SESSION['totp_pending']);
+                    session_write_close();
+                    establishSession($acc);
+                    header('Location: ' . $afterLogin);
+                    exit();
+                }
+                $errorMessage = tt('Wrong code.', 'Codice sbagliato.');
+            }
+        } catch (Throwable $e) {
+            require_once __DIR__ . '/../api/debug_logger.php';
+            logSystemError('LOGIN_TOTP', $e->getMessage());
+            $errorMessage = tt('Authentication server error.', 'Errore del server di accesso.');
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$step2) {
     require_once __DIR__ . '/../api/rate_limiter.php';
 
     // Passwords are trimmed to stay compatible with hashes created by earlier versions
@@ -67,11 +105,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $account = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
                     if (verifyPasswordSafe($account, $password)) {
-                        establishSession($account);
-                        header('Location: ' . $afterLogin);
-                        exit();
+                        if (!totpEnabled($account)) {
+                            establishSession($account);
+                            header('Location: ' . $afterLogin);
+                            exit();
+                        }
+                        initSession(true);
+                        $_SESSION['totp_pending'] = ['id' => (int)$account['id'], 'until' => time() + 300];
+                        session_write_close();
+                        $needCode = true;
+                    } else {
+                        $errorMessage = tt('Invalid username or password.', 'Nome utente o password non validi.');
                     }
-                    $errorMessage = tt('Invalid username or password.', 'Nome utente o password non validi.');
                 }
             }
         } catch (Throwable $e) {
@@ -103,6 +148,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div style="color: #ff3333; font-weight: bold; margin-bottom: 12px; font-size: 0.85rem;">>> <?php echo $errorMessage; ?></div>
             <?php endif; ?>
 
+            <?php if ($needCode): ?>
+            <form method="POST" action="login.php" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" name="action" value="totp">
+                <?php if ($next !== ''): ?><input type="hidden" name="next" value="<?php echo htmlspecialchars($next); ?>"><?php endif; ?>
+                <label class="toggle-label" for="login-code" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('CODE FROM YOUR AUTHENTICATOR APP (or a backup code)', 'CODICE DALLA TUA APP (o un codice di emergenza)') ?>:</label>
+                <input type="text" id="login-code" name="code" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px; letter-spacing: 0.2em;" required autofocus autocomplete="one-time-code" inputmode="text" autocapitalize="none" spellcheck="false" maxlength="16">
+                <button type="submit" class="nav-btn" style="padding: 8px;">>_ <?= tt('CONTINUE', 'CONTINUA') ?></button>
+                <a href="login.php" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('Start again', 'Ricomincia') ?></a>
+            </form>
+            <?php else: ?>
             <form method="POST" action="login.php" style="display: flex; flex-direction: column; gap: 12px;">
                 <?php if ($next !== ''): ?><input type="hidden" name="next" value="<?php echo htmlspecialchars($next); ?>"><?php endif; ?>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -125,6 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <button type="submit" name="action" value="register" class="nav-btn" style="flex: 1; border-color: var(--text-muted); color: var(--text-muted); padding: 8px;"><?= tt('REGISTER', 'REGISTRATI') ?></button>
                 </div>
             </form>
+            <?php endif; ?>
         </div>
     </main>
 </body>

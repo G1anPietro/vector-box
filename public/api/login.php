@@ -3,6 +3,7 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/debug_logger.php';
+require_once __DIR__ . '/totp_lib.php';
 
 header('Content-Type: application/json');
 
@@ -70,6 +71,9 @@ try {
         jsonResponse(['success' => false, 'error' => 'Invalid credentials'], 401);
     }
 
+    if (totpEnabled($user)) {   // the second step lives on the login page: this endpoint never gives a session for the password alone
+        jsonResponse(['success' => false, 'totp_required' => true, 'error' => 'This account uses two-step verification: sign in on the login page (pages/login.php)'], 403);
+    }
     $csrf = establishSession($user);
 
     jsonResponse([

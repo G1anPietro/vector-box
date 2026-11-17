@@ -118,6 +118,7 @@ session_write_close();
 <head>
     <?php renderHead(tt('SYSTEM // ACCOUNT_MANAGEMENT', 'SISTEMA // GESTIONE_ACCOUNT'), true); ?>
     <script src="../js/account_data.js?v=<?php echo APP_VERSION; ?>" defer></script>
+    <?php if (!empty($account['is_admin'])): ?><script src="../js/totp.js?v=<?= filemtime(__DIR__ . '/../js/totp.js') ?>" defer></script><?php endif; ?>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -205,6 +206,14 @@ session_write_close();
                 </form>
                 <?php endif; ?>
             </div>
+
+            <?php if (!empty($account['is_admin'])): ?>
+            <section id="totp" style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;" aria-labelledby="totp-title">
+                <h3 id="totp-title" style="font-size: 0.9rem;">>_ <?= tt('TWO-STEP LOGIN', 'ACCESSO IN DUE PASSAGGI') ?></h3>
+                <p class="term-muted" id="totp-state" style="margin: 6px 0;"></p>
+                <div id="totp-body"></div>
+            </section>
+            <?php endif; ?>
 
             <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
                 <?php if (!empty($account['is_admin'])): ?><a href="admin_users.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ <?= tt('USERS', 'UTENTI') ?></a><a href="mail.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ <?= tt('MAIL BOX', 'CASELLA E-MAIL') ?></a><?php endif; ?>

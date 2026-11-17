@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 40;
+const DB_SCHEMA_VERSION = 41;
 
 /**
  * Session bootstrap.
@@ -584,6 +584,14 @@ function migrateV16(PDO $db): void {
 /** v38: the news board (pages/novita.php): what is new, what is being worked on right now, what comes next. Texts in both languages. */
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
 /** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
+/** v41: two-step login (TOTP) for admins: the encrypted secret, whether it is on, the last accepted 30-second step, the hashed backup codes. */
+function migrateV41(PDO $db): void {
+    addColumnIfMissing($db, 'accounts', 'totp_secret', "TEXT NOT NULL DEFAULT ''");
+    addColumnIfMissing($db, 'accounts', 'totp_enabled', 'INTEGER NOT NULL DEFAULT 0');
+    addColumnIfMissing($db, 'accounts', 'totp_last_step', 'INTEGER NOT NULL DEFAULT 0');
+    addColumnIfMissing($db, 'accounts', 'totp_backup', "TEXT NOT NULL DEFAULT ''");
+}
+
 function migrateV40(PDO $db): void {
     $db->exec("CREATE TABLE IF NOT EXISTS admin_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1098,6 +1106,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 40) {
             migrateV40($db);
+        }
+        if ($current < 41) {
+            migrateV41($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

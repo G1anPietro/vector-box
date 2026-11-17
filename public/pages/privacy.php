@@ -45,7 +45,7 @@ $updated = '2026-11-16';
         <h2>Quali dati, perché e per quanto tempo</h2>
         <p>Per ogni trattamento: i dati, lo scopo, la base giuridica (la ragione per cui la legge lo permette) e per quanto tempo restano.</p>
         <ul>
-            <li><strong>Account</strong> (se lo crei): nome utente, password (salvata solo in forma cifrata e non leggibile, nemmeno da chi gestisce il sito), tema, biografia, data di creazione e i permessi. Le azioni che un amministratore compie sul tuo account (ban, permessi, badge) vengono registrate con la data e conservate <?= retentionDays('ADMINLOG') ?> giorni.
+            <li><strong>Account</strong> (se lo crei): nome utente, password (salvata solo in forma cifrata e non leggibile, nemmeno da chi gestisce il sito), tema, biografia, data di creazione e i permessi (per un amministratore che attiva l’accesso in due passaggi: il segreto, salvato cifrato, e i codici di emergenza, salvati solo come impronta). Le azioni che un amministratore compie sul tuo account (ban, permessi, badge) vengono registrate con la data e conservate <?= retentionDays('ADMINLOG') ?> giorni.
                 <em>Scopo:</em> farti entrare e usare il sito. <em>Base:</em> esecuzione del servizio che chiedi (art. 6.1.b GDPR).
                 <em>Quanto:</em> finché non cancelli l’account (puoi farlo da solo dalla pagina Account).</li>
             <li><strong>Chat, messaggi privati, libro degli ospiti e scatola delle idee:</strong> il testo che scrivi, il tuo nome utente e, per sicurezza, l’indirizzo IP. Un’idea che un amministratore sta valutando è mostrata alle altre persone con un account senza il tuo nome, e i tuoi voti alle idee sono salvati con il tuo account.
@@ -127,7 +127,7 @@ $updated = '2026-11-16';
         <h2>Which data, why and for how long</h2>
         <p>For each use: the data, the purpose, the legal basis (the reason the law allows it) and how long it is kept.</p>
         <ul>
-            <li><strong>Account</strong> (if you create one): username, password (stored only as a one-way hash, unreadable even to the site’s owner), theme, bio, creation date and permissions. Actions an administrator takes on your account (ban, permissions, badge) are written to a log with the date and kept for <?= retentionDays('ADMINLOG') ?> days.
+            <li><strong>Account</strong> (if you create one): username, password (stored only as a one-way hash, unreadable even to the site’s owner), theme, bio, creation date and permissions (for an administrator who turns on two-step login: the secret, stored encrypted, and backup codes, stored only as hashes). Actions an administrator takes on your account (ban, permissions, badge) are written to a log with the date and kept for <?= retentionDays('ADMINLOG') ?> days.
                 <em>Purpose:</em> to let you in and use the site. <em>Basis:</em> performing the service you ask for (art. 6.1.b GDPR).
                 <em>How long:</em> until you delete the account (you can do it yourself from the Account page).</li>
             <li><strong>Chat, private messages, guestbook and ideas box:</strong> the text you write, your username and, for security, your IP address. An idea that an administrator is considering is shown to the other logged-in people without your name, and your votes on ideas are stored with your account.
