@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const dir = path.join(__dirname, '..', 'public', 'js', 'rogue');
 const A = require(path.join(dir, 'sprites-art.js'));
-for (const f of ['heroes', 'mobs', 'bosses', 'mobs2', 'items', 'items2', 'items3', 'items4']) require(path.join(dir, `sprites-art-${f}.js`));
+for (const f of ['heroes', 'mobs', 'bosses', 'mobs2', 'items', 'items2', 'items3', 'items4', 'items5']) require(path.join(dir, `sprites-art-${f}.js`));
 const MOBS = require(path.join(dir, 'mobs.js')), ITEMS = require(path.join(dir, 'items.js')), CLS = require(path.join(dir, 'classes.js')), SP = require(path.join(dir, 'sprites.js'));
 const ROLES = new Set('osblaewnNhHkgGyrtpc'.split(''));
 
@@ -93,17 +93,43 @@ test('every monster with a `sprite` key has its own drawing, distinct from all o
     assert.ok(avg(big) > avg(own.filter((d) => !big.includes(d))), 'mini-bosses and alternative bosses are bigger');
 });
 
-// every item (by category) whose `sprite` key is declared has its own drawing, and no two in the same family are identical.
-// Only the categories listed here are finished; an unfinished one keeps its category icon (the fallback chain), see docs/ROGUELIKE.md.
-const DRAWN = ['weapon', 'throw', 'armor', 'food', 'drink', 'script'];
-test('items of the drawn categories have their own, mutually different drawings', () => {
-    const noArt = [], twins = [], seen = new Map();
-    for (const d of ITEMS.LIST) {
-        if (!d.sprite || !DRAWN.includes(d.cat)) continue;
-        if (!A.def(d.sprite)) { noArt.push(d.id); continue; }
+// every item whose `sprite` key is declared has its own drawing (nothing falls back to the category icon or i:generic), and no two items of one family are identical
+test('every item with a `sprite` key has its own drawing, different from every other in its family', () => {
+    const noArt = [], twins = [], seen = new Map(), items = ITEMS.LIST.filter((d) => d.sprite);
+    assert.ok(items.length >= 180, 'new items: ' + items.length);
+    for (const d of items) {
+        if (!A.def(d.sprite)) { noArt.push(d.id + ' -> ' + A.resolve(A.chain(Object.assign({}, d, { shape: ITEMS.CATS[d.cat].shape }), 'i')).key); continue; }
         const key = d.cat + hash(d.sprite);
         if (seen.has(key)) twins.push(d.id + ' = ' + seen.get(key)); else seen.set(key, d.id);
     }
     assert.deepEqual(noArt, []); assert.deepEqual(twins, []);
-    assert.ok(seen.size >= 60, 'drawn items: ' + seen.size);
+    // every drawing in the data is an item_<id> or monster_<id> that exists in the data (no orphan drawings left behind)
+    const keys = new Set([...items.map((d) => d.sprite), ...MOBS.LIST.map((d) => d.sprite)]);
+    assert.deepEqual(A.keys().filter((k) => /^(item|monster)_/.test(k) && !keys.has(k)), []);
+});
+
+test('every new drawing is visible (at least 18 pixels) and does not fill the whole box', () => {
+    for (const k of A.keys().filter((k) => /^(item|monster)_/.test(k))) {
+        const px = A.pixels(k, '#8fa3b8', 0);
+        assert.equal(px.length, 256, k);
+        assert.ok(px.filter(Boolean).length >= 18, k + ' is too small to see');
+        assert.ok(px.filter(Boolean).length < 240, k + ' fills the whole box');
+    }
+});
+
+// identification by use: an unknown can / script / USB stick / plugin shows only its category icon, whatever its own drawing is; once known it shows its own drawing
+test('unidentified drinks, scripts, USB sticks and plugins keep the category icon (itemLook), known ones show their own drawing', () => {
+    const G = require(path.join(dir, 'game.js'));
+    const s = { known: {}, looks: {} };
+    for (const cat of ['drink', 'script', 'usb', 'plugin']) {
+        const list = ITEMS.LIST.filter((d) => d.cat === cat && d.sprite);
+        assert.ok(list.length > 10, cat);
+        list.forEach((d, i) => { s.looks[d.id] = i; });
+        for (const d of list) {
+            assert.equal(G.itemLook(s, { k: d.id }).shape, ITEMS.CATS[cat].shape, d.id + ' unknown must show the category icon');
+            s.known[d.id] = 1;
+            assert.equal(G.itemLook(s, { k: d.id }).shape.split('>')[0], d.sprite, d.id + ' known shows its own drawing');
+            assert.equal(A.resolve(G.itemLook(s, { k: d.id }).shape).exact, true);
+        }
+    }
 });
