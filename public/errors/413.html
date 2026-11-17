@@ -1,21 +1,22 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>413 // File troppo grande</title>
+<title data-i18n="e413_page">413 // File too large</title>
+<script src="/js/i18n.js"></script>
 <link rel="stylesheet" href="/errors/errors.css">
 </head>
 <body>
 <main class="err">
   <div class="err-tag">// PAYLOAD_TOO_BIG</div>
   <h1 class="err-code" data-text="413">413</h1>
-  <h2 class="err-title">File troppo grande</h2>
-  <p class="err-text">Il file supera il limite consentito dal server.</p>
+  <h2 class="err-title" data-i18n="e413_title">File too large</h2>
+  <p class="err-text" data-i18n="e413_text">The file is over the limit the server allows.</p>
   <div class="err-actions">
-    <a class="err-btn" href="/">// RETURN_HOME</a>
-    <a class="err-btn err-btn-alt" href="#" id="err-back">// GO_BACK</a>
+    <a class="err-btn" href="/" data-i18n="home">// RETURN_HOME</a>
+    <a class="err-btn err-btn-alt" href="#" id="err-back" data-i18n="back">// GO_BACK</a>
   </div>
   <p class="err-foot">vector-box · error 413</p>
 </main>

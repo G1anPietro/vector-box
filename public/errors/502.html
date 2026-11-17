@@ -1,22 +1,23 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>502 // Servizio non raggiungibile</title>
+<title data-i18n="e502_page">502 // Service unreachable</title>
+<script src="/js/i18n.js"></script>
 <link rel="stylesheet" href="/errors/errors.css">
 </head>
 <body data-retry="1">
 <main class="err">
   <div class="err-tag">// BAD_GATEWAY</div>
   <h1 class="err-code" data-text="502">502</h1>
-  <h2 class="err-title">Servizio non raggiungibile</h2>
-  <p class="err-text">Una parte del sistema non risponde (forse si sta riavviando). Riprovo da solo.</p>
-  <p class="err-retry" id="err-retry" hidden>Nuovo tentativo tra <b id="err-count">15</b>s</p>
+  <h2 class="err-title" data-i18n="e502_title">Service unreachable</h2>
+  <p class="err-text" data-i18n="e502_text">A part of the system is not answering (maybe it is restarting). Retrying by itself.</p>
+  <p class="err-retry" id="err-retry" hidden><span data-i18n="retry">Trying again in</span> <b id="err-count">15</b>s</p>
   <div class="err-actions">
-    <a class="err-btn" href="/">// RETURN_HOME</a>
-    <a class="err-btn err-btn-alt" href="#" id="err-back">// GO_BACK</a>
+    <a class="err-btn" href="/" data-i18n="home">// RETURN_HOME</a>
+    <a class="err-btn err-btn-alt" href="#" id="err-back" data-i18n="back">// GO_BACK</a>
   </div>
   <p class="err-foot">vector-box · error 502</p>
 </main>
