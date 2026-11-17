@@ -101,3 +101,23 @@ test('the page has the toolbar, the quickslots, the zoom buttons and the touch r
         assert.match(css, /touch-action: none/); assert.match(css, /-webkit-touch-callout: none/);
     } finally { await site.stop(); }
 });
+
+test('the page fits one screen: a flexible map area, a full screen button, a manifest for the home screen', async () => {
+    const fs = require('fs'), path = require('path');
+    const root = path.join(__dirname, '..', 'public');
+    const html = fs.readFileSync(path.join(root, 'pages/dungeon.html'), 'utf8');
+    assert.match(html, /id="dg-wrap"/);
+    assert.match(html, /id="dg-full"/);
+    assert.match(html, /rel="manifest" href="\.\.\/assets\/dungeon\/manifest\.json/);
+    assert.match(html, /apple-mobile-web-app-capable/);
+    const man = JSON.parse(fs.readFileSync(path.join(root, 'assets/dungeon/manifest.json'), 'utf8'));
+    assert.equal(man.display, 'fullscreen');
+    for (const i of man.icons) assert.ok(fs.existsSync(path.join(root, 'assets/dungeon', i.src.split('?')[0])), i.src);
+    assert.ok(fs.existsSync(path.join(root, 'assets/dungeon/apple-touch-icon.png')));
+    const css = fs.readFileSync(path.join(root, 'css/dungeon.css'), 'utf8');
+    assert.match(css, /height: 100dvh/);
+    assert.match(css, /orientation: landscape/);
+    const js = fs.readFileSync(path.join(root, 'js/dungeon.js'), 'utf8');
+    assert.match(js, /requestFullscreen/);
+    assert.match(js, /visualViewport/);
+});

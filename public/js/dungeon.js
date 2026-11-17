@@ -69,9 +69,12 @@
     const cv = $('dg-canvas'), ctx = cv.getContext('2d');
     const touchMode = () => opt.controls !== 'dpad';
     function layout() {
+        // the map takes exactly the room the page leaves it (the wrapper is a flexible area between the bars and the controls),
+        // in whole tiles, so nothing ever overflows the screen whatever the phone, the browser bars or the orientation
         const ts = (innerWidth >= 800 ? [20, 32, 48] : [16, 24, 36])[clamp(opt.zoom | 0, 0, 2)];
-        const vw = Math.min(W, Math.max(8, Math.floor(Math.min(innerWidth - 14, 640) / ts)));
-        const vh = Math.min(H, Math.max(8, Math.min(vw + 4, Math.floor((innerHeight - (touchMode() ? 290 : 310)) / ts))));
+        const r = $('dg-wrap').getBoundingClientRect();
+        const aw = r.width > 60 ? r.width - 4 : Math.min(innerWidth - 14, 640), ah = r.height > 60 ? r.height - 4 : innerHeight - 290;
+        const vw = clamp(Math.floor(aw / ts), 5, W), vh = clamp(Math.floor(ah / ts), 5, H);
         view = { ts, vw, vh };
         cv.width = vw * ts; cv.height = vh * ts;
         cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
@@ -581,7 +584,34 @@
     });
     document.addEventListener('visibilitychange', () => { if (document.hidden) stopTravel(); });
     let rt = 0;
-    addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { layout(); if (s) render(); }, 100); });
+    const relayout = () => { clearTimeout(rt); rt = setTimeout(() => { layout(); if (s) render(); }, 80); };
+    addEventListener('resize', relayout);
+    addEventListener('orientationchange', relayout);
+    if (self.visualViewport) visualViewport.addEventListener('resize', relayout);    // the browser's address bar appearing or hiding
+
+    // ── full screen ──
+    const root = document.documentElement;
+    const fsRequest = root.requestFullscreen || root.webkitRequestFullscreen;
+    const fsActive = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const standalone = () => (self.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone === true;
+    function fullscreenHelp() {
+        const body = openModal('Schermo intero', 'fullscreen');
+        el('p', 'Questo browser non permette lo schermo intero a una pagina web (succede su iPhone e iPad).', '', body);
+        el('p', 'Per giocare senza barre: apri il menu Condividi di Safari, scegli «Aggiungi alla schermata Home» e avvia il gioco da quell\'icona. Si apre a tutto schermo, e il salvataggio resta lo stesso.', '', body);
+        el('p', 'Su Android, in Chrome: menu ⋮ → «Aggiungi a schermata Home» oppure «Installa app».', '', body);
+    }
+    function toggleFullscreen() {
+        if (!fsRequest) return fullscreenHelp();
+        try {
+            if (fsActive()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+            else { const p = fsRequest.call(root, { navigationUI: 'hide' }); if (p && p.catch) p.catch(fullscreenHelp); }
+        } catch (e) { fullscreenHelp(); }
+    }
+    const fsButton = $('dg-full');
+    fsButton.hidden = standalone();                            // already running full screen from the home screen: nothing to ask
+    fsButton.addEventListener('click', toggleFullscreen);
+    const onFs = () => { document.body.classList.toggle('fs', fsActive()); fsButton.textContent = fsActive() ? '✕' : '⛶'; fsButton.setAttribute('aria-label', fsActive() ? 'Esci dallo schermo intero' : 'Schermo intero'); relayout(); };
+    document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
 
     // ── title screen ──
     function applyOpt() {
@@ -590,7 +620,7 @@
         layout();
     }
     function showTitle() {
-        $('dg-game').hidden = true; $('dg-title').hidden = false;
+        $('dg-game').hidden = true; $('dg-title').hidden = false; document.body.classList.remove('ingame');
         $('dg-stats').textContent = meta.runs ? `Partite ${meta.runs} · Piano record ${meta.best} · Vittorie ${meta.wins} · Boss ${meta.bosses} · Crediti ${meta.crediti}` : 'Prima partita: buona discesa.';
         const box = $('dg-classes');
         box.textContent = '';
@@ -622,7 +652,7 @@
         persist(); enterGame();
     }
     function enterGame() {
-        $('dg-title').hidden = true; $('dg-game').hidden = false;
+        $('dg-title').hidden = true; $('dg-game').hidden = false; document.body.classList.add('ingame');
         applyOpt(); render();
         if (s.p.pending) levelModal();
     }

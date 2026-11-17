@@ -88,3 +88,52 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dg-card b { display: block; color: var(--amber); font-size: .88rem; }
 .dg-card div { color: var(--ink); }
 .dg-stage.aiming { border-color: var(--amber); box-shadow: 0 0 14px rgba(255, 176, 0, .45); }
+
+/* ───────────── layout v4: the page is exactly one screen tall; the map gets whatever room is left ─────────────
+ * header (one row) / HUD / MAP (flexible) / log / controls. Short phones, browser bars and landscape all just give the map
+ * less or more room: js/dungeon.js measures #dg-wrap and fits whole tiles into it. */
+html, body { height: 100%; }
+body { height: 100dvh; min-height: 0; overflow: hidden; padding: env(safe-area-inset-top) calc(6px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(6px + env(safe-area-inset-left)); }
+.dg-top { flex: none; gap: 4px; padding: 2px 0 4px; }
+.dg-top h1 { font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dg-top a, .dg-top button { min-height: 40px; }
+.dg-top button { padding: 4px 10px; font-size: .8rem; flex: none; }
+.dg-top .dg-back { padding-right: 2px; }
+#dg-full { width: 40px; padding: 0; font-size: 1.1rem; }
+body:not(.ingame) #dg-title { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }   /* the title screen scrolls when the phone is short */
+#dg-game { flex: 1; min-height: 0; max-width: 760px; }
+.dg-hud { flex: none; margin-bottom: 3px; }
+.dg-bar { height: 18px; } .dg-bar span { line-height: 16px; font-size: .72rem; }
+.dg-infoline { font-size: .72rem; }
+.dg-stagewrap { flex: 1 1 0; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.dg-log { flex: none; height: 3.9em; margin: 3px 0; padding: 3px 8px; font-size: .74rem; }
+.dg-controls { flex: none; padding-bottom: 4px; }
+.dg-toolbar button { min-height: 46px; }
+#dg-game.mode-touch .dg-acts button { min-height: 40px; font-size: .7rem; }
+body.fs .dg-top { padding-top: 0; }
+
+/* short portrait phones: two log lines, a slimmer toolbar */
+@media (max-height: 640px) and (orientation: portrait) {
+    .dg-log { height: 2.7em; }
+    .dg-toolbar button { min-height: 44px; }
+    #dg-game.mode-touch .dg-acts button { min-height: 38px; }
+    .dg-lead { font-size: .8rem; margin: 2px 0; }
+}
+@media (max-width: 400px) { .dg-hide-sm { display: none; } }
+
+/* landscape phones: the map on the left, everything else in a column on the right */
+@media (orientation: landscape) and (max-height: 560px) {
+    #dg-game { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) clamp(220px, 34vw, 300px); grid-template-rows: auto auto 1fr; column-gap: 8px; align-items: start; }
+    .dg-stagewrap { grid-column: 1; grid-row: 1 / span 3; height: 100%; }
+    .dg-hud { grid-column: 2; grid-row: 1; }
+    .dg-log { grid-column: 2; grid-row: 2; height: 3.4em; margin: 0 0 4px; }
+    .dg-controls { grid-column: 2; grid-row: 3; align-self: end; display: flex; flex-direction: column; gap: 4px; }
+    .dg-toolbar { grid-template-columns: repeat(4, 1fr); }
+    .dg-toolbar button { min-height: 42px; }
+    #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(3, 1fr); }
+    #dg-game.mode-touch .dg-acts button { min-height: 38px; }
+    .dg-top h1 { font-size: .75rem; }
+    .dg-card { right: 52px; }
+}
+/* big screens: a larger map, and the controls stay under it */
+@media (min-width: 900px) and (min-height: 700px) { #dg-game { max-width: 980px; } .dg-log { height: 4.6em; } }
