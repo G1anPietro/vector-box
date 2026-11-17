@@ -3,18 +3,19 @@
 //   const s = newGame(seed, 'studente', meta);  act(s, { t: 'move', dx: 1, dy: 0 });  save(s) / load(text)
 // The rules never write a sentence: log(s, 'key', { params }, colour) stores a message that the page turns into text in the language of
 // the moment (see text.js; text(msg, lang) here resolves the ids in the params). A saved run keeps its messages, so it reads in either language.
-// Actions: move {dx,dy} · wait · search · throw {i,x,y} · use {i} · drop {i} · unequip {slot} · descend · active · skill {id} · buy {i} · rest · recycle {i} · leave
+// Actions: move {dx,dy} (8 directions, no corner cutting, doors straight) · wait · sleep (one turn; repeat while s.sleeping) · search · throw {i,x,y} · use {i} · drop {i} · unequip {slot} · descend · active · skill {id} · buy {i} · rest · recycle {i} · leave
 // HOW TO ADD AN EFFECT (for a new item, trap or active skill): add a function to EFFECTS below; it receives
 // (state, power, targetMonster). Put its name in TARGETED if it needs an enemy in sight.
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
+        require('./text-systems.js');                                  // merges its sentences into text.js's MSG
         module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'), require('./text.js'));
     } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta, R.text); }
 })(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META, TX) {
     'use strict';
     const VERSION = 2, W = MAP.W, H = MAP.H, T = MAP.T, DIRS = MAP.DIRS;
     const FLOORS = MOBS.SECTORS.length * MOBS.PER_SECTOR;
-    const MOB_CAP = 40, INV_CAP = 24, MAX_FOOD = 1200, SIGHT = 8, THROW_RANGE = 6, SEARCH_RADIUS = 3;
+    const SLEEP_CAP = 100, MOB_CAP = 40, INV_CAP = 24, MAX_FOOD = 1200, SIGHT = 8, THROW_RANGE = 6, SEARCH_RADIUS = 3;
     const byId = (list) => Object.fromEntries(list.map((e) => [e.id, e]));
     const MOB = byId(MOBS.LIST), ITEM = byId(ITEMS.LIST), CLASS = byId(CLS.CLASSES), SKILL = byId(CLS.SKILLS);
     const idx = (x, y) => y * W + x;
@@ -176,7 +177,7 @@
     }
     /** Can the player see this monster? (Crates that bite and invisible things are not seen from far.) */
     function shown(s, m) {
-        const d = MOB[m.k], near = Math.abs(m.x - s.p.x) + Math.abs(m.y - s.p.y) <= 1;
+        const d = MOB[m.k], near = Math.max(Math.abs(m.x - s.p.x), Math.abs(m.y - s.p.y)) <= 1;
         if (d.ambush && !m.shown) return false;
         if (d.invisible && !near) return false;
         return !!s.vis[idx(m.x, m.y)] || !!s.p.st.ping;
@@ -186,6 +187,12 @@
         let best = null, bd = 99;
         for (const m of threats(s)) { const d = Math.abs(m.x - s.p.x) + Math.abs(m.y - s.p.y); if (d < bd) { bd = d; best = m; } }
         return best;
+    }
+
+    /** Is the monster (or any {x, y}) next to the player, diagonals included, with the corner rule (nothing is hit around a corner or through a door)? */
+    function touching(s, e) {
+        const dx = e.x - s.p.x, dy = e.y - s.p.y;
+        return Math.max(Math.abs(dx), Math.abs(dy)) === 1 && MAP.diagOk(s.map, s.p.x, s.p.y, dx, dy);
     }
 
     function newFloor(s) {
@@ -298,7 +305,7 @@
     function heal(s, n) { s.p.hp = Math.min(s.p.maxHp, s.p.hp + n); }
     function hurtPlayer(s, dmg, cause) {
         const p = s.p;
-        p.hp -= dmg;
+        p.hp -= dmg; s.lastHurt = s.turn;
         fx(s, 'hurt', p.x, p.y);
         if (p.hp <= 0) { p.hp = 0; s.status = 'dead'; s.cause = cause; log(s, 'defeated', { cause }, 'bad'); }
     }
@@ -368,7 +375,7 @@
         hurtPlayer(s, n, mobCause(m.k));
         if (d.poison && RNG.chance(s.rng, 0.5)) p.st.poison = Math.max(p.st.poison || 0, d.poison);
         if (d.weaken) p.st.weak = 12;
-        if (d.stun && RNG.chance(s.rng, 0.3)) p.st.stun = 1;
+        if (d.stun && RNG.chance(s.rng, 0.3)) p.st.stun = 2;           // 2: the status loses a turn at the end of this one, so 1 would never skip an action
         if (d.confuse && RNG.chance(s.rng, 0.3)) p.st.conf = 5;
         if (d.leech) m.hp = Math.min(m.max, m.hp + n);
     }
@@ -376,13 +383,16 @@
     function mobStep(s, m, dx, dy, occ) {
         const x = m.x + dx, y = m.y + dy, d = MOB[m.k];
         if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1 || occ.has(idx(x, y)) || (x === s.p.x && y === s.p.y)) return false;
-        if (!d.phase && !MAP.walkable(s.map.tiles[idx(x, y)])) return false;
+        if (!d.phase && (!MAP.walkable(s.map.tiles[idx(x, y)]) || !MAP.diagOk(s.map, m.x, m.y, dx, dy))) return false;
         occ.delete(idx(m.x, m.y)); m.x = x; m.y = y; occ.add(idx(x, y));
         return true;
     }
+    /** A sleeping hero is easier to notice: monsters 2 tiles further away (with a clear line) count as seeing him. */
+    const hearsSleeper = (s, m) => !!s.sleeping && Math.max(Math.abs(m.x - s.p.x), Math.abs(m.y - s.p.y)) <= SIGHT + 2 && MAP.los(s.map, s.p.x, s.p.y, m.x, m.y);
     function mobTurn(s, m, d, dmap, occ) {
-        const p = s.p, dist = Math.abs(m.x - p.x) + Math.abs(m.y - p.y), adj = dist === 1;
-        const sees = !!s.vis[idx(m.x, m.y)] && (!p.st.invis || adj);
+        const p = s.p, dist = Math.abs(m.x - p.x) + Math.abs(m.y - p.y), adj = touching(s, m);
+        const hears = hearsSleeper(s, m);
+        const sees = (!!s.vis[idx(m.x, m.y)] || hears) && (!p.st.invis || adj);
         const wander = () => { const v = RNG.pick(s.rng, DIRS); mobStep(s, m, v[0], v[1], occ); };
         if (m.fear) m.fear--;
         if (m.fear || m.loot || m.stolen || (d.coward && m.hp * 4 < m.max)) {
@@ -393,9 +403,9 @@
             }
             const dm = dmap();
             let best = null, bd = dm[idx(m.x, m.y)];
-            for (const v of DIRS) {
+            for (const v of MAP.DIRS8) {
                 const j = idx(m.x + v[0], m.y + v[1]);
-                if (dm[j] > bd && !occ.has(j)) { best = v; bd = dm[j]; }
+                if (dm[j] > bd && !occ.has(j) && MAP.diagOk(s.map, m.x, m.y, v[0], v[1])) { best = v; bd = dm[j]; }
             }
             if (best && mobStep(s, m, best[0], best[1], occ)) return;
             if (!adj) return;                                              // cornered: it fights
@@ -423,7 +433,7 @@
     function mobsAct(s) {
         const p = s.p, wake = 0.4 * (1 - stats(s).stealth / 100);
         let dm = null;
-        const dmap = () => dm || (dm = MAP.flood(s.map, [idx(p.x, p.y)], (i, t) => MAP.walkable(t)));
+        const dmap = () => dm || (dm = MAP.flood(s.map, [idx(p.x, p.y)], (i, t) => MAP.walkable(t), true));
         const occ = new Set(s.mobs.map((m) => idx(m.x, m.y)));
         for (const m of s.mobs.slice()) {
             if (s.status !== 'play') return;
@@ -432,7 +442,7 @@
             if (d.regen && m.hp < m.max) m.hp = Math.min(m.max, m.hp + d.regen);
             if (m.frozen) { m.frozen--; continue; }
             if (m.asleep > 1) { m.asleep--; continue; }                     // a timed sleep (script, skill) runs out first
-            if (m.asleep) { if (s.vis[idx(m.x, m.y)] && !p.st.invis && RNG.chance(s.rng, wake)) { m.asleep = 0; m.hunt = 1; } continue; }
+            if (m.asleep) { if ((s.vis[idx(m.x, m.y)] || hearsSleeper(s, m)) && !p.st.invis && RNG.chance(s.rng, wake)) { m.asleep = 0; m.hunt = 1; } continue; }
             m.en = (m.en || 0) + (d.speed || 1) * (m.slow ? 0.5 : 1);
             while (m.en >= 1 && m.hp > 0 && s.status === 'play') { m.en -= 1; mobTurn(s, m, d, dmap, occ); }
         }
@@ -538,7 +548,9 @@
         const p = s.p;
         if (p.st.conf && RNG.chance(s.rng, 0.5)) [dx, dy] = RNG.pick(s.rng, DIRS);
         const x = p.x + dx, y = p.y + dy, t = s.map.tiles[idx(x, y)], m = mobAt(s, x, y);
+        if (!MAP.diagOk(s.map, p.x, p.y, dx, dy)) { if (dx && dy && (m || MAP.walkable(t))) log(s, 'diag_blocked', null, 'info'); return false; }   // no corner cutting, doors only straight
         if (m) { attackMob(s, m); return true; }
+        if (t === T.SHOP || t === T.BENCH || t === T.ALTAR) { if (dx && dy) return false; }   // furniture is used from the side
         if (t === T.SHOP) { s.shop.open = 1; return false; }
         if (t === T.BENCH) { s.bench.open = 1; return false; }
         if (t === T.ALTAR) return pray(s);
@@ -639,6 +651,32 @@
         p.inv.push(p[slot]); p[slot] = null;
         return true;
     }
+    /** One turn of sleep (the page repeats it while s.sleeping > 0; endTurn ends it). Refused with a monster in view, when hungry or when there is nothing to heal. */
+    function sleepTurn(s) {
+        const p = s.p;
+        if (threats(s).length) { log(s, 'sleep_enemy', null, 'bad'); return false; }
+        if (p.food < 150) { log(s, p.food <= 0 ? 'sleep_starving' : 'sleep_hungry', null, 'bad'); return false; }
+        if (p.hp >= p.maxHp) { log(s, 'sleep_full', null, 'info'); return false; }
+        if (!s.sleeping) log(s, 'sleep_start', null, 'info');
+        s.sleeping = (s.sleeping || 0) + 1;
+        return true;
+    }
+    /** Why a sleep ends after this turn (a message key) or null: a monster in view, being hurt, hunger, full health, the 100-turn cap. */
+    function sleepWake(s) {
+        const p = s.p, m = nearest(s);
+        if (m) return { k: 'sleep_wake_mob', p: { mob: m.k } };
+        if (s.lastHurt === s.turn) return { k: 'sleep_wake_hurt' };
+        if (p.food < 150) return { k: 'sleep_wake_hungry' };
+        if (p.hp >= p.maxHp) return { k: 'sleep_wake_full' };
+        if (s.sleeping >= SLEEP_CAP) return { k: 'sleep_wake_cap' };
+        return null;
+    }
+    /** Sleeps until something wakes the hero (tests, bots); the page does the same one turn at a time. Returns the number of turns slept. */
+    function sleepRun(s) {
+        let n = 0;
+        while (s.status === 'play' && act(s, { t: 'sleep' }) && s.sleeping) n++;
+        return n + 1;
+    }
     function descend(s) {
         if (s.map.tiles[idx(s.p.x, s.p.y)] !== T.STAIRS) { log(s, 'stairs_none'); return false; }
         if (s.sealed) { log(s, 'stairs_locked'); return false; }
@@ -686,9 +724,14 @@
             if (p.food === 0) log(s, 'starving', null, 'bad');
         }
         if (p.food <= 0) { p.food = 0; if (s.turn % 8 === 0) hurtPlayer(s, 1, { k: 'cause_hunger' }); }
-        else if (p.hp < p.maxHp && (p.st.regen || s.turn % Math.max(2, 12 - (p.lvl >> 1) - st.regen * 2) === 0)) p.hp++;
+        else if (p.hp < p.maxHp) {
+            let iv = Math.max(2, 12 - (p.lvl >> 1) - st.regen * 2);
+            if (s.sleeping) iv = Math.max(1, iv >> 1);                      // asleep: twice as fast
+            if (p.st.regen || s.turn % iv === 0) p.hp++;
+        }
         if (st.recharge && s.turn % Math.max(15, 60 - st.recharge * 15) === 0) for (const it of p.inv) if (ITEM[it.k].cat === 'usb' && it.ch < ITEM[it.k].ch) it.ch++;
         if (s.status === 'play') search(s, 0.12 + st.search / 100);
+        if (s.sleeping && s.status === 'play') { const w = sleepWake(s); if (w) { s.sleeping = 0; log(s, w.k, w.p, w.k === 'sleep_wake_full' || w.k === 'sleep_wake_cap' ? 'info' : 'bad'); } }
     }
 
     /** Plays one action. True when it took a turn (the enemies moved). */
@@ -706,10 +749,12 @@
             if (a.t === 'rest') rest(s); else if (a.t === 'recycle') recycle(s, a.i); else s.bench.open = 0;
             return false;
         }
+        if (a.t !== 'sleep') s.sleeping = 0;
         let took = false;
         if (p.st.stun) { log(s, 'stunned', null, 'bad'); took = true; }
         else if (a.t === 'move') took = move(s, a.dx, a.dy);
         else if (a.t === 'wait') { took = true; search(s, 0.5); }
+        else if (a.t === 'sleep') took = sleepTurn(s);
         else if (a.t === 'search') { took = true; if (!search(s, 1, SEARCH_RADIUS)) log(s, 'search_none'); }
         else if (a.t === 'throw') took = throwItem(s, a.i, a.x, a.y);
         else if (a.t === 'use') took = useItem(s, a.i);
@@ -733,7 +778,7 @@
         const ti = idx(tx, ty);
         if (!s.seen[ti]) return null;
         for (const through of [false, true]) {
-            const v = MAP.downhill(s.map, MAP.flood(s.map, [ti], knownPass(s, through)), s.p.x, s.p.y);
+            const v = MAP.downhill(s.map, MAP.flood(s.map, [ti], knownPass(s, through), true), s.p.x, s.p.y);
             if (v) return v;
         }
         return null;
@@ -742,14 +787,14 @@
     function exploreNext(s) {
         const p = s.p, loot = new Set(s.items.filter((e) => s.seen[idx(e.x, e.y)] && canTake(s, e.it)).map((e) => idx(e.x, e.y)));
         for (const through of [false, true]) {
-            const dist = MAP.flood(s.map, [idx(p.x, p.y)], knownPass(s, through));
+            const dist = MAP.flood(s.map, [idx(p.x, p.y)], knownPass(s, through), true);
             let best = -1;
             for (let i = 0; i < dist.length; i++) {
                 if (dist[i] < 1 || (best >= 0 && dist[i] >= dist[best])) continue;
                 if (loot.has(i) || !s.seen[i - 1] || !s.seen[i + 1] || !s.seen[i - W] || !s.seen[i + W]) best = i;
             }
             if (best < 0) continue;
-            while (dist[best] > 1) for (const v of DIRS) { const j = best + v[0] + v[1] * W; if (dist[j] === dist[best] - 1) { best = j; break; } }
+            while (dist[best] > 1) for (const v of MAP.DIRS8) { const j = best + v[0] + v[1] * W; if (dist[j] === dist[best] - 1 && MAP.diagOk(s.map, j % W, (j / W) | 0, -v[0], -v[1])) { best = j; break; } }
             return [best % W - p.x, ((best / W) | 0) - p.y];
         }
         return null;
@@ -760,7 +805,7 @@
     function travelPath(s, tx, ty) {
         if (!s.seen[idx(tx, ty)]) return [];
         for (const through of [false, true]) {
-            const dist = MAP.flood(s.map, [idx(tx, ty)], knownPass(s, through)), path = [];
+            const dist = MAP.flood(s.map, [idx(tx, ty)], knownPass(s, through), true), path = [];
             if (dist[idx(s.p.x, s.p.y)] < 0) continue;
             let x = s.p.x, y = s.p.y;
             while ((x !== tx || y !== ty) && path.length < 400) { const v = MAP.downhill(s.map, dist, x, y); if (!v) break; x += v[0]; y += v[1]; path.push([x, y]); }
@@ -797,8 +842,8 @@
     /** A known walkable cell next to (x, y) to stand on to use furniture there: the player's own cell when already next to it; null if none can be reached. */
     function reachNeighbour(s, x, y) {
         const p = s.p;
-        if (Math.abs(x - p.x) + Math.abs(y - p.y) === 1) return [p.x, p.y];
-        const dist = MAP.flood(s.map, [idx(p.x, p.y)], knownPass(s, true));
+        if (Math.abs(x - p.x) + Math.abs(y - p.y) === 1) return [p.x, p.y];   // furniture is used from the side: never diagonally
+        const dist = MAP.flood(s.map, [idx(p.x, p.y)], knownPass(s, true), true);
         let best = null, bd = 1e9;
         for (const v of DIRS) { const d = dist[idx(x + v[0], y + v[1])]; if (d >= 0 && d < bd) { bd = d; best = [x + v[0], y + v[1]]; } }
         return best;
@@ -820,7 +865,7 @@
         const i = idx(x, y), t = s.map.tiles[i];
         if (hero) return kind === 'double' ? { type: 'search' } : t === T.STAIRS ? { type: 'use', what: 'stairs', x, y } : { type: 'rest' };
         const m = s.mobs.find((e) => e.x === x && e.y === y && shown(s, e));
-        if (m) return { type: 'attack', id: m.id, x, y, adjacent: Math.abs(x - p.x) + Math.abs(y - p.y) === 1 };
+        if (m) return { type: 'attack', id: m.id, x, y, adjacent: touching(s, m) };
         if (!s.seen[i]) return { type: 'none', reason: 'unseen' };
         if (t === T.SHOP || t === T.BENCH || t === T.ALTAR) {
             const via = reachNeighbour(s, x, y);
@@ -884,6 +929,7 @@
     function load(text) {
         try {
             const s = JSON.parse(text);
+            if (s) s.sleeping = 0;
             if (!s || s.v !== VERSION || !s.p || !s.map || s.map.tiles.length !== W * H || !CLASS[s.cls]) return null;
             return s;
         } catch (e) { return null; }
@@ -928,6 +974,6 @@
     }
 
     return { VERSION, FLOORS, INV_CAP, MAX_FOOD, MOB, ITEM, CLASS, SKILL, EFFECTS, TARGETED, newGame, act, save, load, stats, hitChance, rollDamage, xpNeed,
-        text, logText, log, itemRef, itemText, itemName, itemInfo, itemLook, MSG: TX.MSG, known, price, canTake, shown, threats, nearest, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
+        text, logText, log, itemRef, itemText, itemName, itemInfo, itemLook, MSG: TX.MSG, known, price, canTake, shown, threats, nearest, touching, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, sleepRun, SLEEP_CAP, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
         newMeta, fixMeta, unlocked, recordRun, updateFov, buyUpgrade, upCost, level, checkMedals, counters, UPGRADES: META.UPGRADES, MEDALS: META.MEDALS, enterHub };
 });

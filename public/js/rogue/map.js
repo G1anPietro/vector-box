@@ -9,8 +9,16 @@
     // SECRET looks like a wall until found. ALTAR, SHOP and BENCH are furniture: you bump into them to use them.
     const T = { WALL: 0, FLOOR: 1, DOOR: 2, STAIRS: 3, SECRET: 4, ALTAR: 5, SHOP: 6, BENCH: 7 };
     const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    // 8 directions, straight ones first so that a tie between a straight and a diagonal step goes to the straight one
+    const DIRS8 = DIRS.concat([[1, -1], [1, 1], [-1, 1], [-1, -1]]);
     const walkable = (t) => t === 1 || t === 2 || t === 3;
     const opaque = (t) => t === 0 || t === 4;
+    /** The corner rule: a diagonal step (or attack) from (x, y) by (dx, dy) needs both orthogonal neighbours to be open (no cutting corners), and a door can only be crossed straight. */
+    function diagOk(m, x, y, dx, dy) {
+        if (!dx || !dy) return true;
+        const at = (xx, yy) => m.tiles[yy * m.w + xx];
+        return walkable(at(x + dx, y)) && walkable(at(x, y + dy)) && at(x, y) !== T.DOOR && at(x + dx, y + dy) !== T.DOOR;
+    }
     const centre = (r) => ({ x: r.x + (r.w >> 1), y: r.y + (r.h >> 1) });
 
     /** Cells of an L-shaped walk from a to b (a excluded, b included). */
@@ -23,19 +31,19 @@
         return out;
     }
 
-    /** Breadth-first distances from `sources` (cell indexes) over the cells `pass(i, tile)` accepts. -1 = not reached. */
-    function flood(m, sources, pass) {
+    /** Breadth-first distances from `sources` (cell indexes) over the cells `pass(i, tile)` accepts. -1 = not reached. `diag`: 8 directions with the corner rule (the game); without it 4 (map building). */
+    function flood(m, sources, pass, diag) {
         const dist = new Int16Array(m.w * m.h).fill(-1);
         const queue = new Int32Array(m.w * m.h);
         let head = 0, tail = 0;
         for (const s of sources) { dist[s] = 0; queue[tail++] = s; }
         while (head < tail) {
             const i = queue[head++], x = i % m.w, y = (i / m.w) | 0;
-            for (const [dx, dy] of DIRS) {
+            for (const [dx, dy] of diag ? DIRS8 : DIRS) {
                 const nx = x + dx, ny = y + dy;
                 if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue;
                 const j = ny * m.w + nx;
-                if (dist[j] !== -1 || !pass(j, m.tiles[j])) continue;
+                if (dist[j] !== -1 || !pass(j, m.tiles[j]) || !diagOk(m, x, y, dx, dy)) continue;
                 dist[j] = dist[i] + 1;
                 queue[tail++] = j;
             }
@@ -44,11 +52,11 @@
     }
 
     /** The neighbour of (x, y) nearest to the flood's sources, as [dx, dy]; null when none is reached. */
-    function downhill(m, dist, x, y, blocked) {
+    function downhill(m, dist, x, y, blocked, four) {
         let best = null, bestD = Infinity;
-        for (const d of DIRS) {
+        for (const d of four ? DIRS : DIRS8) {
             const nx = x + d[0], ny = y + d[1];
-            if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue;
+            if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h || !diagOk(m, x, y, d[0], d[1])) continue;
             const j = ny * m.w + nx;
             if (dist[j] < 0 || dist[j] >= bestD || (blocked && blocked(j))) continue;
             best = d; bestD = dist[j];
@@ -163,5 +171,5 @@
         return vis;
     }
 
-    return { W, H, T, DIRS, walkable, opaque, centre, lpath, flood, downhill, generate, valid, hub, los, fov };
+    return { W, H, T, DIRS, DIRS8, diagOk, walkable, opaque, centre, lpath, flood, downhill, generate, valid, hub, los, fov };
 });

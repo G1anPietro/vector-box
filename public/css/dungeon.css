@@ -40,7 +40,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dg-log div:last-child { color: #fff; }
 .c-good { color: #6dff9d; } .c-bad { color: #ff8a8a; } .c-info { color: var(--amber); }
 .dg-controls { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.dg-dpad { display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 52px); gap: 3px; grid-template-areas: ". up ." "lf ce rt" ". dn ."; }
+.dg-dpad { display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 52px); gap: 3px; grid-template-areas: "ul up ur" "lf ce rt" "dl dn dr"; }
 .dg-dpad button { padding: 0; font-size: 1.2rem; min-height: 0; }
 .up { grid-area: up; } .lf { grid-area: lf; } .ce { grid-area: ce; } .rt { grid-area: rt; } .dn { grid-area: dn; }
 .dg-acts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; flex: 1; max-width: 240px; }
@@ -150,7 +150,7 @@ body.fs .dg-top { padding-top: 0; }
     .dg-infoline { display: none; }
     .dg-toolbar { grid-template-columns: repeat(7, 1fr); }
     .dg-toolbar button { min-height: 38px; font-size: .6rem; }
-    #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(5, 1fr); }
+    #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(6, 1fr); }
     #dg-game.mode-touch .dg-acts button { min-height: 36px; font-size: .62rem; }
     .dg-top a, .dg-top button { min-height: 34px; }
 }
@@ -164,3 +164,20 @@ body.fs .dg-top { padding-top: 0; }
 .dg-lang { align-items: center; margin: 0 0 8px; }
 .dg-lang span { flex: 0 0 auto; margin-right: 4px; }
 .dg-lang button { flex: 0 0 auto; min-width: 56px; }
+
+/* QA fixes: archive tabs on one row, recap grid of the end screen, the log shows whole lines only */
+.dg-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.dg-tabs button { padding: 4px 2px; font-size: .74rem; min-width: 0; overflow-wrap: anywhere; }
+.dg-recap { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.dg-recap div { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+.dg-recap small { display: block; color: var(--muted); font-size: .68rem; }
+.dg-recap b { display: block; color: var(--amber); font-size: .95rem; overflow-wrap: anywhere; }
+.dg-seed { color: var(--muted); font-size: .72rem !important; text-align: center; }
+.dg-sheet .dg-big { width: 100%; margin-top: 6px; }
+@media (max-height: 640px) and (orientation: portrait) { .dg-log div:nth-last-child(n+3) { display: none; } }
+
+.ul { grid-area: ul; } .ur { grid-area: ur; } .dl { grid-area: dl; } .dr { grid-area: dr; }
+/* six action buttons now (Sleep): six columns on the phone, two rows of three on very narrow screens */
+@media (orientation: portrait) { #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 360px) and (orientation: portrait) { #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(3, 1fr); } }
+.dg-log { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 35%); mask-image: linear-gradient(to bottom, transparent 0, #000 35%); }   /* an older line that is cut at the top fades out instead of looking broken */

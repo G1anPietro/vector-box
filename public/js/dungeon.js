@@ -134,6 +134,7 @@
             }
         }
         spr('hero', G.CLASS[s.cls].col, s.p.x, s.p.y);
+        if (s.sleeping) { const [px, py] = cell(s.p.x, s.p.y); ctx.fillStyle = '#bfe8ff'; ctx.font = 'bold ' + Math.round(ts * 0.42) + 'px monospace'; ctx.fillText('Zzz', px + ts * 0.45, py + ts * 0.3); }
         // what you remember but cannot see now is dimmed
         ctx.fillStyle = 'rgba(0,0,0,.55)';
         for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
@@ -164,8 +165,8 @@
         $('dg-hptxt').textContent = tl('hp', { hp: p.hp, max: p.maxHp });
         $('dg-fd').style.width = (100 * p.food / G.MAX_FOOD) + '%';
         $('dg-fdtxt').textContent = tl(p.food < 150 ? 'food_low' : 'food');
-        const ST = { poison: 'st_poison', haste: 'st_haste', conf: 'st_conf', invis: 'st_invis', regen: 'st_regen', weak: 'st_weak', stun: 'st_stun', ping: 'st_ping' };
-        const status = Object.keys(p.st).map((k) => (ST[k] ? tl(ST[k]) : k)).join(', ');
+        const ST = { sleep: 'st_sleep', poison: 'st_poison', haste: 'st_haste', conf: 'st_conf', invis: 'st_invis', regen: 'st_regen', weak: 'st_weak', stun: 'st_stun', ping: 'st_ping' };
+        const status = (s.sleeping ? [tl('st_sleep')] : []).concat(Object.keys(p.st).map((k) => (ST[k] ? tl(ST[k]) : k))).join(', ');
         const info = $('dg-info');
         info.textContent = '';
         const add = (t, b) => { const e = document.createElement(b ? 'b' : 'span'); e.textContent = t; info.appendChild(e); };
@@ -177,7 +178,7 @@
         sk.classList.toggle('ready', p.cd <= 0);
         const lg = $('dg-log');
         lg.textContent = '';
-        for (const l of s.log.slice(-4)) { const d = document.createElement('div'); d.textContent = G.logText(l, lang()); if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
+        for (const l of s.log.slice(-3)) { const d = document.createElement('div'); d.textContent = G.logText(l, lang()); if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
     }
     function render() { draw(); hud(); slots(); }
 
@@ -309,20 +310,27 @@
         for (const l of s.log) el('div', G.logText(l, lang()), l.c ? 'c-' + l.c : '', box);
     }
     function endModal() {
+        const prevBest = meta.best;
         meta = G.recordRun(meta, s, new Date().toISOString().slice(0, 10)); saveMeta(); store.del(RUN_KEY);
-        const won = s.status === 'won', body = openModal(tl(won ? 'end_won' : 'end_lost'), 'end', endModal);
+        const won = s.status === 'won', body = openModal(tl(won ? 'end_won' : 'end_lost'), 'end', endModal), last = meta.history[0];
         $('dg-mclose').hidden = true;
-        el('p', won ? tl('end_won_line') : tl('end_lost_line', { cause: gt(s.cause), depth: s.depth }));
-        el('p', tl('end_stats', { lvl: s.p.lvl, kills: s.kills, turns: s.turn, earned: s.earned }));
-        const last = meta.history[0];
-        if (last) el('p', tl('end_gain', { n: last.crediti }), 'c-info');
-        for (const id of s.medals || []) el('p', tl('end_medal', { medal: tr(G.MEDALS.find((d) => d.id === id).name) }), 'c-good');
-        btn(tl('end_back'), () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; s = null; showTitle(); }, body, 'dg-big');
+        el('p', won ? tl('end_won_line') : tl('end_lost_line', { cause: gt(s.cause), depth: s.depth }), '', body);
+        const grid = el('div', '', 'dg-recap', body);
+        const cell = (label, value) => { const c = el('div', '', '', grid); el('small', label, '', c); el('b', String(value), '', c); };
+        cell(tl('end_class'), tr(G.CLASS[s.cls].name)); cell(tl('end_floor'), tl('end_where', { depth: s.depth, sector: tr(G.sectorOf(s.depth).name) }));
+        cell(tl('end_level'), s.p.lvl); cell(tl('end_kills'), s.kills); cell(tl('end_turns'), s.turn); cell(tl('end_bosses'), s.bosses);
+        cell(tl('end_found'), s.earned); cell(tl('end_reward'), last ? '+' + last.crediti : 0);
+        if (s.depth > prevBest && !won) el('p', tl('end_best'), 'c-good', body);
+        for (const id of s.medals || []) el('p', tl('end_medal', { medal: tr(G.MEDALS.find((d) => d.id === id).name) }), 'c-good', body);
+        el('p', tl('end_seed') + ' ' + (s.seed >>> 0).toString(16).toUpperCase(), 'dg-seed', body);
+        const done = () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; };
+        btn(tl('end_next'), () => { done(); selected = R.classes.CLASSES.find((c) => c.id === s.cls) || selected; startRun((Math.random() * 4294967296) >>> 0); }, body, 'dg-big');
+        btn(tl('end_back'), () => { done(); s = null; showTitle(); }, body, 'dg-choice');
     }
     // ── the archive: upgrade tree, medals, bestiary, history ──
     function archiveModal(tab) {
         tab = tab || 'tree';
-        const body = openModal(tl('arch_title', { n: meta.crediti }), 'archive', () => archiveModal(tab)), bar = el('div', '', 'dg-row', body);
+        const body = openModal(tl('arch_title', { n: meta.crediti }), 'archive', () => archiveModal(tab)), bar = el('div', '', 'dg-row dg-tabs', body);
         for (const [id, label] of [['tree', tl('arch_tree')], ['medals', tl('arch_medals')], ['dex', tl('arch_dex')], ['hist', tl('arch_hist')]]) {
             const b = btn(label, () => archiveModal(id), bar); b.setAttribute('aria-pressed', String(id === tab));
         }
@@ -382,7 +390,7 @@
     }
     function helpModal() {
         const body = openModal(tl('help'), 'help', helpModal);
-        for (const k of ['help_1', 'help_2', 'help_3', 'help_4', 'help_5', 'help_6', 'help_7']) el('p', tl(k), '', body);
+        for (const k of ['help_1', 'help_10', 'help_2', 'help_3', 'help_4', 'help_5', 'help_6', 'help_11', 'help_8', 'help_9', 'help_7']) el('p', tl(k), '', body);
     }
 
     // ── playing ──
@@ -419,10 +427,10 @@
             if (t.n > 1 && seen()) return stopTravel();
             const v = next();
             if (!v) { stopTravel(); if (o.fin) o.fin(); return; }
-            act({ t: 'move', dx: v[0], dy: v[1] });
+            act(o.sleep ? { t: 'sleep' } : { t: 'move', dx: v[0], dy: v[1] });
             if (s.p.hp < t.hp || act.lastBad || s.depth !== t.depth) return stopTravel();
             if (seen()) return stopTravel();
-            t.timer = setTimeout(step, reduce ? 0 : 55);
+            t.timer = setTimeout(step, reduce ? 0 : o.sleep ? 25 : 55);
         };
         step();
     }
@@ -434,7 +442,7 @@
         startTravel(() => here() ? null : G.travelNext(s, tx, ty), 80, { target: () => [tx, ty], fin: () => { if (here() && fin) fin(); } });
     }
     function attackMob(id) {
-        const mob = () => s.mobs.find((m) => m.id === id), adj = (m) => Math.abs(m.x - s.p.x) + Math.abs(m.y - s.p.y) === 1;
+        const mob = () => s.mobs.find((m) => m.id === id), adj = (m) => G.touching(s, m);
         const hit = () => { const m = mob(); if (m && adj(m)) act({ t: 'move', dx: m.x - s.p.x, dy: m.y - s.p.y }); };
         const m0 = mob();
         if (!m0) return;
@@ -455,6 +463,11 @@
         if (!s.seen[idx(st.x, st.y)]) { return note('stairs_unseen', null, 'info'); }
         startTravel(() => (s.p.x === st.x && s.p.y === st.y) ? null : G.travelNext(s, st.x, st.y), 120);
     }
+    /** Sleeps turn by turn (each one saved) until the rules wake the hero; a tap anywhere stops it, like any walk. */
+    function sleep() {
+        let first = true;
+        startTravel(() => { if (first) { first = false; return [0, 0]; } return s.sleeping ? [0, 0] : null; }, G.SLEEP_CAP + 2, { sleep: true });
+    }
     function useFirst(test, key) {
         const i = s.p.inv.findIndex(test);
         if (i < 0) return note(key, null, 'info');
@@ -467,6 +480,7 @@
         endAim();
         if (name === 'wait') act({ t: 'wait' });
         else if (name === 'search') act({ t: 'search' });
+        else if (name === 'sleep') sleep();
         else if (name === 'bag') bagModal();
         else if (name === 'skill') act({ t: 'active' });
         else if (name === 'explore') explore();
@@ -578,6 +592,14 @@
         for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => clearTimeout(timer));
         b.addEventListener('click', () => { if (held) { held = false; return; } useSlot(j); });
     });
+    // Wait: tap waits one turn, a long press sleeps
+    document.querySelectorAll('[data-a="wait"]').forEach((b) => {
+        let timer = 0, held = false;
+        b.addEventListener('contextmenu', (e) => e.preventDefault());
+        b.addEventListener('pointerdown', () => { held = false; clearTimeout(timer); timer = setTimeout(() => { held = true; command('sleep'); }, LONG_MS); });
+        for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => clearTimeout(timer));
+        b.addEventListener('click', (e) => { if (held) { held = false; e.stopImmediatePropagation(); } }, true);
+    });
     addEventListener('keydown', (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (!$('dg-cover').hidden) { $('dg-cover').hidden = true; return; }
@@ -585,9 +607,13 @@
         if (k === 'b' || k === 'B') { stopTravel(); $('dg-cover').hidden = false; return; }
         if (k === 'Escape') { if (aim) endAim(); else if (!$('dg-modal').hidden && modalKind !== 'level' && modalKind !== 'end') closeModal(); else stopTravel(); return; }
         if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
-        const dirs = { ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] };
+        const np = { Numpad7: [-1, -1], Numpad8: [0, -1], Numpad9: [1, -1], Numpad4: [-1, 0], Numpad6: [1, 0], Numpad1: [-1, 1], Numpad2: [0, 1], Numpad3: [1, 1] };
+        const dirs = { y: [-1, -1], Y: [-1, -1], q: [-1, -1], Q: [-1, -1], u: [1, -1], U: [1, -1], v: [-1, 1], V: [-1, 1], n: [1, 1], N: [1, 1], ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] };
         if (dirs[k]) { e.preventDefault(); step(dirs[k][0], dirs[k][1]); }
+        else if (np[e.code]) { e.preventDefault(); step(np[e.code][0], np[e.code][1]); }
+        else if (e.code === 'Numpad5') { e.preventDefault(); command('wait'); }
         else if (k === ' ' || k === '.') { e.preventDefault(); command('wait'); }
+        else if (k === 'z' || k === 'Z') command('sleep');
         else if (k === 'i' || k === 'I') command('bag');
         else if (k === 'c' || k === 'C') command('search');
         else if (k >= '1' && k <= '4') useSlot(Number(k) - 1);
