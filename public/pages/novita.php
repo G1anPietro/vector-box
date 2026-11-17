@@ -33,6 +33,6 @@ $other = $it ? 'en' : 'it';
         <p id="nv-empty" class="muted" hidden><?= $it ? 'Ancora niente qui.' : 'Nothing here yet.' ?></p>
         <noscript><p><?= $it ? 'Serve JavaScript per vedere l\'elenco.' : 'JavaScript is needed to see the list.' ?></p></noscript>
     </main>
-    <script src="../js/novita.js?v=1"></script>
+    <script src="../js/novita.js?v=2"></script>
 </body>
 </html>

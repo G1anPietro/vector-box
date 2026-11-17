@@ -26,7 +26,7 @@
         if (i.version) m.append(el('span', '', i.version));
         m.append(el('span', '', (i.status === 'done' ? '' : T.ago + ' ') + fmt.format(new Date((i.done_at || i.updated_at) * 1000))));
         c.append(m);
-        if (i.status !== 'done' && i.updates.length) {
+        if (i.updates.length) {
             const ul = el('ul', 'nv-log');
             i.updates.forEach(u => ul.append(el('li', '', u[lang])));
             c.append(ul);
