@@ -39,8 +39,8 @@ try {
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
-            $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'monochrome', 0)");
-            $stmt->execute([':u' => $username, ':p' => $hash]);
+            $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin, lang) VALUES (:u, :p, 'monochrome', 0, :l)");
+            $stmt->execute([':u' => $username, ':p' => $hash, ':l' => pageLang()]);
         } catch (PDOException $e) {
             // UNIQUE violation: atomic, no check-then-insert race
             if ((string)$e->getCode() === '23000') {

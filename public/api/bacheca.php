@@ -127,7 +127,7 @@ try {
         if (!empty($in['notify'])) {
             $others = array_values(array_filter(classMemberIds($db, $classId), fn($u) => $u !== $me));
             if ($others) $sent = notifyUsers($db, $others, $classId, 'annuncio', $title, $body !== '' ? textCut($body, 140) : 'Nuovo annuncio in bacheca',
-                '/pages/appunti.php?class=' . $classId . '&tab=board');
+                '/pages/appunti.php?class=' . $classId . '&tab=board', true, true, null, [$title, $body !== '' ? textCut($body, 140) : 'New announcement on the board']);
         }
         jsonResponse(['success' => true, 'id' => $id, 'pushed' => $sent]);
     }
