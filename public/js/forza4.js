@@ -82,6 +82,17 @@
     const api = { COLS, ROWS, newBoard, landing, drop, validCols, fourOf, winner, bestMove, other };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Forza4 = api;
+    VBI18N.add('it', {
+        title: 'Forza 4 — vector-box', desc: 'Forza 4 gratis nel browser: contro il computer (facile, medio o difficile) oppure in due sullo stesso schermo. Nessun account.',
+        back: '← Giochi', h1: 'Forza 4', new: 'Nuova', opponent: 'Avversario', easy: 'PC facile', medium: 'PC medio', hard: 'PC difficile', two: 'Due giocatori', score: 'Punteggio',
+        board: 'Campo di Forza 4', help: 'Tocca una colonna: il disco cade in fondo. Quattro dischi in fila (in orizzontale, verticale o in diagonale) vincono. Contro il computer, dopo ogni partita ci si scambia chi comincia.',
+        red: 'rossa', yellow: 'gialla', empty: 'vuota', slot: 'colonna {c}, riga {r}: {v}', score_two: 'Rosso {w} · pari {d} · Giallo {l}', score_cpu: 'Tu {w} · pari {d} · PC {l}',
+        m_red: 'Tocca al rosso', m_yellow: 'Tocca al giallo', m_you: 'Tocca a te', m_think: 'Penso…', m_draw: 'Pari: il campo è pieno.', m_wred: 'Vince il rosso!', m_wyellow: 'Vince il giallo!', m_won: 'Hai vinto!', m_lost: 'Ha vinto il computer.',
+    });
+    VBI18N.add('en', {
+        red: 'red', yellow: 'yellow', empty: 'empty', slot: 'column {c}, row {r}: {v}', score_two: 'Red {w} · draws {d} · Yellow {l}', score_cpu: 'You {w} · draws {d} · CPU {l}',
+        m_red: 'Red to move', m_yellow: 'Yellow to move', m_you: 'Your turn', m_think: 'Thinking…', m_draw: 'Draw: the board is full.', m_wred: 'Red wins!', m_wyellow: 'Yellow wins!', m_won: 'You won!', m_lost: 'The computer won.',
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         const $ = (id) => document.getElementById(id);
@@ -96,24 +107,26 @@
 
         function paint() {
             const win = fourOf(b, 1) || fourOf(b, 2);
-            const names = { 1: 'rossa', 2: 'gialla' };
+            const names = { 1: VBLang.t('red'), 2: VBLang.t('yellow') };
             cells.forEach((d, i) => {
                 const r = (i / COLS) | 0, c = i % COLS, v = b[r][c];
                 d.className = 'slot' + (v ? ' p' + v : '') + (win && win.some(([wr, wc]) => wr === r && wc === c) ? ' win' : '');
-                d.setAttribute('aria-label', `colonna ${c + 1}, riga ${r + 1}: ${v ? names[v] : 'vuota'}`);
+                d.setAttribute('aria-label', VBLang.t('slot', { c: c + 1, r: r + 1, v: v ? names[v] : VBLang.t('empty') }));
             });
             const k = mode === 'two' ? 'two' : 'cpu', s = score[k] || { w: 0, d: 0, l: 0 };
-            $('f4-score').textContent = mode === 'two' ? `Rosso ${s.w} · pari ${s.d} · Giallo ${s.l}` : `Tu ${s.w} · pari ${s.d} · PC ${s.l}`;
+            $('f4-score').textContent = VBLang.t(mode === 'two' ? 'score_two' : 'score_cpu', s);
         }
+        let last = null;   // the last message key, redrawn when the language changes
+        const msg = (k) => { last = k; $('f4-msg').textContent = VBLang.t(k); };
         function say() {
             const w = winner(b);
-            if (!w) { $('f4-msg').textContent = mode === 'two' ? (turn === 1 ? 'Tocca al rosso' : 'Tocca al giallo') : (turn === human ? 'Tocca a te' : 'Penso…'); return; }
+            if (!w) { msg(mode === 'two' ? (turn === 1 ? 'm_red' : 'm_yellow') : (turn === human ? 'm_you' : 'm_think')); return; }
             over = true;
             const k = mode === 'two' ? 'two' : 'cpu', s = score[k] = score[k] || { w: 0, d: 0, l: 0 };
-            if (w === 'draw') { s.d++; $('f4-msg').textContent = 'Pari: il campo è pieno.'; }
-            else if (mode === 'two') { (w === 1 ? s.w++ : s.l++); $('f4-msg').textContent = w === 1 ? 'Vince il rosso!' : 'Vince il giallo!'; }
-            else if (w === human) { s.w++; $('f4-msg').textContent = 'Hai vinto!'; }
-            else { s.l++; $('f4-msg').textContent = 'Ha vinto il computer.'; }
+            if (w === 'draw') { s.d++; msg('m_draw'); }
+            else if (mode === 'two') { (w === 1 ? s.w++ : s.l++); msg(w === 1 ? 'm_wred' : 'm_wyellow'); }
+            else if (w === human) { s.w++; msg('m_won'); }
+            else { s.l++; msg('m_lost'); }
             save(); paint();
         }
         function computerTurn() {
@@ -136,6 +149,7 @@
         board.addEventListener('click', (e) => { const d = e.target.closest('button'); if (d) play(+d.dataset.c); });
         document.querySelectorAll('[data-mode]').forEach((x) => x.addEventListener('click', () => start(x.dataset.mode, false)));
         $('f4-new').addEventListener('click', () => start(mode, true));
+        window.addEventListener('vb-lang', () => { paint(); if (last) msg(last); });
         start('medium', false);
     });
 })(typeof window !== 'undefined' ? window : globalThis);

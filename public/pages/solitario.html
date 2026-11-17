@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it" data-theme="classic">
+<html lang="en" data-theme="classic">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -8,13 +8,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Solitario">
-    <title>Solitario</title>
+    <title>Solitaire</title>
     <!-- link previews; the domain is written out here (static page): change it with the domain -->
-    <meta name="description" content="Solitario Klondike gratis nel browser: trascina le carte, suggerimenti, annulla, quattro tavoli. Funziona anche offline.">
+    <meta name="description" content="Free Klondike Solitaire in your browser: drag the cards, hints, undo, four tables. Works offline too.">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="vector-box">
-    <meta property="og:title" content="Solitario — vector-box">
-    <meta property="og:description" content="Solitario Klondike gratis nel browser: trascina le carte, suggerimenti, annulla, quattro tavoli. Funziona anche offline.">
+    <meta property="og:title" content="Solitaire — vector-box">
+    <meta property="og:description" content="Free Klondike Solitaire in your browser: drag the cards, hints, undo, four tables. Works offline too.">
     <meta property="og:url" content="https://vector-box.duckdns.org/pages/solitario.html">
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/solitario/icon-512.png">
     <meta name="twitter:card" content="summary">
@@ -30,27 +30,27 @@
 
     <!-- touch: compact top bar -->
     <header class="sol-top">
-        <a class="sol-brand" href="../index.php"><img src="../assets/solitario/icon.svg?v=1" alt=""><span id="sol-title">Solitario</span></a>
-        <div class="sol-meter"><span id="sol-score-l" class="lbl">Punteggio</span><strong id="sol-score">0</strong></div>
-        <div class="sol-meter"><span id="sol-time-l" class="lbl">Tempo</span><strong id="sol-time">0:00</strong></div>
+        <a class="sol-brand" href="../index.php"><img src="../assets/solitario/icon.svg?v=1" alt=""><span id="sol-title">Solitaire</span></a>
+        <div class="sol-meter"><span id="sol-score-l" class="lbl">Score</span><strong id="sol-score">0</strong></div>
+        <div class="sol-meter"><span id="sol-time-l" class="lbl">Time</span><strong id="sol-time">0:00</strong></div>
         <button class="sol-icon" type="button" data-act="more" aria-label="Menu">⋯</button>
     </header>
 
-    <main id="board" class="board" aria-label="Solitario"></main>
+    <main id="board" class="board" aria-label="Solitaire"></main>
 
     <!-- touch: big buttons; desktop: status bar -->
     <footer class="sol-bar">
         <div class="status">
             <span id="sol-msg" class="sol-msg"></span>
-            <span class="stat"><span id="sol-moves-l">Mosse</span>: <b id="sol-moves">0</b>
-                &nbsp;&nbsp; <span id="sol-score-l2">Punteggio</span>: <b id="sol-score2">0</b>
-                &nbsp;&nbsp; <span id="sol-time-l2">Tempo</span>: <b id="sol-time2">0:00</b></span>
+            <span class="stat"><span id="sol-moves-l">Moves</span>: <b id="sol-moves">0</b>
+                &nbsp;&nbsp; <span id="sol-score-l2">Score</span>: <b id="sol-score2">0</b>
+                &nbsp;&nbsp; <span id="sol-time-l2">Time</span>: <b id="sol-time2">0:00</b></span>
         </div>
         <div class="sol-actions">
-            <button class="btn" type="button" data-act="undo" data-label="nh_undo">Annulla</button>
-            <button class="btn" type="button" data-act="hint" data-label="sol_hint">Suggerimento</button>
-            <button class="btn primary" type="button" data-act="auto" data-label="sol_auto" hidden>Completa</button>
-            <button class="btn primary" type="button" data-act="new" data-label="sol_new">Nuova partita</button>
+            <button class="btn" type="button" data-act="undo" data-label="nh_undo">Undo</button>
+            <button class="btn" type="button" data-act="hint" data-label="sol_hint">Hint</button>
+            <button class="btn primary" type="button" data-act="auto" data-label="sol_auto" hidden>Finish</button>
+            <button class="btn primary" type="button" data-act="new" data-label="sol_new">New game</button>
         </div>
     </footer>
     <div id="overlay" class="overlay" hidden></div>

@@ -2525,11 +2525,33 @@ window.SpiaI18n = (() => {
         err_gone: "Den Raum gibt es nicht mehr.",
     };
 
-    /** Pick the phone's language if we have it, otherwise Italian. */
+    const here = document.currentScript ? document.currentScript.src : '';
+    const siteCookie = () => { const m = /(?:^|;\s*)vb_lang=([a-z]{2})/.exec(document.cookie || ''); return m ? m[1] : null; };
+
+    /** The site's language (vb_lang cookie, the same one the EN | IT switch sets), else the phone's language if we have it, else English. */
     function detect(available) {
-        const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'it'])
+        const c = siteCookie();
+        if (c && available.includes(c)) return c;
+        const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'])
             .map((l) => String(l).slice(0, 2).toLowerCase());
-        return prefs.find((l) => available.includes(l)) || 'it';
+        return prefs.find((l) => available.includes(l)) || 'en';
+    }
+
+    /**
+     * The language to start with. Order: the player's own saved choice (getSaved()) > the site's vb_lang cookie > api/lang.php
+     * (Italy -> Italian) > the browser's language > English. The server's answer arrives later: onLate(code) is called only if it
+     * differs and the player has not picked a language meanwhile.
+     */
+    function initial(getSaved, available, onLate) {
+        const saved = getSaved();
+        if (saved) return saved;
+        const first = detect(available);
+        if (!siteCookie() && window.fetch && here) {
+            fetch(new URL('../../api/lang.php', here).href, { credentials: 'same-origin' }).then((r) => r.json()).then((j) => {
+                if (j && available.includes(j.lang) && j.lang !== first && !getSaved()) onLate(j.lang);
+            }).catch(() => { /* keep the browser's language */ });
+        }
+        return first;
     }
 
     function t(lang, key, vars) {
@@ -2539,5 +2561,5 @@ window.SpiaI18n = (() => {
         return s;
     }
 
-    return { t, detect, strings: S };
+    return { t, detect, initial, strings: S };
 })();

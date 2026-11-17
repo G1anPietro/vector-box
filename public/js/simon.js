@@ -27,6 +27,16 @@
     const api = { PADS, newGame, nextRound, press, pace };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Simon = api;
+    VBI18N.add('it', {
+        title: 'Simon — vector-box', desc: 'Simon gratis nel browser: guarda la sequenza di luci e suoni e ripetila, ogni turno una più lunga. Record personale, nessun account.',
+        back: '← Giochi', go: 'Via', sequence: 'Sequenza', best: 'Record', sound: 'Suono', board: 'Quattro pulsanti colorati',
+        pad_green: 'Verde (tasto 1)', pad_red: 'Rosso (tasto 2)', pad_yellow: 'Giallo (tasto 3)', pad_blue: 'Blu (tasto 4)',
+        help: 'Guarda la sequenza di luci e ripetila. Ogni turno se ne aggiunge una. Sul computer puoi usare i tasti 1, 2, 3 e 4.',
+        m_press: 'Premi Via per cominciare.', m_watch: 'Guarda…', m_you: 'Tocca a te', m_lost: 'Sbagliato! Sequenza di {n}. Premi Via per riprovare.', m_ok: 'Bene!', m_pause: 'In pausa. Premi Via per ricominciare.',
+    });
+    VBI18N.add('en', {
+        m_press: 'Press Go to start.', m_watch: 'Watch…', m_you: 'Your turn', m_lost: 'Wrong! Sequence of {n}. Press Go to try again.', m_ok: 'Good!', m_pause: 'Paused. Press Go to start again.',
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         const $ = (id) => document.getElementById(id);
@@ -50,12 +60,14 @@
             pads[i].classList.add('on'); beep(i, ms);
             timers.push(setTimeout(() => pads[i].classList.remove('on'), ms));
         }
+        let msg = ['m_press'];   // kept as a key (+ values) so it is redrawn when the language changes
+        const say = (k, v) => { msg = [k, v]; $('sm-msg').textContent = VBLang.t(k, v); };
         function paint() { $('sm-score').textContent = String(g.score); $('sm-best').textContent = String(best); }
         function show() {
-            busy = true; $('sm-msg').textContent = 'Guarda…';
+            busy = true; say('m_watch');
             const gap = pace(g.seq.length);
             g.seq.forEach((p, k) => timers.push(setTimeout(() => light(p, gap * 0.6), 500 + k * gap)));
-            timers.push(setTimeout(() => { busy = false; $('sm-msg').textContent = 'Tocca a te'; }, 500 + g.seq.length * gap));
+            timers.push(setTimeout(() => { busy = false; say('m_you'); }, 500 + g.seq.length * gap));
         }
         function round() { nextRound(g); paint(); show(); }
         function start() { timers.forEach(clearTimeout); timers = []; pads.forEach((p) => p.classList.remove('on')); g = newGame(); paint(); round(); }
@@ -66,13 +78,14 @@
             if (r === 'lost') {
                 if (g.seq.length - 1 > best) { best = g.seq.length - 1; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
                 g.score = g.seq.length - 1; paint();
-                $('sm-msg').textContent = `Sbagliato! Sequenza di ${g.seq.length - 1}. Premi Via per riprovare.`;
-            } else if (r === 'round') { paint(); busy = true; $('sm-msg').textContent = 'Bene!'; timers.push(setTimeout(round, 700)); }
+                say('m_lost', { n: g.seq.length - 1 });
+            } else if (r === 'round') { paint(); busy = true; say('m_ok'); timers.push(setTimeout(round, 700)); }
         }));
         document.addEventListener('keydown', (e) => { const i = { '1': 0, '2': 1, '3': 2, '4': 3 }[e.key]; if (i !== undefined) pads[i].click(); });
         $('sm-start').addEventListener('click', start);
         $('sm-sound').addEventListener('click', (e) => { sound = !sound; e.currentTarget.setAttribute('aria-pressed', String(sound)); });
-        document.addEventListener('visibilitychange', () => { if (document.hidden) { timers.forEach(clearTimeout); timers = []; busy = false; if (g.status === 'input') $('sm-msg').textContent = 'In pausa. Premi Via per ricominciare.'; g.status = 'idle'; } });
-        paint();
+        document.addEventListener('visibilitychange', () => { if (document.hidden) { timers.forEach(clearTimeout); timers = []; busy = false; if (g.status === 'input') say('m_pause'); g.status = 'idle'; } });
+        window.addEventListener('vb-lang', () => say(msg[0], msg[1]));
+        say('m_press'); paint();
     });
 })(typeof window !== 'undefined' ? window : globalThis);

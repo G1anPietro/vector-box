@@ -12,7 +12,7 @@
         set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } },
     };
     const I18N = window.SpiaI18n;
-    let lang = store.get('spia_lang') || I18N.detect(Object.keys(LANGS));
+    let lang = I18N.initial(() => store.get('spia_lang'), Object.keys(LANGS), (code) => { lang = code; render(); });
     const t = (k, v) => I18N.t(lang, k, v);
 
     let DATA = { categories: [], cards: [] };
@@ -311,7 +311,7 @@
     }
 
     async function boot() {
-        document.documentElement.lang = lang;
+        document.documentElement.lang = lang; document.title = t('nh_title');
         try {
             DATA = await (await fetch('../assets/nonhomai/cards.json?v=1', { cache: 'no-cache' })).json();
             store.set('nh_cards_cache', DATA);

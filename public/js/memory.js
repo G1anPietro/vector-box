@@ -39,6 +39,13 @@
     const api = { LEVELS, SYMBOLS, makeRng, newGame, flip, hide };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Memory = api;
+    VBI18N.add('it', {
+        title: 'Memory — vector-box', desc: 'Memory gratis nel browser: trova tutte le coppie con meno mosse possibile, tre livelli e record personali. Nessun account.',
+        back: '← Giochi', new: 'Nuova', level: 'Livello', easy: 'Facile', medium: 'Medio', hard: 'Difficile', moves: 'Mosse', time: 'Tempo', best: 'Record', cards: 'Carte',
+        help: 'Gira due carte alla volta: se sono uguali restano scoperte. Vince chi trova tutte le coppie con meno mosse.',
+        card: 'carta {s}', card_down: 'carta coperta', best_moves: '{n} mosse', won: 'Trovate tutte le coppie in {m} mosse e {s} secondi!',
+    });
+    VBI18N.add('en', { card: 'card {s}', card_down: 'face-down card', best_moves: '{n} moves', won: 'Found all the pairs in {m} moves and {s} seconds!' });
 
     document.addEventListener('DOMContentLoaded', () => {
         const $ = (id) => document.getElementById(id);
@@ -49,16 +56,18 @@
         const best = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
         const secs = () => (t0 ? Math.floor((Date.now() - t0) / 1000) : 0);
 
+        let wonSecs = null;   // set when the game is won: the message is rebuilt in paint() so it follows the language
         function paint() {
             cells.forEach((b, i) => {
                 const up = g.done[i] || g.open.includes(i);
                 b.textContent = up ? SYMBOLS[g.cards[i] % SYMBOLS.length] : '';
                 b.className = 'card' + (up ? ' up' : '') + (g.done[i] ? ' done' : '');
-                b.setAttribute('aria-label', up ? 'carta ' + SYMBOLS[g.cards[i] % SYMBOLS.length] : 'carta coperta');
+                b.setAttribute('aria-label', up ? VBLang.t('card', { s: SYMBOLS[g.cards[i] % SYMBOLS.length] }) : VBLang.t('card_down'));
             });
             $('ar-moves').textContent = String(g.moves);
             $('ar-time').textContent = secs() + ' s';
-            $('ar-best').textContent = best[level] ? best[level] + ' mosse' : '—';
+            $('ar-best').textContent = best[level] ? VBLang.t('best_moves', { n: best[level] }) : '—';
+            $('ar-msg').textContent = wonSecs === null ? '' : VBLang.t('won', { m: g.moves, s: wonSecs });
         }
 
         function start(lv) {
@@ -69,7 +78,7 @@
             board.replaceChildren();
             cells = g.cards.map((_, i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.i = String(i); board.append(b); return b; });
             document.querySelectorAll('[data-level]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.level === level)));
-            $('ar-msg').textContent = '';
+            wonSecs = null;
             paint();
         }
 
@@ -83,12 +92,13 @@
             if (g.status === 'won') {
                 clearInterval(timer);
                 if (!best[level] || g.moves < best[level]) { best[level] = g.moves; try { localStorage.setItem(KEY, JSON.stringify(best)); } catch (x) { /* private mode */ } }
-                $('ar-msg').textContent = `Trovate tutte le coppie in ${g.moves} mosse e ${secs()} secondi!`;
+                wonSecs = secs(); paint();
                 paint();
             }
         });
         document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => start(b.dataset.level)));
         $('ar-new').addEventListener('click', () => start(level));
+        window.addEventListener('vb-lang', paint);
         start('easy');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

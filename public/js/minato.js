@@ -77,6 +77,19 @@
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Minato = api;
 
+    VBI18N.add('it', {
+        title: 'Campo minato — vector-box', desc: 'Campo minato gratis nel browser: tre livelli, bandierine, tocco lungo sul telefono, tastiera e record personali. Nessun account.',
+        back: '← Giochi', h1: 'Campo minato', best: 'Record', level: 'Livello', easy: 'Facile', medium: 'Medio', hard: 'Difficile',
+        mines_left: 'Mine rimaste', new_game: 'Nuova partita', seconds: 'Secondi', flag: '⚑ Bandierina', field: 'Campo',
+        help: 'Clic per aprire, clic destro o tocco lungo per la bandierina (o il tasto qui sopra). Su un numero con le bandierine giuste, un clic apre tutti i vicini. Tastiera: frecce, Spazio, F. Il primo clic è sempre sicuro.',
+        c_mine: 'mina', c_near: '{n} mine vicine', c_empty: 'vuota', c_flag: 'bandiera', c_covered: 'coperta',
+        won: 'Hai vinto in {s} secondi!', lost: 'Boom. Riprova con la faccina.',
+    });
+    VBI18N.add('en', {
+        c_mine: 'mine', c_near: '{n} neighbouring mines', c_empty: 'empty', c_flag: 'flag', c_covered: 'covered',
+        won: 'You won in {s} seconds!', lost: 'Boom. Try again with the smiley.',
+    });
+
     // ------------------------------ the page ------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         const $ = (id) => document.getElementById(id);
@@ -107,19 +120,22 @@
             else if (g.status === 'lost' && g.bomb[i]) { txt = '✹'; cls += ' open'; }
             el.className = cls + (i === cursor ? ' cur' : '');
             el.textContent = txt;
-            el.setAttribute('aria-label', g.open[i] ? (g.bomb[i] ? 'mina' : g.count[i] ? g.count[i] + ' mine vicine' : 'vuota') : g.flag[i] ? 'bandiera' : 'coperta');
+            el.setAttribute('aria-label', g.open[i] ? (g.bomb[i] ? VBLang.t('c_mine') : g.count[i] ? VBLang.t('c_near', { n: g.count[i] }) : VBLang.t('c_empty')) : g.flag[i] ? VBLang.t('c_flag') : VBLang.t('c_covered'));
         }
 
         function paintAll() { for (let i = 0; i < cells.length; i++) paintCell(i); paintHead(); }
+
+        let msg = null;
+        function showMsg(key, vars) { msg = key ? [key, vars] : null; $('mn-msg').textContent = key ? VBLang.t(key, vars) : ''; }
 
         function finish() {
             clearInterval(timer); timer = null;
             if (g.status === 'won') {
                 const s = secs();
                 if (!best[level] || s < best[level]) { best[level] = s; saveBest(); }
-                $('mn-msg').textContent = `Hai vinto in ${s} secondi!`;
+                showMsg('won', { s });
             } else if (g.status === 'lost') {
-                $('mn-msg').textContent = 'Boom. Riprova con la faccina.';
+                showMsg('lost');
             }
         }
 
@@ -150,7 +166,7 @@
                 board.append(b); cells.push(b);
             }
             document.querySelectorAll('[data-level]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.level === level)));
-            $('mn-msg').textContent = '';
+            showMsg(null);
             paintAll();
         }
 
@@ -183,6 +199,7 @@
         $('mn-face').addEventListener('click', () => start(level));
         $('mn-flag').addEventListener('click', () => { flagMode = !flagMode; paintHead(); });
         document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => start(b.dataset.level)));
+        window.addEventListener('vb-lang', () => { paintAll(); showMsg(msg && msg[0], msg && msg[1]); });
         start('easy');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

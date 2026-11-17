@@ -58,7 +58,7 @@ test('the page is served, has no inline script, and the game list and sitemap kn
     const site = await startSite();
     try {
         const html = await (await fetch(`${site.base}/pages/minato.html`)).text();
-        assert.match(html, /<meta name="description" content="[^"]{40,}">/);
+        assert.match(html, /<meta name="description" content="[^"]{40,}"[^>]*>/);
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), 'no inline scripts (the CSP allows files only)');
         for (const f of ['/js/minato.js', '/css/minato.css', '/assets/minato/icon.svg']) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.match(await (await fetch(`${site.base}/pages/giochi.php`)).text(), /minato\.html/);

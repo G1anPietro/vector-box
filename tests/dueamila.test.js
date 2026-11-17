@@ -38,7 +38,7 @@ test('the page is served, has no inline script, and the lists know it', async ()
     const site = await startSite();
     try {
         const html = await (await fetch(`${site.base}/pages/dueamila.html`)).text();
-        assert.match(html, /<meta name="description" content="[^"]{40,}">/);
+        assert.match(html, /<meta name="description" content="[^"]{40,}"[^>]*>/);
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html));
         for (const f of ['/js/dueamila.js', '/css/dueamila.css', '/assets/dueamila/icon.svg']) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.match(await (await fetch(`${site.base}/pages/giochi.php`)).text(), /dueamila\.html/);

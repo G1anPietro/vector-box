@@ -47,6 +47,17 @@
     const api = { LINES, winner, line, moves, bestMove, other };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Tris = api;
+    VBI18N.add('it', {
+        title: 'Tris — vector-box', desc: 'Tris gratis nel browser: contro il computer (facile, medio o imbattibile) oppure in due sullo stesso schermo. Nessun account.',
+        back: '← Giochi', h1: 'Tris', new: 'Nuova', opponent: 'Avversario', easy: 'PC facile', medium: 'PC medio', hard: 'PC imbattibile', two: 'Due giocatori', score: 'Punteggio',
+        grid: 'Griglia del tris', help: 'Tre in fila (orizzontale, verticale o diagonale) vincono. Contro il computer, dopo ogni partita ci si scambia chi comincia. Il livello imbattibile al massimo pareggia.',
+        cell: 'casella {n}: {v}', cell_empty: 'casella {n}: vuota', score_two: 'X {w} · pari {d} · O {l}', score_cpu: 'Tu {w} · pari {d} · PC {l}',
+        m_turn: 'Tocca a {p}', m_you: 'Tocca a te', m_think: 'Penso…', m_draw: 'Pari.', m_win: 'Vince {p}!', m_won: 'Hai vinto!', m_lost: 'Ha vinto il computer.',
+    });
+    VBI18N.add('en', {
+        cell: 'cell {n}: {v}', cell_empty: 'cell {n}: empty', score_two: 'X {w} · draws {d} · O {l}', score_cpu: 'You {w} · draws {d} · CPU {l}',
+        m_turn: '{p} to move', m_you: 'Your turn', m_think: 'Thinking…', m_draw: 'Draw.', m_win: '{p} wins!', m_won: 'You won!', m_lost: 'The computer won.',
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         const $ = (id) => document.getElementById(id);
@@ -61,21 +72,23 @@
 
         function paint() {
             const win = line(b);
-            cells.forEach((c, i) => { c.textContent = b[i] || ''; c.className = 'cell' + (b[i] ? ' ' + b[i].toLowerCase() : '') + (win && win.includes(i) ? ' win' : ''); c.setAttribute('aria-label', b[i] ? 'casella ' + (i + 1) + ': ' + b[i] : 'casella ' + (i + 1) + ': vuota'); });
+            cells.forEach((c, i) => { c.textContent = b[i] || ''; c.className = 'cell' + (b[i] ? ' ' + b[i].toLowerCase() : '') + (win && win.includes(i) ? ' win' : ''); c.setAttribute('aria-label', VBLang.t(b[i] ? 'cell' : 'cell_empty', { n: i + 1, v: b[i] })); });
             const k = mode === 'two' ? 'two' : 'cpu';
             const s = score[k] || { w: 0, d: 0, l: 0 };
-            $('tr-score').textContent = mode === 'two' ? `X ${s.w} · pari ${s.d} · O ${s.l}` : `Tu ${s.w} · pari ${s.d} · PC ${s.l}`;
+            $('tr-score').textContent = VBLang.t(mode === 'two' ? 'score_two' : 'score_cpu', s);
         }
+        let last = null;   // the last message (key + values), redrawn when the language changes
+        const msg = (k, v) => { last = [k, v]; $('tr-msg').textContent = VBLang.t(k, v); };
         function say() {
             const w = winner(b);
-            if (!w) { $('tr-msg').textContent = mode === 'two' ? `Tocca a ${turn}` : (turn === human ? 'Tocca a te' : 'Penso…'); return; }
+            if (!w) { msg(mode === 'two' ? 'm_turn' : (turn === human ? 'm_you' : 'm_think'), { p: turn }); return; }
             over = true;
             const k = mode === 'two' ? 'two' : 'cpu';
             const s = score[k] = score[k] || { w: 0, d: 0, l: 0 };
-            if (w === 'draw') { s.d++; $('tr-msg').textContent = 'Pari.'; }
-            else if (mode === 'two') { (w === 'X' ? s.w++ : s.l++); $('tr-msg').textContent = `Vince ${w}!`; }
-            else if (w === human) { s.w++; $('tr-msg').textContent = 'Hai vinto!'; }
-            else { s.l++; $('tr-msg').textContent = 'Ha vinto il computer.'; }
+            if (w === 'draw') { s.d++; msg('m_draw'); }
+            else if (mode === 'two') { (w === 'X' ? s.w++ : s.l++); msg('m_win', { p: w }); }
+            else if (w === human) { s.w++; msg('m_won'); }
+            else { s.l++; msg('m_lost'); }
             save(); paint();
         }
         function play(i) {
@@ -95,6 +108,7 @@
         board.addEventListener('click', (e) => { const c = e.target.closest('button'); if (c) play(+c.dataset.i); });
         document.querySelectorAll('[data-mode]').forEach((x) => x.addEventListener('click', () => { human = 'O'; start(x.dataset.mode); }));
         $('tr-new').addEventListener('click', () => start(mode, true));
+        window.addEventListener('vb-lang', () => { paint(); if (last) msg(last[0], last[1]); });
         human = 'O'; start('easy');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

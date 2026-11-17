@@ -19,7 +19,7 @@
         set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } },
     };
     const I18N = window.SpiaI18n;
-    let lang = store.get('spia_lang') || I18N.detect(Object.keys(LANGS));
+    let lang = I18N.initial(() => store.get('spia_lang'), Object.keys(LANGS), (code) => { lang = code; document.documentElement.lang = code; applyStatic(); render(); });
     const t = (k, v) => I18N.t(lang, k, v);
 
     let settings = Object.assign({ draw: 1, theme: 'classic' }, store.get('sol_settings', {}));
