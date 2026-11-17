@@ -59,6 +59,14 @@ $GAMES = [
         'how'  => ['it' => 'funziona anche offline', 'en' => 'works offline too'],
     ],
     [
+        'group' => 'solo', 'look' => 'breach', 'href' => 'tetris.html', 'icon' => '../assets/tetris/icon.svg',
+        'name' => ['it' => 'Tetris', 'en' => 'Tetris'],
+        'line' => ['it' => 'I pezzi cadono, tu completi le righe: livelli sempre più veloci, anteprima e caduta veloce.',
+                   'en' => 'The pieces fall, you complete the lines: faster levels, next-piece preview and hard drop.'],
+        'who'  => ['it' => '1 giocatore', 'en' => '1 player'],
+        'how'  => ['it' => 'tastiera o tasti sullo schermo', 'en' => 'keyboard or on-screen buttons'],
+    ],
+    [
         'group' => 'solo', 'look' => 'breach', 'href' => 'forza4.html', 'icon' => '../assets/forza4/icon.svg',
         'name' => ['it' => 'Forza 4', 'en' => 'Connect Four'],
         'line' => ['it' => 'Quattro dischi in fila per vincere: contro il computer (tre livelli) o in due sullo stesso schermo.',
