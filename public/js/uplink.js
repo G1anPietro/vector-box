@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!text || publicSendBtn.disabled) return;
 
         publicSendBtn.disabled = true;
-        publicSendBtn.textContent = "TRANSMITTING...";
+        publicSendBtn.textContent = VBLang.t('up_sending');
         setStatus('', '');
 
         try {
@@ -29,18 +29,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
 
             if (data.success) {
-                setStatus('// TRANSMISSION DELIVERED TO NTFY', 'var(--accent-color)');
+                setStatus(VBLang.t('up_done'), 'var(--accent-color)');
                 publicMsgInput.value = '';
                 // Keeping focus on the textarea prevents the keyboard from collapsing
                 publicMsgInput.focus();
             } else {
-                setStatus(`// ERROR: ${data.error || 'Failed'}`, '#ff3333');
+                setStatus(`// ${VBLang.t('error')}: ${data.error || VBLang.t('failed')}`, '#ff3333');
             }
         } catch (err) {
-            setStatus('// UPLINK FAILURE: TARGET UNREACHABLE', '#ff3333');
+            setStatus(VBLang.t('up_fail'), '#ff3333');
         } finally {
             setTimeout(() => {
-                publicSendBtn.textContent = ">_ TRANSMIT MESSAGE";
+                publicSendBtn.textContent = '>_ ' + VBLang.t('up_btn');
                 publicSendBtn.disabled = false;
             }, 1500);
         }

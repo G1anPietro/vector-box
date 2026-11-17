@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../includes/head.php';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= pageLang() ?>">
 <head>
     <?php renderHead("Credits // Ciao Zuffi", true); ?>
 </head>
@@ -12,14 +12,14 @@ require_once __DIR__ . '/../includes/head.php';
     
     <header class="cyber-header">
         <div class="glitch">// SECURE_ARCHIVE</div>
-        <a href="../index.php" class="nav-btn">// RETURN_HOME</a>
+        <a href="../index.php" class="nav-btn">// <?= tt('RETURN_HOME', 'TORNA_ALLA_HOME') ?></a>
     </header>
 
     <main class="page-container-centered">
         <div class="cyber-panel credits-box">
             <h1 class="glitch credits-title">CIAO ZUFFI</h1>
-            <p class="credits-subtitle">SYSTEM ARCHITECTURE DESIGNED BY DENYS</p>
-            <p class="credits-footer">END OF FILE.</p>
+            <p class="credits-subtitle"><?= tt('SYSTEM ARCHITECTURE DESIGNED BY DENYS', 'ARCHITETTURA DEL SISTEMA PROGETTATA DA DENYS') ?></p>
+            <p class="credits-footer"><?= tt('END OF FILE.', 'FINE DEL FILE.') ?></p>
         </div>
     </main>
 </body>

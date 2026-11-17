@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
             timeLeft--;
             timerVal.innerText = `${timeLeft}s`;
             if (timeLeft <= 5) timerVal.style.color = "#ff3333";
-            if (timeLeft <= 0) endGame(false, ">> BREACH FAILED: BUFFER OVERFLOW");
+            if (timeLeft <= 0) endGame(false, '>> ' + VBLang.t('hk_overflow'));
         }, 1000);
     }
 
@@ -62,10 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
             currentStep++;
 
             if (currentStep === targetSeq.length) {
-                endGame(true, ">> BREACH SUCCESSFUL: ACCESS GRANTED");
+                endGame(true, '>> ' + VBLang.t('hk_ok'));
             }
         } else {
-            endGame(false, ">> BREACH FAILED: TRACE DETECTED");
+            endGame(false, '>> ' + VBLang.t('hk_trace'));
         }
     }
 

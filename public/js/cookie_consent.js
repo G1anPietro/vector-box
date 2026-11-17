@@ -56,7 +56,7 @@
     function removeBanner() { if (bannerEl && bannerEl.parentNode) bannerEl.parentNode.removeChild(bannerEl); bannerEl = null; }
     function open() {
         if (bannerEl) return;
-        var it = (document.documentElement.lang || 'it').slice(0, 2) !== 'en';
+        var it = (window.VBLang ? VBLang.lang : (document.documentElement.lang || 'en')).slice(0, 2) === 'it';
         var t = it
             ? { title: 'Pubblicità e cookie', body: 'Questo sito mostra annunci di Google solo se acconsenti: servono cookie e identificatori di Google. Tutto il resto (accesso, lingua, tema) non ha bisogno del tuo consenso. Puoi cambiare idea in ogni momento dal link "Cookie".', no: 'Rifiuta', yes: 'Accetta', more: 'Leggi la privacy' }
             : { title: 'Ads and cookies', body: 'This site shows Google ads only if you agree: they need Google cookies and identifiers. Everything else (login, language, theme) needs no consent. You can change your mind any time from the "Cookies" link.', no: 'Reject', yes: 'Accept', more: 'Read the privacy page' };

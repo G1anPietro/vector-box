@@ -33,8 +33,11 @@
     const writeCookie = (l) => { try { doc.cookie = 'vb_lang=' + l + '; max-age=31536000; path=/; samesite=lax' + (root.location.protocol === 'https:' ? '; secure' : ''); } catch (e) { /* cookies off */ } };
     const queryLang = () => { const m = /[?&]lang=([a-z]{2})/.exec(root.location.search || ''); return m && SUPPORTED.includes(m[1]) ? m[1] : null; };
 
-    let lang = queryLang() || readCookie() || fromBrowser(root.navigator && (navigator.languages || [navigator.language])) || 'en';
-    const explicit = !!(queryLang() || readCookie());
+    // A PHP page says which language it was written in (<meta name="vb-lang">, from pageLang()): nothing to ask the server, and a switch reloads the page.
+    const metaEl = doc.querySelector('meta[name="vb-lang"]');
+    const serverLang = metaEl && SUPPORTED.includes(metaEl.content) ? metaEl.content : null;
+    let lang = serverLang || queryLang() || readCookie() || fromBrowser(root.navigator && (navigator.languages || [navigator.language])) || 'en';
+    const explicit = !!(serverLang || queryLang() || readCookie());
     if (queryLang()) writeCookie(queryLang());
     doc.documentElement.classList.add('i18n-pending');
     const style = doc.createElement('style');
@@ -69,8 +72,15 @@
 
     function setLang(l, remember) {
         if (!SUPPORTED.includes(l)) return;
-        lang = l;
         if (remember) writeCookie(l);
+        if (serverLang && l !== serverLang) {                                              // PHP pages: the text came from the server, so load it again
+            const u = new URL(root.location.href); u.searchParams.delete('lang');
+            const go = () => root.location.replace(u.href);
+            // a logged-in person: the account remembers it (e-mails follow it); the server ignores visitors without an account
+            if (remember && root.fetch) fetch(new URL('../api/lang.php', here || root.location.href).href, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lang: l }) }).then(go, go); else go();
+            return;
+        }
+        lang = l;
         apply();
         mountSwitch();
         root.dispatchEvent(new CustomEvent('vb-lang', { detail: { lang: l } }));
@@ -94,7 +104,7 @@
     }
 
     root.VBI18N = { add, dict };
-    root.VBLang = { get lang() { return lang; }, t: (key, vars) => translate(lang, key, vars), set: (l) => setLang(l, true), apply, add, SUPPORTED };
+    root.VBLang = { get lang() { return lang; }, get server() { return !!serverLang; }, t: (key, vars) => translate(lang, key, vars), set: (l) => setLang(l, true), apply, add, SUPPORTED };
 
     const start = () => {
         apply(); mountSwitch(); ready();

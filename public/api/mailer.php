@@ -74,8 +74,26 @@ function mailAudience(PDO $db, string $audience): array {
 /** The text every news message ends with: who sends it, why the person gets it, and the one-click way out. */
 function mailFooter(PDO $db, int $accountId): string {
     $base = siteUrl();
+    $url = "$base/api/mail_link.php?a=unsub&t=" . mailToken($db, 'unsub', $accountId);
+    if (accountLang($db, $accountId) === 'it') {   // the language of the person who reads it, not of the admin who wrote it
+        return "\n\n--\nRicevi questo messaggio perché hai chiesto le novità di vector-box ($base) nelle impostazioni del tuo account.\n"
+             . "Per smettere basta un clic: $url\n";
+    }
     return "\n\n--\nYou get this because you asked for news from vector-box ($base) in your account settings.\n"
-         . "Stop them with one click: $base/api/mail_link.php?a=unsub&t=" . mailToken($db, 'unsub', $accountId) . "\n";
+         . "Stop them with one click: $url\n";
+}
+
+/** The confirmation e-mail of an address, in the language of the person: [subject, text]. */
+function mailVerifyMessage(PDO $db, array $account, string $email, string $lang): array {
+    $url = siteUrl() . '/api/mail_link.php?a=verify&t=' . mailToken($db, mailVerifyKind($email), (int)$account['id']);
+    if ($lang === 'it') {
+        return ['Conferma il tuo indirizzo e-mail',
+            "Ciao,\n\nqualcuno (speriamo tu) ha aggiunto questo indirizzo all'account \"{$account['username']}\" su vector-box.\nConfermalo qui: $url"
+            . "\n\nSe non sei stato tu, ignora questo messaggio: senza il clic non succede niente.\n"];
+    }
+    return ['Confirm your e-mail address',
+        "Hello,\n\nsomeone (hopefully you) added this address to the account \"{$account['username']}\" on vector-box.\nConfirm it here: $url"
+        . "\n\nIf it was not you, ignore this message: nothing happens without the click.\n"];
 }
 
 /** The real sending of one queued row. Throws on failure. */

@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderConvs(list) {
         convsEl.replaceChildren();
         if (!list.length) {
-            convsEl.appendChild(el('p', 'term-muted', 'No conversations yet. Find a user above to start one.'));
+            convsEl.appendChild(el('p', 'term-muted', VBLang.t('dm_none')));
             return;
         }
         for (const c of list) {
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setTop(state) {
         if (!topEl) return;
         topEl.className = 'dm-top' + (state === 'loading' ? ' loading' : '');
-        topEl.textContent = state === 'loading' ? 'loading older messages…' : state === 'start' ? 'start of the conversation' : '';
+        topEl.textContent = state === 'loading' ? VBLang.t('dm_loading') : state === 'start' ? VBLang.t('dm_start') : '';
     }
 
     /** Loads the 50 messages before the oldest one shown and puts them on top, keeping the view still. */
@@ -147,10 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setTop(hasMore || !t.messages.length ? '' : 'start');
             threadEl.scrollTop = threadEl.scrollHeight;
             blockBtn.classList.remove('hidden');
-            blockBtn.textContent = t.blocked ? 'UNBLOCK' : 'BLOCK';
+            blockBtn.textContent = t.blocked ? VBLang.t('dm_unblock') : VBLang.t('dm_block');
             blockBtn.dataset.blocked = t.blocked ? '1' : '';
             form.classList.toggle('hidden', !t.can_send);
-            if (!t.can_send) say(t.blocked ? 'You blocked this user.' : 'You cannot write to this user.');
+            if (!t.can_send) say(t.blocked ? VBLang.t('dm_you_blocked') : VBLang.t('dm_cannot'));
             else text.focus();
             loadConvs();
             requestAnimationFrame(fillIfShort);
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
     blockBtn.addEventListener('click', async () => {
         if (!current) return;
         const blocked = blockBtn.dataset.blocked === '1';
-        if (!blocked && !confirm(`Block ${current.username}? Neither of you will be able to write to the other.`)) return;
+        if (!blocked && !confirm(VBLang.t('dm_confirm_block', { u: current.username }))) return;
         try {
             await api('', { action: blocked ? 'unblock' : 'block', user_id: current.id });
             openThread(current);
@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const r = await api(`?action=users&q=${encodeURIComponent(q)}`);
                 results.replaceChildren();
-                if (!r.users.length) results.appendChild(el('div', 'term-muted dm-item', 'No user found'));
+                if (!r.users.length) results.appendChild(el('div', 'term-muted dm-item', VBLang.t('dm_nouser')));
                 for (const u of r.users) {
                     const b = el('button', 'dm-item', u.username);
                     b.addEventListener('click', () => { search.value = ''; results.replaceChildren(); openThread(u); });

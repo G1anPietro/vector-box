@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!entries.length) {
             const empty = document.createElement('p');
             empty.className = 'term-muted';
-            empty.textContent = 'No signatures yet. Be the first to tag the wall.';
+            empty.textContent = VBLang.t('gb_empty');
             list.appendChild(empty);
             return;
         }
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const del = document.createElement('button');
                 del.className = 'chat-del-btn';
                 del.textContent = '[X]';
-                del.title = 'Remove entry';
+                del.title = VBLang.t('gb_remove');
                 del.addEventListener('click', async () => {
                     try {
                         const res = await fetch('api/guestbook.php', {
@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
             renderList(data.entries);
             renderTicker(data.entries);
         } catch (err) {
-            say('>> Failed to load the wall.', '#ff3333');
+            say('>> ' + VBLang.t('gb_load_fail'), '#ff3333');
         }
     };
 
@@ -113,13 +113,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
             if (data.success) {
                 input.value = '';
-                say('>> Signature burned into the wall.', '#33ff77');
+                say('>> ' + VBLang.t('gb_signed'), '#33ff77');
                 load(true);
             } else {
-                say(`>> ${data.error || 'Failed to sign.'}`, '#ff3333');
+                say(`>> ${data.error || VBLang.t('gb_sign_fail')}`, '#ff3333');
             }
         } catch (err) {
-            say('>> Uplink error.', '#ff3333');
+            say('>> ' + VBLang.t('uplink_error'), '#ff3333');
         }
     };
 

@@ -38,8 +38,21 @@ function notifyAllowed(PDO $db, array $userIds, int $classId, string $kind, ?str
     return array_values(array_filter($userIds, fn($u) => !isset($off[(int)$u])));
 }
 
-/** Saves a notification for each user and pushes it to their devices. Returns how many pushes were delivered. */
-function notifyUsers(PDO $db, array $userIds, ?int $classId, string $kind, string $title, string $body, string $url, bool $push = true, bool $save = true, ?string $slot = null): int {
+/**
+ * Saves a notification for each user and pushes it to their devices. Returns how many pushes were delivered.
+ * The texts are Italian (class notes are used by Italian classes); with $en = [title, body] the members whose account
+ * language (accounts.lang) is English get that text instead.
+ */
+function notifyUsers(PDO $db, array $userIds, ?int $classId, string $kind, string $title, string $body, string $url, bool $push = true, bool $save = true, ?string $slot = null, ?array $en = null): int {
+    if ($en !== null && $userIds) {
+        $in = implode(',', array_map('intval', $userIds));
+        $enIds = array_map('intval', $db->query("SELECT id FROM accounts WHERE lang = 'en' AND id IN ($in)")->fetchAll(PDO::FETCH_COLUMN));
+        $itIds = array_values(array_diff(array_map('intval', $userIds), $enIds));
+        $n = 0;
+        if ($itIds) $n += notifyUsers($db, $itIds, $classId, $kind, $title, $body, $url, $push, $save, $slot);
+        if ($enIds) $n += notifyUsers($db, $enIds, $classId, $kind, (string)$en[0], (string)$en[1], $url, $push, $save, $slot);
+        return $n;
+    }
     $now = time();
     if ($classId !== null) $userIds = notifyAllowed($db, $userIds, $classId, $kind, $slot);
     if (!$userIds) return 0;
@@ -145,7 +158,9 @@ function bellsRun(PDO $db, int $now): int {
             notifyUsers($db, array_map('intval', $users->fetchAll(PDO::FETCH_COLUMN)), (int)$class['id'], 'campanella',
                 "Tra $mins minuti: " . ($subject['name'] ?? 'lezione'),
                 ($next['room'] !== '' ? 'Aula ' . $next['room'] : 'Aula non indicata nell\'orario') . " · dalle {$next['start']} alle {$next['end']}",
-                '/pages/appunti.php?class=' . (int)$class['id'], true, false);
+                '/pages/appunti.php?class=' . (int)$class['id'], true, false, null,
+                ["In $mins minutes: " . ($subject['name'] ?? 'lesson'),
+                 ($next['room'] !== '' ? 'Room ' . $next['room'] : 'Room not listed in the timetable') . " · from {$next['start']} to {$next['end']}"]);
             $sent++;
         }
     }
@@ -277,7 +292,8 @@ function reviewRemindRun(PDO $db, int $now): int {
             $n->execute([':u' => $m['user_id'], ':c' => $cid, ':d' => $today]);
             $due = (int)$n->fetchColumn();
             if ($due === 0) continue;
-            notifyUsers($db, [(int)$m['user_id']], $cid, 'ripasso', "Il ripasso di oggi: $due " . ($due === 1 ? 'domanda' : 'domande'), 'Poche domande ogni giorno: le sbagliate tornano finché non le sai.', '/pages/appunti.php?class=' . $cid . '&tab=study');
+            notifyUsers($db, [(int)$m['user_id']], $cid, 'ripasso', "Il ripasso di oggi: $due " . ($due === 1 ? 'domanda' : 'domande'), 'Poche domande ogni giorno: le sbagliate tornano finché non le sai.', '/pages/appunti.php?class=' . $cid . '&tab=study', true, true, null,
+                ["Today's review: $due " . ($due === 1 ? 'question' : 'questions'), 'A few questions a day: the ones you get wrong come back until you know them.']);
             $sent++;
         }
     }

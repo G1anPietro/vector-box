@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 36;
+const DB_SCHEMA_VERSION = 37;
 
 /**
  * Session bootstrap.
@@ -580,6 +580,14 @@ function migrateV16(PDO $db): void {
     addColumnIfMissing($db, 'class_members', 'display_name', 'TEXT');
 }
 
+/** v37: the language of the person (accounts.lang, 'en' or 'it'): the e-mails and notifications we send follow it, not the admin's. */
+function migrateV37(PDO $db): void {
+    $had = (bool)$db->query("SELECT 1 FROM pragma_table_info('accounts') WHERE name = 'lang'")->fetchColumn();
+    addColumnIfMissing($db, 'accounts', 'lang', "TEXT NOT NULL DEFAULT 'en'");
+    // the people who signed up before this were reading the Italian site: keep their notifications Italian until they choose
+    if (!$had) $db->exec("UPDATE accounts SET lang = 'it'");
+}
+
 /** v30: a temporary link can be limited to a number of openings (0 = no limit). */
 /** v33: the AI (Google Gemini) only reads the material of a class declared to have adult students only: the requester says so
  *  (adults_declared) and the representative can switch it on later (the students grow up). Classes that already existed keep it on. */
@@ -1024,6 +1032,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 36) {
             migrateV36($db);
+        }
+        if ($current < 37) {
+            migrateV37($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

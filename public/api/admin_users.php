@@ -133,7 +133,10 @@ try {
         $body = textCut(str_replace("\r", '', trim((string)($in['body'] ?? ''))), 5000);
         if ($subject === '' || $body === '') jsonFail('empty', 'Write a subject and a text');
         if (!checkRateLimit('admin_direct_mail', 30, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many messages, try later', 429);
-        $text = "Hello {$a['username']},\n\n$body\n\n--\nThis message is from the person who runs vector-box (" . siteUrl() . "), written to you about your account.\nTo stop all e-mail, remove the address in your account settings.\n";
+        // the frame around the admin's text is in the language of the person who reads it, not of the admin
+        $text = accountLang($db, $id) === 'it'
+            ? "Ciao {$a['username']},\n\n$body\n\n--\nQuesto messaggio viene da chi gestisce vector-box (" . siteUrl() . "), scritto a te riguardo al tuo account.\nPer non ricevere più e-mail, togli l'indirizzo nelle impostazioni del tuo account.\n"
+            : "Hello {$a['username']},\n\n$body\n\n--\nThis message is from the person who runs vector-box (" . siteUrl() . "), written to you about your account.\nTo stop all e-mail, remove the address in your account settings.\n";
         $qid = mailEnqueue($db, null, $id, (string)$a['email'], $subject, $text, 'direct');
         $r = mailProcessQueue($db, 1, [$qid]);
         jsonResponse(['success' => true, 'queued' => true, 'sent_now' => $r['sent'] === 1, 'driver_off' => $r['off']]);

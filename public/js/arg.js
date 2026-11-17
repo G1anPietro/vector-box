@@ -1,8 +1,8 @@
 // public/js/arg.js
 (function () {
     const PUZZLE_KEYS = {
-        "VECTOR-2026": ">> DECRYPTION SUCCESSFUL\n\nACCESS_GRANT: NULL_SECTOR_LOG_01\n\"System architecture designed by Denys. All nodes operational under Ubuntu kernel 6.8.0.\"",
-        "ZUFFI-HEX": ">> DECRYPTION SUCCESSFUL\n\nACCESS_GRANT: RICE_OVERRIDE\nTry running 'theme matrix' or 'theme cyberpunk' inside the shell terminal."
+        "VECTOR-2026": () => '>> ' + VBLang.t('arg_ok') + '\n\nACCESS_GRANT: NULL_SECTOR_LOG_01\n"' + VBLang.t('arg_log1') + '"',
+        "ZUFFI-HEX": () => '>> ' + VBLang.t('arg_ok') + '\n\nACCESS_GRANT: RICE_OVERRIDE\n' + VBLang.t('arg_log2')
     };
 
     function handleVaultSubmit() {
@@ -14,18 +14,18 @@
         const enteredKey = keyInput.value.trim().toUpperCase();
 
         if (!enteredKey) {
-            vaultOutput.innerHTML = `<span style="color: var(--text-muted);">>_ ENTER PASSPHRASE...</span>`;
+            vaultOutput.innerHTML = `<span style="color: var(--text-muted);">>_ ${VBLang.t('arg_enter')}</span>`;
             return;
         }
 
         if (PUZZLE_KEYS[enteredKey]) {
-            const formatted = PUZZLE_KEYS[enteredKey].replace(/\n/g, '<br>');
+            const formatted = PUZZLE_KEYS[enteredKey]().replace(/\n/g, '<br>');
             vaultOutput.innerHTML = `<div style="color: var(--accent-color); font-weight: bold; overflow-wrap: break-word; word-break: normal; white-space: normal; line-height: 1.4;">${formatted}</div>`;
         } else {
             // typed text goes in as text, never as HTML
             const denied = document.createElement('span');
             denied.style.cssText = 'color: #ff3333; font-weight: bold;';
-            denied.textContent = `>> ACCESS DENIED: INVALID KEY '${enteredKey}'`;
+            denied.textContent = `>> ${VBLang.t('arg_denied')} '${enteredKey}'`;
             vaultOutput.replaceChildren(denied);
         }
     }

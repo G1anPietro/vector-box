@@ -32,7 +32,10 @@ function renderHead($title = "Node // Vector-Box", $isSubpage = false, $customSc
     <title><?php echo htmlspecialchars($title); ?></title>
     
     <?php if (($saved = savedAccountTheme()) !== null): ?><meta name="vb-theme" content="<?php echo htmlspecialchars($saved); ?>"><?php endif; ?>
+    <meta name="vb-lang" content="<?php echo pageLang(); ?>">
     <script src="<?php echo $pathPrefix; ?>js/csrf.js?v=<?php echo $ver; ?>"></script>
+    <script src="<?php echo $pathPrefix; ?>js/i18n.js?v=<?php echo $ver; ?>"></script>
+    <script src="<?php echo $pathPrefix; ?>js/i18n-ui.js?v=<?php echo $ver; ?>"></script>
 
     <?php if ($isLightPage): ?>
         <!-- Standalone Light Theme Stack for Reader -->

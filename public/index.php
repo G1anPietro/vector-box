@@ -54,48 +54,48 @@ if ($userId && !$isAdmin) {
 // APP_VERSION, BUILD_DATE and BUILD_HASH come from includes/head.php (version.php in the project root).
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= pageLang() ?>">
 <head>
     <?php renderHead("Node // Vector-Box", false); ?>
-    <?= socialMeta('vector-box', 'Un desktop cyberpunk nel browser: terminale, chat, giochi da festa per il telefono e giochi da soli.', '/', '/assets/og/desktop.jpg') ?>
+    <?= socialMeta('vector-box', tt('A cyberpunk desktop in your browser: terminal, chat, party games for your phone and games to play alone.', 'Un desktop cyberpunk nel browser: terminale, chat, giochi da festa per il telefono e giochi da soli.'), '/', '/assets/og/desktop.jpg') ?>
 </head>
 <body class="home">
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
-        <div class="glitch">// VECTOR-BOX // <?php echo $isLoggedIn ? 'USER: ' . htmlspecialchars($activeUsername) : 'AUTH_REQUIRED'; ?></div>
+        <div class="glitch">// VECTOR-BOX // <?php echo $isLoggedIn ? tt('USER: ', 'UTENTE: ') . htmlspecialchars($activeUsername) : tt('AUTH_REQUIRED', 'ACCESSO_RICHIESTO'); ?></div>
         <div class="menu-container">
             <button id="menu-toggle-btn" class="nav-btn" type="button">// MENU</button>
             
             <div id="dropdown-menu" class="cyber-panel menu-dropdown hidden">
                 <?php if ($canViewResume): ?>
-                    <a href="pages/resume.php" class="menu-item btn-dossier">// VIEW DOSSIER</a>
+                    <a href="pages/resume.php" class="menu-item btn-dossier">// <?= tt('VIEW DOSSIER', 'VEDI DOSSIER') ?></a>
                 <?php endif; ?>
-                <a href="pages/giochi.php" class="menu-item">// GIOCHI</a>
-                <a href="pages/appunti.php" class="menu-item">// APPUNTI DI CLASSE</a>
-                <a href="pages/ads.php" class="menu-item btn-adwall">// SUPPORTA</a>
-                <a href="pages/progetto.php" class="menu-item">// IL PROGETTO</a>
+                <a href="pages/giochi.php" class="menu-item">// <?= tt('GAMES', 'GIOCHI') ?></a>
+                <a href="pages/appunti.php" class="menu-item">// <?= tt('CLASS NOTES', 'APPUNTI DI CLASSE') ?></a>
+                <a href="pages/ads.php" class="menu-item btn-adwall">// <?= tt('SUPPORT', 'SUPPORTA') ?></a>
+                <a href="pages/progetto.php" class="menu-item">// <?= tt('THE PROJECT', 'IL PROGETTO') ?></a>
                 
                 <?php if ($canReadBooks): ?>
                     <a href="pages/reader.php" class="menu-item" style="border-color: #00f3ff; color: #00f3ff;">// BOOK READER</a>
                 <?php endif; ?>
                 
                 <?php if ($isAdmin): ?>
-                    <a href="pages/stats.php" class="menu-item">// STATISTICHE</a>
+                    <a href="pages/stats.php" class="menu-item">// <?= tt('STATISTICS', 'STATISTICHE') ?></a>
                 <?php endif; ?>
 
                 <?php if ($isLoggedIn): ?>
-                    <a href="pages/account.php" class="menu-item">// ACCOUNT_SETTINGS</a>
+                    <a href="pages/account.php" class="menu-item">// <?= tt('ACCOUNT_SETTINGS', 'IMPOSTAZIONI_ACCOUNT') ?></a>
                     <a href="api/logout.php" class="menu-item" style="border-color: #ff3333; color: #ff3333;">// LOGOUT</a>
                 <?php else: ?>
-                    <a href="pages/login.php" class="menu-item">// LOGIN / REGISTER</a>
+                    <a href="pages/login.php" class="menu-item">// <?= tt('LOGIN / REGISTER', 'ACCEDI / REGISTRATI') ?></a>
                 <?php endif; ?>
                 
                 <div class="settings-section">
-                    <span class="settings-title">>_ OPTIONS</span>
+                    <span class="settings-title">>_ <?= tt('OPTIONS', 'OPZIONI') ?></span>
                     
                     <div class="toggle-row">
-                        <span class="toggle-label">MATRIX BACKGROUND</span>
+                        <span class="toggle-label"><?= tt('MATRIX BACKGROUND', 'SFONDO MATRIX') ?></span>
                         <label class="cyber-switch">
                             <input type="checkbox" id="matrix-toggle" checked>
                             <span class="switch-slider"></span>
@@ -103,7 +103,7 @@ if ($userId && !$isAdmin) {
                     </div>
 
                     <div class="toggle-row" style="margin-top: 8px;">
-                        <span class="toggle-label">FROSTED GLASS</span>
+                        <span class="toggle-label"><?= tt('FROSTED GLASS', 'VETRO SFOCATO') ?></span>
                         <label class="cyber-switch">
                             <input type="checkbox" id="glass-toggle" checked>
                             <span class="switch-slider"></span>
@@ -111,7 +111,7 @@ if ($userId && !$isAdmin) {
                     </div>
 
                     <div class="toggle-row" style="margin-top: 8px;">
-                        <span class="toggle-label">SCANLINES</span>
+                        <span class="toggle-label"><?= tt('SCANLINES', 'LINEE DI SCANSIONE') ?></span>
                         <label class="cyber-switch">
                             <input type="checkbox" id="scanline-toggle">
                             <span class="switch-slider"></span>
@@ -119,13 +119,18 @@ if ($userId && !$isAdmin) {
                     </div>
 
                     <div class="cyber-slider-row">
-                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">MATRIX_SPEED</span>
+                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('MATRIX_SPEED', 'VELOCITA_MATRIX') ?></span>
                         <input type="range" id="matrix-speed-slider" class="cyber-range" min="10" max="70" value="45">
                     </div>
 
                     <div class="cyber-slider-row" style="margin-top: 10px;">
-                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">THEME</span>
+                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('THEME', 'TEMA') ?></span>
                         <select id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 4px 8px; font-size: 0.8rem; background: #020304;"><?php echo systemThemeOptions(savedAccountTheme()); ?></select>
+                    </div>
+
+                    <div class="cyber-slider-row" style="margin-top: 10px;">
+                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">LANGUAGE</span>
+                        <div id="vb-lang" role="group" aria-label="Language"></div>
                     </div>
                 </div>
             </div>
@@ -138,16 +143,16 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ TERMINAL</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="terminal-box auth-terminal" id="guest-term-box">
                 <div id="guest-term-log">
-                    <p class="term-accent">>_ public_node initialized...</p>
-                    <p class="term-muted">>_ establishing secure handshake...</p>
-                    <p class="term-white">>_ connection stable. Type 'help' for commands.</p>
+                    <p class="term-accent">>_ <?= tt('public_node initialized...', 'public_node avviato...') ?></p>
+                    <p class="term-muted">>_ <?= tt('establishing secure handshake...', 'handshake sicuro in corso...') ?></p>
+                    <p class="term-white">>_ <?= tt('connection stable. Type \'help\' for commands.', 'connessione stabile. Scrivi \'help\' per i comandi.') ?></p>
                 </div>
                 <div class="terminal-input-line clean-input-line">
                     <span class="prompt-symbol"><?php echo htmlspecialchars($activeUsername); ?>@vector-box:~$</span>
@@ -161,9 +166,9 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ CHAT_FEED</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div id="chat-room-tabs" class="chat-tab-bar"></div>
@@ -171,7 +176,7 @@ if ($userId && !$isAdmin) {
                 <div id="uplink-chat-log"></div>
                 <div class="terminal-input-line clean-input-line">
                     <span class="prompt-symbol" id="chat-prompt-label">#general:$</span>
-                    <input type="text" id="chat-feed-input" class="terminal-input" placeholder="Type message to feed..." autocomplete="off">
+                    <input type="text" id="chat-feed-input" class="terminal-input" placeholder="<?= tt('Type message to feed...', 'Scrivi un messaggio...') ?>" autocomplete="off">
                 </div>
             </div>
         </div>
@@ -181,15 +186,15 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ PUBLIC_UPLINK_TERMINAL</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="window-content-inner">
-                <p class="uplink-desc">Leave an encrypted transmission for the system administrator.</p>
-                <textarea id="public-msg-input" class="uplink-textarea" placeholder="Enter transmission data..."></textarea>
-                <button id="public-send-btn" type="button" class="uplink-btn">>_ TRANSMIT MESSAGE</button>
+                <p class="uplink-desc"><?= tt('Leave an encrypted transmission for the system administrator.', 'Lascia una trasmissione cifrata per l\'amministratore del sistema.') ?></p>
+                <textarea id="public-msg-input" class="uplink-textarea" placeholder="<?= tt('Enter transmission data...', 'Scrivi il messaggio...') ?>"></textarea>
+                <button id="public-send-btn" type="button" class="uplink-btn">>_ <?= tt('TRANSMIT MESSAGE', 'INVIA MESSAGGIO') ?></button>
                 <div id="public-msg-status" class="uplink-status"></div>
             </div>
         </div>
@@ -199,35 +204,35 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ CYBER_POKER // NEON_HOLDEM</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="window-content-inner" style="padding: 10px; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 30px);">
                 <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; flex-wrap: wrap;">
                     <div style="display: flex; gap: 4px; flex: 1; min-width: 220px;">
-                        <input type="text" id="poker-join-input" placeholder="Room/Code (e.g. general)" style="flex: 1; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 8px; font-family: monospace; font-size: 0.75rem; outline: none;">
-                        <button id="poker-btn-join-room" type="button" class="nav-btn" style="padding: 4px 8px; font-size: 0.75rem;">SWITCH</button>
+                        <input type="text" id="poker-join-input" placeholder="<?= tt('Room/Code (e.g. general)', 'Stanza/Codice (es. general)') ?>" style="flex: 1; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 8px; font-family: monospace; font-size: 0.75rem; outline: none;">
+                        <button id="poker-btn-join-room" type="button" class="nav-btn" style="padding: 4px 8px; font-size: 0.75rem;"><?= tt('SWITCH', 'CAMBIA') ?></button>
                     </div>
 
                     <div style="display: flex; gap: 4px; flex: 1; min-width: 280px;">
-                        <input type="text" id="poker-create-name" placeholder="New Table" style="width: 80px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
-                        <input type="text" id="poker-create-code" placeholder="Code" style="width: 60px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
+                        <input type="text" id="poker-create-name" placeholder="<?= tt('New Table', 'Nuovo tavolo') ?>" style="width: 80px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
+                        <input type="text" id="poker-create-code" placeholder="<?= tt('Code', 'Codice') ?>" style="width: 60px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
                         <select id="poker-create-bots" class="nav-btn" style="padding: 2px 4px; font-size: 0.75rem; background: #000;">
-                            <option value="1">1 Bot</option>
+                            <option value="1"><?= tt('1 Bot', '1 Bot') ?></option>
                             <option value="2">2 Bots</option>
                             <option value="3">3 Bots</option>
                         </select>
-                        <button id="poker-btn-create-room" type="button" class="nav-btn" style="border-color: #00ff66; color: #00ff66; padding: 4px 8px; font-size: 0.75rem;">+ CREATE</button>
-                        <button id="poker-btn-leaderboard" type="button" class="nav-btn" title="Leaderboard" style="border-color: #ffc800; color: #ffc800; padding: 4px 8px; font-size: 0.75rem;">TOP</button>
+                        <button id="poker-btn-create-room" type="button" class="nav-btn" style="border-color: #00ff66; color: #00ff66; padding: 4px 8px; font-size: 0.75rem;">+ <?= tt('CREATE', 'CREA') ?></button>
+                        <button id="poker-btn-leaderboard" type="button" class="nav-btn" title="<?= tt('Leaderboard', 'Classifica') ?>" style="border-color: #ffc800; color: #ffc800; padding: 4px 8px; font-size: 0.75rem;">TOP</button>
                     </div>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0;">
                     <div style="display: flex; flex-direction: column;">
-                        <span class="term-accent" style="font-weight: bold; font-size: 0.9rem;">POT: <span id="poker-pot-val">0</span> CR</span>
-                        <span id="poker-stage-indicator" style="font-size: 0.75rem; color: var(--text-muted);">STAGE: LOBBY</span>
+                        <span class="term-accent" style="font-weight: bold; font-size: 0.9rem;"><?= tt('POT', 'PIATTO') ?>: <span id="poker-pot-val">0</span> CR</span>
+                        <span id="poker-stage-indicator" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('STAGE: LOBBY', 'FASE: LOBBY') ?></span>
                     </div>
                     <div id="poker-community-cards" style="display: flex; gap: 6px;"></div>
                 </div>
@@ -239,17 +244,17 @@ if ($userId && !$isAdmin) {
 
                 <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 6px;">
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">BET:</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('BET', 'PUNTATA') ?>:</span>
                         <input type="number" id="poker-bet-input" value="40" min="10" step="10" style="width: 70px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px; font-family: monospace; font-size: 0.85rem; outline: none;">
-                        <button id="poker-btn-raise" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 4px 8px; font-size: 0.75rem;">RAISE / BET</button>
+                        <button id="poker-btn-raise" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 4px 8px; font-size: 0.75rem;"><?= tt('RAISE / BET', 'RILANCIA / PUNTA') ?></button>
                     </div>
 
                     <div style="display: flex; gap: 6px;">
-                        <button id="poker-btn-join" type="button" class="nav-btn" style="flex: 1; padding: 6px; font-size: 0.75rem;">SEAT</button>
-                        <button id="poker-btn-leave" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;">LEAVE</button>
-                        <button id="poker-btn-deal" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 6px; font-size: 0.75rem;">DEAL</button>
-                        <button id="poker-btn-fold" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;">FOLD</button>
-                        <button id="poker-btn-call" type="button" class="nav-btn" style="flex: 1; border-color: #00f3ff; color: #00f3ff; padding: 6px; font-size: 0.75rem;">CALL/CHECK</button>
+                        <button id="poker-btn-join" type="button" class="nav-btn" style="flex: 1; padding: 6px; font-size: 0.75rem;"><?= tt('SEAT', 'SIEDITI') ?></button>
+                        <button id="poker-btn-leave" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;"><?= tt('LEAVE', 'ESCI') ?></button>
+                        <button id="poker-btn-deal" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 6px; font-size: 0.75rem;"><?= tt('DEAL', 'DAI CARTE') ?></button>
+                        <button id="poker-btn-fold" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;"><?= tt('FOLD', 'PASSA') ?></button>
+                        <button id="poker-btn-call" type="button" class="nav-btn" style="flex: 1; border-color: #00f3ff; color: #00f3ff; padding: 6px; font-size: 0.75rem;"><?= tt('CALL/CHECK', 'VEDI/CHECK') ?></button>
                     </div>
                 </div>
             </div>
@@ -260,9 +265,9 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ TOOLBOX // ENCODER_CONVERTER</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="window-content-inner">
@@ -284,9 +289,9 @@ if ($userId && !$isAdmin) {
                         <option value="bin-enc">Binary Encode</option>
                         <option value="bin-dec">Binary Decode</option>
                     </select>
-                    <input type="number" id="tool-key" class="tools-select" min="1" max="25" value="3" title="Caesar key" style="display: none;">
-                    <textarea id="tool-input" class="tools-textarea" placeholder="Input raw string..."></textarea>
-                    <textarea id="tool-output" class="tools-textarea" placeholder="Converted result..." readonly></textarea>
+                    <input type="number" id="tool-key" class="tools-select" min="1" max="25" value="3" title="<?= tt('Caesar key', 'Chiave di Cesare') ?>" style="display: none;">
+                    <textarea id="tool-input" class="tools-textarea" placeholder="<?= tt('Input raw string...', 'Testo da convertire...') ?>"></textarea>
+                    <textarea id="tool-output" class="tools-textarea" placeholder="<?= tt('Converted result...', 'Risultato...') ?>" readonly></textarea>
                 </div>
             </div>
         </div>
@@ -296,19 +301,19 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ SYSTEM // CIPHER_VAULT</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="window-content-inner">
                 <div class="vault-container" style="gap: 10px;">
-                    <p class="term-muted" style="margin: 0; font-size: 0.8rem;">ENTER DISCOVERED PASSPHRASE KEY:</p>
+                    <p class="term-muted" style="margin: 0; font-size: 0.8rem;"><?= tt('ENTER DISCOVERED PASSPHRASE KEY:', 'INSERISCI LA CHIAVE SCOPERTA:') ?></p>
                     <div class="terminal-input-line">
-                        <span class="prompt-symbol">KEY:</span>
-                        <input type="text" id="vault-key-input" class="terminal-input" placeholder="Enter key..." autocomplete="off">
+                        <span class="prompt-symbol"><?= tt('KEY', 'CHIAVE') ?>:</span>
+                        <input type="text" id="vault-key-input" class="terminal-input" placeholder="<?= tt('Enter key...', 'Inserisci la chiave...') ?>" autocomplete="off">
                     </div>
-                    <button id="vault-unlock-btn" class="nav-btn hack-reset-btn" style="max-width: 100%;">>_ SUBMIT KEY</button>
+                    <button id="vault-unlock-btn" class="nav-btn hack-reset-btn" style="max-width: 100%;">>_ <?= tt('SUBMIT KEY', 'INVIA CHIAVE') ?></button>
                     <div id="vault-output" class="vault-output-box" style="min-height: 80px;"></div>
                 </div>
             </div>
@@ -319,13 +324,13 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ SYSTEM // STATUS</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="window-content-inner" style="padding: 10px; overflow-y: auto;">
-                <div id="status-body"><span class="term-muted">Polling node...</span></div>
+                <div id="status-body"><span class="term-muted"><?= tt('Polling node...', 'Interrogo il nodo...') ?></span></div>
             </div>
         </div>
 
@@ -334,9 +339,9 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ GRAFFITI_WALL // GUESTBOOK</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="window-content-inner" style="padding: 8px; display: flex; flex-direction: column; gap: 6px; height: calc(100% - 30px); box-sizing: border-box;">
@@ -344,8 +349,8 @@ if ($userId && !$isAdmin) {
                 <div id="guestbook-list" style="flex: 1; overflow-y: auto; padding-right: 4px;"></div>
                 <div class="terminal-input-line clean-input-line">
                     <span class="prompt-symbol">TAG:$</span>
-                    <input type="text" id="guestbook-input" class="terminal-input" maxlength="200" placeholder="Leave your mark (max 200 chars)..." autocomplete="off">
-                    <button id="guestbook-sign-btn" class="nav-btn" style="padding: 2px 10px;">SIGN</button>
+                    <input type="text" id="guestbook-input" class="terminal-input" maxlength="200" placeholder="<?= tt('Leave your mark (max 200 chars)...', 'Lascia il tuo segno (max 200 caratteri)...') ?>" autocomplete="off">
+                    <button id="guestbook-sign-btn" class="nav-btn" style="padding: 2px 10px;"><?= tt('SIGN', 'FIRMA') ?></button>
                 </div>
                 <div id="guestbook-status" style="font-size: 0.75rem; min-height: 1em;"></div>
             </div>
@@ -356,28 +361,28 @@ if ($userId && !$isAdmin) {
             <div class="window-header">
                 <span>>_ PRIVATE_MSG // DIRECT</span>
                 <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="Minimize">_</button>
-                    <button class="win-btn win-btn-max" title="Maximize">□</button>
-                    <button class="win-btn win-btn-close" title="Close">X</button>
+                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
+                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
+                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
                 </div>
             </div>
             <div class="window-content-inner dm-layout">
                 <aside class="dm-side">
-                    <input type="text" id="dm-search" class="dm-input" placeholder="Find a user..." autocomplete="off" maxlength="32">
+                    <input type="text" id="dm-search" class="dm-input" placeholder="<?= tt('Find a user...', 'Cerca un utente...') ?>" autocomplete="off" maxlength="32">
                     <div id="dm-search-results" class="dm-results"></div>
                     <div id="dm-convs" class="dm-convs"></div>
                 </aside>
                 <section class="dm-main">
                     <div class="dm-head">
-                        <button id="dm-back" class="nav-btn dm-back" title="Back">&lt;</button>
-                        <span id="dm-with" class="term-muted">Select a conversation</span>
-                        <button id="dm-block" class="nav-btn dm-block hidden">BLOCK</button>
+                        <button id="dm-back" class="nav-btn dm-back" title="<?= tt('Back', 'Indietro') ?>">&lt;</button>
+                        <span id="dm-with" class="term-muted"><?= tt('Select a conversation', 'Scegli una conversazione') ?></span>
+                        <button id="dm-block" class="nav-btn dm-block hidden"><?= tt('BLOCK', 'BLOCCA') ?></button>
                     </div>
                     <div id="dm-thread" class="dm-thread"></div>
                     <div id="dm-note" class="dm-note"></div>
                     <form id="dm-form" class="dm-form hidden">
-                        <textarea id="dm-text" class="dm-input" rows="2" maxlength="1000" placeholder="Write a message (Enter to send, Shift+Enter for a new line)"></textarea>
-                        <button type="submit" class="nav-btn">SEND</button>
+                        <textarea id="dm-text" class="dm-input" rows="2" maxlength="1000" placeholder="<?= tt('Write a message (Enter to send, Shift+Enter for a new line)', 'Scrivi un messaggio (Invio per inviare, Maiusc+Invio per andare a capo)') ?>"></textarea>
+                        <button type="submit" class="nav-btn"><?= tt('SEND', 'INVIA') ?></button>
                     </form>
                 </section>
             </div>
@@ -400,11 +405,11 @@ if ($userId && !$isAdmin) {
                 <button class="taskbar-btn" id="tb-win-dm">>_ DM</button>
             <?php endif; ?>
             <?php if ($canReadBooks): ?>
-                <a href="pages/reader.php" class="taskbar-btn" style="text-decoration: none; border-color: #00f3ff; color: #00f3ff; display: inline-flex; align-items: center;">>_ READER</a>
+                <a href="pages/reader.php" class="taskbar-btn" style="text-decoration: none; border-color: #00f3ff; color: #00f3ff; display: inline-flex; align-items: center;">>_ <?= tt('READER', 'LETTORE') ?></a>
             <?php endif; ?>
         </div>
         <div class="taskbar-info">
-            <span class="term-muted">BUILD // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
+            <span class="term-muted"><?= tt('BUILD', 'VERSIONE') ?> // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
             <a href="pages/credits.php" class="credits-link">ciao zuffi</a>
         </div>
     </div>

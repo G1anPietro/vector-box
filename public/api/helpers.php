@@ -463,6 +463,37 @@ function tr(array $texts): string {
     return (string)($texts[pageLang()] ?? $texts['en'] ?? reset($texts));
 }
 
+/** Short form of tr() for a line of text: the English text, then the Italian one. */
+function tt(string $en, string $it): string {
+    return pageLang() === 'it' ? $it : $en;
+}
+
+/** An English message from the helpers (they also go to the JSON APIs, which stay English) shown on a page: in Italian when the page is Italian. */
+function trMsg(string $en): string {
+    static $it = [
+        'Username must be 3-32 characters: letters, digits, "_" or "-"' => 'Il nome utente deve avere 3-32 caratteri: lettere, cifre, "_" o "-"',
+        'Username prefix "guest_" is reserved' => 'Il prefisso "guest_" è riservato',
+        'That username is reserved' => 'Questo nome utente è riservato',
+        'Password must be at least 8 characters' => 'La password deve avere almeno 8 caratteri',
+        'Password must be at most 72 bytes' => 'La password può avere al massimo 72 byte',
+        REGISTER_TERMS_ERROR => 'Per registrarti devi confermare di aver letto la pagina sulla privacy e di avere almeno 14 anni (o il consenso di un genitore).',
+    ];
+    return pageLang() === 'it' ? ($it[$en] ?? $en) : $en;
+}
+
+/** The language of a person's account ('en' or 'it'; 'en' when the account is unknown or the column is missing). */
+function accountLang(PDO $db, int $userId): string {
+    try {
+        $st = $db->prepare('SELECT lang FROM accounts WHERE id = :id');
+        $st->execute([':id' => $userId]);
+        $l = (string)$st->fetchColumn();
+        $st->closeCursor();
+        return in_array($l, SITE_LANGS, true) ? $l : 'en';
+    } catch (Throwable $e) {
+        return 'en';
+    }
+}
+
 function sendPageSecurityHeaders(): void {
     if (PHP_SAPI === 'cli' || headers_sent()) return;
 

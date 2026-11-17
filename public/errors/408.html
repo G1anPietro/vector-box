@@ -1,21 +1,22 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>408 // Richiesta scaduta</title>
+<title data-i18n="e408_page">408 // Request timed out</title>
+<script src="/js/i18n.js"></script>
 <link rel="stylesheet" href="/errors/errors.css">
 </head>
 <body>
 <main class="err">
   <div class="err-tag">// LINK_TIMEOUT</div>
   <h1 class="err-code" data-text="408">408</h1>
-  <h2 class="err-title">Richiesta scaduta</h2>
-  <p class="err-text">La connessione è stata troppo lenta. Riprova.</p>
+  <h2 class="err-title" data-i18n="e408_title">Request timed out</h2>
+  <p class="err-text" data-i18n="e408_text">The connection was too slow. Try again.</p>
   <div class="err-actions">
-    <a class="err-btn" href="/">// RETURN_HOME</a>
-    <a class="err-btn err-btn-alt" href="#" id="err-back">// GO_BACK</a>
+    <a class="err-btn" href="/" data-i18n="home">// RETURN_HOME</a>
+    <a class="err-btn err-btn-alt" href="#" id="err-back" data-i18n="back">// GO_BACK</a>
   </div>
   <p class="err-foot">vector-box · error 408</p>
 </main>

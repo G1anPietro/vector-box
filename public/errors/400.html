@@ -1,21 +1,22 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>400 // Richiesta non valida</title>
+<title data-i18n="e400_page">400 // Bad request</title>
+<script src="/js/i18n.js"></script>
 <link rel="stylesheet" href="/errors/errors.css">
 </head>
 <body>
 <main class="err">
   <div class="err-tag">// BAD_REQUEST</div>
   <h1 class="err-code" data-text="400">400</h1>
-  <h2 class="err-title">Richiesta non valida</h2>
-  <p class="err-text">Il server non ha capito la richiesta. Ricarica la pagina o torna alla home.</p>
+  <h2 class="err-title" data-i18n="e400_title">Bad request</h2>
+  <p class="err-text" data-i18n="e400_text">The server did not understand the request. Reload the page or go back home.</p>
   <div class="err-actions">
-    <a class="err-btn" href="/">// RETURN_HOME</a>
-    <a class="err-btn err-btn-alt" href="#" id="err-back">// GO_BACK</a>
+    <a class="err-btn" href="/" data-i18n="home">// RETURN_HOME</a>
+    <a class="err-btn err-btn-alt" href="#" id="err-back" data-i18n="back">// GO_BACK</a>
   </div>
   <p class="err-foot">vector-box · error 400</p>
 </main>
