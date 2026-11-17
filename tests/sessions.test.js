@@ -134,3 +134,25 @@ test('a pre-feature session that first shows up on a READ-ONLY request still bec
     assert.equal(rows('ses_hal').length, 0);
     assert.notEqual((await a.get('/api/check_session.php')).json.username, 'ses_hal');
 });
+
+test('changing the password on the Account page signs out the other devices only; a wrong current password changes nothing', async () => {
+    await reg('ses_pat');
+    const a = await signIn('ses_pat'), b = await signIn('ses_pat');
+    const form = async (fields) => {   // the real form POST, with the page's own csrf_token
+        const page = await a.get('/pages/account.php');
+        const token = page.text.match(/name="csrf_token" value="([0-9a-f]+)"/)[1];
+        const body = new URLSearchParams({ csrf_token: token, action: 'change_password', ...fields }).toString();
+        const res = await fetch(site.base + '/pages/account.php', { method: 'POST', redirect: 'manual', body,
+            headers: { Cookie: a.cookieHeader(), 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA } });
+        return res.text();
+    };
+    assert.match(await form({ old_password: 'wrong-one', new_password: 'newpassword456' }), /Incorrect current password|password attuale non/);
+    assert.equal(rows('ses_pat').length, 3);   // register + two sign-ins
+    assert.equal((await b.get('/api/sessions.php')).status, 200);
+    assert.match(await form({ old_password: 'password123', new_password: 'newpassword456' }), /Password updated|Password aggiornata/);
+    assert.equal((await b.get('/api/sessions.php')).status, 401);
+    assert.equal((await a.get('/api/sessions.php')).status, 200);
+    assert.equal(rows('ses_pat').length, 1);
+    clear();
+    assert.equal((await new Client(site).login('ses_pat', 'newpassword456')).status, 200);
+});
