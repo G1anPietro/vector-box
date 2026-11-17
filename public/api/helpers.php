@@ -396,22 +396,71 @@ function adsenseClient(): string {
     return preg_match('/^ca-pub-\d{10,20}$/', $c) ? $c : '';
 }
 
+/** The languages the site pages are translated into. English is the default; Italian for Italy. To add one: translate the dictionaries and add the code here. */
+const SITE_LANGS = ['en', 'it'];
+
+/** The supported language a browser prefers (Accept-Language, by q weight), or null. "it-IT,it;q=0.9,en;q=0.8" -> 'it'. */
+function langFromAccept(string $header): ?string {
+    $best = null; $bestQ = -1.0;
+    foreach (explode(',', $header) as $part) {
+        $bits = explode(';', trim($part));
+        $code = strtolower(substr(trim($bits[0]), 0, 2));
+        if (!in_array($code, SITE_LANGS, true)) continue;
+        $q = 1.0;
+        foreach (array_slice($bits, 1) as $b) if (preg_match('/^\s*q\s*=\s*([0-9.]+)/i', $b, $m)) $q = (float)$m[1];
+        if ($q > $bestQ) { $best = $code; $bestQ = $q; }
+    }
+    return $bestQ > 0 ? $best : null;
+}
+
 /**
- * Language of the plain content pages (games, support, privacy, resume): ?lang=it|en
- * (remembered in a cookie), then the cookie, then the browser's language.
+ * Which language to show. Pure function (the same rules are used by the pages, api/lang.php and the tests):
+ *   1. an explicit choice: ?lang=xx, then the vb_lang cookie;
+ *   2. visitors from Italy (by IP country) get Italian: the site stays Italian in Italy;
+ *   3. the browser's language, when it is one we have;
+ *   4. English.
+ * Returns [language, source] with source = query | cookie | country | browser | default.
+ */
+function detectLang(?string $query, ?string $cookie, string $accept, ?string $country): array {
+    $q = strtolower((string)$query);
+    if (in_array($q, SITE_LANGS, true)) return [$q, 'query'];
+    $c = strtolower((string)$cookie);
+    if (in_array($c, SITE_LANGS, true)) return [$c, 'cookie'];
+    if ($country === 'IT') return ['it', 'country'];
+    if (($b = langFromAccept($accept)) !== null) return [$b, 'browser'];
+    return ['en', 'default'];
+}
+
+/** The country of the visitor from the local database (null when unknown or no database yet). */
+function visitorCountry(): ?string {
+    if (!function_exists('geoipLookup')) {
+        if (!is_file(__DIR__ . '/geoip.php')) return null;
+        require_once __DIR__ . '/geoip.php';
+    }
+    return geoipLookup(getClientIp());
+}
+
+/**
+ * Language of the pages: see detectLang(). A ?lang= choice is remembered for a year in the vb_lang cookie, readable by the
+ * scripts of the static pages too (js/i18n.js), which is why it is not HttpOnly (a language is not a secret).
  */
 function pageLang(): string {
+    static $cached = null;
     $q = $_GET['lang'] ?? '';
-    if ($q === 'it' || $q === 'en') {
-        if (!headers_sent()) {
-            setcookie('vb_lang', $q, ['expires' => time() + 31536000, 'path' => '/', 'samesite' => 'Lax',
-                                      'secure' => !empty($_SERVER['HTTPS']), 'httponly' => true]);
-        }
-        return $q;
+    if ($cached !== null && $q === '') return $cached;
+    $explicit = in_array(strtolower((string)$q), SITE_LANGS, true);
+    $cookie = $_COOKIE['vb_lang'] ?? null;
+    $needCountry = !$explicit && !in_array(strtolower((string)$cookie), SITE_LANGS, true);
+    [$lang] = detectLang($q, $cookie, (string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), $needCountry ? visitorCountry() : null);
+    if ($explicit && !headers_sent()) {
+        setcookie('vb_lang', $lang, ['expires' => time() + 31536000, 'path' => '/', 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS']), 'httponly' => false]);
     }
-    $c = $_COOKIE['vb_lang'] ?? '';
-    if ($c === 'it' || $c === 'en') return $c;
-    return stripos((string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), 'it') === 0 ? 'it' : 'en';
+    return $cached = $lang;
+}
+
+/** Picks the text of the current language from ['it' => ..., 'en' => ...] (English if the language is missing). */
+function tr(array $texts): string {
+    return (string)($texts[pageLang()] ?? $texts['en'] ?? reset($texts));
 }
 
 function sendPageSecurityHeaders(): void {
