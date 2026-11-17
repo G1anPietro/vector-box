@@ -8,6 +8,7 @@ Test: `tests/dungeon.test.js` e `tests/dungeon-touch.test.js`. Nessuna rete: tut
 - `map.js` piani (stanze e corridoi, porte segrete), campo visivo, percorsi. Un piano dipende solo da (seme, piano).
 - `mobs.js` settori e mostri (dati). `items.js` oggetti (dati). `classes.js` classi e abilità (dati). `meta.js` albero dei potenziamenti e medaglie (dati). `sprites.js` disegni 8x8.
 - `game.js` le regole: `newGame`, `act`, `save/load`, profilo (`recordRun`, `buyUpgrade`, `checkMedals`).
+- `text.js` tutte le frasi che non stanno nelle tabelle, in inglese e italiano (chiave -> `{en, it}`).
 - Ogni file di dati ha in cima un commento che spiega come aggiungere un elemento.
 
 ## Comandi
@@ -23,6 +24,12 @@ Due modi, scelti dal Menu (`Comandi: Tocco / Croce direzionale`, salvato in `vb_
 **Tastiera**: frecce o WASD, spazio aspetta, C cerca, 1-4 slot, I zaino, E esplora, F abilità, > scale, B nascondi.
 Il significato dei tocchi sta in `intentForTap(s, x, y, 'tap'|'double'|'long', aim)` e `slotIntent` in `game.js` (funzioni pure, testate in `tests/dungeon-touch.test.js`); `dungeon.js` si limita a eseguire l'intento.
 Azioni nuove delle regole: `search` (raggio 3, certa a 1 casella, meno sicura più lontano; un turno) e `throw {i,x,y}` (oggetti di categoria `throw`: dardi, CD, taglierino; portata 6, colpisce il primo mostro sulla linea, il 60% si può recuperare).
+
+## Lingue (EN predefinita, IT)
+Le regole (`game.js`) non scrivono mai frasi: `log(s, 'chiave', {parametri}, colore)` salva un messaggio `{m:{k,p}}` e la pagina lo traduce con `G.text(msg, lang)` / `G.logText(voce, lang)`. Nei parametri gli id (mob, item, skill, cls, active, trap, sector, intro, verb, desc) diventano nomi nella lingua scelta. Così una partita salvata si legge in entrambe le lingue e il cambio lingua (EN | IT nel Menu, evento `vb-lang`) funziona a partita in corso. Le partite salvate prima con testo semplice (`{t:'…'}`) si mostrano com'erano.
+- Testi delle tabelle (mostri, oggetti, classi, abilità, settori, trappole, medaglie, potenziamenti): oggetti `{ en: '…', it: '…' }` dentro la voce stessa. Entrambe obbligatorie.
+- Altre frasi: chiave in `MSG` di `text.js` con `{en, it}`; stessi segnaposto `{x}` nelle due lingue.
+- Test: `tests/dungeon-i18n.test.js` (due lingue presenti, segnaposto uguali, nessun italiano nell'inglese e viceversa, chiavi usate esistenti, vecchi salvataggi).
 
 ## Aggiungere contenuti
 - Mostro: una riga `mk(settore, { id, name, shape, col, info, …comportamenti })` in `mobs.js` (numeri calcolati dal settore; `hpx`, `atkx`, `xpx` per ritoccarli).

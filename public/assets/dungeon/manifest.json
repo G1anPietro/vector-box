@@ -1,7 +1,7 @@
 {
-  "name": "Il Dungeon del Server",
+  "name": "The Server Dungeon",
   "short_name": "Dungeon",
-  "description": "Roguelike a turni nel browser: scendi nel datacentre sotto la scuola.",
+  "description": "A turn-based roguelike in your browser: go down into the data center under the school.",
   "start_url": "../../pages/dungeon.html",
   "scope": "../../pages/",
   "display": "fullscreen",

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,107 +10,109 @@
     <meta name="apple-mobile-web-app-title" content="Dungeon">
     <link rel="manifest" href="../assets/dungeon/manifest.json?v=1">
     <link rel="apple-touch-icon" href="../assets/dungeon/apple-touch-icon.png?v=1">
-    <title>Il Dungeon del Server — vector-box</title>
+    <title data-i18n="title">The Server Dungeon — vector-box</title>
     <!-- link previews; the domain is written out here (static page): change it with the domain -->
-    <meta name="description" content="Il Dungeon del Server: un roguelike a turni nel browser. Scendi nel datacentre dimenticato sotto la scuola, tra bug, script e chiavette USB. Si gioca col pollice, salva da solo a ogni turno, nessun account.">
+    <meta name="description" data-i18n-attr="content:desc" content="The Server Dungeon: a turn-based roguelike in your browser. Go down into the forgotten data center under the school, among bugs, scripts and USB sticks. Played with your thumb, saves itself every turn, no account.">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="vector-box">
-    <meta property="og:title" content="Il Dungeon del Server — vector-box">
-    <meta property="og:description" content="Roguelike a turni nel browser: scendi nel datacentre sotto la scuola. Si gioca col pollice, salva da solo a ogni turno.">
+    <meta property="og:title" content="The Server Dungeon — vector-box">
+    <meta property="og:description" content="A turn-based roguelike in your browser: go down into the data center under the school. Played with your thumb, saves itself every turn.">
     <meta property="og:url" content="https://vector-box.duckdns.org/pages/dungeon.html">
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
     <meta name="twitter:card" content="summary">
     <link rel="icon" href="../assets/dungeon/icon.svg?v=2" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/dungeon.css?v=4">
+    <link rel="stylesheet" href="../css/dungeon.css?v=5">
+    <script src="../js/i18n.js?v=1"></script>
     <script src="../js/rogue/rng.js?v=2" defer></script>
     <script src="../js/rogue/map.js?v=2" defer></script>
-    <script src="../js/rogue/mobs.js?v=2" defer></script>
-    <script src="../js/rogue/items.js?v=3" defer></script>
-    <script src="../js/rogue/classes.js?v=3" defer></script>
+    <script src="../js/rogue/mobs.js?v=3" defer></script>
+    <script src="../js/rogue/items.js?v=4" defer></script>
+    <script src="../js/rogue/classes.js?v=4" defer></script>
     <script src="../js/rogue/sprites.js?v=3" defer></script>
-    <script src="../js/rogue/meta.js?v=2" defer></script>
-    <script src="../js/rogue/game.js?v=3" defer></script>
-    <script src="../js/dungeon.js?v=4" defer></script>
+    <script src="../js/rogue/meta.js?v=3" defer></script>
+    <script src="../js/rogue/text.js?v=1" defer></script>
+    <script src="../js/rogue/game.js?v=4" defer></script>
+    <script src="../js/dungeon.js?v=5" defer></script>
 </head>
 <body>
     <header class="dg-top">
-        <a href="giochi.php" class="dg-back" aria-label="Torna ai giochi">←<span class="dg-hide-sm"> Giochi</span></a>
-        <h1>Il Dungeon del Server</h1>
-        <button type="button" id="dg-menu" aria-label="Menu">Menu</button>
-        <button type="button" id="dg-full" aria-label="Schermo intero" title="Schermo intero">⛶</button>
-        <button type="button" id="dg-hide" aria-label="Nascondi lo schermo">Nascondi</button>
+        <a href="giochi.php" class="dg-back" aria-label="Back to the games" data-i18n-attr="aria-label:back_games">←<span class="dg-hide-sm" data-i18n="back_games_txt"> Games</span></a>
+        <h1 data-i18n="h1">The Server Dungeon</h1>
+        <button type="button" id="dg-menu" aria-label="Menu" data-i18n="menu" data-i18n-attr="aria-label:menu">Menu</button>
+        <button type="button" id="dg-full" aria-label="Full screen" title="Full screen" data-i18n-attr="aria-label:fullscreen;title:fullscreen">⛶</button>
+        <button type="button" id="dg-hide" aria-label="Hide the screen" data-i18n="hide" data-i18n-attr="aria-label:hide_aria">Hide</button>
     </header>
 
     <main id="dg-title" class="dg-screen">
-        <p class="dg-lead">Sotto la scuola c'è un datacentre dimenticato. Scendi piano dopo piano, raccogli script e lattine, e spegni il server.</p>
+        <p class="dg-lead" data-i18n="lead">Under the school there’s a forgotten data center. Go down floor by floor, collect scripts and cans, and switch the server off.</p>
         <div id="dg-stats" class="dg-stats"></div>
-        <h2>Scegli chi sei</h2>
+        <h2 data-i18n="choose_hero">Choose who you are</h2>
         <div id="dg-classes" class="dg-classes"></div>
         <div id="dg-classinfo" class="dg-classinfo"></div>
         <div class="dg-row">
-            <button type="button" id="dg-start" class="dg-big">Inizia la discesa</button>
+            <button type="button" id="dg-start" class="dg-big" data-i18n="start">Start the descent</button>
         </div>
         <div class="dg-row">
-            <button type="button" id="dg-daily">Sfida del giorno</button>
-            <button type="button" id="dg-archive">Archivio</button>
-            <button type="button" id="dg-tier" hidden>Livello di accesso: 0</button>
-            <button type="button" id="dg-help">Come si gioca</button>
+            <button type="button" id="dg-daily">Daily challenge</button>
+            <button type="button" id="dg-archive" data-i18n="archive">Archive</button>
+            <button type="button" id="dg-tier" hidden>Access level: 0</button>
+            <button type="button" id="dg-help" data-i18n="help">How to play</button>
         </div>
     </main>
 
     <main id="dg-game" class="dg-screen" hidden>
         <div class="dg-hud">
             <div class="dg-bars">
-                <div class="dg-bar" aria-label="Vita"><i id="dg-hp"></i><span id="dg-hptxt"></span></div>
-                <div class="dg-bar dg-food" aria-label="Fame"><i id="dg-fd"></i><span id="dg-fdtxt"></span></div>
+                <div class="dg-bar" aria-label="Health" data-i18n-attr="aria-label:bar_hp"><i id="dg-hp"></i><span id="dg-hptxt"></span></div>
+                <div class="dg-bar dg-food" aria-label="Hunger" data-i18n-attr="aria-label:bar_food"><i id="dg-fd"></i><span id="dg-fdtxt"></span></div>
             </div>
             <div id="dg-info" class="dg-infoline"></div>
         </div>
         <div class="dg-stagewrap" id="dg-wrap">
         <div class="dg-stage" id="dg-stage">
-            <canvas id="dg-canvas" aria-label="Mappa del dungeon"></canvas>
-            <div class="dg-zoom"><button type="button" id="dg-zin" aria-label="Ingrandisci">+</button><button type="button" id="dg-zout" aria-label="Rimpicciolisci">−</button></div>
+            <canvas id="dg-canvas" aria-label="Dungeon map" data-i18n-attr="aria-label:map_aria"></canvas>
+            <div class="dg-zoom"><button type="button" id="dg-zin" aria-label="Zoom in" data-i18n-attr="aria-label:zoom_in">+</button><button type="button" id="dg-zout" aria-label="Zoom out" data-i18n-attr="aria-label:zoom_out">−</button></div>
             <div id="dg-card" class="dg-card" hidden role="status"></div>
         </div>
         </div>
-        <button type="button" id="dg-log" class="dg-log" aria-label="Apri il registro completo"></button>
+        <button type="button" id="dg-log" class="dg-log" aria-label="Open the full log" data-i18n-attr="aria-label:log_open"></button>
         <div class="dg-controls">
-            <div class="dg-toolbar only-touch" id="dg-toolbar" aria-label="Barra rapida">
-                <button type="button" data-a="wait" aria-label="Aspetta un turno"><span>Aspetta</span></button>
-                <button type="button" data-a="search" aria-label="Cerca porte segrete e trappole"><span>Cerca</span></button>
-                <button type="button" data-a="bag" aria-label="Zaino"><span>Zaino</span></button>
-                <button type="button" class="dg-slot" data-slot="0" aria-label="Slot rapido 1"></button>
-                <button type="button" class="dg-slot" data-slot="1" aria-label="Slot rapido 2"></button>
-                <button type="button" class="dg-slot" data-slot="2" aria-label="Slot rapido 3"></button>
-                <button type="button" class="dg-slot" data-slot="3" aria-label="Slot rapido 4"></button>
+            <div class="dg-toolbar only-touch" id="dg-toolbar" aria-label="Quick bar" data-i18n-attr="aria-label:toolbar_aria">
+                <button type="button" data-a="wait" aria-label="Wait one turn" data-i18n-attr="aria-label:wait_aria"><span data-i18n="wait">Wait</span></button>
+                <button type="button" data-a="search" aria-label="Search for secret doors and traps" data-i18n-attr="aria-label:search_aria"><span data-i18n="search">Search</span></button>
+                <button type="button" data-a="bag" aria-label="Bag" data-i18n-attr="aria-label:bag"><span data-i18n="bag">Bag</span></button>
+                <button type="button" class="dg-slot" data-slot="0" aria-label="Quick slot 1"></button>
+                <button type="button" class="dg-slot" data-slot="1" aria-label="Quick slot 2"></button>
+                <button type="button" class="dg-slot" data-slot="2" aria-label="Quick slot 3"></button>
+                <button type="button" class="dg-slot" data-slot="3" aria-label="Quick slot 4"></button>
             </div>
-            <div class="dg-dpad only-dpad" aria-label="Direzioni">
-                <button type="button" data-d="0,-1" aria-label="Su" class="up">▲</button>
-                <button type="button" data-d="-1,0" aria-label="Sinistra" class="lf">◀</button>
-                <button type="button" data-a="wait" aria-label="Aspetta" class="ce">z</button>
-                <button type="button" data-d="1,0" aria-label="Destra" class="rt">▶</button>
-                <button type="button" data-d="0,1" aria-label="Giù" class="dn">▼</button>
+            <div class="dg-dpad only-dpad" aria-label="Directions" data-i18n-attr="aria-label:dpad_aria">
+                <button type="button" data-d="0,-1" aria-label="Up" data-i18n-attr="aria-label:dir_up" class="up">▲</button>
+                <button type="button" data-d="-1,0" aria-label="Left" data-i18n-attr="aria-label:dir_left" class="lf">◀</button>
+                <button type="button" data-a="wait" aria-label="Wait" data-i18n-attr="aria-label:wait" class="ce">z</button>
+                <button type="button" data-d="1,0" aria-label="Right" data-i18n-attr="aria-label:dir_right" class="rt">▶</button>
+                <button type="button" data-d="0,1" aria-label="Down" data-i18n-attr="aria-label:dir_down" class="dn">▼</button>
             </div>
             <div class="dg-acts">
-                <button type="button" data-a="bag" class="only-dpad">Zaino</button>
-                <button type="button" data-a="search" class="only-dpad">Cerca</button>
-                <button type="button" data-a="skill" id="dg-skill">Abilità</button>
-                <button type="button" data-a="explore">Esplora</button>
-                <button type="button" data-a="stairs">Scale</button>
-                <button type="button" data-a="eat">Mangia</button>
-                <button type="button" data-a="heal">Bevi</button>
+                <button type="button" data-a="bag" class="only-dpad" data-i18n="bag">Bag</button>
+                <button type="button" data-a="search" class="only-dpad" data-i18n="search">Search</button>
+                <button type="button" data-a="skill" id="dg-skill">Skill</button>
+                <button type="button" data-a="explore" data-i18n="explore">Explore</button>
+                <button type="button" data-a="stairs" data-i18n="stairs">Stairs</button>
+                <button type="button" data-a="eat" data-i18n="eat_btn">Eat</button>
+                <button type="button" data-a="heal" data-i18n="drink_btn">Drink</button>
             </div>
         </div>
     </main>
 
-    <div id="dg-modal" class="dg-modal" hidden><div class="dg-sheet" role="dialog" aria-modal="true" aria-labelledby="dg-mtitle"><div class="dg-mhead"><h2 id="dg-mtitle"></h2><button type="button" id="dg-mclose">Chiudi</button></div><div id="dg-mbody"></div></div></div>
+    <div id="dg-modal" class="dg-modal" hidden><div class="dg-sheet" role="dialog" aria-modal="true" aria-labelledby="dg-mtitle"><div class="dg-mhead"><h2 id="dg-mtitle"></h2><button type="button" id="dg-mclose" data-i18n="close">Close</button></div><div id="dg-mbody"></div></div></div>
 
     <div id="dg-cover" class="dg-cover" hidden>
         <article>
-            <h2>Appunti di Storia — Capitolo 7</h2>
-            <p>Le guerre puniche opposero Roma e Cartagine per il controllo del Mediterraneo occidentale tra il 264 e il 146 a.C.</p>
-            <ul><li>Prima guerra punica (264-241): la Sicilia</li><li>Seconda guerra punica (218-201): Annibale e le Alpi</li><li>Terza guerra punica (149-146): la distruzione di Cartagine</li></ul>
-            <p class="dg-tapnote">Tocca per continuare a studiare.</p>
+            <h2 data-i18n="cover_h">History notes — Chapter 7</h2>
+            <p data-i18n="cover_p">The Punic Wars pitted Rome against Carthage for control of the western Mediterranean between 264 and 146 BC.</p>
+            <ul><li data-i18n="cover_1">First Punic War (264-241): Sicily</li><li data-i18n="cover_2">Second Punic War (218-201): Hannibal and the Alps</li><li data-i18n="cover_3">Third Punic War (149-146): the destruction of Carthage</li></ul>
+            <p class="dg-tapnote" data-i18n="cover_tap">Tap to keep studying.</p>
         </article>
     </div>
 </body>

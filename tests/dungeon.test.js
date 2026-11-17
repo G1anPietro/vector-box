@@ -154,7 +154,7 @@ test('the page is served, has no inline script, and the lists know it', async ()
     const site = await startSite();
     try {
         const html = await (await fetch(`${site.base}/pages/dungeon.html`)).text();
-        assert.match(html, /<meta name="description" content="[^"]{40,}">/);
+        assert.match(html, /<meta name="description"[^>]* content="[^"]{40,}">/);
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html));
         for (const f of ['/js/dungeon.js', '/css/dungeon.css', '/assets/dungeon/icon.svg', ...['rng', 'map', 'mobs', 'items', 'classes', 'sprites', 'meta', 'game'].map((n) => `/js/rogue/${n}.js`)]) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.match(await (await fetch(`${site.base}/pages/giochi.php`)).text(), /dungeon\.html/);

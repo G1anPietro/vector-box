@@ -47,11 +47,11 @@ test('intentForTap: floor, enemy, item, stairs, hero, blocked, unseen, furniture
 test('intentForTap: a long press gives an info card and never acts; aiming throws or cancels', () => {
     const s = arena(); bug(s, 13, 10, { hp: 5 });
     const turn = s.turn, card = G.intentForTap(s, 13, 10, 'long');
-    assert.equal(card.type, 'info'); assert.equal(card.title, G.MOB.bug.name); assert.ok(card.lines.some((l) => /PS 5\/40/.test(l)));
+    assert.equal(card.type, 'info'); assert.equal(G.text(card.title, 'en'), G.MOB.bug.name.en); assert.ok(card.lines.some((l) => /HP 5\/40/.test(G.text(l, 'en'))) && card.lines.some((l) => /PS 5\/40/.test(G.text(l, 'it'))));
     s.items.push({ x: 8, y: 10, it: { k: 'merendina', n: 1 } });
-    assert.match(G.intentForTap(s, 8, 10, 'long').title, /Merendina/);
-    assert.equal(G.intentForTap(s, 11, 11, 'long').title, 'Pavimento');
-    assert.equal(G.intentForTap(s, 2, 2, 'long').title, 'Non esplorato');
+    assert.match(G.text(G.intentForTap(s, 8, 10, 'long').title, 'it'), /Merendina/);
+    assert.equal(G.text(G.intentForTap(s, 11, 11, 'long').title, 'it'), 'Pavimento');
+    assert.equal(G.text(G.intentForTap(s, 2, 2, 'long').title, 'en'), 'Unexplored');
     assert.equal(s.turn, turn);
     const i = s.p.inv.findIndex((it) => it.k === 'dardi');
     assert.deepEqual(G.intentForTap(s, 13, 10, 'tap', i), { type: 'throw', i, x: 13, y: 10 });

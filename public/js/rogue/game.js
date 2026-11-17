@@ -1,14 +1,16 @@
 // js/rogue/game.js — the rules of "Il Dungeon del Server". No DOM, no clock, no Math.random: the whole run is one
 // plain object (JSON), so it is saved after every turn and a seed always replays the same way.
 //   const s = newGame(seed, 'studente', meta);  act(s, { t: 'move', dx: 1, dy: 0 });  save(s) / load(text)
+// The rules never write a sentence: log(s, 'key', { params }, colour) stores a message that the page turns into text in the language of
+// the moment (see text.js; text(msg, lang) here resolves the ids in the params). A saved run keeps its messages, so it reads in either language.
 // Actions: move {dx,dy} · wait · search · throw {i,x,y} · use {i} · drop {i} · unequip {slot} · descend · active · skill {id} · buy {i} · rest · recycle {i} · leave
 // HOW TO ADD AN EFFECT (for a new item, trap or active skill): add a function to EFFECTS below; it receives
 // (state, power, targetMonster). Put its name in TARGETED if it needs an enemy in sight.
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'));
-    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta); }
-})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META) {
+        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'), require('./text.js'));
+    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta, R.text); }
+})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META, TX) {
     'use strict';
     const VERSION = 2, W = MAP.W, H = MAP.H, T = MAP.T, DIRS = MAP.DIRS;
     const FLOORS = MOBS.SECTORS.length * MOBS.PER_SECTOR;
@@ -17,11 +19,14 @@
     const MOB = byId(MOBS.LIST), ITEM = byId(ITEMS.LIST), CLASS = byId(CLS.CLASSES), SKILL = byId(CLS.SKILLS);
     const idx = (x, y) => y * W + x;
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const SECTOR = byId(MOBS.SECTORS), MEDAL = byId(META.MEDALS), TRAP = byId(MOBS.TRAPS);
     const sectorOf = (depth) => MOBS.SECTORS[Math.min(MOBS.SECTORS.length - 1, Math.floor((depth - 1) / MOBS.PER_SECTOR))];
     const bossOf = (depth) => MOBS.LIST.find((d) => d.boss === depth);
     const cat = (it) => ITEMS.CATS[ITEM[it.k].cat];
 
-    function log(s, text, c) { s.log.push({ t: text, c: c || '' }); if (s.log.length > 50) s.log.shift(); }
+    /** Adds a message to the log: `key` is a key of text.js, `p` its params (ids, numbers), `c` the colour class. */
+    function log(s, key, p, c) { s.log.push({ m: p ? { k: key, p } : { k: key }, c: c || '' }); if (s.log.length > 50) s.log.shift(); }
+    const mobCause = (id) => ({ k: 'cause_mob', p: { mob: id } });
     const fx = (s, t, x, y) => s.fx.push({ t, x, y });
 
     // ── numbers ─────────────────────────────────────────────────────────────
@@ -60,23 +65,60 @@
 
     // ── things ──────────────────────────────────────────────────────────────
     const known = (s, it) => !cat(it).unknown || !!s.known[it.k];
-    function itemName(s, it) {
-        if (it.k === '$') return it.n + ' crediti';
-        const d = ITEM[it.k], c = ITEMS.CATS[d.cat];
-        let n = known(s, it) ? d.name : c.name + ' ' + ITEMS.LOOKS[d.cat][s.looks[it.k]][0];
-        if (it.e) n += ' +' + it.e;
-        if (d.cat === 'usb' && known(s, it)) n += ' (' + it.ch + ')';
-        if (it.n > 1) n += ' ×' + it.n;
+    /** What a name needs to be written in any language later: { k, u (look index while unknown), e (+), ch (USB charges), n (stack) }. */
+    function itemRef(s, it) {
+        const r = { k: it.k };
+        if (it.k === '$') { r.n = it.n; return r; }
+        const d = ITEM[it.k];
+        if (!known(s, it)) r.u = s.looks[it.k];
+        if (it.e) r.e = it.e;
+        if (d.cat === 'usb' && known(s, it)) r.ch = it.ch;
+        if (it.n > 1) r.n = it.n;
+        return r;
+    }
+    /** The name of an item reference in a language. */
+    function itemText(r, lang) {
+        if (!r) return '';
+        if (r.k === '$') return TX.t('credits_n', { n: r.n }, lang);
+        const d = ITEM[r.k];
+        if (!d) return String(r.k);
+        let n;
+        if (r.u === undefined) n = TX.tx(d.name, lang);
+        else { n = TX.fill(TX.tx(ITEMS.CATS[d.cat].unk, lang), { look: TX.tx(ITEMS.LOOKS[d.cat][r.u][0], lang) }); n = n.charAt(0).toUpperCase() + n.slice(1); }
+        if (r.e) n += ' +' + r.e;
+        if (r.ch !== undefined) n += ' (' + r.ch + ')';
+        if (r.n > 1) n += ' ×' + r.n;
         return n;
     }
-    function itemInfo(s, it) {
+    const itemName = (s, it, lang) => itemText(itemRef(s, it), lang || 'en');
+    /** The one-line description of an item as a message. */
+    function itemInfoMsg(s, it) {
         const d = ITEM[it.k];
-        if (!known(s, it)) return 'Non sai cosa fa: provalo per scoprirlo.';
+        if (!known(s, it)) return { k: 'item_unknown' };
         const e = it.e || 0;
-        if (d.cat === 'weapon') return `Danno ${d.dmg[0] + e}-${d.dmg[1] + e}. ${d.info || ''}`;
-        if (d.cat === 'armor') return `Difesa ${d.def + e}. ${d.info || ''}`;
-        return d.info || '';
+        if (d.cat === 'weapon') return { k: 'item_weapon', p: { a: d.dmg[0] + e, b: d.dmg[1] + e, desc: d.id } };
+        if (d.cat === 'armor') return { k: 'item_armor', p: { d: d.def + e, desc: d.id } };
+        return { k: 'm_desc', p: { desc: d.id } };
     }
+    const itemInfo = (s, it, lang) => text(itemInfoMsg(s, it), lang || 'en');
+    // ── messages: ids in the params are turned into names, in the language asked for
+    const safe = (table, pick) => (v, lang) => (table[v] ? TX.tx(pick(table[v]), lang) : String(v));
+    const RESOLVE = {
+        mob: safe(MOB, (d) => d.name), item: (v, lang) => itemText(v, lang), skill: safe(SKILL, (d) => d.name), cls: safe(CLASS, (d) => d.name),
+        active: safe(CLASS, (d) => d.active.name), trap: safe(TRAP, (d) => d.name), sector: safe(SECTOR, (d) => d.name), intro: safe(SECTOR, (d) => d.intro),
+        verb: safe(MOB, (d) => (d.ranged ? d.ranged.verb : '')), desc: safe(ITEM, (d) => d.info || ''), medal: safe(MEDAL, (d) => d.name), mobinfo: safe(MOB, (d) => d.info || ''),
+        cause: (v, lang) => text(v, lang),
+    };
+    /** A message { k, p } (or an old saved plain string) as text in a language ('en' | 'it'). */
+    function text(m, lang) {
+        if (m === null || m === undefined) return '';
+        if (typeof m === 'string') return m;
+        if (Array.isArray(m)) return m.map((x) => text(x, lang)).join(', ');
+        const vars = {};
+        for (const k in m.p || {}) { const f = RESOLVE[k.replace(/\d+$/, '')]; vars[k] = f ? f(m.p[k], lang || 'en') : m.p[k]; }
+        return TX.t(m.k, vars, lang || 'en');
+    }
+    const logText = (entry, lang) => (entry.m ? text(entry.m, lang) : entry.t || '');
     function itemLook(s, it) {
         if (it.k === '$') return { shape: 'coin', col: '#ffb000' };
         const d = ITEM[it.k], c = ITEMS.CATS[d.cat];
@@ -85,7 +127,7 @@
     function identify(s, k) {
         if (!ITEMS.CATS[ITEM[k].cat].unknown || s.known[k]) return;
         s.known[k] = 1;
-        log(s, 'Ora sai cos’è: ' + ITEM[k].name + '.', 'info');
+        log(s, 'known_now', { item: { k } }, 'info');
     }
     function makeItem(r, depth) {
         const d = RNG.weighted(r, ITEMS.LIST.filter((e) => (e.from || 1) <= depth));
@@ -191,8 +233,8 @@
             for (let n = 2 + RNG.int(r, 3); n > 0; n--) { const c = cellIn(RNG.pick(r, plain)); if (c) s.traps.push({ x: c[0], y: c[1], k: RNG.weighted(r, kinds).id, found: 0 }); }
         }
         updateFov(s);
-        if ((depth - 1) % MOBS.PER_SECTOR === 0) log(s, sectorOf(depth).intro, 'info');
-        log(s, `Piano ${depth} — ${sectorOf(depth).name}.` + (boss ? ' Senti una presenza: le scale sono bloccate.' : ''), 'info');
+        if ((depth - 1) % MOBS.PER_SECTOR === 0) log(s, 'sector_intro', { intro: sectorOf(depth).id }, 'info');
+        log(s, boss ? 'floor_enter_boss' : 'floor_enter', { depth, sector: sectorOf(depth).id }, 'info');
         fx(s, 'stairs');
     }
 
@@ -211,18 +253,18 @@
         s.shop = { x: 16, y: 12, open: 0, stock };
         s.bench = { x: 24, y: 12, open: 0 };
         updateFov(s);
-        log(s, 'Sala Server: un posto sicuro. Negozio a sinistra, panchina a destra, scale in fondo.', 'info');
-        log(s, 'Il prossimo settore: ' + nextSector.name + '.', 'info');
+        log(s, 'hub_enter', null, 'info');
+        log(s, 'hub_next', { sector: nextSector.id }, 'info');
         fx(s, 'stairs');
     }
-    function rest(s) { s.p.hp = s.p.maxHp; s.p.st = {}; s.p.cd = 0; log(s, 'Ti riposi sulla panchina: sei come nuovo.', 'good'); }
+    function rest(s) { s.p.hp = s.p.maxHp; s.p.st = {}; s.p.cd = 0; log(s, 'rested', null, 'good'); }
     /** Recycling: an item from the bag becomes credits (half its price). Only in the hub. */
     function recycle(s, i) {
         const it = s.p.inv[i];
         if (!it) return;
         const gain = Math.max(1, Math.round(ITEM[it.k].price / 2));
         useUp(s, i); s.p.gold += gain;
-        log(s, 'Riciclato: ' + ITEM[it.k].name + ' (+' + gain + ' crediti).', 'good');
+        log(s, 'recycled', { item: { k: it.k }, gain }, 'good');
     }
 
     // ── fighting ────────────────────────────────────────────────────────────
@@ -232,7 +274,7 @@
         while (p.xp >= xpNeed(p.lvl)) {
             p.xp -= xpNeed(p.lvl); p.lvl++; p.pending++;
             p.maxHp += CLASS[s.cls].hpLvl; p.hp += CLASS[s.cls].hpLvl;
-            log(s, `Livello ${p.lvl}! Scegli cosa imparare.`, 'good');
+            log(s, 'level_up', { lvl: p.lvl }, 'good');
             fx(s, 'level');
         }
         if (p.pending && !p.choices) rollChoices(s);
@@ -240,7 +282,7 @@
     function rollChoices(s) {
         const p = s.p;
         const pool = CLS.SKILLS.filter((k) => (!k.cls || k.cls.includes(s.cls)) && (p.skills[k.id] || 0) < (k.max || 3));
-        if (!pool.length) { addMods(p, { maxHp: 4 * p.pending }); p.pending = 0; p.choices = null; log(s, 'Hai imparato tutto: vita massima +4.', 'good'); return; }   // nothing left to learn
+        if (!pool.length) { addMods(p, { maxHp: 4 * p.pending }); p.pending = 0; p.choices = null; log(s, 'learned_all', null, 'good'); return; }   // nothing left to learn
         p.choices = RNG.shuffle(s.rng, pool.map((k) => k.id)).slice(0, 3);
     }
     function chooseSkill(s, id) {
@@ -248,7 +290,7 @@
         if (!p.pending || !p.choices || !p.choices.includes(id)) return false;
         p.skills[id] = (p.skills[id] || 0) + 1;
         addMods(p, SKILL[id].mod);
-        log(s, 'Hai imparato: ' + SKILL[id].name + '.', 'good');
+        log(s, 'skill_learned', { skill: id }, 'good');
         p.pending--; p.choices = null;
         if (p.pending) rollChoices(s);
         return false;                                   // choosing takes no time
@@ -258,13 +300,13 @@
         const p = s.p;
         p.hp -= dmg;
         fx(s, 'hurt', p.x, p.y);
-        if (p.hp <= 0) { p.hp = 0; s.status = 'dead'; s.cause = cause; log(s, 'Sei stato sconfitto da ' + cause + '.', 'bad'); }
+        if (p.hp <= 0) { p.hp = 0; s.status = 'dead'; s.cause = cause; log(s, 'defeated', { cause }, 'bad'); }
     }
     function killMob(s, m) {
         const d = MOB[m.k], p = s.p;
         s.mobs.splice(s.mobs.indexOf(m), 1);
         s.kills++; s.dex[m.k] = (s.dex[m.k] || 0) + 1;
-        log(s, `${d.name}: eliminato.`, 'good');
+        log(s, 'mob_killed', { mob: m.k }, 'good');
         fx(s, 'kill', m.x, m.y);
         if (m.loot) s.items.push({ x: m.x, y: m.y, it: { k: '$', n: m.loot } });
         if (m.stolen) s.items.push({ x: m.x, y: m.y, it: m.stolen });
@@ -273,13 +315,13 @@
             else if (RNG.chance(s.rng, 0.25)) s.items.push({ x: m.x, y: m.y, it: { k: '$', n: RNG.range(s.rng, 2, 6) + s.depth } });
         }
         if (d.explode && Math.abs(m.x - p.x) + Math.abs(m.y - p.y) <= 2) {
-            log(s, `${d.name} esplode!`, 'bad');
-            hurtPlayer(s, RNG.range(s.rng, d.explode[0], d.explode[1]), d.name);
+            log(s, 'mob_explodes', { mob: m.k }, 'bad');
+            hurtPlayer(s, RNG.range(s.rng, d.explode[0], d.explode[1]), mobCause(m.k));
         }
         if (d.boss) {
             s.bosses++; s.sealed = 0;
-            if (s.depth === FLOORS) { if (s.status === 'play') { s.status = 'won'; log(s, 'Il server è tuo. Hai vinto!', 'good'); } return; }
-            log(s, 'Le scale si sbloccano.', 'info');
+            if (s.depth === FLOORS) { if (s.status === 'play') { s.status = 'won'; log(s, 'won', null, 'good'); } return; }
+            log(s, 'stairs_unlocked', null, 'info');
         }
         gainXp(s, d.xp);
     }
@@ -290,40 +332,40 @@
         if (m.hp <= 0) { killMob(s, m); return; }
         if (d.split && m.hp >= 4 && s.mobs.length < MOB_CAP) {
             const c = freeCell(s, s.rng, m.x, m.y);
-            if (c) { const half = m.hp >> 1, n = spawn(s, m.k, c[0], c[1], false); n.hp = half; n.hunt = 1; m.hp -= half; log(s, `${d.name} si divide!`, 'bad'); }
+            if (c) { const half = m.hp >> 1, n = spawn(s, m.k, c[0], c[1], false); n.hp = half; n.hunt = 1; m.hp -= half; log(s, 'mob_splits', { mob: m.k }, 'bad'); }
         }
-        if (d.blink && RNG.chance(s.rng, 0.5)) { const c = freeCell(s, s.rng); if (c) { m.x = c[0]; m.y = c[1]; log(s, `${d.name} si teletrasporta.`); } }
+        if (d.blink && RNG.chance(s.rng, 0.5)) { const c = freeCell(s, s.rng); if (c) { m.x = c[0]; m.y = c[1]; log(s, 'mob_blinks', { mob: m.k }); } }
     }
     function attackMob(s, m) {
         const st = stats(s), d = MOB[m.k], sleeping = m.asleep;
         m.asleep = 0; m.hunt = 1;
         if (d.ambush && !m.shown) m.shown = 1;
-        if (!sleeping && !RNG.chance(s.rng, hitChance(st.acc, d.dodge || 0))) { log(s, `Manchi ${d.name}.`); fx(s, 'miss', m.x, m.y); return; }
+        if (!sleeping && !RNG.chance(s.rng, hitChance(st.acc, d.dodge || 0))) { log(s, 'you_miss', { mob: m.k }); fx(s, 'miss', m.x, m.y); return; }
         const crit = RNG.chance(s.rng, st.crit);
         let dmg = rollDamage(s.rng, st.dmg, st.atk + (d.undead ? st.holy : 0), d.def, crit);
         if (sleeping) dmg *= 2 + st.backstab;
-        log(s, `${sleeping ? 'Colpisci nel sonno' : crit ? 'Colpo critico su' : 'Colpisci'} ${d.name}: ${dmg}.`);
+        log(s, sleeping ? 'hit_sleep' : crit ? 'hit_crit' : 'hit', { mob: m.k, n: dmg });
         hurtMob(s, m, dmg);
         if (st.vamp && RNG.chance(s.rng, st.vamp / 100)) heal(s, 2);
     }
     function mobHit(s, m, dmg, ranged) {
         const d = MOB[m.k], p = s.p, st = stats(s);
-        if (!RNG.chance(s.rng, hitChance(d.acc || 0, st.dodge))) { log(s, `${d.name} ti manca.`); return; }
+        if (!RNG.chance(s.rng, hitChance(d.acc || 0, st.dodge))) { log(s, 'mob_misses', { mob: m.k }); return; }
         if (!ranged && d.steal === 'gold' && p.gold > 0) {
             m.loot = Math.min(p.gold, 15 + s.depth * 8); p.gold -= m.loot;
-            log(s, `${d.name} ti ruba ${m.loot} crediti e scappa!`, 'bad');
+            log(s, 'mob_steals_gold', { mob: m.k, n: m.loot }, 'bad');
             return;
         }
         if (!ranged && d.steal === 'item' && p.inv.length) {
             const i = RNG.int(s.rng, p.inv.length);
             m.stolen = p.inv.splice(i, 1)[0];
-            log(s, `${d.name} ti ruba: ${itemName(s, m.stolen)}!`, 'bad');
+            log(s, 'mob_steals_item', { mob: m.k, item: itemRef(s, m.stolen) }, 'bad');
             const c = freeCell(s, s.rng); if (c) { m.x = c[0]; m.y = c[1]; }
             return;
         }
         const n = rollDamage(s.rng, dmg, s.tier || 0, st.def, false);
-        log(s, `${d.name} ${ranged ? d.ranged.verb : 'ti colpisce'}: ${n}.`, 'bad');
-        hurtPlayer(s, n, d.name);
+        if (ranged) log(s, 'mob_ranged', { mob: m.k, verb: m.k, n }, 'bad'); else log(s, 'mob_hits', { mob: m.k, n }, 'bad');
+        hurtPlayer(s, n, mobCause(m.k));
         if (d.poison && RNG.chance(s.rng, 0.5)) p.st.poison = Math.max(p.st.poison || 0, d.poison);
         if (d.weaken) p.st.weak = 12;
         if (d.stun && RNG.chance(s.rng, 0.3)) p.st.stun = 1;
@@ -346,7 +388,7 @@
         if (m.fear || m.loot || m.stolen || (d.coward && m.hp * 4 < m.max)) {
             if ((m.loot || m.stolen) && !s.vis[idx(m.x, m.y)]) {
                 s.mobs.splice(s.mobs.indexOf(m), 1); occ.delete(idx(m.x, m.y)); m.hp = 0;
-                log(s, `${d.name} è sparito con il bottino.`, 'bad');
+                log(s, 'mob_escaped', { mob: m.k }, 'bad');
                 return;
             }
             const dm = dmap();
@@ -363,10 +405,10 @@
         if ((p.st.invis && !adj) || (d.erratic && RNG.chance(s.rng, d.erratic))) { wander(); return; }
         if (d.summon && sees && s.turn % d.summon.every === 0 && s.mobs.length < MOB_CAP) {
             const c = freeCell(s, s.rng, m.x, m.y);
-            if (c) { const n = spawn(s, d.summon.k, c[0], c[1], false); n.hunt = 1; occ.add(idx(c[0], c[1])); log(s, `${d.name} chiama ${MOB[n.k].name}!`, 'bad'); return; }
+            if (c) { const n = spawn(s, d.summon.k, c[0], c[1], false); n.hunt = 1; occ.add(idx(c[0], c[1])); log(s, 'mob_calls', { mob: m.k, mob2: n.k }, 'bad'); return; }
         }
         if (d.ranged && sees && dist > 1 && dist <= d.ranged.range) { mobHit(s, m, d.ranged.dmg, true); return; }
-        if (d.ambush && !m.shown) { if (!adj) return; m.shown = 1; log(s, `Non era uno scatolone: ${d.name}!`, 'bad'); }
+        if (d.ambush && !m.shown) { if (!adj) return; m.shown = 1; log(s, 'mob_ambush', { mob: m.k }, 'bad'); }
         if (adj) { mobHit(s, m, d.atk, false); return; }
         if (d.still) return;
         if (d.phase) {
@@ -400,14 +442,14 @@
     const seenMobs = (s) => threats(s).slice();
     const TARGETED = { bolt: 1, freeze: 1, banish: 1, slow: 1, drain: 1 };
     const EFFECTS = {
-        heal(s, pw) { heal(s, Math.ceil(s.p.maxHp * pw / 100 * (1 + stats(s).drink / 100))); delete s.p.st.poison; log(s, 'Ti senti molto meglio.', 'good'); },
-        strength(s, pw) { addMods(s.p, { atk: pw }); log(s, 'Ti senti più forte: attacco +' + pw + '.', 'good'); },
-        life(s, pw) { addMods(s.p, { maxHp: pw }); log(s, 'Vita massima +' + pw + '.', 'good'); },
-        poison(s, pw) { s.p.st.poison = Math.max(s.p.st.poison || 0, pw); log(s, 'Che schifo! Ti senti male.', 'bad'); },
-        haste(s, pw) { s.p.st.haste = pw; log(s, 'Vai velocissimo!', 'good'); },
-        confuse(s, pw) { s.p.st.conf = pw; log(s, 'Ti gira la testa.', 'bad'); },
-        invis(s, pw) { s.p.st.invis = pw; log(s, 'Nessuno fa più caso a te.', 'good'); },
-        regen(s, pw) { s.p.st.regen = pw; log(s, 'Ti rilassi: recuperi vita a ogni turno.', 'good'); },
+        heal(s, pw) { heal(s, Math.ceil(s.p.maxHp * pw / 100 * (1 + stats(s).drink / 100))); delete s.p.st.poison; log(s, 'fx_heal', null, 'good'); },
+        strength(s, pw) { addMods(s.p, { atk: pw }); log(s, 'fx_strength', { n: pw }, 'good'); },
+        life(s, pw) { addMods(s.p, { maxHp: pw }); log(s, 'fx_life', { n: pw }, 'good'); },
+        poison(s, pw) { s.p.st.poison = Math.max(s.p.st.poison || 0, pw); log(s, 'fx_poison', null, 'bad'); },
+        haste(s, pw) { s.p.st.haste = pw; log(s, 'fx_haste', null, 'good'); },
+        confuse(s, pw) { s.p.st.conf = pw; log(s, 'fx_confuse', null, 'bad'); },
+        invis(s, pw) { s.p.st.invis = pw; log(s, 'fx_invis', null, 'good'); },
+        regen(s, pw) { s.p.st.regen = pw; log(s, 'fx_regen', null, 'good'); },
         xp(s) { gainXp(s, Math.ceil((xpNeed(s.p.lvl) - s.p.xp) / (1 + stats(s).xp / 100))); },
         teleport(s) {
             // never into a closed secret room: only cells that can be walked to from the stairs without secret doors
@@ -415,7 +457,7 @@
             let c = null;
             for (let n = 0; n < 60 && !c; n++) { const q = freeCell(s, s.rng); if (q && open[idx(q[0], q[1])] >= 0) c = q; }
             if (c) { s.p.x = c[0]; s.p.y = c[1]; }
-            log(s, 'Ti ritrovi da un’altra parte.', 'info');
+            log(s, 'fx_teleport', null, 'info');
         },
         map(s) {
             const t = s.map.tiles;
@@ -423,42 +465,42 @@
                 if (t[i] === T.SECRET) t[i] = T.DOOR;
                 if (t[i] !== T.WALL) { s.seen[i] = 1; for (const v of DIRS) s.seen[i + v[0] + v[1] * W] = 1; }
             }
-            log(s, 'Ora conosci la mappa del piano.', 'info');
+            log(s, 'fx_map', null, 'info');
         },
-        identify(s) { for (const it of s.p.inv) identify(s, it.k); log(s, 'Hai letto il manuale: conosci tutto quello che hai nello zaino.', 'info'); },
-        enchW(s) { if (!s.p.weapon) return log(s, 'Non impugni niente: lo script non fa nulla.'); s.p.weapon.e = (s.p.weapon.e || 0) + 1; log(s, 'La tua arma migliora: ' + itemName(s, s.p.weapon) + '.', 'good'); },
-        enchA(s) { if (!s.p.armor) return log(s, 'Non indossi niente: lo script non fa nulla.'); s.p.armor.e = (s.p.armor.e || 0) + 1; log(s, 'La tua protezione migliora: ' + itemName(s, s.p.armor) + '.', 'good'); },
-        fear(s, pw) { for (const m of seenMobs(s)) { m.asleep = 0; m.fear = MOB[m.k].boss ? pw >> 2 : pw; } log(s, 'I nemici scappano!', 'good'); },
-        fire(s, pw) { log(s, 'Tutti i nemici in vista vengono colpiti.', 'good'); for (const m of seenMobs(s)) hurtMob(s, m, Math.round((pw + s.depth) * (1 + stats(s).usb / 100))); },
+        identify(s) { for (const it of s.p.inv) identify(s, it.k); log(s, 'fx_identify', null, 'info'); },
+        enchW(s) { if (!s.p.weapon) return log(s, 'fx_ench_weapon_none'); s.p.weapon.e = (s.p.weapon.e || 0) + 1; log(s, 'fx_ench_weapon', { item: itemRef(s, s.p.weapon) }, 'good'); },
+        enchA(s) { if (!s.p.armor) return log(s, 'fx_ench_armor_none'); s.p.armor.e = (s.p.armor.e || 0) + 1; log(s, 'fx_ench_armor', { item: itemRef(s, s.p.armor) }, 'good'); },
+        fear(s, pw) { for (const m of seenMobs(s)) { m.asleep = 0; m.fear = MOB[m.k].boss ? pw >> 2 : pw; } log(s, 'fx_fear', null, 'good'); },
+        fire(s, pw) { log(s, 'fx_fire', null, 'good'); for (const m of seenMobs(s)) hurtMob(s, m, Math.round((pw + s.depth) * (1 + stats(s).usb / 100))); },
         summon(s, pw) {
             const pool = MOBS.LIST.filter((d) => !d.boss && !d.still && d.floors[0] <= s.depth && s.depth <= d.floors[1]);
             for (let i = 0; i < pw && s.mobs.length < MOB_CAP && pool.length; i++) { const c = freeCell(s, s.rng, s.p.x, s.p.y); if (c) spawn(s, RNG.pick(s.rng, pool).id, c[0], c[1], false).hunt = 1; }
-            log(s, 'Hai generato dei processi ostili!', 'bad');
+            log(s, 'fx_summon', null, 'bad');
         },
-        sleep(s, pw) { for (const m of seenMobs(s)) if (!MOB[m.k].boss) m.asleep = pw + 1; log(s, 'I nemici si addormentano.', 'good'); },
-        recharge(s, pw) { for (const it of s.p.inv) if (ITEM[it.k].cat === 'usb') it.ch += pw; log(s, 'Le tue chiavette si ricaricano.', 'good'); },
-        ping(s, pw) { s.p.st.ping = pw; log(s, 'Per un po’ vedi dove sono tutti i nemici.', 'info'); },
+        sleep(s, pw) { for (const m of seenMobs(s)) if (!MOB[m.k].boss) m.asleep = pw + 1; log(s, 'fx_sleep', null, 'good'); },
+        recharge(s, pw) { for (const it of s.p.inv) if (ITEM[it.k].cat === 'usb') it.ch += pw; log(s, 'fx_recharge', null, 'good'); },
+        ping(s, pw) { s.p.st.ping = pw; log(s, 'fx_ping', null, 'info'); },
         grep(s) {
             for (const t of s.traps) t.found = 1;
             for (let i = 0; i < s.map.tiles.length; i++) if (s.map.tiles[i] === T.SECRET) { s.map.tiles[i] = T.DOOR; s.seen[i] = 1; }
-            log(s, 'Trappole e porte segrete del piano: trovate.', 'info');
+            log(s, 'fx_grep', null, 'info');
         },
-        bolt(s, pw, m) { const n = Math.round(RNG.range(s.rng, pw, pw * 2) * (1 + stats(s).usb / 100)) + (s.p.lvl >> 1); log(s, `Colpisci ${MOB[m.k].name} da lontano: ${n}.`); hurtMob(s, m, n); },
-        freeze(s, pw, m) { m.frozen = MOB[m.k].boss ? pw >> 1 : pw; m.asleep = 0; log(s, `${MOB[m.k].name} è bloccato.`, 'good'); },
+        bolt(s, pw, m) { const n = Math.round(RNG.range(s.rng, pw, pw * 2) * (1 + stats(s).usb / 100)) + (s.p.lvl >> 1); log(s, 'fx_bolt', { mob: m.k, n }); hurtMob(s, m, n); },
+        freeze(s, pw, m) { m.frozen = MOB[m.k].boss ? pw >> 1 : pw; m.asleep = 0; log(s, 'fx_freeze', { mob: m.k }, 'good'); },
         banish(s, pw, m) {
-            if (MOB[m.k].boss) return log(s, `${MOB[m.k].name} resiste.`);
+            if (MOB[m.k].boss) return log(s, 'fx_banish_boss', { mob: m.k });
             const c = freeCell(s, s.rng); if (c) { m.x = c[0]; m.y = c[1]; m.hunt = 0; }
-            log(s, `${MOB[m.k].name} finisce altrove.`, 'good');
+            log(s, 'fx_banish', { mob: m.k }, 'good');
         },
-        slow(s, pw, m) { m.slow = 1; log(s, `${MOB[m.k].name} va a scatti.`, 'good'); },
-        drain(s, pw, m) { const n = RNG.range(s.rng, pw, pw * 2); log(s, `Rubi ${n} di vita a ${MOB[m.k].name}.`, 'good'); heal(s, n >> 1); hurtMob(s, m, n); },
+        slow(s, pw, m) { m.slow = 1; log(s, 'fx_slow', { mob: m.k }, 'good'); },
+        drain(s, pw, m) { const n = RNG.range(s.rng, pw, pw * 2); log(s, 'fx_drain', { n, mob: m.k }, 'good'); heal(s, n >> 1); hurtMob(s, m, n); },
         // traps
-        zap(s, pw) { log(s, 'Una scossa!', 'bad'); hurtPlayer(s, pw + (s.depth >> 1) + RNG.int(s.rng, 3), 'una presa scoperta'); },
-        alarm(s) { for (const m of s.mobs) { m.asleep = 0; m.hunt = 1; } log(s, 'Suona un allarme: tutto il piano sa dove sei!', 'bad'); },
+        zap(s, pw) { log(s, 'fx_zap', null, 'bad'); hurtPlayer(s, pw + (s.depth >> 1) + RNG.int(s.rng, 3), { k: 'cause_socket' }); },
+        alarm(s) { for (const m of s.mobs) { m.asleep = 0; m.hunt = 1; } log(s, 'fx_alarm', null, 'bad'); },
         pit(s, pw) {
             if (s.sealed || s.depth >= FLOORS) return EFFECTS.zap(s, pw);
-            log(s, 'Il pavimento cede: cadi al piano di sotto!', 'bad');
-            hurtPlayer(s, pw, 'una botola');
+            log(s, 'fx_pit', null, 'bad');
+            hurtPlayer(s, pw, { k: 'cause_pit' });
             if (s.status === 'play') { s.depth++; newFloor(s); }
         },
     };
@@ -470,24 +512,24 @@
         const c = (d) => chance * (1 - 0.25 * (d - 1));
         for (let y = p.y - R; y <= p.y + R; y++) for (let x = p.x - R; x <= p.x + R; x++) {
             if (x < 0 || y < 0 || x >= W || y >= H) continue;
-            if (s.map.tiles[idx(x, y)] === T.SECRET && RNG.chance(s.rng, c(Math.max(Math.abs(x - p.x), Math.abs(y - p.y))))) { s.map.tiles[idx(x, y)] = T.DOOR; found = true; log(s, 'Hai trovato una porta segreta!', 'good'); }
+            if (s.map.tiles[idx(x, y)] === T.SECRET && RNG.chance(s.rng, c(Math.max(Math.abs(x - p.x), Math.abs(y - p.y))))) { s.map.tiles[idx(x, y)] = T.DOOR; found = true; log(s, 'secret_found', null, 'good'); }
         }
         for (const t of s.traps) {
             const d = Math.max(Math.abs(t.x - p.x), Math.abs(t.y - p.y));
-            if (!t.found && d <= R && RNG.chance(s.rng, c(d))) { t.found = 1; found = true; log(s, 'Attento: ' + byTrap[t.k].name + '.', 'info'); }
+            if (!t.found && d <= R && RNG.chance(s.rng, c(d))) { t.found = 1; found = true; log(s, 'trap_found', { trap: t.k }, 'info'); }
         }
         if (found) updateFov(s);
         return found;
     }
-    const byTrap = byId(MOBS.TRAPS);
+    const byTrap = TRAP;
     function pickUp(s) {
         const p = s.p;
         for (const e of itemsAt(s, p.x, p.y)) {
             if (e.it.k === '$') {
                 const n = Math.round(e.it.n * (1 + stats(s).luck / 100));
-                p.gold += n; s.earned += n; log(s, `+${n} crediti.`, 'good');
-            } else if (addInv(s, e.it)) log(s, 'Raccogli: ' + itemName(s, Object.assign({}, e.it, { n: 1 })) + '.');
-            else { log(s, 'Lo zaino è pieno: lasci ' + itemName(s, e.it) + '.'); continue; }
+                p.gold += n; s.earned += n; log(s, 'got_credits', { n }, 'good');
+            } else if (addInv(s, e.it)) log(s, 'picked_up', { item: itemRef(s, Object.assign({}, e.it, { n: 1 })) });
+            else { log(s, 'bag_full_leave', { item: itemRef(s, e.it) }); continue; }
             s.items.splice(s.items.indexOf(e), 1);
             fx(s, 'pick');
         }
@@ -506,22 +548,22 @@
         if (trap) {
             const was = s.depth;
             trap.found = 1;
-            log(s, byTrap[trap.k].name + '!', 'bad');
+            log(s, 'trap_hit', { trap: trap.k }, 'bad');
             EFFECTS[byTrap[trap.k].effect](s, byTrap[trap.k].power);
             if (s.depth !== was) return true;
         }
         pickUp(s);
-        if (t === T.STAIRS) log(s, s.sealed ? 'Le scale sono bloccate: c’è ancora il boss.' : 'Qui ci sono le scale: premi Scendi.', 'info');
+        if (t === T.STAIRS) log(s, s.sealed ? 'stairs_locked' : 'stairs_here', null, 'info');
         return true;
     }
     function pray(s) {
         const p = s.p;
-        if (s.altar.used) { log(s, 'Il terminale è spento.'); return false; }
+        if (s.altar.used) { log(s, 'terminal_off'); return false; }
         s.altar.used = 1;
         const n = RNG.int(s.rng, 100);
-        if (n < 15) { log(s, 'Il vecchio terminale si accende… KERNEL PANIC.', 'bad'); EFFECTS.summon(s, 2); }
-        else if (n < 40) { p.hp = p.maxHp; p.st = {}; log(s, 'Il terminale ripristina un backup: sei come nuovo.', 'good'); }
-        else if (n < 55) { addMods(p, { maxHp: 4 }); log(s, 'Il terminale installa un aggiornamento: vita massima +4.', 'good'); }
+        if (n < 15) { log(s, 'terminal_panic', null, 'bad'); EFFECTS.summon(s, 2); }
+        else if (n < 40) { p.hp = p.maxHp; p.st = {}; log(s, 'terminal_backup', null, 'good'); }
+        else if (n < 55) { addMods(p, { maxHp: 4 }); log(s, 'terminal_update', null, 'good'); }
         else if (n < 70) EFFECTS.enchW(s);
         else if (n < 85) EFFECTS.enchA(s);
         else { p.food = MAX_FOOD; EFFECTS.identify(s); }
@@ -536,19 +578,19 @@
             if (p[c.slot]) p.inv.push(p[c.slot]);
             p[c.slot] = it;
             identify(s, it.k);
-            log(s, (d.cat === 'weapon' ? 'Impugni: ' : d.cat === 'armor' ? 'Indossi: ' : 'Installi: ') + itemName(s, it) + '.');
+            log(s, d.cat === 'weapon' ? 'equip_weapon' : d.cat === 'armor' ? 'equip_armor' : 'equip_plugin', { item: itemRef(s, it) });
             return true;
         }
-        if (d.cat === 'throw') { log(s, 'Si lancia: tocca la casella dove vuoi colpire.'); return false; }
-        if (d.cat === 'food') { p.food = Math.min(MAX_FOOD, p.food + d.food); log(s, 'Mangi: ' + d.name + '.', 'good'); useUp(s, i); return true; }
+        if (d.cat === 'throw') { log(s, 'throw_hint'); return false; }
+        if (d.cat === 'food') { p.food = Math.min(MAX_FOOD, p.food + d.food); log(s, 'eat', { item: { k: it.k } }, 'good'); useUp(s, i); return true; }
         let target = null;
         if (d.cat === 'usb') {
-            if (it.ch <= 0) { log(s, 'La chiavetta è scarica.'); return false; }
+            if (it.ch <= 0) { log(s, 'usb_empty'); return false; }
             target = nearest(s);
-            if (!target) { log(s, 'Non vedi nessun nemico.'); return false; }
+            if (!target) { log(s, 'no_enemy'); return false; }
             it.ch--;
         } else useUp(s, i);
-        log(s, (d.cat === 'drink' ? 'Bevi: ' : d.cat === 'script' ? 'Lanci: ' : 'Usi: ') + d.name + '.');
+        log(s, d.cat === 'drink' ? 'use_drink' : d.cat === 'script' ? 'use_script' : 'use_usb', { item: { k: it.k } });
         identify(s, it.k);
         EFFECTS[d.effect](s, d.power, target);
         return true;
@@ -558,7 +600,7 @@
         const p = s.p, it = p.inv[i];
         if (!it || ITEM[it.k].cat !== 'throw') return false;
         const dx = tx - p.x, dy = ty - p.y, n = Math.max(Math.abs(dx), Math.abs(dy));
-        if (!n || n > THROW_RANGE || tx < 0 || ty < 0 || tx >= W || ty >= H) { log(s, 'Non puoi lanciare lì.'); return false; }
+        if (!n || n > THROW_RANGE || tx < 0 || ty < 0 || tx >= W || ty >= H) { log(s, 'throw_bad'); return false; }
         let lx = p.x, ly = p.y, hit = null;
         for (let k = 1; k <= n; k++) {
             const x = Math.round(p.x + dx * k / n), y = Math.round(p.y + dy * k / n);
@@ -570,14 +612,14 @@
         const d = ITEM[it.k], st = stats(s), one = { k: it.k, n: 1 };
         useUp(s, i);
         fx(s, 'throw', lx, ly);
-        log(s, 'Lanci: ' + d.name + '.');
+        log(s, 'thrown', { item: { k: it.k } });
         if (hit) {
             const md = MOB[hit.k];
             if (hit.asleep || RNG.chance(s.rng, hitChance(st.acc, md.dodge || 0))) {
                 const dmg = rollDamage(s.rng, d.dmg, st.atk >> 1, md.def, RNG.chance(s.rng, st.crit));
-                log(s, `${d.name} colpisce ${md.name}: ${dmg}.`);
+                log(s, 'throw_hit', { item: { k: it.k }, mob: hit.k, n: dmg });
                 hurtMob(s, hit, dmg);
-            } else { log(s, `Manchi ${md.name}.`); hit.asleep = 0; hit.hunt = 1; }
+            } else { log(s, 'you_miss', { mob: hit.k }); hit.asleep = 0; hit.hunt = 1; }
         }
         if (RNG.chance(s.rng, 0.6) && s.map.tiles[idx(lx, ly)] === T.FLOOR) s.items.push({ x: lx, y: ly, it: one });
         return true;
@@ -587,19 +629,19 @@
         if (!it) return false;
         p.inv.splice(i, 1);
         s.items.push({ x: p.x, y: p.y, it });
-        log(s, 'Lasci: ' + itemName(s, it) + '.');
+        log(s, 'dropped', { item: itemRef(s, it) });
         return true;
     }
     function unequip(s, slot) {
         const p = s.p;
         if (!['weapon', 'armor', 'plugin'].includes(slot) || !p[slot]) return false;
-        if (p.inv.length >= INV_CAP) { log(s, 'Lo zaino è pieno.'); return false; }
+        if (p.inv.length >= INV_CAP) { log(s, 'bag_full'); return false; }
         p.inv.push(p[slot]); p[slot] = null;
         return true;
     }
     function descend(s) {
-        if (s.map.tiles[idx(s.p.x, s.p.y)] !== T.STAIRS) { log(s, 'Qui non ci sono scale.'); return false; }
-        if (s.sealed) { log(s, 'Le scale sono bloccate: c’è ancora il boss.'); return false; }
+        if (s.map.tiles[idx(s.p.x, s.p.y)] !== T.STAIRS) { log(s, 'stairs_none'); return false; }
+        if (s.sealed) { log(s, 'stairs_locked'); return false; }
         if (s.hub) { s.depth++; newFloor(s); return true; }
         if (s.depth % MOBS.PER_SECTOR === 0 && s.depth < FLOORS) { enterHub(s); return true; }
         s.depth++;
@@ -608,10 +650,10 @@
     }
     function useActive(s) {
         const p = s.p, a = CLASS[s.cls].active;
-        if (p.cd > 0) { log(s, `${a.name}: pronta tra ${p.cd} turni.`); return false; }
+        if (p.cd > 0) { log(s, 'skill_wait', { active: s.cls, n: p.cd }); return false; }
         const target = TARGETED[a.effect] ? nearest(s) : null;
-        if (TARGETED[a.effect] && !target) { log(s, 'Non vedi nessun nemico.'); return false; }
-        log(s, a.name + '!', 'info');
+        if (TARGETED[a.effect] && !target) { log(s, 'no_enemy'); return false; }
+        log(s, 'skill_used', { active: s.cls }, 'info');
         p.cd = Math.round(a.cd * (1 - Math.min(60, stats(s).cd) / 100));
         EFFECTS[a.effect](s, a.power, target);
         return true;
@@ -620,12 +662,12 @@
         const e = s.shop.stock[i];
         if (!e) return;
         const cost = price(s, e);
-        if (s.p.gold < cost) return log(s, 'Non hai abbastanza crediti.');
-        if (!addInv(s, e)) return log(s, 'Lo zaino è pieno.');
+        if (s.p.gold < cost) return log(s, 'no_credits');
+        if (!addInv(s, e)) return log(s, 'bag_full');
         s.p.gold -= cost;
         s.shop.stock.splice(i, 1);
         s.known[e.k] = 1;
-        log(s, 'Compri: ' + itemName(s, e) + '.', 'good');
+        log(s, 'bought', { item: itemRef(s, e) }, 'good');
         fx(s, 'pick');
     }
 
@@ -635,15 +677,15 @@
         updateFov(s);
         if (!(p.st.haste && s.turn % 2)) mobsAct(s);                       // with haste the enemies move every other turn
         if (s.status !== 'play') return;
-        if (p.st.poison) hurtPlayer(s, 1, 'un malessere');
+        if (p.st.poison) hurtPlayer(s, 1, { k: 'cause_sick' });
         for (const k in p.st) if (--p.st[k] <= 0) delete p.st[k];
         if (p.cd > 0) p.cd--;
         if (s.turn % 100 >= st.hunger) {
             p.food--;
-            if (p.food === 150) log(s, 'Hai fame: mangia qualcosa.', 'bad');
-            if (p.food === 0) log(s, 'Stai morendo di fame!', 'bad');
+            if (p.food === 150) log(s, 'hungry', null, 'bad');
+            if (p.food === 0) log(s, 'starving', null, 'bad');
         }
-        if (p.food <= 0) { p.food = 0; if (s.turn % 8 === 0) hurtPlayer(s, 1, 'la fame'); }
+        if (p.food <= 0) { p.food = 0; if (s.turn % 8 === 0) hurtPlayer(s, 1, { k: 'cause_hunger' }); }
         else if (p.hp < p.maxHp && (p.st.regen || s.turn % Math.max(2, 12 - (p.lvl >> 1) - st.regen * 2) === 0)) p.hp++;
         if (st.recharge && s.turn % Math.max(15, 60 - st.recharge * 15) === 0) for (const it of p.inv) if (ITEM[it.k].cat === 'usb' && it.ch < ITEM[it.k].ch) it.ch++;
         if (s.status === 'play') search(s, 0.12 + st.search / 100);
@@ -665,10 +707,10 @@
             return false;
         }
         let took = false;
-        if (p.st.stun) { log(s, 'Sei bloccato!', 'bad'); took = true; }
+        if (p.st.stun) { log(s, 'stunned', null, 'bad'); took = true; }
         else if (a.t === 'move') took = move(s, a.dx, a.dy);
         else if (a.t === 'wait') { took = true; search(s, 0.5); }
-        else if (a.t === 'search') { took = true; if (!search(s, 1, SEARCH_RADIUS)) log(s, 'Cerchi in giro: non trovi niente.'); }
+        else if (a.t === 'search') { took = true; if (!search(s, 1, SEARCH_RADIUS)) log(s, 'search_none'); }
         else if (a.t === 'throw') took = throwItem(s, a.i, a.x, a.y);
         else if (a.t === 'use') took = useItem(s, a.i);
         else if (a.t === 'drop') took = dropItem(s, a.i);
@@ -726,28 +768,31 @@
         }
         return [];
     }
-    const TILE_NAME = { [T.WALL]: 'Muro', [T.SECRET]: 'Muro', [T.FLOOR]: 'Pavimento', [T.DOOR]: 'Porta', [T.STAIRS]: 'Scale', [T.ALTAR]: 'Vecchio terminale', [T.SHOP]: 'Negozio', [T.BENCH]: 'Panchina' };
-    const TILE_INFO = { [T.FLOOR]: 'Si cammina.', [T.DOOR]: 'Una porta aperta.', [T.WALL]: 'Non si passa.', [T.SECRET]: 'Non si passa.', [T.ALTAR]: 'Un vecchio terminale: toccarlo è un rischio.', [T.SHOP]: 'Qui si comprano cose.', [T.BENCH]: 'Per riposare e riciclare.' };
-    /** The info card of a cell: { title, lines[] } — what a long press shows. Never acts. */
+    const TILE_NAME = { [T.WALL]: 'tile_wall', [T.SECRET]: 'tile_wall', [T.FLOOR]: 'tile_floor', [T.DOOR]: 'tile_door', [T.STAIRS]: 'tile_stairs', [T.ALTAR]: 'tile_altar', [T.SHOP]: 'tile_shop', [T.BENCH]: 'tile_bench' };
+    const TILE_INFO = { [T.FLOOR]: 'tile_floor_info', [T.DOOR]: 'tile_door_info', [T.WALL]: 'tile_wall_info', [T.SECRET]: 'tile_wall_info', [T.ALTAR]: 'tile_altar_info', [T.SHOP]: 'tile_shop_info', [T.BENCH]: 'tile_bench_info' };
+    const msg = (k, p) => (p ? { k, p } : { k });
+    /** The info card of a cell: { title, lines[] } of messages (text(msg, lang)) — what a long press shows. Never acts. */
     function infoAt(s, x, y) {
         const p = s.p, i = idx(x, y);
-        if (x === p.x && y === p.y) { const st = stats(s); return { title: CLASS[s.cls].name + ' (tu)', lines: [`PS ${p.hp}/${p.maxHp} · Livello ${p.lvl}`, `Attacco ${st.atk} · Difesa ${st.def}`] }; }
+        if (x === p.x && y === p.y) { const st = stats(s); return { title: msg('card_you', { cls: s.cls }), lines: [msg('card_you_hp', { hp: p.hp, max: p.maxHp, lvl: p.lvl }), msg('card_you_atk', { atk: st.atk, def: st.def })] }; }
         const m = s.mobs.find((e) => e.x === x && e.y === y && shown(s, e));
         if (m) {
-            const d = MOB[m.k], lines = [d.info || '', `PS ${m.hp}/${m.max}`, `Colpisce per ${d.atk[0]}-${d.atk[1]}`];
-            if (m.asleep) lines.push('Dorme.');
-            if (d.ranged) lines.push('Attacca da lontano.');
-            if (d.speed > 1) lines.push('Veloce.');
-            if (d.boss) lines.push('Boss: le scale restano bloccate finché non cade.');
-            return { title: d.name, lines: lines.filter(Boolean) };
+            const d = MOB[m.k], lines = [];
+            if (d.info) lines.push(msg('m_mobinfo', { mobinfo: m.k }));
+            lines.push(msg('card_mob_hp', { hp: m.hp, max: m.max }), msg('card_mob_hits', { a: d.atk[0], b: d.atk[1] }));
+            if (m.asleep) lines.push(msg('card_mob_asleep'));
+            if (d.ranged) lines.push(msg('card_mob_ranged'));
+            if (d.speed > 1) lines.push(msg('card_mob_fast'));
+            if (d.boss) lines.push(msg('card_mob_boss'));
+            return { title: msg('m_mob', { mob: m.k }), lines };
         }
-        if (!s.seen[i]) return { title: 'Non esplorato', lines: ['Non hai ancora visto questa casella.'] };
+        if (!s.seen[i]) return { title: msg('card_unseen'), lines: [msg('card_unseen_info')] };
         const here = s.items.filter((e) => e.x === x && e.y === y);
-        if (here.length) return { title: here.map((e) => itemName(s, e.it)).join(', '), lines: here.map((e) => e.it.k === '$' ? 'Crediti: si raccolgono camminandoci sopra.' : itemInfo(s, e.it)).filter(Boolean) };
+        if (here.length) return { title: here.map((e) => msg('m_item', { item: itemRef(s, e.it) })), lines: here.map((e) => e.it.k === '$' ? msg('card_credits') : itemInfoMsg(s, e.it)) };
         const trap = s.traps.find((e) => e.x === x && e.y === y && e.found);
-        if (trap) return { title: 'Trappola: ' + byTrap[trap.k].name, lines: ['La conosci: evitala.'] };
+        if (trap) return { title: msg('card_trap', { trap: trap.k }), lines: [msg('card_trap_info')] };
         const t = s.map.tiles[i];
-        return { title: TILE_NAME[t] || 'Casella', lines: [TILE_INFO[t] || '', t === T.STAIRS && s.sealed ? 'Bloccate: c’è ancora il boss.' : ''].filter(Boolean) };
+        return { title: msg(TILE_NAME[t] || 'card_tile'), lines: [TILE_INFO[t] ? msg(TILE_INFO[t]) : null, t === T.STAIRS && s.sealed ? msg('card_stairs_locked') : null].filter(Boolean) };
     }
     /** A known walkable cell next to (x, y) to stand on to use furniture there: the player's own cell when already next to it; null if none can be reached. */
     function reachNeighbour(s, x, y) {
@@ -830,7 +875,8 @@
             s.known[k] = 1;
             if (slot && !s.p[slot]) s.p[slot] = it; else addInv(s, it);
         }
-        log(s, `Sei ${c.name}. Scendi fino in fondo e spegni il server.` + (s.tier ? ` Livello di accesso ${s.tier}.` : ''), 'info');
+        log(s, 'run_start', { cls: c.id }, 'info');
+        if (s.tier) log(s, 'run_tier', { tier: s.tier }, 'info');
         newFloor(s);
         return s;
     }
@@ -882,6 +928,6 @@
     }
 
     return { VERSION, FLOORS, INV_CAP, MAX_FOOD, MOB, ITEM, CLASS, SKILL, EFFECTS, TARGETED, newGame, act, save, load, stats, hitChance, rollDamage, xpNeed,
-        itemName, itemInfo, itemLook, known, price, canTake, shown, threats, nearest, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
+        text, logText, log, itemRef, itemText, itemName, itemInfo, itemLook, MSG: TX.MSG, known, price, canTake, shown, threats, nearest, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
         newMeta, fixMeta, unlocked, recordRun, updateFov, buyUpgrade, upCost, level, checkMedals, counters, UPGRADES: META.UPGRADES, MEDALS: META.MEDALS, enterHub };
 });

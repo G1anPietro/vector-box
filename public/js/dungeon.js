@@ -1,8 +1,19 @@
-// js/dungeon.js — the page of "Il Dungeon del Server": drawing, touch and keyboard, saving. The rules are in js/rogue/*.js.
+// js/dungeon.js — the page of "The Server Dungeon" (Il Dungeon del Server): drawing, touch and keyboard, saving. The rules are in js/rogue/*.js.
 // Everything the player can type or that comes from the game goes in with textContent (never innerHTML).
+// Texts: tl('key', vars) for the page's own sentences (Rogue.text MSG), tr(x) for a { en, it } of a data table, gt(msg) for a message of the
+// rules (log, cause, info card). All three use the language of the moment (VBLang); the `vb-lang` event redraws everything.
 (function () {
     'use strict';
-    const R = self.Rogue, G = R.game, SP = R.sprites, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T;
+    const R = self.Rogue, G = R.game, SP = R.sprites, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T, TX = R.text;
+    const lang = () => (self.VBLang && self.VBLang.lang) || 'en';
+    const tl = (key, vars) => TX.t(key, vars, lang());
+    const tr = (v) => TX.tx(v, lang());
+    const gt = (m) => G.text(m, lang());
+    if (self.VBI18N) {                                 // the same sentences feed the data-i18n texts of the HTML
+        const en = {}, it = {};
+        for (const k in TX.MSG) { en[k] = TX.MSG[k].en; it[k] = TX.MSG[k].it; }
+        self.VBI18N.add('en', en); self.VBI18N.add('it', it);
+    }
     const RUN_KEY = 'vb_dg_run', META_KEY = 'vb_dg_meta', OPT_KEY = 'vb_dg_opt';
     const $ = (id) => document.getElementById(id);
     const reduce = !!(self.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -150,22 +161,23 @@
     function hud() {
         const p = s.p, st = G.stats(s), sec = G.sectorOf(s.depth);
         $('dg-hp').style.width = Math.max(0, 100 * p.hp / p.maxHp) + '%';
-        $('dg-hptxt').textContent = 'PS ' + p.hp + '/' + p.maxHp;
+        $('dg-hptxt').textContent = tl('hp', { hp: p.hp, max: p.maxHp });
         $('dg-fd').style.width = (100 * p.food / G.MAX_FOOD) + '%';
-        $('dg-fdtxt').textContent = p.food < 150 ? 'Fame!' : 'Fame';
-        const status = Object.keys(p.st).map((k) => ({ poison: 'veleno', haste: 'veloce', conf: 'confuso', invis: 'invisibile', regen: 'recupero', weak: 'debole', stun: 'bloccato', ping: 'ping' }[k] || k)).join(', ');
+        $('dg-fdtxt').textContent = tl(p.food < 150 ? 'food_low' : 'food');
+        const ST = { poison: 'st_poison', haste: 'st_haste', conf: 'st_conf', invis: 'st_invis', regen: 'st_regen', weak: 'st_weak', stun: 'st_stun', ping: 'st_ping' };
+        const status = Object.keys(p.st).map((k) => (ST[k] ? tl(ST[k]) : k)).join(', ');
         const info = $('dg-info');
         info.textContent = '';
         const add = (t, b) => { const e = document.createElement(b ? 'b' : 'span'); e.textContent = t; info.appendChild(e); };
-        add(s.hub ? 'Sala Server' : 'P' + s.depth + ' ' + sec.name, true); add('Lv ' + p.lvl + ' (' + p.xp + '/' + G.xpNeed(p.lvl) + ')'); add(p.gold + ' cr');
-        add('Atk ' + st.atk + ' Dif ' + st.def);
+        add(s.hub ? tl('hud_hub') : tl('hud_floor', { depth: s.depth, sector: tr(sec.name) }), true); add(tl('hud_lvl', { lvl: p.lvl, xp: p.xp, need: G.xpNeed(p.lvl) })); add(tl('hud_gold', { n: p.gold }));
+        add(tl('hud_atk', { atk: st.atk, def: st.def }));
         if (status) add(status);
         const sk = $('dg-skill'), a = G.CLASS[s.cls].active;
-        sk.textContent = p.cd > 0 ? a.name + ' (' + p.cd + ')' : a.name;
+        sk.textContent = p.cd > 0 ? tr(a.name) + ' (' + p.cd + ')' : tr(a.name);
         sk.classList.toggle('ready', p.cd <= 0);
         const lg = $('dg-log');
         lg.textContent = '';
-        for (const l of s.log.slice(-4)) { const d = document.createElement('div'); d.textContent = l.t; if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
+        for (const l of s.log.slice(-4)) { const d = document.createElement('div'); d.textContent = G.logText(l, lang()); if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
     }
     function render() { draw(); hud(); slots(); }
 
@@ -186,28 +198,28 @@
             b.textContent = '';
             b.classList.toggle('empty', !it);
             b.classList.toggle('aiming', !!aim && aim.slot === j);
-            if (!it) { b.setAttribute('aria-label', 'Slot rapido ' + (j + 1) + ': vuoto'); return; }
+            if (!it) { b.setAttribute('aria-label', tl('slot_empty', { n: j + 1 })); return; }
             const l = G.itemLook(s, it), n = s.p.inv.filter((o) => o.k === k).reduce((a, o) => a + (o.n || 1), 0), c = G.ITEM[k].cat === 'usb' ? it.ch : n;
             icon(b, l.shape, l.col, 28);
             if (c > 1 || G.ITEM[k].cat === 'usb') el('b', String(c), '', b);
-            b.setAttribute('aria-label', 'Slot rapido ' + (j + 1) + ': ' + G.itemName(s, it));
+            b.setAttribute('aria-label', tl('slot_item', { n: j + 1, item: G.itemName(s, it, lang()) }));
         });
     }
     function slotPicker(j) {
         endAim();
-        const body = openModal('Slot rapido ' + (j + 1), 'slot');
+        const body = openModal(tl('slot_title', { n: j + 1 }), 'slot', () => slotPicker(j));
         const put = (k) => { const o = opt.slots.indexOf(k); if (k && o >= 0 && o !== j) opt.slots[o] = opt.slots[j]; opt.slots[j] = k; saveOpt(); $('dg-modal').hidden = true; modalKind = ''; render(); };
-        btn('Vuoto', () => put(''), body, 'dg-choice');
+        btn(tl('slot_clear'), () => put(''), body, 'dg-choice');
         const seen = new Set();
         for (const it of s.p.inv) {
             if (seen.has(it.k)) continue;
             seen.add(it.k);
             const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it);
             icon(r, l.shape, l.col, 32);
-            const t2 = el('div', '', 't', r); el('span', G.itemName(s, it), '', t2); el('small', G.itemInfo(s, it), '', t2);
-            btn('Qui', () => put(it.k), r);
+            const t2 = el('div', '', 't', r); el('span', G.itemName(s, it, lang()), '', t2); el('small', G.itemInfo(s, it, lang()), '', t2);
+            btn(tl('slot_here'), () => put(it.k), r);
         }
-        if (!seen.size) el('p', 'Lo zaino è vuoto.', '', body);
+        if (!seen.size) el('p', tl('bag_empty_long'), '', body);
     }
     function useSlot(j) {
         if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
@@ -218,14 +230,14 @@
         if (!it || it.type === 'none') return slotPicker(j);
         if (it.type === 'use') return act({ t: 'use', i: it.i });
         aim = { k, slot: j }; $('dg-stage').classList.add('aiming');
-        note('Tocca la casella dove lanciare (portata ' + G.THROW_RANGE + ').', 'info');
+        note('aim_hint', { n: G.THROW_RANGE }, 'info');
     }
     function endAim() { if (!aim) return; aim = null; $('dg-stage').classList.remove('aiming'); if (s) render(); }
     function showCard(it, x, y) {
         const c = $('dg-card');
         c.textContent = '';
-        el('b', it.title, '', c);
-        for (const l of it.lines) el('div', l, '', c);
+        el('b', gt(it.title), '', c);
+        for (const l of it.lines) el('div', gt(l), '', c);
         const lower = cv._cam && (y - cv._cam.oy) * view.ts > cv.height / 2;
         c.style.top = lower ? '6px' : 'auto'; c.style.bottom = lower ? 'auto' : '6px';
         c.hidden = false;
@@ -234,142 +246,143 @@
 
     // ── modal sheets ──
     let modalKind = '';
-    function openModal(title, kind) { $('dg-mtitle').textContent = title; $('dg-mbody').textContent = ''; $('dg-modal').hidden = false; modalKind = kind || ''; return $('dg-mbody'); }
+    let modalRedo = null;      // rebuilds the open sheet (when the language changes)
+    function openModal(title, kind, redo) { $('dg-mtitle').textContent = title; $('dg-mbody').textContent = ''; $('dg-modal').hidden = false; modalKind = kind || ''; modalRedo = redo || null; return $('dg-mbody'); }
     function closeModal() { $('dg-modal').hidden = true; modalKind = ''; if (s && ((s.shop && s.shop.open) || (s.bench && s.bench.open))) act({ t: 'leave' }); }
     function el(tag, text, cls, host) { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; if (host) host.appendChild(e); return e; }
     function btn(label, fn, host, cls) { const b = el('button', label, cls, host); b.type = 'button'; b.addEventListener('click', fn); return b; }
 
     function bagModal() {
-        const body = openModal('Zaino', 'bag'), p = s.p;
+        const body = openModal(tl('bag'), 'bag', bagModal), p = s.p;
         const row = (it, sub, buttons) => {
             const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it);
             icon(r, l.shape, l.col, 32);
-            const t = el('div', '', 't', r); el('span', G.itemName(s, it), '', t); el('small', sub, '', t);
+            const tt = el('div', '', 't', r); el('span', G.itemName(s, it, lang()), '', tt); el('small', sub, '', tt);
             for (const [label, fn] of buttons) btn(label, fn, r);
         };
-        el('h2', 'Addosso', '', body);
+        el('h2', tl('bag_worn'), '', body);
         for (const slot of ['weapon', 'armor', 'plugin']) {
-            if (p[slot]) row(p[slot], G.itemInfo(s, p[slot]), [['Togli', () => { closeModal(); act({ t: 'unequip', slot }); }]]);
+            if (p[slot]) row(p[slot], G.itemInfo(s, p[slot], lang()), [[tl('b_remove'), () => { closeModal(); act({ t: 'unequip', slot }); }]]);
         }
-        if (!p.weapon && !p.armor && !p.plugin) el('p', 'Niente.', '', body);
-        el('h2', 'Nello zaino (' + p.inv.length + '/' + G.INV_CAP + ')', '', body);
-        if (!p.inv.length) el('p', 'Vuoto.', '', body);
+        if (!p.weapon && !p.armor && !p.plugin) el('p', tl('bag_nothing'), '', body);
+        el('h2', tl('bag_inv', { n: p.inv.length, max: G.INV_CAP }), '', body);
+        if (!p.inv.length) el('p', tl('bag_empty'), '', body);
         p.inv.forEach((it, i) => {
             const d = G.ITEM[it.k], eq = !!R.items.CATS[d.cat].slot;
-            const label = eq ? 'Equip.' : d.cat === 'food' ? 'Mangia' : d.cat === 'usb' ? 'Usa' : d.cat === 'drink' ? 'Bevi' : d.cat === 'throw' ? 'Lancia' : 'Leggi';
-            const go = () => { closeModal(); if (d.cat === 'throw') { aim = { k: it.k, slot: opt.slots.indexOf(it.k) }; $('dg-stage').classList.add('aiming'); note('Tocca la casella dove lanciare (portata ' + G.THROW_RANGE + ').', 'info'); } else act({ t: 'use', i }); };
-            row(it, G.itemInfo(s, it), [[label, go], ['Getta', () => { closeModal(); act({ t: 'drop', i }); }]]);
+            const label = tl(eq ? 'b_equip' : d.cat === 'food' ? 'b_eat' : d.cat === 'usb' ? 'b_use' : d.cat === 'drink' ? 'b_drink' : d.cat === 'throw' ? 'b_throw' : 'b_read');
+            const go = () => { closeModal(); if (d.cat === 'throw') { aim = { k: it.k, slot: opt.slots.indexOf(it.k) }; $('dg-stage').classList.add('aiming'); note('aim_hint', { n: G.THROW_RANGE }, 'info'); } else act({ t: 'use', i }); };
+            row(it, G.itemInfo(s, it, lang()), [[label, go], [tl('b_drop'), () => { closeModal(); act({ t: 'drop', i }); }]]);
         });
     }
     function levelModal() {
-        const body = openModal('Livello ' + s.p.lvl + ': scegli', 'level');
+        const body = openModal(tl('level_title', { lvl: s.p.lvl }), 'level', levelModal);
         $('dg-mclose').hidden = true;
         for (const id of s.p.choices) {
-            const k = G.SKILL[id], b = btn(k.name, () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; act({ t: 'skill', id }); }, body, 'dg-choice');
-            el('small', k.info, '', b);
+            const k = G.SKILL[id], b = btn(tr(k.name), () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; act({ t: 'skill', id }); }, body, 'dg-choice');
+            el('small', tr(k.info), '', b);
         }
     }
     function shopModal() {
-        const body = openModal('Negozio — ' + s.p.gold + ' crediti', 'shop');
-        if (!s.shop.stock.length) el('p', 'Hanno venduto tutto.', '', body);
+        const body = openModal(tl('shop_title', { gold: s.p.gold }), 'shop', shopModal);
+        if (!s.shop.stock.length) el('p', tl('shop_empty'), '', body);
         s.shop.stock.forEach((it, i) => {
             const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it);
             icon(r, l.shape, l.col, 32);
-            const t = el('div', '', 't', r); el('span', G.itemName(s, it), '', t); el('small', G.itemInfo(s, it), '', t);
-            const b = btn(G.price(s, it) + ' cr', () => { act({ t: 'buy', i }); }, r); b.disabled = s.p.gold < G.price(s, it);
+            const tt = el('div', '', 't', r); el('span', G.itemName(s, it, lang()), '', tt); el('small', G.itemInfo(s, it, lang()), '', tt);
+            const b = btn(tl('price', { n: G.price(s, it) }), () => { act({ t: 'buy', i }); }, r); b.disabled = s.p.gold < G.price(s, it);
         });
     }
     function benchModal() {
-        const body = openModal('Panchina', 'bench');
-        btn('Riposa: cura tutto e ricarica l’abilità', () => { act({ t: 'rest' }); }, body, 'dg-choice');
-        el('h2', 'Ricicla (metà del prezzo in crediti)', '', body);
-        if (!s.p.inv.length) el('p', 'Lo zaino è vuoto.', '', body);
+        const body = openModal(tl('bench_title'), 'bench', benchModal);
+        btn(tl('bench_rest'), () => { act({ t: 'rest' }); }, body, 'dg-choice');
+        el('h2', tl('bench_recycle'), '', body);
+        if (!s.p.inv.length) el('p', tl('bag_empty_long'), '', body);
         s.p.inv.forEach((it, i) => {
             const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it);
             icon(r, l.shape, l.col, 32);
-            const t = el('div', '', 't', r); el('span', G.itemName(s, it), '', t); el('small', 'Ne ricavi ' + Math.max(1, Math.round(G.ITEM[it.k].price / 2)) + ' cr', '', t);
-            btn('Ricicla', () => act({ t: 'recycle', i }), r);
+            const tt = el('div', '', 't', r); el('span', G.itemName(s, it, lang()), '', tt); el('small', tl('bench_gain', { n: Math.max(1, Math.round(G.ITEM[it.k].price / 2)) }), '', tt);
+            btn(tl('bench_do'), () => act({ t: 'recycle', i }), r);
         });
     }
     function logModal() {
-        const body = openModal('Registro', 'log'), box = el('div', '', 'dg-logfull', body);
-        for (const l of s.log) el('div', l.t, l.c ? 'c-' + l.c : '', box);
+        const body = openModal(tl('log_title'), 'log', logModal), box = el('div', '', 'dg-logfull', body);
+        for (const l of s.log) el('div', G.logText(l, lang()), l.c ? 'c-' + l.c : '', box);
     }
     function endModal() {
         meta = G.recordRun(meta, s, new Date().toISOString().slice(0, 10)); saveMeta(); store.del(RUN_KEY);
-        const won = s.status === 'won', body = openModal(won ? 'Hai vinto!' : 'Partita finita', 'end');
+        const won = s.status === 'won', body = openModal(tl(won ? 'end_won' : 'end_lost'), 'end', endModal);
         $('dg-mclose').hidden = true;
-        el('p', won ? 'Il server è tuo.' : 'Sconfitto da ' + s.cause + ' al piano ' + s.depth + '.');
-        el('p', 'Livello ' + s.p.lvl + ', ' + s.kills + ' nemici, ' + s.turn + ' turni, ' + s.earned + ' crediti trovati.');
+        el('p', won ? tl('end_won_line') : tl('end_lost_line', { cause: gt(s.cause), depth: s.depth }));
+        el('p', tl('end_stats', { lvl: s.p.lvl, kills: s.kills, turns: s.turn, earned: s.earned }));
         const last = meta.history[0];
-        if (last) el('p', 'Crediti guadagnati per il futuro: +' + last.crediti, 'c-info');
-        for (const id of s.medals || []) el('p', 'Nuova medaglia: ' + G.MEDALS.find((d) => d.id === id).name, 'c-good');
-        btn('Torna al menu', () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; s = null; showTitle(); }, body, 'dg-big');
+        if (last) el('p', tl('end_gain', { n: last.crediti }), 'c-info');
+        for (const id of s.medals || []) el('p', tl('end_medal', { medal: tr(G.MEDALS.find((d) => d.id === id).name) }), 'c-good');
+        btn(tl('end_back'), () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; s = null; showTitle(); }, body, 'dg-big');
     }
     // ── the archive: upgrade tree, medals, bestiary, history ──
     function archiveModal(tab) {
         tab = tab || 'tree';
-        const body = openModal('Archivio — ' + meta.crediti + ' crediti', 'archive'), bar = el('div', '', 'dg-row', body);
-        for (const [id, label] of [['tree', 'Albero'], ['medals', 'Medaglie'], ['dex', 'Bestiario'], ['hist', 'Storia']]) {
+        const body = openModal(tl('arch_title', { n: meta.crediti }), 'archive', () => archiveModal(tab)), bar = el('div', '', 'dg-row', body);
+        for (const [id, label] of [['tree', tl('arch_tree')], ['medals', tl('arch_medals')], ['dex', tl('arch_dex')], ['hist', tl('arch_hist')]]) {
             const b = btn(label, () => archiveModal(id), bar); b.setAttribute('aria-pressed', String(id === tab));
         }
         if (tab === 'tree') {
-            el('p', 'Ogni potenziamento vale per tutte le partite future.', '', body);
+            el('p', tl('arch_tree_info'), '', body);
             for (const u of G.UPGRADES) {
                 const lv = G.level(meta, u.id), r = el('div', '', 'dg-item', body), t = el('div', '', 't', r);
-                el('span', u.name + '  ' + lv + '/' + u.max, '', t); el('small', u.info, '', t);
+                el('span', tr(u.name) + '  ' + lv + '/' + u.max, '', t); el('small', tr(u.info), '', t);
                 const full = lv >= u.max, cost = full ? 0 : G.upCost(meta, u.id);
-                const b = btn(full ? 'Max' : cost + ' cr', () => { if (G.buyUpgrade(meta, u.id)) { saveMeta(); blip(660, 60); archiveModal('tree'); } }, r);
+                const b = btn(full ? tl('arch_max') : tl('price', { n: cost }), () => { if (G.buyUpgrade(meta, u.id)) { saveMeta(); blip(660, 60); archiveModal('tree'); } }, r);
                 b.disabled = full || meta.crediti < cost;
             }
         } else if (tab === 'medals') {
             const got = new Set(meta.medals);
-            el('p', got.size + ' di ' + G.MEDALS.length + ' medaglie.', '', body);
-            for (const d of G.MEDALS) { const r = el('div', '', 'dg-item', body), t = el('div', '', 't', r); el('span', (got.has(d.id) ? '[x] ' : '[ ] ') + d.name, got.has(d.id) ? 'c-good' : '', t); el('small', d.info, '', t); }
+            el('p', tl('arch_medals_n', { got: got.size, all: G.MEDALS.length }), '', body);
+            for (const d of G.MEDALS) { const r = el('div', '', 'dg-item', body), t = el('div', '', 't', r); el('span', (got.has(d.id) ? '[x] ' : '[ ] ') + tr(d.name), got.has(d.id) ? 'c-good' : '', t); el('small', tr(d.info), '', t); }
         } else if (tab === 'dex') {
             const all = R.mobs.LIST, met = all.filter((d) => meta.codex[d.id]).length;
-            el('p', 'Nemici incontrati: ' + met + ' di ' + all.length + '.', '', body);
+            el('p', tl('arch_dex_n', { met, all: all.length }), '', body);
             for (const d of all) {
                 const e = meta.codex[d.id], r = el('div', '', 'dg-item', body), t = el('div', '', 't', r);
                 icon(r, d.shape, e ? d.col : '#2a3a30', 32); r.appendChild(t);
-                el('span', e ? d.name : '???', '', t);
-                el('small', e ? d.info + ' (visto ' + e.seen + ', eliminato ' + e.kills + ')' : 'Non l’hai ancora incontrato.', '', t);
+                el('span', e ? tr(d.name) : '???', '', t);
+                el('small', e ? tl('arch_dex_seen', { info: tr(d.info), seen: e.seen, kills: e.kills }) : tl('arch_dex_new'), '', t);
             }
         } else {
-            if (!meta.history.length) el('p', 'Nessuna partita finita.', '', body);
+            if (!meta.history.length) el('p', tl('arch_hist_none'), '', body);
             for (const h of meta.history) {
                 const r = el('div', '', 'dg-item', body), t = el('div', '', 't', r);
-                el('span', (h.won ? 'VITTORIA ' : '') + (G.CLASS[h.cls] ? G.CLASS[h.cls].name : h.cls) + ' — piano ' + h.depth + ', liv ' + h.lvl, h.won ? 'c-good' : '', t);
-                el('small', (h.date || '') + (h.daily ? ' sfida del giorno' : '') + (h.tier ? ' accesso ' + h.tier : '') + ' · ' + h.kills + ' nemici, ' + h.turns + ' turni' + (h.won ? '' : ' · ' + h.cause) + ' · +' + h.crediti + ' cr', '', t);
+                el('span', tl('hist_title', { win: h.won ? tl('hist_win') : '', cls: G.CLASS[h.cls] ? tr(G.CLASS[h.cls].name) : h.cls, depth: h.depth, lvl: h.lvl }), h.won ? 'c-good' : '', t);
+                const extra = (h.date || '') + (h.daily ? tl('hist_daily') : '') + (h.tier ? tl('hist_tier', { n: h.tier }) : '');
+                el('small', tl('hist_line', { extra, kills: h.kills, turns: h.turns, cause: h.won ? '' : ' · ' + gt(h.cause), gain: h.crediti }), '', t);
             }
         }
     }
 
     function menuModal() {
-        const body = openModal('Menu', 'menu');
-        btn('Come si gioca', helpModal, body, 'dg-choice');
-        const snd = btn('Suono: ' + (opt.sound ? 'sì' : 'no'), () => { opt.sound = !opt.sound; saveOpt(); snd.textContent = 'Suono: ' + (opt.sound ? 'sì' : 'no'); blip(660, 80); }, body, 'dg-choice');
-        const sc = btn('Linee CRT: ' + (opt.scan ? 'sì' : 'no'), () => { opt.scan = !opt.scan; saveOpt(); applyOpt(); sc.textContent = 'Linee CRT: ' + (opt.scan ? 'sì' : 'no'); }, body, 'dg-choice');
+        const body = openModal(tl('menu'), 'menu', menuModal);
+        const lg = el('div', '', 'dg-row dg-lang', body);
+        el('span', tl('menu_lang'), '', lg);
+        for (const l of ['en', 'it']) {
+            const b = btn(l.toUpperCase(), () => { if (self.VBLang) self.VBLang.set(l); }, lg);
+            b.lang = l; b.setAttribute('aria-pressed', String(l === lang())); b.setAttribute('aria-label', l === 'it' ? 'Italiano' : 'English');
+        }
+        btn(tl('help'), helpModal, body, 'dg-choice');
+        const onoff = (v) => tl(v ? 'on' : 'off');
+        const snd = btn(tl('menu_sound', { v: onoff(opt.sound) }), () => { opt.sound = !opt.sound; saveOpt(); snd.textContent = tl('menu_sound', { v: onoff(opt.sound) }); blip(660, 80); }, body, 'dg-choice');
+        const sc = btn(tl('menu_crt', { v: onoff(opt.scan) }), () => { opt.scan = !opt.scan; saveOpt(); applyOpt(); sc.textContent = tl('menu_crt', { v: onoff(opt.scan) }); }, body, 'dg-choice');
         const ct = btn('', () => { opt.controls = touchMode() ? 'dpad' : 'touch'; saveOpt(); ct.textContent = ctl(); endAim(); applyOpt(); if (s) render(); }, body, 'dg-choice');
-        const ctl = () => 'Comandi: ' + (touchMode() ? 'Tocco (come Pixel Dungeon)' : 'Croce direzionale');
+        const ctl = () => tl(touchMode() ? 'menu_controls_touch' : 'menu_controls_dpad');
         ct.textContent = ctl();
-        if (s) btn('Registro completo', logModal, body, 'dg-choice');
-        if (s) btn('Abbandona la partita', () => {
-            if (!confirm('Abbandonare la partita? Si perde tutto.')) return;
-            s.status = 'dead'; s.cause = 'la resa'; closeModal(); endModal();
+        if (s) btn(tl('menu_log'), logModal, body, 'dg-choice');
+        if (s) btn(tl('menu_quit'), () => {
+            if (!confirm(tl('menu_quit_ask'))) return;
+            s.status = 'dead'; s.cause = { k: 'cause_quit' }; closeModal(); endModal();
         }, body, 'dg-choice');
     }
     function helpModal() {
-        const body = openModal('Come si gioca', 'help');
-        for (const t of [
-            'Tocco: tocca una casella per camminarci (ti fermi se compare un nemico), un nemico per attaccarlo, un oggetto per raccoglierlo, le scale per scendere. Tocca te stesso per aspettare un turno, doppio tocco per cercare porte segrete e trappole. Tieni premuto su qualcosa per leggerne la scheda senza agire. Trascina per spostare la vista, pizzica o usa + e − per lo zoom.',
-            'Barra in basso: Aspetta, Cerca, Zaino e 4 slot rapidi: tocca per usare un oggetto (i dardi si lanciano: poi tocca la casella). Tieni premuto uno slot per scegliere cosa ci sta. Nelle opzioni puoi tornare alla croce direzionale.',
-            'Camminare su un nemico lo attacca. Ogni passo è un turno: il gioco salva da solo e riprendi da dove eri anche dopo aver chiuso la scheda.',
-            'Raccogli oggetti camminandoci sopra. Lattine, script e chiavette sono sconosciuti finché non li provi: usa il Zaino.',
-            'Esplora cammina verso la prossima cosa da scoprire. Scale scende se sei sulle scale (o ci cammina).',
-            'Ogni 5 piani c’è un boss: le scale restano bloccate finché non lo batti.',
-            'Tastiera: frecce o WASD, spazio aspetta, C cerca, 1-4 slot rapidi, I zaino, E esplora, F abilità, > scale, B nascondi lo schermo.',
-        ]) el('p', t, '', body);
+        const body = openModal(tl('help'), 'help', helpModal);
+        for (const k of ['help_1', 'help_2', 'help_3', 'help_4', 'help_5', 'help_6', 'help_7']) el('p', tl(k), '', body);
     }
 
     // ── playing ──
@@ -391,7 +404,7 @@
         afterTurn();
         return took;
     }
-    function note(text, c) { s.log.push({ t: text, c }); persist(); render(); }
+    function note(key, vars, c) { G.log(s, key, vars, c); persist(); render(); }
     function stopTravel() { if (travel) { clearTimeout(travel.timer); const had = !!travel.target; travel = null; if (had && s) draw(); } }
     /** Walks by itself: `next()` gives the next step (null = arrived or no way). Stops when a new enemy shows up, something bad happens or there is no way.
      *  o.target() = the cell to highlight; o.fin() runs when `next()` says there is nothing more to do; o.fight = an enemy is already the goal, so it does not stop the walk. */
@@ -426,25 +439,25 @@
         const m0 = mob();
         if (!m0) return;
         if (adj(m0)) return hit();
-        if (!G.travelNext(s, m0.x, m0.y)) return note('Non riesci a raggiungerlo.', 'info');
+        if (!G.travelNext(s, m0.x, m0.y)) return note('cant_reach', null, 'info');
         startTravel(() => { const m = mob(); return !m || adj(m) ? null : G.travelNext(s, m.x, m.y); }, 60, { fight: true, target: () => { const m = mob(); return m ? [m.x, m.y] : null; }, fin: hit });
     }
     let travelTurn = 0;
     function explore() {
-        if (G.threats(s).length) { return note('Ci sono nemici in vista.', 'bad'); }
+        if (G.threats(s).length) { return note('enemies_near', null, 'bad'); }
         startTravel(() => G.exploreNext(s), 200);
-        if (!travel && s.turn === travelTurn) { return note('Non c’è altro da scoprire qui: cerca le scale.', 'info'); }
+        if (!travel && s.turn === travelTurn) { return note('nothing_left', null, 'info'); }
     }
     function stairs() {
         const here = s.map.tiles[idx(s.p.x, s.p.y)] === T.STAIRS;
         if (here) return act({ t: 'descend' });
         const st = s.map.stairs;
-        if (!s.seen[idx(st.x, st.y)]) { return note('Non hai ancora trovato le scale.', 'info'); }
+        if (!s.seen[idx(st.x, st.y)]) { return note('stairs_unseen', null, 'info'); }
         startTravel(() => (s.p.x === st.x && s.p.y === st.y) ? null : G.travelNext(s, st.x, st.y), 120);
     }
-    function useFirst(test, msg) {
+    function useFirst(test, key) {
         const i = s.p.inv.findIndex(test);
-        if (i < 0) return note(msg, 'info');
+        if (i < 0) return note(key, null, 'info');
         act({ t: 'use', i });
     }
     function command(name) {
@@ -458,8 +471,8 @@
         else if (name === 'skill') act({ t: 'active' });
         else if (name === 'explore') explore();
         else if (name === 'stairs') stairs();
-        else if (name === 'eat') useFirst((it) => G.ITEM[it.k].cat === 'food', 'Non hai niente da mangiare.');
-        else if (name === 'heal') useFirst((it) => G.ITEM[it.k].cat === 'drink' && G.known(s, it) && G.ITEM[it.k].effect === 'heal', 'Non hai lattine curative che conosci.');
+        else if (name === 'eat') useFirst((it) => G.ITEM[it.k].cat === 'food', 'nothing_to_eat');
+        else if (name === 'heal') useFirst((it) => G.ITEM[it.k].cat === 'drink' && G.known(s, it) && G.ITEM[it.k].effect === 'heal', 'no_heal_can');
     }
     function step(dx, dy) { if (s && s.status === 'play' && $('dg-modal').hidden) { stopTravel(); endAim(); act({ t: 'move', dx, dy }); } }
 
@@ -595,10 +608,8 @@
     const fsActive = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
     const standalone = () => (self.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone === true;
     function fullscreenHelp() {
-        const body = openModal('Schermo intero', 'fullscreen');
-        el('p', 'Questo browser non permette lo schermo intero a una pagina web (succede su iPhone e iPad).', '', body);
-        el('p', 'Per giocare senza barre: apri il menu Condividi di Safari, scegli «Aggiungi alla schermata Home» e avvia il gioco da quell\'icona. Si apre a tutto schermo, e il salvataggio resta lo stesso.', '', body);
-        el('p', 'Su Android, in Chrome: menu ⋮ → «Aggiungi a schermata Home» oppure «Installa app».', '', body);
+        const body = openModal(tl('fullscreen'), 'fullscreen', fullscreenHelp);
+        for (const k of ['fs_1', 'fs_2', 'fs_3']) el('p', tl(k), '', body);
     }
     function toggleFullscreen() {
         if (!fsRequest) return fullscreenHelp();
@@ -610,7 +621,7 @@
     const fsButton = $('dg-full');
     fsButton.hidden = standalone();                            // already running full screen from the home screen: nothing to ask
     fsButton.addEventListener('click', toggleFullscreen);
-    const onFs = () => { document.body.classList.toggle('fs', fsActive()); fsButton.textContent = fsActive() ? '✕' : '⛶'; fsButton.setAttribute('aria-label', fsActive() ? 'Esci dallo schermo intero' : 'Schermo intero'); relayout(); };
+    const onFs = () => { document.body.classList.toggle('fs', fsActive()); fsButton.textContent = fsActive() ? '✕' : '⛶'; fsButton.setAttribute('aria-label', tl(fsActive() ? 'fullscreen_exit' : 'fullscreen')); relayout(); };
     document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
 
     // ── title screen ──
@@ -621,28 +632,29 @@
     }
     function showTitle() {
         $('dg-game').hidden = true; $('dg-title').hidden = false; document.body.classList.remove('ingame');
-        $('dg-stats').textContent = meta.runs ? `Partite ${meta.runs} · Piano record ${meta.best} · Vittorie ${meta.wins} · Boss ${meta.bosses} · Crediti ${meta.crediti}` : 'Prima partita: buona discesa.';
+        $('dg-stats').textContent = meta.runs ? tl('stats', { runs: meta.runs, best: meta.best, wins: meta.wins, bosses: meta.bosses, credits: meta.crediti }) : tl('stats_first');
         const box = $('dg-classes');
         box.textContent = '';
         for (const c of R.classes.CLASSES) {
             const open = G.unlocked(meta, c), b = el('button', '', open ? '' : 'locked', box);
             b.type = 'button'; b.setAttribute('aria-pressed', 'false');
-            icon(b, 'hero', c.col); el('span', c.name, '', b);
+            icon(b, 'hero', c.col); el('span', tr(c.name), '', b);
             b.addEventListener('click', () => pick(c, b));
         }
-        pick(R.classes.CLASSES[0], box.firstChild);
+        const at = Math.max(0, R.classes.CLASSES.indexOf(selected));
+        pick(R.classes.CLASSES[at], box.children[at]);
         tier = Math.min(tier, meta.ng); tierLabel();
         const db = meta.dailyBest[today()];
-        $('dg-daily').textContent = 'Sfida del giorno' + (db ? ' (record ' + db + ')' : '');
+        $('dg-daily').textContent = db ? tl('daily_best', { n: db }) : tl('daily');
     }
     function pick(c, b) {
         selected = c;
         for (const x of $('dg-classes').children) x.setAttribute('aria-pressed', String(x === b));
         const box = $('dg-classinfo'), open = G.unlocked(meta, c);
         box.textContent = '';
-        el('b', c.name + (open ? '' : ' (bloccato)'), '', box);
-        el('div', c.info, '', box);
-        if (open) el('div', 'Abilità: ' + c.active.name + ' — ' + c.active.info, 'c-info', box);
+        el('b', tr(c.name) + (open ? '' : tl('locked')), '', box);
+        el('div', tr(c.info), '', box);
+        if (open) el('div', tl('skill_line', { name: tr(c.active.name), info: tr(c.active.info) }), 'c-info', box);
         $('dg-start').disabled = !open;
     }
     let tier = 0;
@@ -660,13 +672,20 @@
     $('dg-daily').addEventListener('click', () => { const d = today(); startRun(R.rng.hash('daily-' + d), d); });
     $('dg-archive').addEventListener('click', () => archiveModal());
     $('dg-tier').addEventListener('click', () => { tier = (tier + 1) % (meta.ng + 1); tierLabel(); });
-    function tierLabel() { $('dg-tier').textContent = 'Livello di accesso: ' + tier; $('dg-tier').hidden = meta.ng < 1; }
+    function tierLabel() { $('dg-tier').textContent = tl('tier', { n: tier }); $('dg-tier').hidden = meta.ng < 1; }
     $('dg-help').addEventListener('click', helpModal);
 
     // ── boot: resume a saved run exactly where it was ──
     const saved = store.get(RUN_KEY), resumed = saved && G.load(saved);
     if (resumed && resumed.status === 'play') { s = resumed; G.updateFov(s); enterGame(); } else showTitle();
     if (!s) layout();
+
+    // language switched (EN | IT in the menu, or the server's answer arriving late): everything on screen is written again
+    addEventListener('vb-lang', () => {
+        hideCard(); onFs();
+        if (!$('dg-modal').hidden && modalRedo) modalRedo();
+        if (!$('dg-title').hidden) showTitle(); else if (s) render();
+    });
 
     // handles for the tests and for debugging in the console
     self.RogueUI = { state: () => s, act, command, render, tileAt, view: () => view };

@@ -161,3 +161,6 @@ body.fs .dg-top { padding-top: 0; }
     .dg-toolbar { grid-template-columns: repeat(4, 1fr); }
     #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(3, 1fr); }
 }
+.dg-lang { align-items: center; margin: 0 0 8px; }
+.dg-lang span { flex: 0 0 auto; margin-right: 4px; }
+.dg-lang button { flex: 0 0 auto; min-width: 56px; }
