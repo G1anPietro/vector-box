@@ -15,7 +15,7 @@
 
     function status(msg, kind = '') { if (msg) C.toast(msg, kind); }
     const fileUrl = (id) => `../api/appunti.php?action=file&id=${id}`;
-    const shortDay = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const shortDay = new Intl.DateTimeFormat(VBLang.t('locale'), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
     // On a phone one level is shown at a time: each deeper level is a history entry, so the phone's back
     // button (and "‹ Indietro") goes up one folder instead of leaving the page
@@ -69,7 +69,7 @@
     }
 
     function renderCrumbs() {
-        const parts = [el('button', { type: 'button', class: 'crumb', text: 'Materie', onclick: () => { sel.subject = null; sel.folder = null; sel.entry = null; renderAll(); setLevel(0); } })];
+        const parts = [el('button', { type: 'button', class: 'crumb', text: VBLang.t('subjects'), onclick: () => { sel.subject = null; sel.folder = null; sel.entry = null; renderAll(); setLevel(0); } })];
         const subject = tree.find((s) => s.id === sel.subject);
         if (subject) parts.push(' › ', el('button', { type: 'button', class: 'crumb', text: subject.name, onclick: () => { sel.folder = null; sel.entry = null; renderAll(); setLevel(1); } }));
         if (sel.folder) parts.push(' › ', el('button', { type: 'button', class: 'crumb', text: folderTitle(sel.folder),
@@ -79,7 +79,7 @@
     }
 
     function folderTitle(folder) {
-        if (folder.startsWith('topic:')) { const t = ((tree.find((s) => s.id === sel.subject) || {}).topics || []).find((x) => x.id === Number(folder.slice(6))); return t ? t.name : 'Argomento'; }
+        if (folder.startsWith('topic:')) { const t = ((tree.find((s) => s.id === sel.subject) || {}).topics || []).find((x) => x.id === Number(folder.slice(6))); return t ? t.name : VBLang.t('topic'); }
         if (folder.startsWith('cat:')) { const c = catOf(folder.slice(4)); return c ? c[2] : folder; }
         return shortDay.format(C.parseDate(folder));
     }
@@ -94,26 +94,26 @@
 
     function renderSubjects() {
         const col = $('#col-subjects');
-        if (!tree.length) { col.replaceChildren(el('p', { class: 'empty', text: 'Ancora nessuna materia: il rappresentante deve inserire l\'orario.' })); return; }
-        col.replaceChildren(el('h3', { class: 'col-h', text: 'Materie' }), ...tree.map((s) => row({
+        if (!tree.length) { col.replaceChildren(el('p', { class: 'empty', text: VBLang.t('no_subjects_yet_the_class_representative') })); return; }
+        col.replaceChildren(el('h3', { class: 'col-h', text: VBLang.t('subjects') }), ...tree.map((s) => row({
             icon: '📁', label: s.name, active: s.id === sel.subject,
-            meta: s.days.length ? `${s.days.length} ${s.days.length === 1 ? 'giorno' : 'giorni'}` : 'vuota',
+            meta: s.days.length ? plural(s.days.length, VBLang.t('day'), VBLang.t('days')) : VBLang.t('empty_f'),
             onclick: () => { sel.subject = s.id; sel.folder = null; sel.entry = null; renderAll(); setLevel(1); },
         })));
     }
 
     // Folders by type inside a subject: [key, icon, label, count from the tree]
     const CATS = [
-        ['appunti', '📝', 'Appunti', (c) => c.appunti || 0],
-        ['foto', '🖼', 'Foto', (c) => c.foto || 0],
-        ['audio', '🎧', 'Audio', (c) => c.audio || 0],
-        ['domande', '❓', 'Domande', (c) => (c.domande || 0) + (c.domande_ai || 0)],
-        ['slide', '📊', 'Slide e materiale del prof', (c) => c.slide || 0],
-        ['libro', '📖', 'Libro', (c) => c.libro || 0],
-        ['prova', '📋', 'Verifiche di prova', (c) => c.prova || 0],
-        ['ai', '🤖', 'Appunti fatti dall\'AI', (c) => c.ai || 0],
-        ['schemi', '🧠', 'Schemi', (c) => c.schemi || 0],
-        ['tests', '📘', 'Verifiche (documenti di studio)', (c) => c.verifiche || 0],
+        ['appunti', '📝', VBLang.t('notes'), (c) => c.appunti || 0],
+        ['foto', '🖼', VBLang.t('photos'), (c) => c.foto || 0],
+        ['audio', '🎧', VBLang.t('audio'), (c) => c.audio || 0],
+        ['domande', '❓', VBLang.t('questions_2'), (c) => (c.domande || 0) + (c.domande_ai || 0)],
+        ['slide', '📊', VBLang.t('teacher_s_slides_and_material'), (c) => c.slide || 0],
+        ['libro', '📖', VBLang.t('book'), (c) => c.libro || 0],
+        ['prova', '📋', VBLang.t('practice_tests'), (c) => c.prova || 0],
+        ['ai', '🤖', VBLang.t('notes_made_by_the_ai'), (c) => c.ai || 0],
+        ['schemi', '🧠', VBLang.t('diagrams'), (c) => c.schemi || 0],
+        ['tests', '📘', VBLang.t('tests_study_documents'), (c) => c.verifiche || 0],
     ];
     const catOf = (key) => CATS.find((c) => c[0] === key);
 
@@ -126,29 +126,29 @@
             icon, label, meta: String(n(cats)), active: sel.folder === 'cat:' + key, onclick: () => openFolder('cat:' + key) }));
         const byDay = subject.days.map((d) => {
             const bits = [];
-            if (d.files) bits.push(`${d.files} file`);
-            if (d.items > d.files) bits.push('testi');
-            if (d.docs) bits.push('riassunto AI');
+            if (d.files) bits.push(VBLang.t('n_files', { n: d.files }));
+            if (d.items > d.files) bits.push(VBLang.t('texts'));
+            if (d.docs) bits.push(VBLang.t('ai_summary'));
             return row({ icon: '🗂', label: shortDay.format(C.parseDate(d.date)), meta: bits.join(' · '), active: sel.folder === d.date,
                 onclick: () => openFolder(d.date) });
         });
         // by topic: the topics of the subject that hold uploads or documents
         const byTopic = (subject.topics || []).map((t) => {
             const nDocs = docs.filter((d) => d.topic_id === t.id).length;
-            return (t.items || nDocs) ? row({ icon: '🧭', label: t.name, meta: `${t.items} ${t.items === 1 ? 'materiale' : 'materiali'}${nDocs ? ` · ${nDocs} dell'AI` : ''}`,
+            return (t.items || nDocs) ? row({ icon: '🧭', label: t.name, meta: plural(t.items, VBLang.t('item'), VBLang.t('items')) + (nDocs ? VBLang.t('n_by_the_ai', { n: nDocs }) : ''),
                 active: sel.folder === 'topic:' + t.id, onclick: () => openFolder('topic:' + t.id) }) : null;
         }).filter(Boolean);
         col.replaceChildren(el('h3', { class: 'col-h', text: subject.name }),
-            ...(byTopic.length ? [el('p', { class: 'agroup', text: 'Per argomento' }), ...byTopic] : []),
-            ...(byType.length ? [el('p', { class: 'agroup', text: 'Per tipo' }), ...byType] : []),
-            ...(byDay.length ? [el('p', { class: 'agroup', text: 'Per giorno' }), ...byDay] : []),
-            ...(!byType.length && !byDay.length ? [el('p', { class: 'empty', text: 'Ancora niente per questa materia.' })] : []));
+            ...(byTopic.length ? [el('p', { class: 'agroup', text: VBLang.t('by_topic') }), ...byTopic] : []),
+            ...(byType.length ? [el('p', { class: 'agroup', text: VBLang.t('by_type') }), ...byType] : []),
+            ...(byDay.length ? [el('p', { class: 'agroup', text: VBLang.t('by_day') }), ...byDay] : []),
+            ...(!byType.length && !byDay.length ? [el('p', { class: 'empty', text: VBLang.t('nothing_for_this_subject_yet') })] : []));
     }
 
     const fileIcon = (f) => f.mime.startsWith('image/') ? '🖼' : f.mime.startsWith('audio/') ? '🎧' : f.mime === 'application/pdf' ? '📕'
         : f.mime === 'text/html' ? '🌐' : /word|opendocument\.text/.test(f.mime) ? '📄' : /presentation/.test(f.mime) ? '📊' : '📃';
     const docEntry = (d, label) => ({ type: 'doc', id: d.id, kind: d.kind, can_delete: d.can_delete, rawTitle: d.title, manualAi: !d.manual, icon: d.kind === 'schema' ? '🧠' : d.kind === 'quiz' || d.kind === 'domande' ? '❓' : d.event_id ? '📘' : '📝',
-        label: label + (d.manual ? ` · di ${d.author || '?'}` : ''), meta: d.status === 'ok' ? (d.lesson_date ? shortDay.format(C.parseDate(d.lesson_date)) : '') : 'non riuscito',
+        label: label + (d.manual ? VBLang.t('by', { name: d.author || '?' }) : ''), meta: d.status === 'ok' ? (d.lesson_date ? shortDay.format(C.parseDate(d.lesson_date)) : '') : VBLang.t('failed'),
         disabled: d.status !== 'ok' });
     /** Entries of one item: its text and its files (optionally only some files). */
     function itemEntries(it, withDate, fileFilter = () => true, withText = true) {
@@ -156,7 +156,7 @@
         const who = it.author || '?';
         const kind = C.KINDS[it.kind] || it.kind;
         const when = withDate ? ' · ' + shortDay.format(C.parseDate(it.lesson_date)) : '';
-        if (withText && it.body) out.push({ type: 'text', item: it, icon: '✍️', label: it.title || `${kind} scritti`, meta: `${who} · ${kind}${when}` });
+        if (withText && it.body) out.push({ type: 'text', item: it, icon: '✍️', label: it.title || VBLang.t('written', { kind }), meta: `${who} · ${kind}${when}` });
         for (const f of it.files.filter(fileFilter)) out.push({ type: 'file', file: f, item: it, icon: fileIcon(f), label: f.name, meta: `${who}${when} · ${C.sizeText(f.size)}` });
         return out;
     }
@@ -179,7 +179,7 @@
         renderPreview(null);
         setLevel(2);
         const col = $('#col-files');
-        col.replaceChildren(el('p', { class: 'empty', text: 'Carico…' }));
+        col.replaceChildren(el('p', { class: 'empty', text: VBLang.t('loading') }));
         entries = [];
         try {
             const cat = folder.startsWith('cat:') ? folder.slice(4) : null;
@@ -187,11 +187,11 @@
             if (folder.startsWith('topic:')) {
                 const tid = Number(folder.slice(6));
                 const mine = subjDocs.filter((d) => d.topic_id === tid && !d.event_id);
-                const kinds = [['lezione', 'Appunti della lezione'], ['schema', 'Schema della lezione'], ['domande', 'Domande della lezione']];
+                const kinds = [['lezione', VBLang.t('lesson_notes')], ['schema', VBLang.t('lesson_diagram')], ['domande', VBLang.t('lesson_questions')]];
                 for (const [k, label] of kinds) for (const d of mine.filter((x) => x.kind === k)) entries.push(docEntry(d, `${label}${d.lesson_date ? ' · ' + shortDay.format(C.parseDate(d.lesson_date)) : ''}`));
                 const q = new URLSearchParams({ action: 'items', class_id: classId, subject_id: sel.subject, topic_id: tid });
                 const { items } = await getJson('../api/appunti.php?' + q);
-                if (entries.length && items.length) entries.push({ group: 'Materiale caricato' });
+                if (entries.length && items.length) entries.push({ group: VBLang.t('uploaded_material') });
                 for (const it of items) entries.push(...itemEntries(it, true));
             } else if (cat === 'tests') {
                 const byEvent = new Map();
@@ -201,20 +201,20 @@
                 }
                 for (const [eid, list] of byEvent) {
                     const ev = events.find((e) => e.id === eid);
-                    entries.push({ group: ev ? `${ev.kind === 'interrogazione' ? 'Interrogazione' : 'Verifica'} del ${C.parseDate(ev.date).toLocaleDateString('it-IT')}${ev.title ? ' · ' + ev.title : ''}`
-                        : (list[0].title || 'Verifica') });
+                    entries.push({ group: ev ? VBLang.t('kind_on_date', { kind: ev.kind === 'interrogazione' ? VBLang.t('oral_exam') : VBLang.t('written_test'), date: C.parseDate(ev.date).toLocaleDateString(VBLang.t('locale')) }) + (ev.title ? ' · ' + ev.title : '')
+                        : (list[0].title || VBLang.t('written_test')) });
                     for (const d of list) entries.push(docEntry(d, C.DOC_KINDS[d.kind] || d.kind));
                 }
             } else if (cat === 'ai') {
-                for (const d of subjDocs.filter((x) => x.kind === 'lezione')) entries.push(docEntry(d, 'Appunti della lezione'));
+                for (const d of subjDocs.filter((x) => x.kind === 'lezione')) entries.push(docEntry(d, VBLang.t('lesson_notes')));
             } else if (cat === 'schemi') {
                 for (const d of subjDocs.filter((x) => x.kind === 'schema')) {
                     const ev = d.event_id ? events.find((e) => e.id === d.event_id) : null;
-                    entries.push(docEntry(d, ev ? `Schema per la ${ev.kind === 'interrogazione' ? 'interrogazione' : 'verifica'}${ev.title ? ' · ' + ev.title : ''}` : 'Schema della lezione'));
+                    entries.push(docEntry(d, ev ? VBLang.t('diagram_for_exam', { kind: ev.kind === 'interrogazione' ? VBLang.t('oral_exam_lc') : VBLang.t('written_test_lc') }) + (ev.title ? ' · ' + ev.title : '') : VBLang.t('lesson_diagram')));
                 }
             } else if (cat === 'domande') {
                 // the lesson questions written by the AI (teacher's questions first), then those uploaded by classmates
-                for (const d of subjDocs.filter((x) => x.kind === 'domande')) entries.push(docEntry(d, 'Domande della lezione'));
+                for (const d of subjDocs.filter((x) => x.kind === 'domande')) entries.push(docEntry(d, VBLang.t('lesson_questions')));
                 for (const it of await itemsOfSubject()) if (it.kind === 'domande') entries.push(...itemEntries(it, true));
             } else if (cat) {
                 const items = await itemsOfSubject();
@@ -226,9 +226,9 @@
             } else {
                 const q = new URLSearchParams({ action: 'items', class_id: classId, subject_id: sel.subject, from: folder, to: folder });
                 const { items } = await getJson('../api/appunti.php?' + q);
-                for (const d of subjDocs.filter((x) => x.kind === 'lezione' && x.lesson_date === folder)) entries.push(docEntry(d, d.manual ? 'Appunti della lezione' : 'Appunti della lezione (AI)'));
-                for (const d of subjDocs.filter((x) => x.kind === 'schema' && !x.event_id && x.lesson_date === folder)) entries.push(docEntry(d, 'Schema della lezione'));
-                for (const d of subjDocs.filter((x) => x.kind === 'domande' && x.lesson_date === folder)) entries.push(docEntry(d, 'Domande della lezione'));
+                for (const d of subjDocs.filter((x) => x.kind === 'lezione' && x.lesson_date === folder)) entries.push(docEntry(d, d.manual ? VBLang.t('lesson_notes') : VBLang.t('lesson_notes_ai')));
+                for (const d of subjDocs.filter((x) => x.kind === 'schema' && !x.event_id && x.lesson_date === folder)) entries.push(docEntry(d, VBLang.t('lesson_diagram')));
+                for (const d of subjDocs.filter((x) => x.kind === 'domande' && x.lesson_date === folder)) entries.push(docEntry(d, VBLang.t('lesson_questions')));
                 for (const it of items.slice().reverse()) entries.push(...itemEntries(it, false));
             }
         } catch (e) { status(e.message, 'err'); }
@@ -253,7 +253,7 @@
     /** A small form in the files column: a question, one field, "OK" and "Annulla". */
     function ask(label, field, okText, run) {
         const form = el('form', { class: 'row move-day' }, el('label', { text: label + ' ' }, field),
-            el('button', { class: 'mini', text: okText }), el('button', { type: 'button', class: 'ghost mini', text: 'Annulla', onclick: () => { bulkForm = null; renderFiles(); } }));
+            el('button', { class: 'mini', text: okText }), el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('cancel'), onclick: () => { bulkForm = null; renderFiles(); } }));
         form.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const btn = form.querySelector('button'); btn.disabled = true;
@@ -270,33 +270,33 @@
         setTimeout(() => location.reload(), 600);
     }
     function moveToDay(ids, what) {
-        if (!ids.length) { C.toast('Niente da spostare qui (puoi spostare solo quello che hai il permesso di modificare).', 'err'); return; }
+        if (!ids.length) { C.toast(VBLang.t('nothing_to_move_here_you_can'), 'err'); return; }
         const first = (sel.folder && /^\d{4}-/.test(sel.folder)) ? sel.folder : '';
         const input = el('input', { type: 'date', value: first, required: true });
-        ask(`Sposta ${what} al giorno`, input, 'Sposta', async () => {
-            if (!input.value) throw new Error('Scegli il giorno.');
+        ask(VBLang.t('move_to_day', { what }), input, VBLang.t('move'), async () => {
+            if (!input.value) throw new Error(VBLang.t('choose_the_day'));
             const r = await C.post('../api/appunti.php', { action: 'move_items', ids, lesson_date: input.value });
-            done(`Spostati ${r.done} invii al ${input.value}.` + (r.skipped ? ` ${r.skipped} non spostati (non puoi modificarli).` : ''));
+            done(VBLang.t('moved_n_to_date', { n: plural(r.done, VBLang.t('submission'), VBLang.t('submissions')), date: input.value }) + (r.skipped ? VBLang.t('n_not_moved_perm', { n: r.skipped }) : ''));
         });
     }
     function moveToTopic(ids, what) {
         const subject = tree.find((s) => s.id === sel.subject) || {};
-        if (!ids.length) { C.toast('Niente da spostare qui.', 'err'); return; }
-        if (!(subject.topics || []).length) { C.toast('Questa materia non ha ancora argomenti.', 'err'); return; }
-        const pick = el('select', {}, el('option', { value: '0', text: 'Lo decide il sito (in base al giorno)' }),
+        if (!ids.length) { C.toast(VBLang.t('nothing_to_move_here'), 'err'); return; }
+        if (!(subject.topics || []).length) { C.toast(VBLang.t('this_subject_has_no_topics_yet'), 'err'); return; }
+        const pick = el('select', {}, el('option', { value: '0', text: VBLang.t('the_site_decides_based_on_the') }),
             ...subject.topics.map((t) => el('option', { value: t.id, text: t.name })));
-        ask(`Sposta ${what} nell'argomento`, pick, 'Sposta', async () => {
+        ask(VBLang.t('move_to_the_topic', { what }), pick, VBLang.t('move'), async () => {
             const r = await C.post('../api/appunti.php', { action: 'move_items', ids, topic_id: Number(pick.value) });
-            done(`Spostati ${r.done} invii.` + (r.skipped ? ` ${r.skipped} non spostati.` : ''));
+            done(VBLang.t('moved_n', { n: plural(r.done, VBLang.t('submission'), VBLang.t('submissions')) }) + (r.skipped ? VBLang.t('n_not_moved', { n: r.skipped }) : ''));
         });
     }
     function deleteItems(ids, what) {
-        if (!ids.length) { C.toast('Niente da eliminare qui (puoi eliminare solo quello che hai il permesso di modificare).', 'err'); return; }
-        const ok = el('input', { type: 'text', placeholder: 'scrivi ELIMINA', required: true, autocomplete: 'off' });
-        ask(`Eliminare ${what}? Non si può annullare.`, ok, 'Elimina', async () => {
-            if (ok.value.trim().toUpperCase() !== 'ELIMINA') throw new Error('Per confermare scrivi ELIMINA.');
+        if (!ids.length) { C.toast(VBLang.t('nothing_to_delete_here_you_can'), 'err'); return; }
+        const ok = el('input', { type: 'text', placeholder: VBLang.t('type_delete'), required: true, autocomplete: 'off' });
+        ask(VBLang.t('confirm_delete_what', { what }), ok, VBLang.t('delete'), async () => {
+            if (ok.value.trim().toUpperCase() !== VBLang.t('delete_word')) throw new Error(VBLang.t('to_confirm_type_delete'));
             const r = await C.post('../api/appunti.php', { action: 'delete_items', ids });
-            done(`Eliminati ${r.done} invii.`);
+            done(VBLang.t('deleted_n', { n: plural(r.done, VBLang.t('submission'), VBLang.t('submissions')) }));
         });
     }
     const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -309,11 +309,11 @@
         const isTopic = (sel.folder || '').startsWith('topic:');
         if (!ids.length || (!isDay && !isTopic)) return null;
         const files = all.filter((e) => e.type === 'file' && e.item.can_edit).length;
-        const what = `${plural(ids.length, 'invio', 'invii')} della cartella (${plural(files, 'file', 'file')})`;
+        const what = VBLang.t('folder_what', { subs: plural(ids.length, VBLang.t('submission'), VBLang.t('submissions')), files: plural(files, VBLang.t('file_lc'), VBLang.t('files_lc')) });
         return C.menu([
-            ...(isDay ? [{ label: 'Sposta tutta la cartella in un altro giorno…', onclick: () => moveToDay(ids, 'tutta la cartella') }] : []),
-            ...(isTopic ? [{ label: 'Sposta tutta la cartella in un altro argomento…', onclick: () => moveToTopic(ids, 'tutta la cartella') }, { label: 'Sposta tutta la cartella in un altro giorno…', onclick: () => moveToDay(ids, 'tutta la cartella') }] : []),
-            { label: 'Elimina la cartella…', danger: true, onclick: () => deleteItems(ids, what) }], 'Azioni sulla cartella');
+            ...(isDay ? [{ label: VBLang.t('move_the_whole_folder_to_another'), onclick: () => moveToDay(ids, VBLang.t('the_whole_folder')) }] : []),
+            ...(isTopic ? [{ label: VBLang.t('move_the_whole_folder_to_another_2'), onclick: () => moveToTopic(ids, VBLang.t('the_whole_folder')) }, { label: VBLang.t('move_the_whole_folder_to_another'), onclick: () => moveToDay(ids, VBLang.t('the_whole_folder')) }] : []),
+            { label: VBLang.t('delete_the_folder'), danger: true, onclick: () => deleteItems(ids, what) }], VBLang.t('actions_on_the_folder'));
     }
 
     function bulkBar() {
@@ -322,17 +322,17 @@
         const files = sels.filter((e) => e.type === 'file' && e.file.can_delete);
         const docsDel = sels.filter((e) => e.type === 'doc' && e.can_delete);
         const bar = el('div', { class: 'row bulk-bar' },
-            el('span', { class: 'muted small', text: `${picked.size} scelti` }),
-            el('button', { type: 'button', class: 'ghost mini', text: 'Tutti', onclick: () => { entries.filter(selectable).forEach((e) => picked.add(entryKey(e))); renderFiles(); } }),
-            el('button', { type: 'button', class: 'ghost mini', text: 'Nessuno', onclick: () => { picked.clear(); renderFiles(); } }),
-            el('button', { type: 'button', class: 'mini', text: 'Sposta al giorno…', disabled: !ids.length, onclick: () => moveToDay(ids, plural(ids.length, 'invio', 'invii')) }),
-            el('button', { type: 'button', class: 'ghost mini', text: 'Argomento…', disabled: !ids.length, onclick: () => moveToTopic(ids, plural(ids.length, 'invio', 'invii')) }),
-            el('button', { type: 'button', class: 'danger mini', text: 'Elimina', disabled: !files.length && !docsDel.length, onclick: async () => {
-                if (!confirm(`Eliminare ${plural(files.length, 'file', 'file')}${docsDel.length ? ' e ' + plural(docsDel.length, 'documento', 'documenti') : ''}? Non si può annullare.`)) return;
+            el('span', { class: 'muted small', text: VBLang.t('selected', { n: picked.size }) }),
+            el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('all'), onclick: () => { entries.filter(selectable).forEach((e) => picked.add(entryKey(e))); renderFiles(); } }),
+            el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('none'), onclick: () => { picked.clear(); renderFiles(); } }),
+            el('button', { type: 'button', class: 'mini', text: VBLang.t('move_to_day_2'), disabled: !ids.length, onclick: () => moveToDay(ids, plural(ids.length, 'invio', 'invii')) }),
+            el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('topic_2'), disabled: !ids.length, onclick: () => moveToTopic(ids, plural(ids.length, 'invio', 'invii')) }),
+            el('button', { type: 'button', class: 'danger mini', text: VBLang.t('delete'), disabled: !files.length && !docsDel.length, onclick: async () => {
+                if (!confirm(VBLang.t('confirm_delete_what', { what: plural(files.length, VBLang.t('file_lc'), VBLang.t('files_lc')) + (docsDel.length ? VBLang.t('and_join') + plural(docsDel.length, VBLang.t('document_lc'), VBLang.t('documents_lc')) : '') }))) return;
                 try {
                     for (const e of files) await C.post('../api/appunti.php', { action: 'delete_file', id: e.file.id });
                     for (const e of docsDel) await C.post('../api/appunti.php', { action: 'delete_doc', id: e.id });
-                    done('Eliminati.');
+                    done(VBLang.t('deleted'));
                 } catch (e) { C.toast(e.message, 'err'); }
             } }));
         return bar;
@@ -345,7 +345,7 @@
         const canSelect = entries.some(selectable);
         const head = el('div', { class: 'col-h-row' }, el('h3', { class: 'col-h', text: title }),
             canSelect ? el('div', { class: 'row-actions' },
-                el('button', { type: 'button', class: 'ghost mini', text: selecting ? 'Fine' : 'Seleziona', onclick: () => setSelecting(!selecting) }), folderMenu()) : null);
+                el('button', { type: 'button', class: 'ghost mini', text: selecting ? VBLang.t('done_3') : VBLang.t('select'), onclick: () => setSelecting(!selecting) }), folderMenu()) : null);
         col.replaceChildren(head, ...(selecting ? [bulkBar()] : []), ...(bulkForm ? [bulkForm] : []), ...(entries.length ? entries.map((en) => en.group
             ? el('p', { class: 'agroup', text: en.group })
             : row({ icon: en.icon, label: en.label, meta: en.meta, check: selecting && selectable(en) ? picked.has(entryKey(en)) : undefined,
@@ -354,7 +354,7 @@
                     if (selecting) { if (selectable(en)) { const k = entryKey(en); if (picked.has(k)) picked.delete(k); else picked.add(k); renderFiles(); } return; }
                     if (!en.disabled) openEntry(en);
                 } }))
-            : [el('p', { class: 'empty', text: 'Cartella vuota.' })]));
+            : [el('p', { class: 'empty', text: VBLang.t('empty_folder') })]));
     }
 
     async function openEntry(en) {
@@ -368,17 +368,17 @@
 
     async function renderPreview(en) {
         const pv = $('#preview');
-        if (!en) { pv.replaceChildren(el('p', { class: 'empty', text: sel.folder ? 'Scegli un file.' : 'Scegli una materia, poi un giorno: qui vedi il file senza uscire dalla pagina.' })); return; }
+        if (!en) { pv.replaceChildren(el('p', { class: 'empty', text: sel.folder ? VBLang.t('choose_a_file') : VBLang.t('choose_a_subject_then_a_day') })); return; }
         const head = (title, ...actions) => el('div', { class: 'pv-head' }, el('h2', { text: title }), el('div', { class: 'row-actions' }, ...actions, shareBtn(en, title), en.type === 'doc' && en.kind === 'schema' ? null : C.fullButton(() => pv), deleteMenu(en)));
         /** "Condividi": the phone's share sheet with the person's own mail/WhatsApp (a file is fetched first; a document goes as text or picture). */
         function shareBtn(en, title) {
-            return el('button', { type: 'button', class: 'ghost mini', text: 'Condividi', onclick: async (ev) => {
+            return el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('share'), onclick: async (ev) => {
                 const b = ev.currentTarget; b.disabled = true;
                 try {
                     if (en.type === 'file') {
-                        C.shareDialog(en.file.name, [{ file: true, label: 'Il file', hint: en.file.name, get: async () => {
+                        C.shareDialog(en.file.name, [{ file: true, label: VBLang.t('the_file'), hint: en.file.name, get: async () => {
                             const r = await fetch(fileUrl(en.file.id), { credentials: 'same-origin' });
-                            if (!r.ok) throw new Error('Non riesco a leggere il file.');
+                            if (!r.ok) throw new Error(VBLang.t('cannot_read_the_file'));
                             return { blob: await r.blob(), name: en.file.name };
                         } }], { kind: 'file', id: en.file.id });
                     } else if (en.type === 'text') {
@@ -389,7 +389,7 @@
                         if (doc.kind === 'schema') C.shareDialog(doc.title, C.schemaChoices(JSON.parse(doc.content)), ref);
                         else C.shareDialog(doc.title, C.textChoices(doc.title, doc.content), ref);
                     }
-                } catch (e) { C.toast('Non riesco a condividerlo: usa "Scarica".', 'err'); } finally { b.disabled = false; }
+                } catch (e) { C.toast(VBLang.t('cannot_share_it_use_download'), 'err'); } finally { b.disabled = false; }
             } });
         }
         // "⋯ > Elimina": only shown to who may (the server checks again); always asks first
@@ -400,28 +400,28 @@
             if (!isFile && !isDoc && !canMove) return null;
             const name = isFile ? en.file.name : (en.rawTitle || en.label);
             const actions = [];
-            if (canMove) actions.push({ label: 'Cambia il giorno…', onclick: () => moveDay(en) });
-            if (isFile || isDoc) actions.push({ label: isFile ? 'Elimina questo file…' : 'Elimina questo documento…', danger: true, onclick: async () => {
-                if (!confirm(`Eliminare «${name}»?${isDoc && en.manualAi ? ' L\'AI può rifarlo al prossimo riassunto se c\'è ancora il materiale.' : ''} Non si può annullare.`)) return;
+            if (canMove) actions.push({ label: VBLang.t('change_the_day'), onclick: () => moveDay(en) });
+            if (isFile || isDoc) actions.push({ label: isFile ? VBLang.t('delete_this_file') : VBLang.t('delete_this_document'), danger: true, onclick: async () => {
+                if (!confirm(VBLang.t('confirm_delete_named', { name, extra: isDoc && en.manualAi ? VBLang.t('ai_can_redo') : '' }))) return;
                 try {
                     await C.post('../api/appunti.php', { action: isFile ? 'delete_file' : 'delete_doc', id: isFile ? en.file.id : en.id });
                     location.reload();
                 } catch (e) { C.toast(e.message, 'err'); }
             } });
-            return C.menu(actions, 'Altre azioni');
+            return C.menu(actions, VBLang.t('more_actions'));
         }
         /** Moves the whole upload (the item the file or text belongs to) to another lesson day: the server checks who may. */
         function moveDay(en) {
             const it = en.item;
             const input = el('input', { type: 'date', value: it.lesson_date, required: true });
-            const bar = el('form', { class: 'row move-day' }, el('label', { text: 'Giorno della lezione ' }, input),
-                el('button', { class: 'mini', text: 'Sposta' }), el('button', { type: 'button', class: 'ghost mini', text: 'Annulla', onclick: () => bar.remove() }));
+            const bar = el('form', { class: 'row move-day' }, el('label', { text: VBLang.t('lesson_day') }, input),
+                el('button', { class: 'mini', text: VBLang.t('move') }), el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('cancel'), onclick: () => bar.remove() }));
             bar.addEventListener('submit', async (ev) => {
                 ev.preventDefault();
                 if (!input.value || input.value === it.lesson_date) { bar.remove(); return; }
                 try {
                     await C.post('../api/appunti.php', { action: 'edit_item', id: it.id, subject_id: it.subject_id, kind: it.kind, lesson_date: input.value, period: '', title: it.title, body: it.body });
-                    C.toast('Spostato al ' + input.value + '.', 'ok');
+                    C.toast(VBLang.t('moved_to') + input.value + '.', 'ok');
                     location.reload();
                 } catch (e) { C.toast(e.message, 'err'); }
             });
@@ -432,9 +432,9 @@
         try {
             if (en.type === 'file') {
                 const f = en.file;
-                const dl = el('a', { class: 'ghost-link ico-dl', href: fileUrl(f.id), download: f.name, text: 'Scarica' });
-                const open = el('a', { class: 'ghost-link', href: fileUrl(f.id), target: '_blank', rel: 'noopener', text: 'Apri' });
-                const meta = el('p', { class: 'muted small', text: `${en.meta}${f.text_status === 'pending' ? ' · trascrizione in arrivo' : ''}` });
+                const dl = el('a', { class: 'ghost-link ico-dl', href: fileUrl(f.id), download: f.name, text: VBLang.t('download') });
+                const open = el('a', { class: 'ghost-link', href: fileUrl(f.id), target: '_blank', rel: 'noopener', text: VBLang.t('open') });
+                const meta = el('p', { class: 'muted small', text: `${en.meta}${f.text_status === 'pending' ? VBLang.t('transcript_coming') : ''}` });
                 if (f.mime.startsWith('image/') && !/heic|heif/.test(f.mime)) {
                     pv.replaceChildren(head(f.name, open, dl), meta, imageBox(fileUrl(f.id), f.name), await textBlock(f, true));
                 } else if (f.mime.startsWith('audio/')) {
@@ -444,7 +444,7 @@
                 } else if (/presentationml\.presentation$/.test(f.mime)) {
                     // slides drawn by the server as sandboxed HTML; the extracted text stays below as a fallback
                     const frame = el('iframe', { class: 'pv-html pv-slides', src: fileUrl(f.id) + '&view=1', sandbox: '', referrerpolicy: 'no-referrer', title: f.name, loading: 'lazy' });
-                    pv.replaceChildren(head(f.name, el('a', { class: 'ghost-link', href: fileUrl(f.id) + '&view=1', target: '_blank', rel: 'noopener', text: 'Apri' }), dl), meta, frame, el('details', {}, el('summary', { text: 'Solo testo' }), await textBlock(f, false)));
+                    pv.replaceChildren(head(f.name, el('a', { class: 'ghost-link', href: fileUrl(f.id) + '&view=1', target: '_blank', rel: 'noopener', text: VBLang.t('open') }), dl), meta, frame, el('details', {}, el('summary', { text: VBLang.t('text_only') }), await textBlock(f, false)));
                 } else if (f.mime === 'text/html') {
                     // sandbox="" : no script, no forms, not even the site's origin (the server adds the same limits)
                     const frame = el('iframe', { class: 'pv-html', src: fileUrl(f.id), sandbox: '', referrerpolicy: 'no-referrer', title: f.name, loading: 'lazy' });
@@ -460,8 +460,8 @@
                 const { doc } = await getJson(`../api/appunti.php?action=doc&id=${en.id}`);
                 const body = doc.kind === 'quiz' ? quizList(doc.content) : doc.kind === 'schema' ? C.renderSchema(doc.content, { ref: { kind: 'doc', id: doc.id } })
                     : doc.kind === 'domande' ? C.renderQuestions(doc.content) : el('div', { class: 'md' }, md(doc.content));
-                pv.replaceChildren(head(doc.title, el('a', { class: 'ghost-link', href: `appunti.php?class=${classId}&tab=study`, text: 'Apri in Studio' })),
-                    el('p', { class: 'muted small', text: doc.manual ? `Fatto con un'altra AI, caricato da ${doc.author || '?'}` : 'Scritto dall\'AI dal materiale della classe: può sbagliare, controlla.' }),
+                pv.replaceChildren(head(doc.title, el('a', { class: 'ghost-link', href: `appunti.php?class=${classId}&tab=study`, text: VBLang.t('open_in_study') })),
+                    el('p', { class: 'muted small', text: doc.manual ? VBLang.t('made_with_another_ai_uploaded_by', { name: doc.author || '?' }) : VBLang.t('written_by_the_ai_from_the') }),
                     body);
                 const mdBox = pv.querySelector('.md');
                 if (mdBox && doc.kind !== 'quiz') C.addIndex(mdBox, 'doc' + doc.id);
@@ -482,18 +482,18 @@
     async function textBlock(f, isImage) {
         if (f.text_status !== 'done') {
             return isImage ? el('span') : el('p', { class: 'empty', text: f.text_status === 'pending'
-                ? 'La trascrizione arriva tra poco: intanto puoi scaricare il file.' : 'Anteprima non disponibile: scarica il file.' });
+                ? VBLang.t('the_transcript_is_coming_soon_meanwhile') : VBLang.t('preview_not_available_download_the_file') });
         }
         const t = await getJson(`../api/appunti.php?action=file_text&id=${f.id}`);
         if (!t.text) return el('span');
-        const box = el('div', { class: 'pv-transcript' }, el('p', { class: 'muted small', text: isImage ? (f.mime.startsWith('audio/') ? 'Trascrizione della registrazione:' : 'Trascrizione:') : '' }));
+        const box = el('div', { class: 'pv-transcript' }, el('p', { class: 'muted small', text: isImage ? (f.mime.startsWith('audio/') ? VBLang.t('transcript_of_the_recording') : VBLang.t('transcript')) : '' }));
         box.append(C.looksLikeMarkdown(t.text) ? el('div', { class: 'md' }, md(t.text)) : el('div', { class: 'pv-text', text: t.text }));
         return box;
     }
 
     function quizList(content) {
         let quiz = null;
-        try { quiz = JSON.parse(content); } catch (e) { return el('p', { text: 'Quiz non leggibile.' }); }
+        try { quiz = JSON.parse(content); } catch (e) { return el('p', { text: VBLang.t('quiz_cannot_be_read') }); }
         return el('ol', { class: 'quiz-plain' }, ...(quiz.questions || []).map((q) => el('li', {},
             el('b', { text: q.question }),
             el('ol', { type: 'A' }, ...q.options.map((o, k) => el('li', { class: k === q.answer ? 'right' : '', text: o + (k === q.answer ? '  ✓' : '') }))),
@@ -530,12 +530,12 @@
     function paintView() {
         const tiles = C.stored(VIEW_KEY) !== 'list';
         $('#arch').classList.toggle('tiles', tiles);
-        $('#view-btn').textContent = tiles ? 'Elenco' : 'Tabella';
-        $('#view-btn').title = tiles ? 'Mostra come elenco' : 'Mostra come tabella';
+        $('#view-btn').textContent = tiles ? VBLang.t('list') : VBLang.t('table');
+        $('#view-btn').title = tiles ? VBLang.t('show_as_list') : VBLang.t('show_as_table');
     }
     $('#view-btn').addEventListener('click', () => { C.store(VIEW_KEY, C.stored(VIEW_KEY) === 'list' ? 'tiles' : 'list'); paintView(); });
     paintView();
-    window.VBDrop.attach({ label: 'Mettili qui', hint: 'si aprono nella pagina Carica', onFiles: (files) => C.handOff(files) });
+    window.VBDrop.attach({ label: VBLang.t('drop_them_here'), hint: VBLang.t('they_open_in_the_upload_page'), onFiles: (files) => C.handOff(files) });
     /* ---------- search (FTS5 on the server) ---------- */
     const highlight = (text) => {
         const out = [];
@@ -562,16 +562,16 @@
         if (!q.trim()) { closeSearch(); return; }
         $('#arch').hidden = true;
         box.hidden = false;
-        box.replaceChildren(el('p', { class: 'empty', text: 'Cerco…' }));
+        box.replaceChildren(el('p', { class: 'empty', text: VBLang.t('searching') }));
         try {
             const { results } = await getJson(`../api/appunti.php?action=search&class_id=${classId}&q=${encodeURIComponent(q)}`);
-            const label = (r) => r.kind === 'doc' ? (C.DOC_KINDS[r.doc_kind] || 'Documento') + (r.manual ? ' (caricato)' : ' dell\'AI') : r.kind === 'file' ? 'File' : 'Appunti scritti';
-            box.replaceChildren(el('div', { class: 'sr-head' }, el('b', { text: results.length ? `${results.length} risultat${results.length === 1 ? 'o' : 'i'}` : 'Nessun risultato' }),
-                el('button', { type: 'button', class: 'ghost mini', text: 'Chiudi la ricerca', onclick: () => { $('#search-input').value = ''; closeSearch(); } })),
+            const label = (r) => r.kind === 'doc' ? (C.DOC_KINDS[r.doc_kind] || VBLang.t('document')) + (r.manual ? VBLang.t('uploaded_paren') : VBLang.t('by_the_ai')) : r.kind === 'file' ? VBLang.t('file') : VBLang.t('written_notes');
+            box.replaceChildren(el('div', { class: 'sr-head' }, el('b', { text: results.length ? (results.length === 1 ? VBLang.t('one_result') : VBLang.t('n_results', { n: results.length })) : VBLang.t('no_results') }),
+                el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('close_the_search'), onclick: () => { $('#search-input').value = ''; closeSearch(); } })),
                 ...results.map((r) => el('button', { type: 'button', class: 'sr-item', onclick: () => goToResult(r) },
                     el('span', { class: 'sr-title' }, el('b', { text: r.file ? r.file.name : r.title || label(r) }), el('span', { class: 'muted small', text: ` · ${label(r)} · ${r.subject}${r.lesson_date ? ' · ' + shortDay.format(C.parseDate(r.lesson_date)) : ''}` })),
                     el('span', { class: 'sr-snip' }, ...highlight(r.snippet)))));
-            if (!results.length) box.append(el('p', { class: 'empty', text: 'Prova con meno parole o con l\'inizio di una parola (per esempio "rivoluz").' }));
+            if (!results.length) box.append(el('p', { class: 'empty', text: VBLang.t('try_fewer_words_or_the_start') }));
         } catch (e) { box.replaceChildren(el('p', { class: 'empty', text: e.message })); }
     }
     $('#search-form').addEventListener('submit', (ev) => { ev.preventDefault(); runSearch($('#search-input').value); });
@@ -587,7 +587,7 @@
             const want = Number(new URLSearchParams(location.search).get('class') || C.stored(C.CLASS_KEY));
             const pick = classes.find((c) => c.id === want) || classes[0];
             const select = $('#class-select');
-            select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: c.demo ? `${c.name} · classe di esempio` : `${c.name} · ${c.school}`, selected: c.id === pick.id })));
+            select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: c.demo ? VBLang.t('example_class', { name: c.name }) : `${c.name} · ${c.school}`, selected: c.id === pick.id })));
             select.hidden = classes.length < 2;
             select.addEventListener('change', () => openClass(Number(select.value)));
             await openClass(pick.id);

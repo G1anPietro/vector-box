@@ -6,26 +6,30 @@ $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 $v = filemtime(__DIR__ . '/../js/condiviso.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../js/appunti-pdf.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css');
 header('X-Robots-Tag: noindex, nofollow');
 header('Referrer-Policy: no-referrer');
+$v .= '-' . filemtime(__DIR__ . '/../js/i18n.js') . '-' . filemtime(__DIR__ . '/../js/i18n/appunti-en.js') . '-' . filemtime(__DIR__ . '/../js/i18n/appunti-it.js');   // the translations are inside the cache buster too
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= pageLang() ?>" data-lang-server data-lang-switch>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#14161b">
     <meta name="robots" content="noindex, nofollow">
     <meta name="referrer" content="no-referrer">
-    <title>Appunti condivisi</title>
+    <title><?= tr(['en' => 'Shared notes', 'it' => 'Appunti condivisi']) ?></title>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
     <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
+    <script src="../js/i18n.js?v=<?= $e($v) ?>"></script>
+    <script src="../js/i18n/appunti-en.js?v=<?= $e($v) ?>"></script>
+    <script src="../js/i18n/appunti-it.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/appunti-pdf.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/condiviso.js?v=<?= $e($v) ?>" defer></script>
 </head>
 <body>
     <main class="wrap shared-page">
-        <p class="muted small">Appunti di classe · materiale condiviso con un link temporaneo</p>
-        <h1 id="s-title">Apro il materiale…</h1>
+        <p class="muted small"><?= tr(['en' => 'Class notes · material shared with a temporary link', 'it' => 'Appunti di classe · materiale condiviso con un link temporaneo']) ?></p>
+        <h1 id="s-title"><?= tr(['en' => 'Opening the material…', 'it' => 'Apro il materiale…']) ?></h1>
         <p id="s-meta" class="muted small"></p>
         <div id="s-actions" class="row no-print"></div>
         <div id="s-body"></div>

@@ -7,7 +7,7 @@
     const { el, getJson, post } = C;
     const $ = (s) => document.querySelector(s);
     const $$ = (s) => [...document.querySelectorAll(s)];
-    const EVENT_KINDS = { verifica: 'Verifica', interrogazione: 'Interrogazione' };
+    const EVENT_KINDS = { verifica: VBLang.t('written_test'), interrogazione: VBLang.t('oral_exam') };
 
     let classes = [];
     let current = null;
@@ -24,7 +24,7 @@
 
     function choose(m) {
         method = m;
-        $('#send-btn').textContent = 'Carica';
+        $('#send-btn').textContent = VBLang.t('upload');
         $$('.method').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.method === m)));
         $$('.panel').forEach((p) => { p.hidden = p.id !== 'p-' + m; });
         const material = ['camera', 'files', 'text'].includes(m);
@@ -44,12 +44,12 @@
         try { lessons = (await getJson(`../api/appunti.php?action=lessons&class_id=${current.id}&date=${date}`)).lessons; } catch (e) { /* none */ }
         const groups = [];
         if (lessons.length) {
-            groups.push(el('optgroup', { label: 'Lezioni del giorno' }, ...lessons.map((l) => el('option', {
+            groups.push(el('optgroup', { label: VBLang.t('lessons_of_the_day') }, ...lessons.map((l) => el('option', {
                 value: `${l.subject_id}|${l.period}`,
-                text: `${l.period === l.period_to ? l.period + 'ª ora' : `${l.period}ª-${l.period_to}ª ora`} · ${l.label || subjectName(l.subject_id)} (${l.start}–${l.end})` }))));
+                text: `${l.period === l.period_to ? VBLang.t('period_one', { n: l.period }) : VBLang.t('period_range', { from: l.period, to: l.period_to })} · ${l.label || subjectName(l.subject_id)} (${l.start}–${l.end})` }))));
         }
-        groups.push(el('optgroup', { label: lessons.length ? 'Altra materia' : 'Materia' }, ...current.subjects.map((s) => el('option', { value: `${s.id}|`, text: s.name }))));
-        sel.replaceChildren(el('option', { value: '', text: current.subjects.length ? 'Scegli…' : 'Il rappresentante deve ancora inserire l\'orario' }), ...groups);
+        groups.push(el('optgroup', { label: lessons.length ? VBLang.t('other_subject') : VBLang.t('subject') }, ...current.subjects.map((s) => el('option', { value: `${s.id}|`, text: s.name }))));
+        sel.replaceChildren(el('option', { value: '', text: current.subjects.length ? VBLang.t('choose') : VBLang.t('the_class_representative_has_not_entered') }), ...groups);
         if (preferred && [...sel.options].some((o) => o.value === preferred)) sel.value = preferred;
         fillTopics();
     }
@@ -59,7 +59,7 @@
         const sid = Number(($('#w-lesson').value || '').split('|')[0]) || 0;
         const list = sid ? (current.topics || []).filter((t) => t.subject_id === sid) : [];
         $('#w-topic-l').hidden = !list.length;
-        $('#w-topic').replaceChildren(el('option', { value: '0', text: 'Lo decide il sito (in base al giorno)' }), ...list.map((t) => el('option', { value: t.id, text: t.name })));
+        $('#w-topic').replaceChildren(el('option', { value: '0', text: VBLang.t('the_site_decides_based_on_the') }), ...list.map((t) => el('option', { value: t.id, text: t.name })));
     }
     $('#w-lesson').addEventListener('change', fillTopics);
 
@@ -69,8 +69,8 @@
             $('#w-date').value = s.date;
             await fillLessons(s.date, s.lesson ? `${s.lesson.subject_id}|${s.lesson.period}` : null);
             if (fromFile) {
-                const when = new Date(tsSeconds * 1000).toLocaleString('it-IT', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
-                $('#w-hint').textContent = s.lesson ? `Foto del ${when}: ho scelto la lezione di quell'ora. Cambiala se è sbagliata.` : `Foto del ${when}: scegli tu la lezione.`;
+                const when = new Date(tsSeconds * 1000).toLocaleString(VBLang.t('locale'), { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+                $('#w-hint').textContent = s.lesson ? VBLang.t('photos_from_i_picked_the_lesson', { date: when }) : VBLang.t('photos_from_choose_the_lesson_yourself', { date: when });
             }
         } catch (e) { /* keep what is there */ }
     }
@@ -82,13 +82,13 @@
     let moreDays = [];   // extra lesson days for the same material (the representative)
     function drawMoreDays() {
         $('#w-more-list').replaceChildren(...moreDays.map((d) => el('li', {}, el('span', { text: d }),
-            el('button', { type: 'button', class: 'ghost mini', text: '✕', title: 'Togli', onclick: () => { moreDays = moreDays.filter((x) => x !== d); drawMoreDays(); } }))));
+            el('button', { type: 'button', class: 'ghost mini', text: '✕', title: VBLang.t('remove'), onclick: () => { moreDays = moreDays.filter((x) => x !== d); drawMoreDays(); } }))));
     }
     $('#w-more-add').addEventListener('click', () => {
         const d = $('#w-more-date').value;
         if (!d) return;
-        if (d === $('#w-date').value) { status('Quel giorno è già quello in alto.', 'err'); return; }
-        if (moreDays.length >= 30) { status('Al massimo 31 giorni.', 'err'); return; }
+        if (d === $('#w-date').value) { status(VBLang.t('that_day_is_already_the_one'), 'err'); return; }
+        if (moreDays.length >= 30) { status(VBLang.t('at_most_31_days'), 'err'); return; }
         if (!moreDays.includes(d)) moreDays.push(d);
         moreDays.sort(); drawMoreDays(); $('#w-more-date').value = '';
     });
@@ -97,7 +97,7 @@
         const files = [...list];
         if (!files.length) return;
         queue.push(...files);
-        if (queue.length > maxFiles) { queue = queue.slice(0, maxFiles); status(`Al massimo ${maxFiles} file alla volta: gli altri caricali dopo.`, 'err'); }
+        if (queue.length > maxFiles) { queue = queue.slice(0, maxFiles); status(VBLang.t('at_most_files_at_a_time', { n: maxFiles }), 'err'); }
         renderQueue();
         // an audio file says when it was recorded inside itself; the date of the file is only the fallback
         Promise.all(files.map(async (f) => (f.type.startsWith('audio/') && await C.mediaTime(f)) || f.lastModified || Date.now()))
@@ -111,7 +111,7 @@
                 ? el('img', { class: 'qthumb', alt: '', src: URL.createObjectURL(f) })
                 : el('span', { class: 'qthumb icon', text: f.type.startsWith('audio/') ? '🎧' : f.type === 'application/pdf' ? '📕' : /html/.test(f.type) || /\.html?$/i.test(f.name) ? '🌐' : '📄' });
             return el('li', {}, thumb, el('span', { class: 'qname', text: `${f.name} · ${C.sizeText(f.size)}` }),
-                el('button', { type: 'button', class: 'ghost mini', text: '×', 'aria-label': 'Togli', onclick: () => { queue.splice(i, 1); renderQueue(); } }));
+                el('button', { type: 'button', class: 'ghost mini', text: '×', 'aria-label': VBLang.t('remove'), onclick: () => { queue.splice(i, 1); renderQueue(); } }));
         }));
     }
 
@@ -122,7 +122,7 @@
     ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (ev) => { ev.preventDefault(); drop.classList.remove('over'); }));
     drop.addEventListener('drop', (ev) => addFiles(ev.dataTransfer.files));
     // files can be dropped anywhere on the page: they go to the queue (the "Scegli file" way), whatever the way chosen before
-    window.VBDrop.attach({ label: 'Mettili qui', hint: 'foto, audio, PDF, Word, PowerPoint', onFiles: (files) => { if (!['camera', 'files'].includes(method)) choose('files'); addFiles(files); } });
+    window.VBDrop.attach({ label: VBLang.t('drop_them_here'), hint: VBLang.t('photos_audio_pdf_word_powerpoint'), onFiles: (files) => { if (!['camera', 'files'].includes(method)) choose('files'); addFiles(files); } });
 
     $('#text-input').addEventListener('input', () => { $('#text-preview').replaceChildren(C.md($('#text-input').value)); });
 
@@ -130,10 +130,10 @@
 
     $('#send-btn').addEventListener('click', () => {
         const [subjectId, period] = ($('#w-lesson').value || '').split('|');
-        if (!subjectId) { status('Scegli la lezione o la materia.', 'err'); return; }
+        if (!subjectId) { status(VBLang.t('choose_the_lesson_or_the_subject'), 'err'); return; }
         const text = method === 'text' ? $('#text-input').value.trim() : '';
-        if (method !== 'text' && !queue.length) { status('Aggiungi almeno una foto o un file.', 'err'); return; }
-        if (method === 'text' && !text) { status('Scrivi qualcosa.', 'err'); return; }
+        if (method !== 'text' && !queue.length) { status(VBLang.t('add_at_least_one_photo_or'), 'err'); return; }
+        if (method === 'text' && !text) { status(VBLang.t('write_something'), 'err'); return; }
 
         // The queue (js/appunti-upload.js) sends it in pieces, survives a lost connection or a reload, and keeps going on the other pages
         const files = method !== 'text' ? queue.slice() : [];
@@ -143,14 +143,14 @@
                        ...(moreDays.length && (current.perms || []).includes('material') ? { extra_dates: moreDays } : {}) },
             files,
         }).then(() => {
-            status(files.length ? 'Messo in coda: parte da solo e riprende se la connessione cade.' : 'Invio…', 'ok');
-            $('#send-btn').textContent = 'Carica altro';
+            status(files.length ? VBLang.t('queued_it_starts_by_itself_and') : VBLang.t('sending'), 'ok');
+            $('#send-btn').textContent = VBLang.t('upload_more');
             queue = []; renderQueue(); moreDays = []; drawMoreDays();
             $('#text-input').value = ''; $('#text-preview').replaceChildren(); $('#w-title').value = ''; $('#w-hint').textContent = '';
-        }).catch((e) => status('Non riesco a preparare i file: ' + e.message, 'err'));
+        }).catch((e) => status(VBLang.t('cannot_prepare_the_files') + e.message, 'err'));
     });
     window.AppuntiUpload.on('done', (job, info) => {
-        status(`Caricato in ${job.label || 'classe'}. Grazie! Lo trovi nell'Archivio.` + (info.duplicates.length ? ` Già presenti e saltati: ${info.duplicates.join(', ')}.` : ''), 'ok');
+        status(VBLang.t('uploaded_to_thank_you_you_will', { label: job.label || VBLang.t('class_fallback') }) + (info.duplicates.length ? VBLang.t('already_there_and_skipped', { files: info.duplicates.join(', ') }) : ''), 'ok');
         if (current && current.id === job.class_id) updateLimits();
     });
 
@@ -158,7 +158,8 @@
         try {
             const u = await getJson(`../api/appunti.php?action=usage&class_id=${current.id}`);
             if (u.upload) maxFiles = u.upload.files;
-            $('#limits').textContent = `Massimo ${u.upload ? u.upload.files + ' file per invio, ' : ''}${u.limits_mb.file} MB per file · spazio della classe usato: ${C.sizeText(u.used_bytes)} su ${u.limits_mb.class >= 1024 ? (u.limits_mb.class / 1024).toFixed(1) + ' GB' : u.limits_mb.class + ' MB'}.`;
+            const per = u.upload ? VBLang.t('files_per_upload', { n: u.upload.files }) : '';
+            $('#limits').textContent = VBLang.t('limits_line', { perUpload: per, mb: u.limits_mb.file, used: C.sizeText(u.used_bytes), total: u.limits_mb.class >= 1024 ? (u.limits_mb.class / 1024).toFixed(1) + ' GB' : u.limits_mb.class + ' MB' });
         } catch (e) { /* ignore */ }
     }
 
@@ -182,14 +183,14 @@
         const mine = aiEvents.filter((e) => String(e.subject_id) === f.subject_id.value);
         f.event_id.replaceChildren(...(mine.length
             ? mine.map((e) => el('option', { value: e.id, text: `${EVENT_KINDS[e.kind]} · ${C.dayFmt.format(C.parseDate(e.date))}` }))
-            : [el('option', { value: '', text: 'Nessuna verifica di questa materia in calendario' })]));
+            : [el('option', { value: '', text: VBLang.t('no_test_of_this_subject_in') })]));
         if (keep && [...f.event_id.options].some((o) => o.value === keep)) f.event_id.value = keep;
     }
     /** What the answer of the other AI must look like for the chosen document (step 4). */
     const FORMAT_HINT = {
-        schema: 'Lo schema si dà al sito come testo in formato JSON (lo scrive l\'AI con il prompt del passo 3): incolla la risposta qui sotto o carica un file .json. Non servono immagini: il sito lo disegna come mappa, e poi lo scarichi in PNG o SVG.',
-        quiz: 'Il quiz si dà al sito come testo in formato JSON (lo scrive l\'AI con il prompt del passo 3): incolla la risposta o carica un file .json, così com\'è.',
-        _text: 'Questo documento si dà al sito come testo Markdown: incolla la risposta qui sotto, oppure carica un file .md o .txt. Va bene anche un PDF, un Word o una foto: si salva come materiale e il sito lo legge.' };
+        schema: VBLang.t('the_diagram_is_given_to_the'),
+        quiz: VBLang.t('the_quiz_is_given_to_the'),
+        _text: VBLang.t('this_document_is_given_to_the') };
     /** Downloads the material for what was chosen in step 1: a test (its material since the previous test) or one lesson day. */
     async function getMaterial(action, btn) {
         const f = $('#ai-form');
@@ -200,30 +201,30 @@
         const q = new URLSearchParams({ action, class_id: current.id, scope: byRange ? 'range' : lesson ? 'day' : 'event', ...(asPdf ? { format: 'pdf' } : {}) });
         if (byRange) {
             const from = $('#ai-from').value, to = $('#ai-to').value;
-            if (!from || !to || from > to) { status('Scegli il giorno di inizio e quello di fine (l\'inizio non può essere dopo la fine).', 'err'); return; }
+            if (!from || !to || from > to) { status(VBLang.t('choose_the_first_and_the_last'), 'err'); return; }
             q.set('from', from); q.set('to', to); q.set('subject_id', f.subject_id.value);
             if (!lesson) q.set('dispensa', '1');   // for a test: the handout prompts, not the single-lesson ones
         } else if (lesson) {
-            if (!f.lesson_date.value) { status('Scegli il giorno della lezione.', 'err'); return; }
+            if (!f.lesson_date.value) { status(VBLang.t('choose_the_day_of_the_lesson'), 'err'); return; }
             q.set('date', f.lesson_date.value); q.set('subject_id', f.subject_id.value);
         } else {
-            if (!f.event_id.value) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; }
+            if (!f.event_id.value) { status(VBLang.t('choose_a_test_add_it_first'), 'err'); return; }
             q.set('event_id', f.event_id.value);
         }
         if ($('#aiget-audio').checked) q.set('audio', '1');
         btn.disabled = true;
-        status(action === 'zip' ? 'Preparo lo .zip…' : 'Preparo il file per l\'AI…');
+        status(action === 'zip' ? VBLang.t('preparing_the_zip') : VBLang.t('preparing_the_file_for_the_ai'));
         try {
             const r = await fetch('../api/appunti.php?' + q, { credentials: 'same-origin' });
-            if (!r.ok) { const j = await r.json().catch(() => null); throw new Error(j && j.error ? j.error : 'Download non riuscito.'); }
+            if (!r.ok) { const j = await r.json().catch(() => null); throw new Error(j && j.error ? j.error : VBLang.t('download_failed')); }
             const cd = r.headers.get('content-disposition') || '';
             const m = /filename\*=UTF-8''([^;]+)/.exec(cd);
-            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : asPdf ? 'appunti-per-AI.pdf' : 'appunti-per-AI.md');
+            const name = m ? decodeURIComponent(m[1]) : (action === 'zip' ? 'appunti.zip' : asPdf ? VBLang.t('notes_for_ai_pdf') : VBLang.t('notes_for_ai_md'));
             const url = URL.createObjectURL(await r.blob());
             const a = el('a', { href: url, download: name });
             document.body.append(a); a.click();
             setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
-            status(action === 'zip' ? 'Scaricato (dentro c\'è anche PROMPT.txt). Attenzione: le app di Gemini, ChatGPT e Claude non leggono gli zip: per l\'AI usa il .md o il PDF.' : 'Scaricato: allegalo all\'AI e manda il PROMPT 1 che trovi all\'inizio del file.', 'ok');
+            status(action === 'zip' ? VBLang.t('downloaded_prompt_txt_is_inside_too') : VBLang.t('downloaded_attach_it_to_the_ai'), 'ok');
         } catch (e) { status(e.message, 'err'); } finally { btn.disabled = false; }
     }
     $('#aiget-md').addEventListener('click', (ev) => getMaterial('ai_pack', ev.currentTarget));
@@ -256,10 +257,10 @@
             $('#aiw-prompt').textContent = p.prompt;
             $('#aiw-note').textContent = p.note;
             $('#aiw-note').hidden = !p.note;
-        } catch (e) { $('#aiw-prompt').textContent = 'Non riesco a caricare il prompt: è anche dentro il file che scarichi (PROMPT 1).'; }
+        } catch (e) { $('#aiw-prompt').textContent = VBLang.t('cannot_load_the_prompt_it_is'); }
     }
     $('#aiw-copy').addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText($('#aiw-prompt').textContent); status('Prompt copiato: incollalo nell\'AI insieme al file.', 'ok'); } catch (e) { status('Non riesco a copiare: seleziona il testo e copialo a mano.', 'err'); }
+        try { await navigator.clipboard.writeText($('#aiw-prompt').textContent); status(VBLang.t('prompt_copied_paste_it_into_the'), 'ok'); } catch (e) { status(VBLang.t('cannot_copy_select_the_text_and'), 'err'); }
     });
     $('#aiget-audio').addEventListener('change', async () => {
         const on = $('#aiget-audio').checked;
@@ -267,7 +268,7 @@
         if (on) { try { $('#aiw-audio-prompt').textContent = (await promptFor('audio')).prompt; } catch (e) { /* the file has it too */ } }
     });
     $('#aiw-audio-copy').addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText($('#aiw-audio-prompt').textContent); status('Prompt copiato.', 'ok'); } catch (e) { status('Non riesco a copiare.', 'err'); }
+        try { await navigator.clipboard.writeText($('#aiw-audio-prompt').textContent); status(VBLang.t('prompt_copied'), 'ok'); } catch (e) { status(VBLang.t('cannot_copy'), 'err'); }
     });
     $('#ai-form').addEventListener('submit', async (ev) => {
         ev.preventDefault();
@@ -278,14 +279,14 @@
         // lesson or test (the site reads it like any file) and the .md / .txt / .json ones stay documents
         if (picked && !/\.(md|txt|json)$/i.test(picked.name) && !f.content.value.trim()) {
             const e = lesson ? null : aiEvents.find((x) => String(x.id) === f.event_id.value);
-            if (!lesson && !e) { status('Scegli una verifica: aggiungila prima nel Calendario.', 'err'); return; }
+            if (!lesson && !e) { status(VBLang.t('choose_a_test_add_it_first'), 'err'); return; }
             try {
                 // same queue as every upload: in pieces, resumable, shrunk if it is a photo
                 await window.AppuntiUpload.enqueue({ class_id: current.id, label: lesson ? subjectName(Number(f.subject_id.value)) : e.subject,
                     fields: { subject_id: lesson ? f.subject_id.value : e.subject_id, period: '', kind: 'altro', lesson_date: lesson ? f.lesson_date.value : e.date,
-                        title: f.title.value || `${f.kind.selectedOptions[0].textContent} fatto con un'altra AI`, body: '' }, files: [picked] });
+                        title: f.title.value || VBLang.t('done_with_another_ai', { kind: f.kind.selectedOptions[0].textContent }), body: '' }, files: [picked] });
                 f.title.value = ''; f.file.value = '';
-                status('Messo in coda come materiale: il sito lo legge e lo trovi nell\'Archivio, nella cartella del giorno.', 'ok');
+                status(VBLang.t('queued_as_material_the_site_reads'), 'ok');
             } catch (er) { status(er.message, 'err'); }
             return;
         }
@@ -301,10 +302,10 @@
         try {
             await post('../api/appunti.php', fd);
             f.title.value = ''; f.content.value = ''; f.file.value = '';
-            status('Documento caricato: lo trovi in Studio e nell\'Archivio, con il tuo nome.', 'ok');
+            status(VBLang.t('document_uploaded_you_will_find_it'), 'ok');
         } catch (e) {
-            const msg = { bad_quiz: 'Il quiz deve essere il JSON scritto dall\'AI (PROMPT 4).', bad_schema: 'Lo schema deve essere il JSON scritto dall\'AI (l\'ultimo PROMPT del file "Per AI").', empty: 'Incolla il testo o scegli un file.',
-                bad_event: 'Scegli una verifica: aggiungila prima nel Calendario.', bad_file: 'Per un documento di studio usa un file .md, .txt o .json (massimo 2 MB); PDF, Word e immagini si caricano come materiale.' };
+            const msg = { bad_quiz: VBLang.t('the_quiz_must_be_the_json'), bad_schema: VBLang.t('the_diagram_must_be_the_json'), empty: VBLang.t('paste_the_text_or_choose_a'),
+                bad_event: VBLang.t('choose_a_test_add_it_first'), bad_file: VBLang.t('for_a_study_document_use_a') };
             status((e.json && msg[e.json.code]) || e.message, 'err');
         }
     });
@@ -322,7 +323,7 @@
         };
         ['pl-key', 'pl-ai', 'pl-essay'].forEach((id) => $('#' + id).addEventListener('change', draw));
         $('#pl-copy').addEventListener('click', async () => {
-            try { await navigator.clipboard.writeText($('#pl-text').textContent); status('Prompt copiato.', 'ok'); } catch (e) { status('Non riesco a copiare: usa "Scarica .txt".', 'err'); }
+            try { await navigator.clipboard.writeText($('#pl-text').textContent); status(VBLang.t('prompt_copied'), 'ok'); } catch (e) { status(VBLang.t('cannot_copy_use_download_txt'), 'err'); }
         });
         $('#pl-save').addEventListener('click', () => {
             const a = el('a', { href: URL.createObjectURL(new Blob([$('#pl-text').textContent], { type: 'text/plain;charset=utf-8' })), download: `prompt-${key.value}.txt` });
@@ -338,7 +339,7 @@
         C.store(C.CLASS_KEY, String(id));
         // the example class: the screens open, nothing can be sent
         $('#demo-banner').hidden = !current.demo;
-        ['#send-btn', '#ai-form button', '#aiget-md', '#aiget-pdf', '#aiget-zip'].forEach((q) => document.querySelectorAll(q).forEach((b) => { b.disabled = !!current.demo; if (current.demo) b.title = 'Nella classe di esempio non si carica'; }));
+        ['#send-btn', '#ai-form button', '#aiget-md', '#aiget-pdf', '#aiget-zip'].forEach((q) => document.querySelectorAll(q).forEach((b) => { b.disabled = !!current.demo; if (current.demo) b.title = VBLang.t('you_cannot_upload_in_the_example'); }));
         $('#w-more').hidden = !(current.perms || []).includes('material') || !!current.demo;
         moreDays = []; drawMoreDays();
         $('[data-method="timetable"]').hidden = !(current.perms || []).includes('timetable');
@@ -362,7 +363,7 @@
             const want = Number(params.get('class') || C.stored(C.CLASS_KEY));
             const pick = classes.find((c) => c.id === want) || classes[0];
             const select = $('#class-select');
-            select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: c.demo ? `${c.name} · classe di esempio` : `${c.name} · ${c.school}`, selected: c.id === pick.id })));
+            select.replaceChildren(...classes.map((c) => el('option', { value: c.id, text: c.demo ? VBLang.t('example_class', { name: c.name }) : `${c.name} · ${c.school}`, selected: c.id === pick.id })));
             select.hidden = classes.length < 2;
             select.addEventListener('change', () => openClass(Number(select.value)).catch((e) => status(e.message, 'err')));
             await openClass(pick.id);

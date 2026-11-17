@@ -9,6 +9,7 @@
 //  - Which language: ?lang=xx, then the vb_lang cookie (both are an explicit choice), then what api/lang.php says (Italy -> Italian,
 //    otherwise the browser's language, otherwise English; the same rules as the PHP pages). Until the answer comes, the browser's own
 //    language is used, and the page stays hidden for at most one second so nobody sees the wrong language flash.
+//  - A PHP page that sets <html lang="<?= pageLang() ?>" data-lang-server> already knows the language: it is used as is (no second question to the server).
 //  - A small EN | IT switch is added to any element with id="vb-lang" (or fixed at the top right if there is none and data-lang-switch is on <html>).
 // To add a language: add its code to SUPPORTED here and to SITE_LANGS in api/helpers.php, then translate the dictionaries.
 (function (root) {
@@ -33,9 +34,12 @@
     const writeCookie = (l) => { try { doc.cookie = 'vb_lang=' + l + '; max-age=31536000; path=/; samesite=lax' + (root.location.protocol === 'https:' ? '; secure' : ''); } catch (e) { /* cookies off */ } };
     const queryLang = () => { const m = /[?&]lang=([a-z]{2})/.exec(root.location.search || ''); return m && SUPPORTED.includes(m[1]) ? m[1] : null; };
 
-    // A PHP page says which language it was written in (<meta name="vb-lang">, from pageLang()): nothing to ask the server, and a switch reloads the page.
+    // A PHP page says which language it was written in, so nothing has to be asked of the server and a switch reloads the page:
+    // either <meta name="vb-lang"> (includes/head.php) or <html data-lang-server lang="xx"> (the class-notes pages).
     const metaEl = doc.querySelector('meta[name="vb-lang"]');
-    const serverLang = metaEl && SUPPORTED.includes(metaEl.content) ? metaEl.content : null;
+    const metaLang = metaEl && SUPPORTED.includes(metaEl.content) ? metaEl.content : null;
+    const attrLang = doc.documentElement.hasAttribute('data-lang-server') && SUPPORTED.includes(doc.documentElement.lang) ? doc.documentElement.lang : null;
+    const serverLang = metaLang || attrLang;
     let lang = serverLang || queryLang() || readCookie() || fromBrowser(root.navigator && (navigator.languages || [navigator.language])) || 'en';
     const explicit = !!(serverLang || queryLang() || readCookie());
     if (queryLang()) writeCookie(queryLang());

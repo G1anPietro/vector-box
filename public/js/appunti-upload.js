@@ -104,15 +104,15 @@
         const nFiles = live.reduce((a, j) => a + j.files.filter((f) => !f.duplicate).length, 0);
         const rows = [];
         if (live.length) {
-            const head = state.phase === 'paused' ? 'Caricamento in pausa' : state.phase === 'waiting' ? state.text : `Carico ${nFiles} file`;
-            rows.push(el('div', { class: 'up-line' }, el('b', { text: head }), el('span', { class: 'muted small', text: state.phase === 'running' ? `${pct}%` : `${pct}% fatto` })));
+            const head = state.phase === 'paused' ? VBLang.t('upload_paused') : state.phase === 'waiting' ? state.text : VBLang.t('uploading_files', { n: nFiles });
+            rows.push(el('div', { class: 'up-line' }, el('b', { text: head }), el('span', { class: 'muted small', text: state.phase === 'running' ? `${pct}%` : VBLang.t('done', { pct }) })));
             rows.push(el('div', { class: 'up-bar' }, el('i', { style: `width:${pct}%` })));
             rows.push(el('div', { class: 'up-actions' },
-                state.phase === 'paused' || (state.phase === 'idle' && live.length) ? el('button', { type: 'button', class: 'mini', text: 'Riprendi', onclick: () => { resume(); } }) : null,
-                el('button', { type: 'button', class: 'ghost mini', text: 'Annulla', onclick: () => cancelAll(live) })));
+                state.phase === 'paused' || (state.phase === 'idle' && live.length) ? el('button', { type: 'button', class: 'mini', text: VBLang.t('resume'), onclick: () => { resume(); } }) : null,
+                el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('cancel'), onclick: () => cancelAll(live) })));
         }
-        failed.forEach((j) => rows.push(el('div', { class: 'up-line up-failed' }, el('span', { text: j.error || 'Caricamento non riuscito.' }),
-            el('button', { type: 'button', class: 'ghost mini', text: 'Chiudi', onclick: async () => { await removeJob(j); jobs = jobs.filter((x) => x !== j); render(); } }))));
+        failed.forEach((j) => rows.push(el('div', { class: 'up-line up-failed' }, el('span', { text: j.error || VBLang.t('upload_failed') }),
+            el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('close'), onclick: async () => { await removeJob(j); jobs = jobs.filter((x) => x !== j); render(); } }))));
         box.replaceChildren(...rows);
     }
     const setState = (phase, text = '') => { state = { phase, text }; render(); };
@@ -131,23 +131,23 @@
         return { status: r.status, json };
     }
     const postJson = (body) => call('../api/appunti.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const MESSAGES = { file_too_large: 'Un file è più grande del massimo consentito.', class_full: 'La classe ha finito lo spazio.', bad_type: 'Un file non è di un tipo accettato (foto, PDF, testo, Word, PowerPoint, audio).',
-        not_found: 'Il caricamento non esiste più.', restricted: 'Non puoi caricare in questo momento.', bad_file: 'File vuoto.', too_many_open: 'Troppi caricamenti iniziati e non finiti.' };
+    const MESSAGES = { file_too_large: VBLang.t('a_file_is_bigger_than_the'), class_full: VBLang.t('the_class_has_run_out_of'), bad_type: VBLang.t('a_file_is_not_of_an'),
+        not_found: VBLang.t('the_upload_no_longer_exists'), restricted: VBLang.t('you_cannot_upload_right_now'), bad_file: VBLang.t('empty_file'), too_many_open: VBLang.t('too_many_uploads_started_and_not') };
 
     /** Runs one request with retries: waits 2, 4, 8, 16, 30 s between failures, a refused request (4xx) is final. */
     async function withRetry(fn, onTick) {
         let attempts = 0;
         for (;;) {
-            while (!networkAllowed()) { setState('waiting', navigator.onLine ? 'In attesa del Wi-Fi' : 'Senza connessione: riprendo appena torna'); await sleep(5); if (state.phase === 'paused') throw new Tired(); }
+            while (!networkAllowed()) { setState('waiting', navigator.onLine ? VBLang.t('waiting_for_wi_fi') : VBLang.t('no_connection_i_will_resume_as')); await sleep(5); if (state.phase === 'paused') throw new Tired(); }
             const r = await fn();
             if (r.status >= 200 && r.status < 300 && r.json && r.json.success !== false) { attempts = 0; return r; }
             if (r.status === 409) return r;   // the caller knows what to do (a different offset, an incomplete file)
-            if (r.status === 401) { setState('paused', 'Sessione scaduta: accedi di nuovo, poi premi Riprendi'); throw new Tired(); }   // nothing is lost
+            if (r.status === 401) { setState('paused', VBLang.t('session_expired_sign_in_again_then')); throw new Tired(); }   // nothing is lost
             const transient = r.status === 0 || r.status >= 500 || r.status === 429 || r.status === 408;
-            if (!transient) throw new Fatal((r.json && (MESSAGES[r.json.code] || r.json.error)) || 'Caricamento non riuscito.');
+            if (!transient) throw new Fatal((r.json && (MESSAGES[r.json.code] || r.json.error)) || VBLang.t('upload_failed'));
             if (++attempts > MAX_ATTEMPTS) throw new Tired();
             const wait = BACKOFF[Math.min(attempts - 1, BACKOFF.length - 1)];
-            for (let s = wait; s > 0; s--) { setState('waiting', `Connessione instabile: riprovo tra ${s} s`); await sleep(1); if (state.phase === 'paused') throw new Tired(); }
+            for (let s = wait; s > 0; s--) { setState('waiting', VBLang.t('unstable_connection_retrying_in_s', { s })); await sleep(1); if (state.phase === 'paused') throw new Tired(); }
             setState('running');
             if (onTick) onTick();
         }
@@ -156,7 +156,7 @@
     async function sendFile(job, i) {
         const f = job.files[i];
         const blob = await getBlob(job, i);
-        if (!blob) throw new Fatal('Il file non è più disponibile: riscegli i file.');
+        if (!blob) throw new Fatal(VBLang.t('the_file_is_no_longer_available'));
         if (!f.upload_id) {
             const r = await withRetry(() => postJson({ action: 'upload_begin', class_id: job.class_id, name: f.name, size: f.size, sha256: f.hash || '' }));
             if (r.json.duplicate) { f.duplicate = true; f.dupName = r.json.name; await saveJob(job); return; }

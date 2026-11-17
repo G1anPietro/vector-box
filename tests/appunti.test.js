@@ -233,11 +233,12 @@ test('guests see the guide (with the login link) instead of the notes; the guide
     const g = await fetch(`${site.base}/pages/appunti-guida.php`);
     const html = await g.text();
     assert.equal(g.status, 200);
-    assert.match(html, /href="login\.php\?next=appunti\.php">Accedi o crea un account</);
+    assert.match(html, /href="login\.php\?next=appunti\.php">Sign in or create an account</);
+    assert.match(await (await fetch(`${site.base}/pages/appunti-guida.php?lang=it`)).text(), /href="login\.php\?next=appunti\.php">Accedi o crea un account</);
     assert.doesNotMatch(html, /id="admin"/, 'the admin section only for the admin');
     assert.equal(html.match(/<script(?![^>]*\bsrc=)[^>]*>/g), null);
     const member = await (await fetch(`${site.base}/pages/appunti-guida.php`, { headers: { Cookie: luigi.cookieHeader() } })).text();
-    assert.match(member, /href="appunti\.php">Apri i tuoi appunti</);
+    assert.match(member, /href="appunti\.php">Open your notes</);
     assert.match(await (await fetch(`${site.base}/sitemap.php`)).text(), /\/pages\/appunti-guida\.php/);
 });
 

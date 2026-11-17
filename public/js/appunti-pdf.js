@@ -15,7 +15,7 @@
             loading = new Promise((resolve, reject) => {
                 const s = el('script', { src: PDFJS + 'pdf.min.js', integrity: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e', crossorigin: 'anonymous' });
                 s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; resolve(); };
-                s.onerror = () => { loading = null; reject(new Error('Non riesco a caricare il lettore PDF')); };
+                s.onerror = () => { loading = null; reject(new Error(VBLang.t('cannot_load_the_pdf_reader'))); };
                 document.head.append(s);
             });
         }
@@ -110,7 +110,7 @@
             }
             flush();
         }
-        if (!out.children.length) out.append(el('p', { class: 'empty', text: 'Questo PDF non ha testo selezionabile (è una scansione): usa la vista Pagine.' }));
+        if (!out.children.length) out.append(el('p', { class: 'empty', text: VBLang.t('this_pdf_has_no_selectable_text') }));
         return out;
     }
 
@@ -125,17 +125,17 @@
         const zoomLabel = el('span', { class: 'pdf-zoom-label', text: '100%' });
         const root = el('div', { class: 'pdf-view' });
         const btn = (text, title, onclick) => el('button', { type: 'button', class: 'ghost mini', text, title, 'aria-label': title, onclick });
-        const darkBtn = btn('', 'Scuro', () => { dark = !dark; put(THEME_KEY, dark ? '1' : '0'); paintTheme(); });
-        const modeBtn = btn('Testo', 'Passa al testo facile da leggere', () => setMode(mode === 'pages' ? 'text' : 'pages'));
-        const zoomBox = el('span', { class: 'pdf-group' }, btn('–', 'Rimpicciolisci', () => stepZoom(-1)), zoomLabel, btn('+', 'Ingrandisci', () => stepZoom(1)), btn('Adatta', 'Adatta alla larghezza', () => setZoom(1)));
-        const fontBox = el('span', { class: 'pdf-group', hidden: true }, btn('A–', 'Testo più piccolo', () => setFont(-0.1)), btn('A+', 'Testo più grande', () => setFont(0.1)));
+        const darkBtn = btn('', VBLang.t('dark'), () => { dark = !dark; put(THEME_KEY, dark ? '1' : '0'); paintTheme(); });
+        const modeBtn = btn(VBLang.t('text'), VBLang.t('switch_to_easy_to_read_text'), () => setMode(mode === 'pages' ? 'text' : 'pages'));
+        const zoomBox = el('span', { class: 'pdf-group' }, btn('–', VBLang.t('zoom_out'), () => stepZoom(-1)), zoomLabel, btn('+', VBLang.t('zoom_in'), () => stepZoom(1)), btn(VBLang.t('fit'), VBLang.t('fit_to_width'), () => setZoom(1)));
+        const fontBox = el('span', { class: 'pdf-group', hidden: true }, btn('A–', VBLang.t('smaller_text'), () => setFont(-0.1)), btn('A+', VBLang.t('larger_text'), () => setFont(0.1)));
         const bar = el('div', { class: 'pdf-bar' }, zoomBox, fontBox, darkBtn, modeBtn);
         root.append(bar, pages, textBox);
 
         function paintTheme() {
             root.classList.toggle('pdf-dark', dark);
-            darkBtn.textContent = dark ? 'Chiaro' : 'Scuro';
-            darkBtn.title = dark ? 'Pagine chiare' : 'Pagine scure';
+            darkBtn.textContent = dark ? VBLang.t('light') : VBLang.t('dark');
+            darkBtn.title = dark ? VBLang.t('light_pages') : VBLang.t('dark_pages');
         }
         function setFont(d) { textFont = Math.min(1.8, Math.max(0.8, textFont + d)); textBox.style.fontSize = `${Math.round(textFont * 100)}%`; }
         function stepZoom(d) {
@@ -176,7 +176,7 @@
             const page = await pdf.getPage(Number(holder.dataset.n));
             const ratio = Math.min(window.devicePixelRatio || 1, 2);
             const vp = page.getViewport({ scale: scale * ratio });
-            const canvas = el('canvas', { 'aria-label': `Pagina ${holder.dataset.n}` });
+            const canvas = el('canvas', { 'aria-label': VBLang.t('page', { n: holder.dataset.n }) });
             canvas.width = Math.floor(vp.width); canvas.height = Math.floor(vp.height);
             canvas.style.width = '100%'; canvas.style.height = '100%';
             await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
@@ -186,16 +186,16 @@
             mode = m;
             pages.hidden = m !== 'pages'; textBox.hidden = m !== 'text';
             zoomBox.hidden = m !== 'pages'; fontBox.hidden = m !== 'text';
-            modeBtn.textContent = m === 'pages' ? 'Testo' : 'Pagine';
+            modeBtn.textContent = m === 'pages' ? VBLang.t('text') : VBLang.t('pages');
             if (m === 'text' && !textBox.dataset.ready && pdf) {
-                textBox.replaceChildren(el('p', { class: 'muted', text: 'Preparo il testo…' }));
+                textBox.replaceChildren(el('p', { class: 'muted', text: VBLang.t('preparing_the_text') }));
                 try {
-                    const t = await buildText(pdf, (n, tot) => { textBox.firstChild.textContent = `Preparo il testo… ${n} di ${tot}`; });
+                    const t = await buildText(pdf, (n, tot) => { textBox.firstChild.textContent = VBLang.t('preparing_the_text_of', { done: n, total: tot }); });
                     textBox.replaceChildren(t);
                     if (t.querySelector('.empty') && auto) { auto = false; textBox.dataset.ready = ''; setMode('pages'); return; }   // a scan: nothing to re-set, show the pages
                     window.AppuntiCommon.addIndex(textBox, 'pdf' + name);
                     textBox.dataset.ready = '1';
-                } catch (e) { textBox.replaceChildren(el('p', { class: 'err', text: 'Non riesco a leggere il testo di questo PDF.' })); }
+                } catch (e) { textBox.replaceChildren(el('p', { class: 'err', text: VBLang.t('cannot_read_the_text_of_this') })); }
             }
         }
 
@@ -210,9 +210,9 @@
         pages.addEventListener('wheel', (ev) => { if (ev.ctrlKey) { ev.preventDefault(); setZoom(zoom * (ev.deltaY < 0 ? 1.1 : 0.9)); } }, { passive: false });
 
         paintTheme();
-        pages.append(el('p', { class: 'muted', text: 'Carico il PDF…' }));
+        pages.append(el('p', { class: 'muted', text: VBLang.t('loading_the_pdf') }));
         loadLib().then(() => window.pdfjsLib.getDocument({ url, isEvalSupported: false }).promise).then((doc) => { pdf = doc; drawPages(); if (startText) setMode('text'); })
-            .catch((e) => { pages.replaceChildren(el('p', { class: 'err', text: e.message || 'PDF non leggibile.' }), el('a', { class: 'ghost-link', href: url, target: '_blank', rel: 'noopener', text: 'Aprilo in una nuova scheda' })); });
+            .catch((e) => { pages.replaceChildren(el('p', { class: 'err', text: e.message || VBLang.t('pdf_cannot_be_read') }), el('a', { class: 'ghost-link', href: url, target: '_blank', rel: 'noopener', text: VBLang.t('open_it_in_a_new_tab') })); });
         return root;
     }
 

@@ -13,10 +13,10 @@
     const board = (body) => post('../api/bacheca.php', body);
 
     const WEEK_DAYS = 7;
-    const weekday = new Intl.DateTimeFormat('it-IT', { weekday: 'short' });
-    const dayLong = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-    const shortDate = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short' });
-    const KIND = { verifica: 'Verifica', interrogazione: 'Interrogazione', altro: 'Altro' };
+    const weekday = new Intl.DateTimeFormat(VBLang.t('locale'), { weekday: 'short' });
+    const dayLong = new Intl.DateTimeFormat(VBLang.t('locale'), { weekday: 'long', day: 'numeric', month: 'long' });
+    const shortDate = new Intl.DateTimeFormat(VBLang.t('locale'), { day: 'numeric', month: 'short' });
+    const KIND = { verifica: VBLang.t('written_test'), interrogazione: VBLang.t('oral_exam'), altro: VBLang.t('other') };
 
     let state = null;          // overview from api/bacheca.php
     let timer = null;
@@ -25,10 +25,10 @@
     const minutes = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
     const nowSec = () => clock.base + (performance.now() - clock.at) / 1000;
     const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-    const room = (l) => (l.room ? `aula ${l.room}` : 'aula non indicata');
+    const room = (l) => (l.room ? VBLang.t('room', { room: l.room }) : VBLang.t('room_not_specified'));
     const dayWord = (iso, today) => {
         const diff = Math.round((C.parseDate(iso) - C.parseDate(today)) / 86400000);
-        return diff === 0 ? 'oggi' : diff === 1 ? 'domani' : dayLong.format(C.parseDate(iso));
+        return diff === 0 ? VBLang.t('today') : diff === 1 ? VBLang.t('tomorrow') : dayLong.format(C.parseDate(iso));
     };
 
     /* ---------- now and next ---------- */
@@ -39,22 +39,22 @@
         const t = nowSec() / 60;   // minutes
         const hue = (l) => P().hue(l.subject_id);
         const nextDayLine = () => {
-            if (!state.next_day) return 'Nei prossimi giorni non ci sono lezioni in orario.';
+            if (!state.next_day) return VBLang.t('no_lessons_in_the_timetable_in');
             const l = state.next_day.lesson;
-            return `${dayWord(state.next_day.date, state.today)} si comincia alle ${l.start} con ${l.subject}, ${room(l)}.`;
+            return VBLang.t('lessons_start_at_with', { when: dayWord(state.next_day.date, state.today), time: l.start, subject: l.subject, room: room(l) });
         };
-        if (state.day_off) return { title: 'Oggi niente lezione', line: state.day_off, next: nextDayLine() };
-        if (!lessons.length) return { title: 'Oggi non ci sono lezioni', line: '', next: nextDayLine() };
+        if (state.day_off) return { title: VBLang.t('no_lessons_today'), line: state.day_off, next: nextDayLine() };
+        if (!lessons.length) return { title: VBLang.t('there_are_no_lessons_today'), line: '', next: nextDayLine() };
         const cur = lessons.find((l) => minutes(l.start) <= t && t < minutes(l.end));
         if (cur) {
             const i = lessons.indexOf(cur);
             const left = Math.max(1, Math.ceil(minutes(cur.end) - t));
             const nxt = lessons[i + 1];
             return {
-                label: 'Adesso', title: cur.subject, hue: hue(cur),
-                line: `${room(cur)}, finisce alle ${cur.end} (${left === 1 ? 'manca 1 minuto' : `mancano ${left} minuti`})`,
+                label: VBLang.t('now'), title: cur.subject, hue: hue(cur),
+                line: VBLang.t('room_ends_at', { room: room(cur), end: cur.end, left: left === 1 ? VBLang.t('one_minute_left') : VBLang.t('n_minutes_left', { n: left }) }),
                 progress: (t - minutes(cur.start)) / (minutes(cur.end) - minutes(cur.start)), start: cur.start, end: cur.end,
-                next: nxt ? `Poi ${nxt.subject}, ${room(nxt)}, alle ${nxt.start}.` : 'Questa è l\'ultima lezione di oggi.',
+                next: nxt ? VBLang.t('then_at', { subject: nxt.subject, room: room(nxt), time: nxt.start }) : VBLang.t('this_is_the_last_lesson_of'),
             };
         }
         const upcoming = lessons.find((l) => minutes(l.start) > t);
@@ -62,12 +62,12 @@
             const wait = Math.ceil(minutes(upcoming.start) - t);
             const first = upcoming === lessons[0];
             return {
-                label: first ? 'Tra poco' : 'Intervallo', title: upcoming.subject, hue: hue(upcoming),
-                line: `${room(upcoming)}, alle ${upcoming.start} (${wait === 1 ? 'tra 1 minuto' : `tra ${wait} minuti`})`,
-                next: first ? 'La scuola non è ancora cominciata.' : '',
+                label: first ? VBLang.t('soon') : VBLang.t('break'), title: upcoming.subject, hue: hue(upcoming),
+                line: VBLang.t('room_at_time', { room: room(upcoming), start: upcoming.start, wait: wait === 1 ? VBLang.t('in_one_minute') : VBLang.t('in_n_minutes', { n: wait }) }),
+                next: first ? VBLang.t('school_has_not_started_yet') : '',
             };
         }
-        return { title: 'Le lezioni di oggi sono finite', line: '', next: nextDayLine() };
+        return { title: VBLang.t('today_s_lessons_are_over'), line: '', next: nextDayLine() };
     }
 
     function renderNow() {
@@ -78,7 +78,7 @@
                 v.label ? el('span', { class: 'bb-now-label', text: v.label }) : null,
                 el('h2', { class: 'bb-now-title', text: v.title }),
                 v.line ? el('p', { class: 'bb-now-line', text: v.line }) : null),
-            v.progress !== undefined ? el('div', { class: 'bb-bell', role: 'progressbar', 'aria-label': 'Quanto è passato dell\'ora',
+            v.progress !== undefined ? el('div', { class: 'bb-bell', role: 'progressbar', 'aria-label': VBLang.t('how_much_of_the_lesson_has'),
                 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(v.progress * 100) },
                 el('span', { class: 'bb-bell-fill', style: `width:${Math.round(v.progress * 100)}%` }),
                 el('span', { class: 'bb-bell-from', text: v.start }), el('span', { class: 'bb-bell-to', text: v.end })) : null,
@@ -90,37 +90,37 @@
     /* ---------- announcements ---------- */
 
     function announcementDialog(a = null) {
-        C.dialogForm(a ? 'Modifica l\'annuncio' : 'Nuovo annuncio', (f) => {
+        C.dialogForm(a ? VBLang.t('edit_the_announcement') : VBLang.t('new_announcement'), (f) => {
             f.append(
-                el('label', { text: 'Titolo' }, el('input', { name: 'title', required: true, maxLength: 100, value: a ? a.title : '', placeholder: 'es. Domani si esce alle 12' })),
-                el('label', { text: 'Testo (facoltativo)' }, el('textarea', { name: 'body', rows: 5, maxLength: 2000, value: a ? a.body : '' })),
-                el('label', { class: 'switch perm' }, el('input', { type: 'checkbox', name: 'pinned', checked: a ? a.pinned : false }), 'Tienilo in alto'),
-                a ? null : el('label', { class: 'switch perm' }, el('input', { type: 'checkbox', name: 'notify', checked: true }), 'Avvisa tutti con una notifica'));
+                el('label', { text: VBLang.t('title') }, el('input', { name: 'title', required: true, maxLength: 100, value: a ? a.title : '', placeholder: VBLang.t('e_g_tomorrow_we_get_out') })),
+                el('label', { text: VBLang.t('text_optional') }, el('textarea', { name: 'body', rows: 5, maxLength: 2000, value: a ? a.body : '' })),
+                el('label', { class: 'switch perm' }, el('input', { type: 'checkbox', name: 'pinned', checked: a ? a.pinned : false }), VBLang.t('keep_it_at_the_top')),
+                a ? null : el('label', { class: 'switch perm' }, el('input', { type: 'checkbox', name: 'notify', checked: true }), VBLang.t('notify_everyone_with_a_notification')));
         }, async (f) => {
             const r = await board({ action: 'save_announcement', class_id: P().current.id, id: a ? a.id : 0, title: f.title.value, body: f.body.value,
                 pinned: f.pinned.checked, notify: f.notify ? f.notify.checked : false });
-            toast(a ? 'Annuncio salvato.' : (r.pushed ? `Annuncio pubblicato, notifica a ${plural(r.pushed, 'dispositivo', 'dispositivi')}.` : 'Annuncio pubblicato.'), 'ok');
+            toast(a ? VBLang.t('announcement_saved') : (r.pushed ? VBLang.t('announcement_published_notified', { n: plural(r.pushed, VBLang.t('device'), VBLang.t('devices')) }) : VBLang.t('announcement_published')), 'ok');
             load();
-        }, a ? 'Salva' : 'Pubblica');
+        }, a ? VBLang.t('save') : VBLang.t('publish'));
     }
 
     function renderNotes() {
         const box = $('#bb-notes');
         const list = state.announcements;
         set(box,
-            el('div', { class: 'bb-head' }, el('h3', { text: 'Annunci' }),
-                state.can_post ? el('button', { type: 'button', class: 'ghost mini', text: 'Scrivi un annuncio', onclick: () => announcementDialog() }) : null),
+            el('div', { class: 'bb-head' }, el('h3', { text: VBLang.t('announcements') }),
+                state.can_post ? el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('write_an_announcement'), onclick: () => announcementDialog() }) : null),
             list.length ? el('div', { class: 'bb-notes' }, ...list.map((a) => el('article', { class: 'bb-note' + (a.pinned ? ' pinned' : '') },
                 el('div', { class: 'bb-note-top' }, el('h4', { text: a.title }),
-                    a.can_edit ? C.menu([{ label: 'Modifica…', onclick: () => announcementDialog(a) },
-                        { label: 'Elimina', danger: true, onclick: async () => {
-                            if (!confirm('Eliminare questo annuncio?')) return;
-                            try { await board({ action: 'delete_announcement', id: a.id }); toast('Annuncio eliminato.', 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
+                    a.can_edit ? C.menu([{ label: VBLang.t('edit'), onclick: () => announcementDialog(a) },
+                        { label: VBLang.t('delete'), danger: true, onclick: async () => {
+                            if (!confirm(VBLang.t('delete_this_announcement'))) return;
+                            try { await board({ action: 'delete_announcement', id: a.id }); toast(VBLang.t('announcement_deleted'), 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
                         } }]) : null),
                 a.body ? el('p', { class: 'bb-note-body', text: a.body }) : null,
-                el('p', { class: 'bb-note-foot' }, a.pinned ? el('span', { class: 'bb-pin', text: 'In alto' }) : null,
+                el('p', { class: 'bb-note-foot' }, a.pinned ? el('span', { class: 'bb-pin', text: VBLang.t('pinned') }) : null,
                     el('span', { text: a.author || '?' }), el('span', { text: shortDate.format(new Date(a.created_at * 1000)) })))))
-                : el('p', { class: 'bb-empty', text: state.can_post ? 'Nessun annuncio. Scrivi qui le cose che la classe deve sapere: uscite, cambi d\'orario, scadenze.' : 'Nessun annuncio per ora.' }));
+                : el('p', { class: 'bb-empty', text: state.can_post ? VBLang.t('no_announcements_write_here_the_things') : VBLang.t('no_announcements_for_now') }));
     }
 
     /* ---------- notes still missing: lessons already held with nothing uploaded (the class turns this on in the settings) ---------- */
@@ -131,13 +131,13 @@
         box.hidden = !list.length;
         if (!list.length) return;
         const c = P().current;
-        set(box, el('div', { class: 'bb-head' }, el('h3', { text: 'Appunti mancanti' })),
-            el('p', { class: 'muted small', text: 'Lezioni già fatte per cui nessuno ha caricato niente.' }),
+        set(box, el('div', { class: 'bb-head' }, el('h3', { text: VBLang.t('missing_notes') })),
+            el('p', { class: 'muted small', text: VBLang.t('lessons_already_held_for_which_nobody') }),
             el('ul', { class: 'plain bb-miss' }, ...list.map((m) => el('li', {},
                 el('span', { text: `${m.subject} · ${shortDate.format(C.parseDate(m.date))}` }),
                 el('span', { class: 'row-actions' },
-                    el('a', { class: 'ghost-link', href: `appunti-carica.php?class=${c.id}&date=${m.date}&subject=${m.subject_id}`, text: 'Carica' }),
-                    state.can_skip ? C.menu([{ label: 'Non serve per questa lezione', onclick: async () => {
+                    el('a', { class: 'ghost-link', href: `appunti-carica.php?class=${c.id}&date=${m.date}&subject=${m.subject_id}`, text: VBLang.t('upload') }),
+                    state.can_skip ? C.menu([{ label: VBLang.t('not_needed_for_this_lesson'), onclick: async () => {
                         try { await board({ action: 'skip_missing', class_id: c.id, date: m.date, subject_id: m.subject_id }); load(); } catch (e) { toast(e.message, 'err'); }
                     } }]) : null)))));
     }
@@ -152,13 +152,13 @@
         const put = (date, row) => { if (date >= today && last(date)) { if (!rows.has(date)) rows.set(date, []); rows.get(date).push(row); } };
         const meId = P().me();
         events.forEach((e) => put(e.date, { order: 1, subject_id: e.subject_id, label: KIND[e.kind] || e.kind, text: e.subject + (e.title ? `: ${e.title}` : ''), strong: e.kind !== 'altro' }));
-        ov.homework.forEach((h) => put(h.due, { order: 3, subject_id: h.subject_id, label: 'Compito', text: `${h.subject}: ${h.body}` }));
-        ov.turns.forEach((t) => put(t.date, { order: 2, subject_id: t.subject_id, label: 'Interrogati', mine: t.user_ids.includes(meId),
-            text: `${t.subject}: ${t.user_ids.map((id) => { const m = P().current.members.find((x) => x.id === id); return m ? m.name : '?'; }).join(', ') || 'nessuno'}` }));
+        ov.homework.forEach((h) => put(h.due, { order: 3, subject_id: h.subject_id, label: VBLang.t('homework'), text: `${h.subject}: ${h.body}` }));
+        ov.turns.forEach((t) => put(t.date, { order: 2, subject_id: t.subject_id, label: VBLang.t('oral_exam_2'), mine: t.user_ids.includes(meId),
+            text: `${t.subject}: ${t.user_ids.map((id) => { const m = P().current.members.find((x) => x.id === id); return m ? m.name : '?'; }).join(', ') || VBLang.t('nobody')}` }));
         ov.days_off.forEach((o) => {
             for (let d = new Date(C.parseDate(o.from)); d <= C.parseDate(o.to) && d <= end; d.setDate(d.getDate() + 1)) {
                 const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                put(iso, { order: 0, label: o.period ? `Niente ${o.period}ª ora` : 'Niente lezione', text: o.reason || '', off: true });
+                put(iso, { order: 0, label: o.period ? VBLang.t('no_period', { n: o.period }) : VBLang.t('no_lessons'), text: o.reason || '', off: true });
             }
         });
         return [...rows.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([date, list]) => [date, list.sort((a, b) => a.order - b.order)]);
@@ -167,20 +167,20 @@
     function renderWeek(events, ov) {
         const days = weekRows(events, ov);
         set($('#bb-week'),
-            el('div', { class: 'bb-head' }, el('h3', { text: 'Questa settimana' }),
-                el('button', { type: 'button', class: 'ghost mini', text: 'Apri il calendario', onclick: () => P().showTab('calendar') })),
+            el('div', { class: 'bb-head' }, el('h3', { text: VBLang.t('this_week_2') }),
+                el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('open_the_calendar'), onclick: () => P().showTab('calendar') })),
             days.length ? el('div', { class: 'bb-diary' }, ...days.map(([date, list]) => {
                 const d = C.parseDate(date);
                 return el('section', { class: 'bb-day' + (date === state.today ? ' today' : '') },
                     el('div', { class: 'bb-day-gutter' }, el('b', { text: String(d.getDate()) }), el('span', { text: weekday.format(d) }),
-                        date === state.today ? el('em', { text: 'oggi' }) : null),
+                        date === state.today ? el('em', { text: VBLang.t('today') }) : null),
                     el('ul', { class: 'bb-rows' }, ...list.map((r) => {
                         const li = el('li', { class: 'bb-row' + (r.off ? ' off' : '') + (r.mine ? ' mine' : '') + (r.strong ? ' strong' : '') },
                             el('span', { class: 'bb-row-label', text: r.label }), el('span', { class: 'bb-row-text', text: r.text }));
                         if (r.subject_id) li.style.setProperty('--sub', P().hue(r.subject_id));
                         return li;
                     })));
-            })) : el('p', { class: 'bb-empty', text: 'Niente in calendario per i prossimi 7 giorni. Verifiche, compiti e turni si aggiungono dal Calendario.' }));
+            })) : el('p', { class: 'bb-empty', text: VBLang.t('nothing_in_the_calendar_for_the') }));
     }
 
     /* ---------- for you / to fix ---------- */
@@ -191,13 +191,13 @@
         const lines = [];
         if (review.due.length) {
             lines.push(el('div', { class: 'bb-you-row' },
-                el('p', { text: `Hai ${plural(review.due.length, 'domanda', 'domande')} da ripassare oggi.` }),
-                el('button', { type: 'button', text: 'Inizia il ripasso', onclick: () => P().showTab('study') })));
+                el('p', { text: VBLang.t('you_have_to_review_today', { n: plural(review.due.length, VBLang.t('question'), VBLang.t('questions')) }) }),
+                el('button', { type: 'button', text: VBLang.t('start_the_review'), onclick: () => P().showTab('study') })));
         }
         myTurns.forEach((t) => lines.push(el('div', { class: 'bb-you-row' },
-            el('p', { text: `Sei interrogato in ${t.subject} ${dayWord(t.date, state.today)}.` }),
-            el('a', { class: 'btn-link small', href: `appunti-archivio.php?class=${P().current.id}&subject=${t.subject_id}`, text: 'Apri la materia' }))));
-        set($('#bb-you'), lines.length ? el('h3', { text: 'Per te' }) : null, ...lines);
+            el('p', { text: VBLang.t('you_have_an_oral_exam_in', { subject: t.subject, when: dayWord(t.date, state.today) }) }),
+            el('a', { class: 'btn-link small', href: `appunti-archivio.php?class=${P().current.id}&subject=${t.subject_id}`, text: VBLang.t('open_the_subject') }))));
+        set($('#bb-you'), lines.length ? el('h3', { text: VBLang.t('for_you') }) : null, ...lines);
         $('#bb-you').hidden = !lines.length;
     }
     const weekEnd = () => { const d = C.parseDate(state.today); d.setDate(d.getDate() + WEEK_DAYS); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -210,21 +210,21 @@
         box.hidden = !proposed.length && !reports.length;
         if (box.hidden) return;
         const resolve = async (r, accept) => {
-            try { await board({ action: 'resolve_report', id: r.id, accept }); toast(accept ? 'Fatto.' : 'Lasciato com\'è.', 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
+            try { await board({ action: 'resolve_report', id: r.id, accept }); toast(accept ? VBLang.t('done_2') : VBLang.t('left_as_it_is'), 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
         };
-        set(box, el('h3', { text: 'Da sistemare' }),
+        set(box, el('h3', { text: VBLang.t('to_fix') }),
             ...reports.map((r) => el('div', { class: 'bb-fix-row' },
                 el('p', {}, el('b', { text: r.title }), el('br'), r.body),
                 el('span', { class: 'row-actions' },
-                    el('button', { type: 'button', class: 'mini', text: r.kind === 'proposta_verifica' ? 'Aggiungi al calendario' : 'Correggi come suggerito', onclick: () => resolve(r, true) }),
-                    el('button', { type: 'button', class: 'ghost mini', text: r.kind === 'proposta_verifica' ? 'Ignora' : 'Lascia com\'è', onclick: () => resolve(r, false) })))),
+                    el('button', { type: 'button', class: 'mini', text: r.kind === 'proposta_verifica' ? VBLang.t('add_to_the_calendar') : VBLang.t('correct_as_suggested'), onclick: () => resolve(r, true) }),
+                    el('button', { type: 'button', class: 'ghost mini', text: r.kind === 'proposta_verifica' ? VBLang.t('ignore') : VBLang.t('leave_as_it_is'), onclick: () => resolve(r, false) })))),
             ...proposed.map((t) => el('div', { class: 'bb-fix-row' },
-                el('p', {}, el('b', { text: t.name }), ` in ${t.subject}, dal ${shortDate.format(C.parseDate(t.start))}: l'AI pensa che sia un argomento nuovo.`),
+                el('p', {}, el('b', { text: t.name }), VBLang.t('in_since_the_ai_thinks_it', { subject: t.subject, date: shortDate.format(C.parseDate(t.start)) })),
                 el('span', { class: 'row-actions' },
-                    el('button', { type: 'button', class: 'mini', text: 'Conferma', onclick: async () => {
-                        try { await cal({ action: 'confirm_topic', id: t.id }); toast('Argomento confermato.', 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
+                    el('button', { type: 'button', class: 'mini', text: VBLang.t('confirm'), onclick: async () => {
+                        try { await cal({ action: 'confirm_topic', id: t.id }); toast(VBLang.t('topic_confirmed'), 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
                     } }),
-                    el('button', { type: 'button', class: 'ghost mini', text: 'Rivedi nel calendario', onclick: () => P().showTab('calendar') })))));
+                    el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('review_in_the_calendar'), onclick: () => P().showTab('calendar') })))));
     }
 
     /* ---------- load ---------- */

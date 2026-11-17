@@ -82,7 +82,7 @@ function zipSelect(PDO $db, array $class, array $scope): array|string {
     $st->execute($params);
     $items = $st->fetchAll();
     if ($event) $items = array_values(array_filter($items, notesEventItemFilter($db, $event)));   // not what belongs to a topic unticked for this test
-    if (!$items) return 'Non c\'è materiale da scaricare qui.';
+    if (!$items) return 'There is no material to download here.';
 
     $fileSt = $db->prepare('SELECT * FROM class_item_files WHERE item_id = :i ORDER BY id');
     $filesOf = [];
