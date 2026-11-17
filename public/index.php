@@ -74,6 +74,7 @@ if ($userId && !$isAdmin) {
                 <a href="pages/giochi.php" class="menu-item">// <?= tt('GAMES', 'GIOCHI') ?></a>
                 <a href="pages/appunti.php" class="menu-item">// <?= tt('CLASS NOTES', 'APPUNTI DI CLASSE') ?></a>
                 <a href="pages/ads.php" class="menu-item btn-adwall">// <?= tt('SUPPORT', 'SUPPORTA') ?></a>
+                <a href="pages/novita.php" class="menu-item">// <?= tt('NEWS', 'NOVITÀ') ?></a>
                 <a href="pages/progetto.php" class="menu-item">// <?= tt('THE PROJECT', 'IL PROGETTO') ?></a>
                 
                 <?php if ($canReadBooks): ?>

@@ -29,6 +29,7 @@ $pages = [
     ['/pages/soldi.php', 'monthly', '0.3'],
     ['/pages/privacy.php', 'yearly', '0.2'],
     ['/pages/sicurezza.php', 'yearly', '0.2'],
+    ['/pages/novita.php', 'weekly', '0.3'],
 ];
 $root = __DIR__;
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";

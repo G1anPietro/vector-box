@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 37;
+const DB_SCHEMA_VERSION = 38;
 
 /**
  * Session bootstrap.
@@ -581,6 +581,30 @@ function migrateV16(PDO $db): void {
 }
 
 /** v37: the language of the person (accounts.lang, 'en' or 'it'): the e-mails and notifications we send follow it, not the admin's. */
+/** v38: the news board (pages/novita.php): what is new, what is being worked on right now, what comes next. Texts in both languages. */
+function migrateV38(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS news_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT NOT NULL UNIQUE,
+        kind TEXT NOT NULL DEFAULT 'feature',          -- feature | fix | content | security | ops
+        status TEXT NOT NULL DEFAULT 'doing',          -- planned | doing | done
+        title_en TEXT NOT NULL DEFAULT '', title_it TEXT NOT NULL DEFAULT '',
+        body_en TEXT NOT NULL DEFAULT '', body_it TEXT NOT NULL DEFAULT '',
+        progress INTEGER,                              -- 0-100 or NULL (unknown)
+        version TEXT NOT NULL DEFAULT '',              -- the site version it went live in
+        is_public INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, done_at INTEGER
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_news_status ON news_items(status, updated_at)');
+    $db->exec("CREATE TABLE IF NOT EXISTS news_updates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL,
+        text_en TEXT NOT NULL, text_it TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_news_updates ON news_updates(item_id, id)');
+}
+
 function migrateV37(PDO $db): void {
     $had = (bool)$db->query("SELECT 1 FROM pragma_table_info('accounts') WHERE name = 'lang'")->fetchColumn();
     addColumnIfMissing($db, 'accounts', 'lang', "TEXT NOT NULL DEFAULT 'en'");
@@ -1035,6 +1059,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 37) {
             migrateV37($db);
+        }
+        if ($current < 38) {
+            migrateV38($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
