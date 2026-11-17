@@ -118,7 +118,7 @@ session_write_close();
 <head>
     <?php renderHead(tt('SYSTEM // ACCOUNT_MANAGEMENT', 'SISTEMA // GESTIONE_ACCOUNT'), true); ?>
     <script src="../js/account_data.js?v=<?php echo APP_VERSION; ?>" defer></script>
-    <?php if (!empty($account['is_admin'])): ?><script src="../js/totp.js?v=<?= filemtime(__DIR__ . '/../js/totp.js') ?>" defer></script><?php endif; ?>
+    <?php if (!empty($account['is_admin'])): ?><script src="../js/vendor/qrcode.js?v=1.4.4" defer></script><script src="../js/totp.js?v=<?= filemtime(__DIR__ . '/../js/totp.js') ?>" defer></script><?php endif; ?>
 </head>
 <body>
     <canvas id="canvas"></canvas>
