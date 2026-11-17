@@ -359,6 +359,26 @@ function barList(array $items, int $total, callable $h): void {
         <?php endif; ?>
         <p class="note"><?= tt('Collected every 10 minutes from the system logs (the web server never reads them), last 7 days, local network addresses left out. Updated: ', 'Raccolti ogni 10 minuti dai log del sistema (il web server non li legge), ultimi 7 giorni, indirizzi della rete locale esclusi. Aggiornato: ') ?><?= $h(date('Y-m-d H:i', (int)$atk['generated_at'])) ?></p>
         <?php endif; ?>
+        <?php $spd = $atk['speed'] ?? null; if ($spd && !empty($spd['n'])): $ms = fn($v) => number_format((float)$v, 0) . ' ms';
+              $slow = array_filter($spd['endpoints'], fn($e) => $e['n'] >= 5); uasort($slow, fn($a, $b) => $b['p95'] <=> $a['p95']); $slow = array_slice($slow, 0, 8, true); ?>
+        <h2 class="sect-title" id="velocita"><?= tt('Speed', 'Velocità') ?></h2>
+        <section class="tiles">
+            <div class="tile"><span class="big"><?= $h($ms($spd['p50'])) ?></span><span><?= tt('median response time, last 24 h', 'tempo di risposta mediano, ultime 24 ore') ?></span></div>
+            <div class="tile"><span class="big"><?= $h($ms($spd['p95'])) ?></span><span><?= tt('95% of requests faster than this', '95% delle richieste più veloci di così') ?></span></div>
+            <div class="tile"><span class="big"><?= $h($ms($spd['p99'])) ?></span><span><?= tt('99% faster than this', '99% più veloci di così') ?></span></div>
+            <div class="tile"><span class="big"><?= (int)$spd['n'] ?></span><span><?= tt('requests measured', 'richieste misurate') ?></span></div>
+        </section>
+        <section class="panel-s">
+            <h2><?= tt('Slowest endpoints (p95, at least 5 requests)', 'Indirizzi più lenti (p95, almeno 5 richieste)') ?></h2>
+            <?php if (!$slow): ?><p class="empty"><?= tt('Nothing recorded.', 'Niente di registrato.') ?></p><?php else: ?>
+            <div class="scroll"><table class="tbl">
+                <thead><tr><th><?= tt('Endpoint', 'Indirizzo') ?></th><th><?= tt('Requests', 'Richieste') ?></th><th>p50</th><th>p95</th><th>max</th></tr></thead>
+                <tbody><?php foreach ($slow as $p => $e): ?>
+                    <tr><td class="mono"><?= $h($p) ?></td><td><?= (int)$e['n'] ?></td><td><?= $h($ms($e['p50'])) ?></td><td><?= $h($ms($e['p95'])) ?></td><td><?= $h($ms($e['max'])) ?></td></tr>
+                <?php endforeach; ?></tbody>
+            </table></div><?php endif; ?>
+        </section>
+        <?php endif; ?>
         <p class="note"><?php if (pageLang() === 'it'): ?>I bot sono contati solo quando la richiesta arriva a PHP (pagine e indirizzi sconosciuti); quello che nginx scarta da solo non si vede qui. Gli scraper noti (SEO, dati) e chi sonda indirizzi come wp-login o .env più di 8 volte in un'ora vengono respinti. Non sono visite: la tabella "Ultime visite" non li include.<?php else: ?>Bots are counted only when the request reaches PHP (pages and unknown addresses); whatever nginx drops by itself does not show here. Known scrapers (SEO, data) and anyone probing addresses such as wp-login or .env more than 8 times in an hour are turned away. They are not visits: the "Latest visits" table does not include them.<?php endif; ?></p>
         <p class="note"><?= tt('A visit counts as new when the same IP with the same browser was not seen for 30 minutes. Robots, server checks and link previews are not counted.', 'Una visita è nuova quando lo stesso IP con lo stesso browser non si vedeva da 30 minuti. Robot, controlli del server e anteprime dei link non sono contati.') ?></p>
     </main>

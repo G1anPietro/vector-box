@@ -35,6 +35,7 @@ data/                   (non in git, FUORI da public/) database SQLite, sessioni
 | Tipo | File | Note |
 |---|---|---|
 | Fondamenta | `helpers.php`, `database.php`, `rate_limiter.php`, `debug_logger.php` | incluse da quasi tutto |
+| Controllo e attacchi | `health.php`, `attacks.php` (+ `bin/attacks-collect.php`) | `health.php`: pubblico, per il monitor esterno (200/503, nessun dettaglio). `attacks.php`: riepilogo attacchi, velocità (`speed`), digest giornaliero (`data/digest.state`) |
 | Sessione e account | `login.php`, `logout.php`, `check_session.php`, `save_theme.php`, `account_data.php` (+ `account_data_lib.php`), `get_user_profile.php` | |
 | Chat | `get_feed.php`, `uplink_send.php`, `uplink_stream.php`, `rooms.php`, `delete_message.php`, `chat_typing.php`, `dm.php`, `guestbook.php`, `command.php` | stanze nascoste: vedi sezione 3 |
 | Biblioteca | `books.php`, `bookmarks.php`, `progress.php`, `epub_meta.php`, `moderate_book_access.php` | |

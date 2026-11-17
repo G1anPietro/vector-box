@@ -70,6 +70,60 @@ function attacksTally(array $events, string $key, int $now, ?string $geoFile = n
             'top_keys' => array_slice($keys, 0, 12, true), 'countries' => array_slice($byCc, 0, 10, true)];
 }
 
+/** Percent of free space on the disk holding $dir (0 when unknown). */
+function attacksDiskPct(string $dir): int {
+    $f = @disk_free_space($dir); $t = @disk_total_space($dir);
+    return $f !== false && $t ? (int)round(100 * $f / $t) : 0;
+}
+function attacksHealthOk(bool $db, int $diskPct): bool { return $db && $diskPct >= 5; }
+
+/** p-th percentile (nearest rank) of an ascending-sorted list of floats. */
+function attacksPct(array $sorted, float $p): float {
+    return $sorted ? $sorted[max(0, (int)ceil($p / 100 * count($sorted)) - 1)] : 0.0;
+}
+
+/** Response times of the last 24 h from nginx "timed" lines (request time as the last field; lines without it are skipped).
+ *  Streaming endpoints are left out. Returns ['n','p50','p95','p99','endpoints'=>[path=>[n,p50,p95,max]]] in milliseconds. No query strings, no IPs. */
+function attacksSpeed(array $lines, int $now): array {
+    $all = []; $per = [];
+    foreach ($lines as $l) {
+        if (!preg_match('/\[([^\]]+)\] "[A-Z]+\s+(\S+)[^"]*" \d{3} .* (\d+\.\d{3})\s*$/', $l, $m)) continue;
+        $path = strtok($m[2], '?');
+        if ($path === false || stripos($path, 'stream') !== false) continue;
+        $ts = DateTime::createFromFormat('d/M/Y:H:i:s O', $m[1]);
+        if (!$ts || $ts->getTimestamp() < $now - 86400) continue;
+        $ms = (float)$m[3] * 1000;
+        $key = preg_match('#^/(?:js|css)/|\.(?:png|jpe?g|gif|webp|svg|ico|avif)$#i', $path) ? 'static' : mb_substr($path, 0, 80);
+        $all[] = $ms; $per[$key][] = $ms;
+    }
+    sort($all);
+    $eps = [];
+    foreach ($per as $k => $v) { sort($v); $eps[$k] = ['n' => count($v), 'p50' => attacksPct($v, 50), 'p95' => attacksPct($v, 95), 'max' => end($v)]; }
+    return ['n' => count($all), 'p50' => attacksPct($all, 50), 'p95' => attacksPct($all, 95), 'p99' => attacksPct($all, 99), 'endpoints' => $eps];
+}
+
+/** Daily digest due? First run at or after 08:00 server time, once per day. */
+function attacksShouldDigest(?array $state, int $now): bool {
+    return (int)date('G', $now) >= 8 && ($state['digest_date'] ?? '') !== date('Y-m-d', $now);
+}
+
+/** New lines in the error log since $offset (a byte offset) -> [count, new offset]. Never returns text. */
+function attacksNewErrors(string $file, int $offset): array {
+    $size = @filesize($file);
+    if ($size === false) return [0, 0];
+    if ($size < $offset) $offset = 0;                     // log rotated
+    $txt = $size > $offset ? (string)@file_get_contents($file, false, null, $offset) : '';
+    return [substr_count($txt, "\n"), $size];
+}
+
+/** The daily message [title, body] (yesterday's numbers, UTC days like the summary), or null without a summary. */
+function attacksDigest(array $summary, int $newErrors, int $diskPct, ?int $now = null): ?array {
+    if (!isset($summary['ssh'], $summary['web'], $summary['bans'])) return null;
+    $y = gmdate('Y-m-d', ($now ?? time()) - 86400);
+    $n = fn($k) => (int)($summary[$k]['per_day'][$y] ?? 0);
+    return ['Daily digest', "Yesterday: {$n('ssh')} SSH attempts, {$n('web')} web probes, {$n('bans')} new bans. New errors in the log: $newErrors. Disk free: $diskPct%."];
+}
+
 /** The summary shown on the stats page, from raw log lines. */
 function attacksBuild(array $sshLines, array $webLines, array $banLines, ?int $now = null, ?string $geoFile = null): array {
     $now ??= time();
@@ -90,7 +144,7 @@ function attacksBuild(array $sshLines, array $webLines, array $banLines, ?int $n
 function attacksRead(): ?array {
     $j = @file_get_contents(attacksFile());
     $d = $j === false ? null : json_decode($j, true);
-    return is_array($d) && isset($d['ssh']) ? $d : null;
+    return is_array($d) && isset($d['ssh']) ? $d : null;   // 'speed' may be missing (older files)
 }
 
 /** What deserves a phone notification, comparing the previous summary with the new one: addresses fail2ban banned since the last run, and a burst

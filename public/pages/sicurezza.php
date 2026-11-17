@@ -13,6 +13,11 @@ $email = filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
 $mailto = $email ? '<a href="mailto:' . htmlspecialchars($email) . '">' . htmlspecialchars($email) . '</a>' : '';
 $cspOn = strtolower((string)envValue('CSP_ENFORCE', 'false')) === 'true';   // the same test as sendPageSecurityHeaders()
 $updated = '2026-11-17';
+require_once __DIR__ . '/../api/attacks.php';
+$atk = attacksRead();   // only totals, only when fresh
+$weekLine = $atk && time() - (int)$atk['generated_at'] < 2 * 86400
+    ? ($it ? 'Ultimi 7 giorni: ' . (int)$atk['web']['total'] . ' sondaggi web e ' . (int)$atk['ssh']['total'] . ' tentativi SSH respinti.'
+           : 'Last 7 days: ' . (int)$atk['web']['total'] . ' web probes and ' . (int)$atk['ssh']['total'] . ' SSH attempts turned away.') : '';
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -87,7 +92,7 @@ $updated = '2026-11-17';
         <h2>Limiti contro gli abusi</h2>
         <p>Oltre all'accesso, hanno un limite di richieste la chat, i messaggi privati, il muro, il modulo Uplink, i codici d'invito
         delle classi, i caricamenti, i link temporanei, le stanze dei giochi e altro. I programmi che raschiano il sito vengono
-        rifiutati, e chi cerca a tappeto pagine di amministrazione che qui non esistono viene rallentato.</p>
+        rifiutati, e chi cerca a tappeto pagine di amministrazione che qui non esistono viene rallentato.<?= $weekLine ? ' ' . htmlspecialchars($weekLine) : '' ?></p>
 
         <h2>File caricati</h2>
         <ul>
@@ -188,7 +193,7 @@ $updated = '2026-11-17';
         <h2>Limits against abuse</h2>
         <p>Besides login, there are request limits on the chat, private messages, the wall, the Uplink form, class invite codes,
         uploads, temporary links, game rooms and more. Programs that scrape the site are refused, and whoever sweeps for admin pages
-        that do not exist here is slowed down.</p>
+        that do not exist here is slowed down.<?= $weekLine ? ' ' . htmlspecialchars($weekLine) : '' ?></p>
 
         <h2>Uploaded files</h2>
         <ul>

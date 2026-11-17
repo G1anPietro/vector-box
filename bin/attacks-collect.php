@@ -20,9 +20,25 @@ if (is_readable($log)) {                           // the last ~40000 lines are 
 }
 $prev = attacksRead();
 $d = attacksBuild($ssh, $web, $ban);
+$d['speed'] = attacksSpeed($web, time());
 $tmp = attacksFile() . '.tmp';
 if (file_put_contents($tmp, json_encode($d), LOCK_EX) === false || !rename($tmp, attacksFile())) { fwrite(STDERR, "cannot write " . attacksFile() . "\n"); exit(1); }
 @chgrp(attacksFile(), 'www-data');   // the web server (group www-data) reads it; the owner's user is a member of that group
 @chmod(attacksFile(), 0660);
 foreach (attacksAlerts($prev, $d) as [$t, $m]) attacksNotify($t, $m);   // after the file is written: a slow phone service never loses the summary
+// Daily digest + disk alert; state in data/digest.state (small JSON, atomic write)
+$stFile = dirname(attacksFile()) . '/digest.state';
+$st = json_decode((string)@file_get_contents($stFile), true); $st = is_array($st) ? $st : null;
+$now = time(); $today = date('Y-m-d', $now); $dirty = false;
+$disk = attacksDiskPct(dirname(attacksFile()));
+if ($disk < 15 && ($st['disk_alert_date'] ?? '') !== $today) {
+    attacksNotify('Disk space low', "Free space of the data disk: $disk%");
+    $st['disk_alert_date'] = $today; $dirty = true;
+}
+if (attacksShouldDigest($st, $now)) {
+    [$errs, $off] = attacksNewErrors(dirname(attacksFile()) . '/system_errors.log', (int)($st['err_offset'] ?? 0));
+    if ($m = attacksDigest($d, $errs, $disk, $now)) attacksNotify($m[0], $m[1]);
+    $st['digest_date'] = $today; $st['err_offset'] = $off; $dirty = true;
+}
+if ($dirty && file_put_contents($stFile . '.tmp', json_encode($st), LOCK_EX) !== false) rename($stFile . '.tmp', $stFile);
 echo "ssh {$d['ssh']['total']}  web {$d['web']['total']}  bans {$d['bans']['total']}\n";

@@ -292,3 +292,11 @@ location ~* ^/(wp-(admin|login|content|includes)|xmlrpc\.php|phpmyadmin|pma|admi
 ```
 
 Then `sudo nginx -t && sudo systemctl reload nginx`. Optional: fail2ban with a jail on 444/404 bursts from the access log.
+
+## Health check for an external monitor
+
+`GET /api/health.php` (public, no session, `Cache-Control: no-store`, 60 requests/minute per client) returns
+`{"ok":true,"db":true,"time":<unix>,"disk_free_pct":<int>}`. It answers HTTP 503 with `ok:false` when the database
+cannot be read or the data disk has under 5% free. Point an uptime monitor at it and alert on anything but 200.
+The collector (`bin/attacks-collect.php`, same cron) also sends a daily digest after 08:00 and a disk alert under 15%
+through ntfy (off with `ATTACK_NOTIFY=false`).
