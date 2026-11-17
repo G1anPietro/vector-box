@@ -24,14 +24,18 @@ Ads are **off** until `ADSENSE_CLIENT` is set in `.env`. They appear only on
    ADSENSE_CLIENT=ca-pub-XXXXXXXXXXXXXXXX
    ```
 
-   PHP rereads `.env`: no restart needed. From this moment the AdSense script loads on
-   the two pages and Google can verify the site.
+   PHP rereads `.env`: no restart needed. From this moment the two pages show the site's own cookie banner
+   (`js/cookie_consent.js`); Google's script is loaded by `js/ads.js` only after "Accept", so nothing from Google is
+   in the page before consent. Ads are never shown to the admin or to accounts marked `ads_free`.
 5. Once approved: AdSense > Ads > By ad unit > Display ads, create two units
    ("vector-box games", "vector-box support") and put their numeric ids in
    `ADSENSE_SLOT_GAMES` and `ADSENSE_SLOT_SUPPORT`.
 6. **Consent (required in the EU):** AdSense > Privacy & messaging > European
    regulations: create and publish the consent message (Google's own certified CMP).
    Without it, Google serves only limited ads to visitors from the EU.
+   By default the site asks with its own banner (choice kept 6 months in the `vb_consent` cookie, changed with the
+   "Cookie" link in the footers). Set `ADSENSE_CMP=google` in `.env` only if Google's message should ask instead:
+   then Google's script loads at once and its message collects the consent.
 
 ## Rules that keep the account alive
 

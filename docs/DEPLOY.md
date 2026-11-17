@@ -57,6 +57,10 @@ group so it can read `.env` and write `data/node_sessions.sqlite`.
 # 6 connections per site, so a few open tabs would stall every other request.
 http2 on;
 
+# /.well-known/security.txt (RFC 9116: how to report a vulnerability) must stay reachable.
+# `^~` stops nginx from trying the regex below, which would otherwise hide it.
+location ^~ /.well-known/ { default_type text/plain; try_files $uri =404; }
+
 # Dotfiles in public/ (.user.ini) are currently downloadable
 location ~ /\. { deny all; return 404; }
 
@@ -69,8 +73,16 @@ add_header Referrer-Policy strict-origin-when-cross-origin always;
 Also delete `public/tree.txt` on the server if it exists (it lists the site's files; it is
 gitignored, so it was copied by hand).
 
-HSTS (`Strict-Transport-Security`) is intentionally NOT suggested yet: if anything is reached
-as `http://vector-box.duckdns.org:<port>` (e.g. the Node panel on :3000), HSTS would break it.
+Check: `curl -i https://SITE/.well-known/security.txt` must answer 200 with the `Contact:` line, and
+`curl -i https://SITE/.user.ini` 404. The file is static: its domain must match `SITE_URL`, and its `Expires:` date
+(less than a year ahead) has to be renewed by hand before it passes; `tests/sicurezza-pagina.test.js` fails when it is
+in the past. If certbot uses the webroot method, its own `/.well-known/acme-challenge/` location keeps working (a longer
+prefix wins).
+
+HSTS: the PHP pages already send `Strict-Transport-Security: max-age=31536000` when the request is HTTPS
+(`sendBaseSecurityHeaders()` in `public/api/helpers.php`), so a browser that has seen the site will not open
+`http://<the same host>:<port>` any more. Nothing on that host should be reached over plain HTTP (the Node panel
+listens on loopback behind nginx). Adding the header in nginx too would only extend it to the static pages.
 
 Class notes (`pages/appunti.php`): uploads up to 40 MB (raised by the admin up to 95) and the
 timetable read from a photo, which waits for Gemini up to a minute:
@@ -194,6 +206,26 @@ on) at the start of every run, before the AI lock. With the 5-minute timer they 
 not at all while a long AI run keeps the service busy. For punctual ones add a second timer every minute:
 `vector-box-appunti-bells.service` (`User=www-data`, `ExecStart=/usr/bin/php /var/www/vector-box/bin/appunti-ai.php --bells-only`)
 and `.timer` (`OnCalendar=*-*-* *:*:30`, `AccuracySec=5s`). Each push is sent once per lesson (table `class_bell_sent`).
+
+## 4e. E-mail box (optional, off by default)
+
+Nothing is sent while `MAIL_DRIVER` is empty: the admin box (`pages/mail.php`) still works and messages wait in the
+queue. To try it without a provider set `MAIL_DRIVER=log` (messages are written to `data/mail.log`). To really send:
+`MAIL_DRIVER=http`, `MAIL_HTTP_URL` (an https address; the body is Resend's JSON shape), `MAIL_API_KEY`, `MAIL_FROM`
+and `MAIL_DAILY_LIMIT` in the server's `.env` (the key goes only there). Then the worker, every minute, as the PHP user:
+
+```bash
+echo '* * * * * www-data php /var/www/vector-box/bin/mail-worker.php >/dev/null 2>&1' | sudo tee /etc/cron.d/vector-box-mail
+```
+
+"Send now" in the box does the same by hand. The links inside the messages (`api/mail_link.php`) are built from
+`SITE_URL`, so it must be the public address.
+
+## 4f. Data retention (nothing to install)
+
+`public/api/retention.php` deletes old personal data once a day, started by the first page request of the day (a stamp
+file in `data/`). Periods: `RETENTION_*_DAYS` in `.env` (defaults in `.env.example`; the privacy page prints the same
+numbers). By hand, as the PHP user: `sudo -u www-data php /var/www/vector-box/public/api/retention.php`.
 
 ## 5. After deploying
 
