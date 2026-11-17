@@ -96,3 +96,12 @@ test('--restore-test: restores into a temp folder, runs the migrations, checks t
     // nothing was written on the stick or in the live site
     assert.ok(!fs.readdirSync(path.join(dest, 'b')).some((f) => /restore/i.test(f)));
 });
+
+test('--restore-test: a folder the user cannot read is said plainly (and is not reported as a missing backup)', { skip: process.getuid && process.getuid() === 0 && 'root can read everything' }, () => {
+    fs.chmodSync(path.join(dest, 'b', 'db'), 0o000);
+    try {
+        const r = run(['--restore-test']);
+        assert.equal(r.status, 1);
+        assert.match(r.stdout + r.stderr, /cannot read .*run this as root/);
+    } finally { fs.chmodSync(path.join(dest, 'b', 'db'), 0o755); }
+});

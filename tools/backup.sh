@@ -88,6 +88,8 @@ fi
 #   there is an admin account; every book and cover the database names exists in the files mirror. Exit 1 and one push on any problem.
 if [ "$MODE" = "--restore-test" ]; then
     if [ "${BACKUP_REQUIRE_MOUNT:-1}" = "1" ]; then mountpoint -q "$BACKUP_MOUNT" || die "restore test: $BACKUP_MOUNT is not mounted"; fi
+    # the backup folder belongs to root: as another user it would look empty. That is not a backup problem, so no push, just say it.
+    [ -r "$BACKUP_DIR/db" ] && [ -x "$BACKUP_DIR/db" ] || { log "ERROR: cannot read $BACKUP_DIR/db: run this as root (sudo)"; exit 1; }
     SRC="$(cd "$(dirname "$0")/.." && pwd)"                      # the code that would run after a restore
     [ -d "$SRC/public/api" ] || die "restore test: no site code found next to this script"
     T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
