@@ -33,7 +33,7 @@
 
     const I18N = window.SpiaI18n;
     const Local = window.SpiaLocal;
-    let lang = store.get('spia_lang') || I18N.detect(Object.keys(LANGS));
+    let lang = I18N.initial(() => store.get('spia_lang'), Object.keys(LANGS), (code) => { lang = code; scheduleRender(); });
     const t = (k, vars) => I18N.t(lang, k, vars);
 
     let LOC = { categories: [], locations: [] };
