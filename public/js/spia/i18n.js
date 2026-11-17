@@ -2547,7 +2547,7 @@ window.SpiaI18n = (() => {
         if (saved) return saved;
         const first = detect(available);
         if (!siteCookie() && window.fetch && here) {
-            fetch(new URL('../api/lang.php', here).href, { credentials: 'same-origin' }).then((r) => r.json()).then((j) => {
+            fetch(new URL('../../api/lang.php', here).href, { credentials: 'same-origin' }).then((r) => r.json()).then((j) => {
                 if (j && available.includes(j.lang) && j.lang !== first && !getSaved()) onLate(j.lang);
             }).catch(() => { /* keep the browser's language */ });
         }

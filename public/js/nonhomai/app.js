@@ -311,7 +311,7 @@
     }
 
     async function boot() {
-        document.documentElement.lang = lang;
+        document.documentElement.lang = lang; document.title = t('nh_title');
         try {
             DATA = await (await fetch('../assets/nonhomai/cards.json?v=1', { cache: 'no-cache' })).json();
             store.set('nh_cards_cache', DATA);
