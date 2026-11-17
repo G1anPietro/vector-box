@@ -9,11 +9,12 @@
 //   RETENTION_CHAT_DAYS    public chat messages and guestbook entries      365
 //   RETENTION_DM_DAYS      private messages                                365
 //   RETENTION_NOTIF_DAYS   notifications                                   180
+//   RETENTION_SESSIONS_DAYS signed-in device rows idle for this long        90
 //   RETENTION_SHARE_DAYS   temporary links, after they expired             30
 require_once __DIR__ . '/helpers.php';
 
 function retentionDays(string $key): int {
-    static $defaults = ['VISITS' => 90, 'BOTS' => 30, 'IP' => 90, 'CHAT' => 365, 'DM' => 365, 'NOTIF' => 180, 'SHARE' => 30, 'ADMINLOG' => 365];
+    static $defaults = ['VISITS' => 90, 'BOTS' => 30, 'IP' => 90, 'CHAT' => 365, 'DM' => 365, 'NOTIF' => 180, 'SHARE' => 30, 'ADMINLOG' => 365, 'SESSIONS' => 90];
     $n = (int)envValue('RETENTION_' . $key . '_DAYS', (string)$defaults[$key]);
     return $n >= 1 ? $n : $defaults[$key];
 }
@@ -42,6 +43,7 @@ function runRetention(PDO $db): array {
     $run('chat', 'DELETE FROM transmissions WHERE created_at < :d', [':d' => $date(retentionDays('CHAT'))]);
     $run('guestbook', 'DELETE FROM guestbook WHERE created_at < :d', [':d' => $date(retentionDays('CHAT'))]);
     $run('admin_log', 'DELETE FROM admin_log WHERE created_at < :t', [':t' => $day(retentionDays('ADMINLOG'))]);
+    $run('sessions', 'DELETE FROM account_sessions WHERE last_seen < :t', [':t' => $day(retentionDays('SESSIONS'))]);
     $run('idea_votes', 'DELETE FROM news_idea_votes WHERE idea_id NOT IN (SELECT id FROM news_ideas)', []);
     $run('news_ideas', 'DELETE FROM news_ideas WHERE created_at < :t', [':t' => $day(retentionDays('CHAT'))]);
     $run('dm', 'DELETE FROM dm_messages WHERE created_at < :d', [':d' => $date(retentionDays('DM'))]);

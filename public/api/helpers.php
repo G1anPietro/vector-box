@@ -244,6 +244,8 @@ function establishSession(array $account): string {
     $_SESSION['theme']      = $account['theme'] ?? 'monochrome';
     $_SESSION['is_admin']   = (int)($account['is_admin'] ?? 0);
     $_SESSION['csrf_token'] = $csrf;
+    require_once __DIR__ . '/sessions_lib.php';
+    sessionTrack((int)$account['id']);   // "where you are signed in"; sets $_SESSION['tracked'], so it must run before the close
     session_write_close();
 
     return $csrf;
