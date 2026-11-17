@@ -7,7 +7,8 @@ const { startSite } = require('./helpers');
 const dir = path.join(__dirname, '..', 'public', 'js', 'rogue');
 const RNG = require(path.join(dir, 'rng.js')), MAP = require(path.join(dir, 'map.js')), MOBS = require(path.join(dir, 'mobs.js')),
     ITEMS = require(path.join(dir, 'items.js')), CLS = require(path.join(dir, 'classes.js')), SP = require(path.join(dir, 'sprites.js')),
-    G = require(path.join(dir, 'game.js'));
+    G = require(path.join(dir, 'game.js')), ART = require(path.join(dir, 'sprites-art.js'));
+for (const f of ['heroes', 'mobs', 'bosses', 'items']) require(path.join(dir, `sprites-art-${f}.js`));
 const W = MAP.W;
 
 /** A simple player: fights what it sees, drinks when hurt, explores, takes the stairs. Returns the final state. */
@@ -58,9 +59,9 @@ test('every floor of 300 seeds is connected and its stairs are reachable without
 });
 
 test('data tables are consistent: pictures exist, every item has an effect, looks are enough, floors have monsters', () => {
-    for (const d of MOBS.LIST) { assert.ok(SP[d.shape], 'sprite ' + d.id); assert.ok(d.hp > 0 && d.atk.length === 2 && (d.boss || d.floors.length === 2), d.id); }
+    for (const d of MOBS.LIST) { assert.notEqual(ART.resolve(ART.chain(d, 'm')).kind, 'missing', 'sprite ' + d.id); assert.ok(d.hp > 0 && d.atk.length === 2 && (d.boss || d.floors.length === 2), d.id); }
     for (const d of ITEMS.LIST) {
-        assert.ok(SP[d.shape || ITEMS.CATS[d.cat].shape], 'sprite ' + d.id);
+        assert.notEqual(ART.resolve(ART.chain(Object.assign({}, d, { shape: d.shape || ITEMS.CATS[d.cat].shape }), 'i')).kind, 'missing', 'sprite ' + d.id);
         if (['drink', 'script', 'usb'].includes(d.cat)) assert.ok(G.EFFECTS[d.effect], 'effect ' + d.id);
     }
     for (const k in ITEMS.LOOKS) assert.ok(ITEMS.LOOKS[k].length >= ITEMS.LIST.filter((d) => d.cat === k).length, 'looks ' + k);
@@ -156,7 +157,7 @@ test('the page is served, has no inline script, and the lists know it', async ()
         const html = await (await fetch(`${site.base}/pages/dungeon.html`)).text();
         assert.match(html, /<meta name="description"[^>]* content="[^"]{40,}">/);
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html));
-        for (const f of ['/js/dungeon.js', '/css/dungeon.css', '/assets/dungeon/icon.svg', ...['rng', 'map', 'mobs', 'items', 'classes', 'sprites', 'meta', 'game'].map((n) => `/js/rogue/${n}.js`)]) assert.equal((await fetch(site.base + f)).status, 200, f);
+        for (const f of ['/js/dungeon.js', '/css/dungeon.css', '/assets/dungeon/icon.svg', ...['rng', 'map', 'mobs', 'items', 'classes', 'sprites', 'sprites-art', 'sprites-art-heroes', 'sprites-art-mobs', 'sprites-art-bosses', 'sprites-art-items', 'meta', 'game'].map((n) => `/js/rogue/${n}.js`)]) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.match(await (await fetch(`${site.base}/pages/giochi.php`)).text(), /dungeon\.html/);
         assert.match(await (await fetch(`${site.base}/sitemap.php`)).text(), /pages\/dungeon\.html/);
     } finally { await site.stop(); }

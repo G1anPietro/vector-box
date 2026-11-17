@@ -61,6 +61,7 @@
         return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => c(v).toString(16).padStart(2, '0')).join('');
     }
     function sprite(name, col) {
+        if (R.art) return R.art.sprite(name, col); // 16x16 art (js/rogue/sprites-art*.js); the 8x8 code below is the fallback
         const key = name + col;
         if (sprCache[key]) return sprCache[key];
         const rows = SP[name] || SP.blob, c = document.createElement('canvas');
@@ -71,7 +72,7 @@
     }
     function icon(host, name, col, px) {
         const c = document.createElement('canvas');
-        c.width = c.height = 8; c.getContext('2d').drawImage(sprite(name, col), 0, 0);
+        c.width = c.height = 16; c.getContext('2d').drawImage(sprite(name, col), 0, 0);
         if (px) { c.style.width = c.style.height = px + 'px'; }
         host.appendChild(c);
     }
@@ -126,14 +127,14 @@
         for (const m of s.mobs) {
             if (!G.shown(s, m) || m.x < x0 || m.y < y0 || m.x >= x1 || m.y >= y1) continue;
             const d = G.MOB[m.k], boss = !!d.boss;
-            spr(d.shape, m.asleep ? shade(d.col, 0.55) : d.col, m.x, m.y);
+            spr(R.art.chain(d, 'm'), m.asleep ? shade(d.col, 0.55) : d.col, m.x, m.y);
             if (m.hp < m.max || boss) {
                 const [px, py] = cell(m.x, m.y);
                 ctx.fillStyle = '#000'; ctx.fillRect(px + 2, py + ts - 5, ts - 4, 4);
                 ctx.fillStyle = '#ff4d4d'; ctx.fillRect(px + 3, py + ts - 4, Math.max(1, (ts - 6) * m.hp / m.max), 2);
             }
         }
-        spr('hero', G.CLASS[s.cls].col, s.p.x, s.p.y);
+        spr(R.art.chain(G.CLASS[s.cls], 'h'), G.CLASS[s.cls].col, s.p.x, s.p.y);
         // what you remember but cannot see now is dimmed
         ctx.fillStyle = 'rgba(0,0,0,.55)';
         for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
@@ -180,6 +181,7 @@
         for (const l of s.log.slice(-4)) { const d = document.createElement('div'); d.textContent = G.logText(l, lang()); if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
     }
     function render() { draw(); hud(); slots(); }
+    R.art.animate(() => { if (s) draw(); }); // idle animation: two frames, 2 fps
 
     // ── the four quickslots: each holds an item kind; tap uses it (or aims it), long press chooses what lives there ──
     const SLOT_CATS = ['drink', 'script', 'usb', 'food', 'throw'];
@@ -344,7 +346,7 @@
             el('p', tl('arch_dex_n', { met, all: all.length }), '', body);
             for (const d of all) {
                 const e = meta.codex[d.id], r = el('div', '', 'dg-item', body), t = el('div', '', 't', r);
-                icon(r, d.shape, e ? d.col : '#2a3a30', 32); r.appendChild(t);
+                icon(r, R.art.chain(d, 'm'), e ? d.col : '#2a3a30', 32); r.appendChild(t);
                 el('span', e ? tr(d.name) : '???', '', t);
                 el('small', e ? tl('arch_dex_seen', { info: tr(d.info), seen: e.seen, kills: e.kills }) : tl('arch_dex_new'), '', t);
             }
@@ -638,7 +640,7 @@
         for (const c of R.classes.CLASSES) {
             const open = G.unlocked(meta, c), b = el('button', '', open ? '' : 'locked', box);
             b.type = 'button'; b.setAttribute('aria-pressed', 'false');
-            icon(b, 'hero', c.col); el('span', tr(c.name), '', b);
+            icon(b, R.art.chain(c, 'h'), c.col); el('span', tr(c.name), '', b);
             b.addEventListener('click', () => pick(c, b));
         }
         const at = Math.max(0, R.classes.CLASSES.indexOf(selected));

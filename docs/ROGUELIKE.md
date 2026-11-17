@@ -6,7 +6,7 @@ Test: `tests/dungeon.test.js` e `tests/dungeon-touch.test.js`. Nessuna rete: tut
 ## Come è fatto
 - `rng.js` numeri casuali con seme (tutta la partita è un oggetto JSON: stesso seme, stessa partita).
 - `map.js` piani (stanze e corridoi, porte segrete), campo visivo, percorsi. Un piano dipende solo da (seme, piano).
-- `mobs.js` settori e mostri (dati). `items.js` oggetti (dati). `classes.js` classi e abilità (dati). `meta.js` albero dei potenziamenti e medaglie (dati). `sprites.js` disegni 8x8.
+- `mobs.js` settori e mostri (dati). `items.js` oggetti (dati). `classes.js` classi e abilità (dati). `meta.js` albero dei potenziamenti e medaglie (dati). `sprites.js` vecchi disegni 8x8 (restano come ripiego), `sprites-art*.js` disegni 16x16 (vedi sotto).
 - `game.js` le regole: `newGame`, `act`, `save/load`, profilo (`recordRun`, `buyUpgrade`, `checkMedals`).
 - `text.js` tutte le frasi che non stanno nelle tabelle, in inglese e italiano (chiave -> `{en, it}`).
 - Ogni file di dati ha in cima un commento che spiega come aggiungere un elemento.
@@ -31,10 +31,21 @@ Le regole (`game.js`) non scrivono mai frasi: `log(s, 'chiave', {parametri}, col
 - Altre frasi: chiave in `MSG` di `text.js` con `{en, it}`; stessi segnaposto `{x}` nelle due lingue.
 - Test: `tests/dungeon-i18n.test.js` (due lingue presenti, segnaposto uguali, nessun italiano nell'inglese e viceversa, chiavi usate esistenti, vecchi salvataggi).
 
+## Come disegnare uno sprite
+Motore: `public/js/rogue/sprites-art.js` (`Rogue.art`). I disegni stanno in `sprites-art-heroes.js` (8 eroi + base), `sprites-art-mobs.js` (archetipi e singoli mostri), `sprites-art-bosses.js` (10 boss), `sprites-art-items.js` (oggetti, arredi, effetti `fx:*`). Ogni file chiama `A.add({ chiave: { r: [16 righe] } })`.
+- **Formato**: 16 stringhe da 16 caratteri. `.` vuoto. Ogni carattere e' un RUOLO di colore, ricavato dal colore `col` del mostro/oggetto (stesso disegno, tanti colori): `o` contorno scuro, `s` ombra, `b` base (il colore stesso), `l` luce, `a` accento (caldo se il colore e' freddo e viceversa), `e` pupilla, `w` bianco. Colori fissi comuni: `n`/`N` pelle, `h`/`H` capelli, `k` metallo scuro, `g`/`G` grigi, `y` oro, `r` rosso, `t` legno, `p` carta, `c` vetro. Un disegno puo' ridefinire un carattere con `p: { x: 'ruolo' | '#rrggbb' }`.
+- **Tre toni piu' contorno**: contorno, ombra, base, luce. Regola: contorno sempre intorno alla sagoma, luce in alto a sinistra, ombra in basso a destra, occhi con `w`+`e` (pupille verso il centro = cattivo). Il piano deve restare leggibile a 24 px su pavimento scuro: sagoma prima, dettagli poi.
+- **Simmetria**: `A.mirror([8 colonne sinistre x 16 righe], [[riga, colonna, 'testo'], ...])` specchia, poi scrive le parti asimmetriche (usato per boss e oggetti). Per gli eroi `hero(patches)` parte dal corpo comune e cambia solo le righe che servono.
+- **Animazione**: `A.add(defs, { anim: true })` (eroi, mostri, boss). Il fotogramma 1 abbassa di 1 px le prime `bob` righe (predefinito 10; per i volanti `bob: 13/14` = tutto il corpo); `f2: [[riga, col, 'c'], ...]` ritocca pixel solo nel fotogramma 1 (occhi, bocca). `A.sprite(nome, col, frame)`; senza `frame` segue l'orologio a 2 fps e sotto `prefers-reduced-motion` resta fermo. Una piccola canvas per (nome, colore, fotogramma), cache limitata a 500 (poi si svuota).
+- **Chiavi e ripiego**: `A.chain(voce, 'm'|'i'|'h')` costruisce `sprite > m:<id> > archetype > shape > m:generic` (per gli oggetti `i:<id>` e `i:generic`, per gli eroi `hero:<classe>` e `hero`). Si disegna il primo nome che esiste; i vecchi 8x8 di `sprites.js` contano come esistenti (raddoppiati); chiave sconosciuta = punto interrogativo rosso `fx:unknown`. Nelle voci dei dati si puo' scrivere `sprite: 'chiave'` e `archetype: 'bug'` oltre a `shape`.
+- **Aggiungere un mostro**: (1) se somiglia a un archetipo (`bug worm bat blob human ghost eye spider swarm robot hood chest daemon printer script crown`) basta `shape`/`archetype` + `col`: nessun disegno nuovo. (2) per un disegno proprio aggiungi `'m:<id>': { r: [...] }` in `sprites-art-mobs.js` (boss: `-bosses.js`). Oggetto: `'i:<id>'` in `-items.js` (`alias` li riusa). Eroe: `'hero:<id classe>'`.
+- **Controllo**: apri `tools/sprite-sheet.html` direttamente dal disco (nessun server): ogni sprite a 64 px (due fotogrammi) e a 16/24/36 px, cornice arancione = disegnato da un ripiego, elenco "Fallbacks" in fondo. `?only=heroes|mobs|items|keys|strip`, `?f=testo` filtra, `?floor=%23rrggbb` cambia lo sfondo. Test: `tests/sprites.test.js` (16x16, caratteri definiti, ogni chiave dei dati si risolve, due fotogrammi, cache limitata).
+- Se cambi un file `sprites-art*.js` alza il suo `?v=` in `dungeon.html`.
+
 ## Aggiungere contenuti
 - Mostro: una riga `mk(settore, { id, name, shape, col, info, …comportamenti })` in `mobs.js` (numeri calcolati dal settore; `hpx`, `atkx`, `xpx` per ritoccarli).
 - Oggetto: un oggetto in `items.js`; se usa un effetto nuovo, aggiungi la funzione in `EFFECTS` di `game.js`.
-- Disegno: otto righe da otto caratteri in `sprites.js`.
+- Disegno: sedici righe da sedici caratteri in `sprites-art-*.js` (vedi "Come disegnare uno sprite").
 - Settore: un oggetto in `SECTORS` (ogni settore dura 5 piani, il boss è all'ultimo), poi mostri e boss con `mk`.
 - Classe, abilità, potenziamento, medaglia: un oggetto nella tabella giusta.
 

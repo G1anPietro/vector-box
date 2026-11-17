@@ -122,7 +122,8 @@
     function itemLook(s, it) {
         if (it.k === '$') return { shape: 'coin', col: '#ffb000' };
         const d = ITEM[it.k], c = ITEMS.CATS[d.cat];
-        return { shape: d.shape || c.shape, col: c.unknown ? ITEMS.LOOKS[d.cat][s.looks[it.k]][1] : d.col || c.col };
+        // a sprite chain (exact key > archetype > category drawing); an unidentified item shows only its category drawing
+        return { shape: c.unknown && !s.known[it.k] ? c.shape : [d.sprite, 'i:' + d.id, d.archetype, d.shape, c.shape].filter(Boolean).join('>'), col: c.unknown ? ITEMS.LOOKS[d.cat][s.looks[it.k]][1] : d.col || c.col };
     }
     function identify(s, k) {
         if (!ITEMS.CATS[ITEM[k].cat].unknown || s.known[k]) return;
