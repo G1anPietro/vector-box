@@ -21,7 +21,7 @@
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
     <meta name="twitter:card" content="summary">
     <link rel="icon" href="../assets/dungeon/icon.svg?v=2" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/dungeon.css?v=9">
+    <link rel="stylesheet" href="../css/dungeon.css?v=10">
     <script src="../js/i18n.js?v=1"></script>
     <script src="../js/rogue/rng.js?v=2" defer></script>
     <script src="../js/rogue/map.js?v=4" defer></script>
@@ -45,10 +45,12 @@
     <script src="../js/rogue/meta.js?v=5" defer></script>
     <script src="../js/rogue/text.js?v=2" defer></script>
     <script src="../js/rogue/text-systems.js?v=4" defer></script>
+    <script src="../js/rogue/text-bot.js?v=1" defer></script>
     <script src="../js/rogue/cover.js?v=1" defer></script>
     <script src="../js/rogue/game.js?v=9" defer></script>
-    <script src="../js/rogue/bot.js?v=1" defer></script>
-    <script src="../js/dungeon.js?v=9" defer></script>
+    <script src="../js/rogue/bot.js?v=2" defer></script>
+    <script src="../js/rogue/watch.js?v=1" defer></script>
+    <script src="../js/dungeon.js?v=10" defer></script>
 </head>
 <body>
     <header class="dg-top">
@@ -68,9 +70,14 @@
         <div class="dg-row">
             <button type="button" id="dg-start" class="dg-big" data-i18n="start">Start the descent</button>
         </div>
+        <div class="dg-row" id="dg-watch-saved" hidden>
+            <button type="button" id="dg-watch-resume" class="dg-big"></button>
+            <button type="button" id="dg-watch-discard" data-i18n="watch_discard">Discard the bot run</button>
+        </div>
         <div class="dg-row">
             <button type="button" id="dg-daily">Daily challenge</button>
             <button type="button" id="dg-archive" data-i18n="archive">Archive</button>
+            <button type="button" id="dg-watch" data-i18n="watch_btn">Watch the bot play</button>
             <button type="button" id="dg-tier" hidden>Access level: 0</button>
             <button type="button" id="dg-help" data-i18n="help">How to play</button>
         </div>
@@ -92,6 +99,19 @@
         </div>
         </div>
         <button type="button" id="dg-log" class="dg-log" aria-label="Open the full log" data-i18n-attr="aria-label:log_open"></button>
+        <div id="dg-spec" class="dg-spec" hidden>
+            <div id="dg-spec-stat" class="dg-spec-stat"></div>
+            <div class="dg-spec-row">
+                <button type="button" id="dg-spec-pause" class="dg-spec-main"></button>
+                <button type="button" id="dg-spec-step" data-i18n="watch_step">Step</button>
+                <button type="button" id="dg-spec-why" aria-expanded="false" aria-controls="dg-why" data-i18n="watch_why">Why?</button>
+                <button type="button" id="dg-spec-stop" data-i18n="watch_stop">Stop</button>
+            </div>
+            <div class="dg-spec-row dg-speeds" role="group" aria-label="Speed" data-i18n-attr="aria-label:watch_speed">
+                <button type="button" data-speed="1x">1x</button><button type="button" data-speed="2x">2x</button><button type="button" data-speed="5x">5x</button><button type="button" data-speed="20x">20x</button><button type="button" data-speed="max" data-i18n="watch_max">max</button>
+            </div>
+            <div id="dg-why" class="dg-why" hidden><b data-i18n="watch_why_title">What is it thinking?</b><ol id="dg-why-list"></ol></div>
+        </div>
         <div class="dg-controls">
             <div class="dg-toolbar only-touch" id="dg-toolbar" aria-label="Quick bar" data-i18n-attr="aria-label:toolbar_aria">
                 <button type="button" data-a="wait" aria-label="Wait one turn" data-i18n-attr="aria-label:wait_aria"><span data-i18n="wait">Wait</span></button>

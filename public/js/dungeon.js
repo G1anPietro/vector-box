@@ -4,7 +4,7 @@
 // rules (log, cause, info card). All three use the language of the moment (VBLang); the `vb-lang` event redraws everything.
 (function () {
     'use strict';
-    const R = self.Rogue, G = R.game, SP = R.sprites, TL = R.tiles, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T, TX = R.text;
+    const R = self.Rogue, G = R.game, WATCH = R.watch, BOT = R.bot, TXB = R.textBot, SP = R.sprites, TL = R.tiles, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T, TX = R.text;
     const lang = () => (self.VBLang && self.VBLang.lang) || 'en';
     const tl = (key, vars) => TX.t(key, vars, lang());
     const tr = (v) => TX.tx(v, lang());
@@ -15,7 +15,7 @@
         self.VBI18N.add('en', en); self.VBI18N.add('it', it);
     }
     for (const k in TL.SPR) if (!SP[k]) SP[k] = TL.SPR[k];            // the hazard pictures join the sprite table
-    const RUN_KEY = 'vb_dg_run', META_KEY = 'vb_dg_meta', OPT_KEY = 'vb_dg_opt';
+    const RUN_KEY = 'vb_dg_run', WATCH_KEY = 'vb_rogue_watch', META_KEY = 'vb_dg_meta', OPT_KEY = 'vb_dg_opt';
     const $ = (id) => document.getElementById(id);
     const reduce = !!(self.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -33,7 +33,8 @@
     const saveMeta = () => store.set(META_KEY, JSON.stringify(meta));
     const saveOpt = () => store.set(OPT_KEY, JSON.stringify(opt));
 
-    let s = null;               // the run
+    let s = null;               // the run (while watching the bot: the bot's run, spec.s)
+    let spec = null;            // the watched run (js/rogue/watch.js): a separate state, saved only under WATCH_KEY, never recorded in the profile
     let selected = null;        // class chosen on the title screen
     let travel = null;          // a walk in progress
     let view = { ts: 24, vw: 13, vh: 13 };
@@ -195,14 +196,14 @@
         lg.textContent = '';
         for (const l of s.log.slice(-3)) { const d = document.createElement('div'); d.textContent = G.logText(l, lang()); if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
     }
-    function render() { draw(); hud(); slots(); }
+    function render() { draw(); hud(); slots(); if (spec) specUi(); }
     R.art.animate(() => { if (s) draw(); }); // idle animation: two frames, 2 fps
 
     // ── the four quickslots: each holds an item kind; tap uses it (or aims it), long press chooses what lives there ──
     const SLOT_CATS = ['drink', 'script', 'usb', 'food', 'throw'];
     const invOf = (k) => s.p.inv.find((it) => it.k === k);
     function slots() {
-        if (!s) return;
+        if (!s || spec) return;                       // the bot's bag must not reshuffle the player's quick slots
         let dirty = false;
         opt.slots.forEach((k, j) => {
             if (k === '' || (k && invOf(k))) return;
@@ -239,7 +240,7 @@
         if (!seen.size) el('p', tl('bag_empty_long'), '', body);
     }
     function useSlot(j) {
-        if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
+        if (!s || spec || s.status !== 'play' || !$('dg-modal').hidden) return;
         const was = aim && aim.slot === j;
         stopTravel(); endAim(); travelTurn = s.turn;
         if (was) return render();
@@ -371,17 +372,21 @@
         const body = openModal(tl('log_title'), 'log', logModal), box = el('div', '', 'dg-logfull', body);
         for (const l of s.log) el('div', G.logText(l, lang()), l.c ? 'c-' + l.c : '', box);
     }
+    /** The recap cells; `reward` = the text of the reward cell, or null (a watched run earns nothing). */
+    function recapGrid(body, reward) {
+        const grid = el('div', '', 'dg-recap', body);
+        const cell = (label, value) => { const c = el('div', '', '', grid); el('small', label, '', c); el('b', String(value), '', c); };
+        cell(tl('end_class'), tr(G.CLASS[s.cls].name)); cell(tl('end_floor'), tl('end_where', { depth: s.depth, sector: tr(G.sectorOf(s.depth).name) }));
+        cell(tl('end_level'), s.p.lvl); cell(tl('end_kills'), s.kills); cell(tl('end_turns'), s.turn); cell(tl('end_bosses'), s.bosses);
+        cell(tl('end_found'), s.earned); if (reward !== null) cell(tl('end_reward'), reward);
+    }
     function endModal() {
         const prevBest = meta.best;
         meta = G.recordRun(meta, s, new Date().toISOString().slice(0, 10)); saveMeta(); store.del(RUN_KEY);
         const won = s.status === 'won', body = openModal(tl(won ? 'end_won' : 'end_lost'), 'end', endModal), last = meta.history[0];
         $('dg-mclose').hidden = true;
         el('p', won ? tl('end_won_line') : tl('end_lost_line', { cause: gt(s.cause), depth: s.depth }), '', body);
-        const grid = el('div', '', 'dg-recap', body);
-        const cell = (label, value) => { const c = el('div', '', '', grid); el('small', label, '', c); el('b', String(value), '', c); };
-        cell(tl('end_class'), tr(G.CLASS[s.cls].name)); cell(tl('end_floor'), tl('end_where', { depth: s.depth, sector: tr(G.sectorOf(s.depth).name) }));
-        cell(tl('end_level'), s.p.lvl); cell(tl('end_kills'), s.kills); cell(tl('end_turns'), s.turn); cell(tl('end_bosses'), s.bosses);
-        cell(tl('end_found'), s.earned); cell(tl('end_reward'), last ? '+' + last.crediti : 0);
+        recapGrid(body, last ? '+' + last.crediti : 0);
         if (s.depth > prevBest && !won) el('p', tl('end_best'), 'c-good', body);
         for (const id of s.medals || []) el('p', tl('end_medal', { medal: tr(G.MEDALS.find((d) => d.id === id).name) }), 'c-good', body);
         el('p', tl('end_seed') + ' ' + (s.seed >>> 0).toString(16).toUpperCase(), 'dg-seed', body);
@@ -445,7 +450,8 @@
         const ctl = () => tl(touchMode() ? 'menu_controls_touch' : 'menu_controls_dpad');
         ct.textContent = ctl();
         if (s) btn(tl('menu_log'), logModal, body, 'dg-choice');
-        if (s) btn(tl('menu_quit'), () => {
+        if (spec) btn(tl('watch_stop'), () => { closeModal(); stopWatch(); }, body, 'dg-choice');
+        if (s && !spec) btn(tl('menu_quit'), () => {
             if (!confirm(tl('menu_quit_ask'))) return;
             s.status = 'dead'; s.cause = { k: 'cause_quit' }; closeModal(); endModal();
         }, body, 'dg-choice');
@@ -456,7 +462,7 @@
     }
 
     // ── playing ──
-    function persist() { if (s && s.status === 'play') store.set(RUN_KEY, G.save(s)); }
+    function persist() { if (s && !spec && s.status === 'play') store.set(RUN_KEY, G.save(s)); }
     function afterTurn() {
         if (s.fx.some((f) => f.t === 'hit' || f.t === 'miss' || f.t === 'kill')) { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) { /* no haptics */ } }
         for (const f of s.fx) {
@@ -475,7 +481,7 @@
         else if (s.bench && s.bench.open && modalKind !== 'craft') benchModal();
     }
     function act(a) {
-        if (!s || s.status !== 'play') return false;
+        if (!s || spec || s.status !== 'play') return false;          // a watched run is only played by the bot
         pan = null; flash = null;
         const logLen = s.log.length, took = G.act(s, a);
         act.lastBad = s.log.slice(logLen).some((l) => l.c === 'bad');
@@ -544,7 +550,7 @@
         act({ t: 'use', i });
     }
     function command(name) {
-        if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
+        if (!s || spec || s.status !== 'play' || !$('dg-modal').hidden) return;
         stopTravel();
         travelTurn = s.turn;
         endAim();
@@ -558,7 +564,7 @@
         else if (name === 'eat') useFirst((it) => G.ITEM[it.k].cat === 'food', 'nothing_to_eat');
         else if (name === 'heal') useFirst((it) => G.ITEM[it.k].cat === 'drink' && G.known(s, it) && G.ITEM[it.k].effect === 'heal', 'no_heal_can');
     }
-    function step(dx, dy) { if (s && s.status === 'play' && $('dg-modal').hidden) { stopTravel(); endAim(); act({ t: 'move', dx, dy }); } }
+    function step(dx, dy) { if (s && !spec && s.status === 'play' && $('dg-modal').hidden) { stopTravel(); endAim(); act({ t: 'move', dx, dy }); } }
 
     // ── input ──
     for (const b of document.querySelectorAll('[data-d]')) b.addEventListener('click', () => { const [dx, dy] = b.dataset.d.split(',').map(Number); step(dx, dy); });
@@ -577,7 +583,8 @@
         const r = cv.getBoundingClientRect(), sc = cv.width / r.width, cam = cv._cam || { ox: 0, oy: 0 };
         return [Math.floor(cam.ox + ((px - r.left) * sc) / view.ts), Math.floor(cam.oy + ((py - r.top) * sc) / view.ts)];
     };
-    const canPlay = () => s && s.status === 'play' && $('dg-modal').hidden;
+    const canPlay = () => s && !spec && s.status === 'play' && $('dg-modal').hidden;
+    const canLook = () => s && s.status === 'play' && $('dg-modal').hidden;      // the info card works while watching, too
     function doIntent(it) {
         if (!canPlay()) return;
         stopTravel();
@@ -606,12 +613,12 @@
         doIntent(it);
     }
     function longPress() {
-        if (!g || g.moved || g.multi || !canPlay()) return;
+        if (!g || g.moved || g.multi || !canLook()) return;
         g.long = true;
         const [x, y] = tileAt(g.x0, g.y0);
         if (x < 0 || y < 0 || x >= W || y >= H) return;
         const it = intentAt(x, y, 'long');
-        if (it.type === 'info') { stopTravel(); showCard(it, x, y); } else doIntent(it);
+        if (it.type === 'info') { stopTravel(); showCard(it, x, y); } else if (!spec) doIntent(it);
     }
     document.addEventListener('pointerdown', (e) => { if (!$('dg-card').hidden) { hideCard(); swallow = e.target === cv; } }, true);
     cv.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -676,6 +683,7 @@
         const k = e.key;
         if (k === 'b' || k === 'B') { stopTravel(); $('dg-cover').hidden = false; return; }
         if (k === 'Escape') { if (aim) endAim(); else if (!$('dg-modal').hidden && modalKind !== 'level' && modalKind !== 'end') closeModal(); else stopTravel(); return; }
+        if (spec) { if ((k === ' ' || k === 'p' || k === 'P') && e.target === document.body && $('dg-modal').hidden) { e.preventDefault(); togglePause(); } return; }
         if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
         const np = { Numpad7: [-1, -1], Numpad8: [0, -1], Numpad9: [1, -1], Numpad4: [-1, 0], Numpad6: [1, 0], Numpad1: [-1, 1], Numpad2: [0, 1], Numpad3: [1, 1] };
         const dirs = { y: [-1, -1], Y: [-1, -1], q: [-1, -1], Q: [-1, -1], u: [1, -1], U: [1, -1], v: [-1, 1], V: [-1, 1], n: [1, 1], N: [1, 1], ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] };
@@ -691,7 +699,8 @@
         else if (k === 'f' || k === 'F') command('skill');
         else if (k === '>' || k === 'Enter') command('stairs');
     });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopTravel(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { stopTravel(); if (spec) { spec.paused = true; saveWatch(); specUi(); } } });
+    addEventListener('pagehide', () => { if (spec) saveWatch(); });
     let rt = 0;
     const relayout = () => { clearTimeout(rt); rt = setTimeout(() => { layout(); if (s) render(); }, 80); };
     addEventListener('resize', relayout);
@@ -740,6 +749,9 @@
         const at = Math.max(0, R.classes.CLASSES.indexOf(selected));
         pick(R.classes.CLASSES[at], box.children[at]);
         tier = Math.min(tier, meta.ng); tierLabel();
+        const ws = savedWatch();
+        $('dg-watch-saved').hidden = !ws;
+        if (ws) $('dg-watch-resume').textContent = tl('watch_resume', { depth: ws.depth, turn: ws.turn });
         const db = meta.dailyBest[today()];
         $('dg-daily').textContent = db ? tl('daily_best', { n: db }) : tl('daily');
     }
@@ -771,9 +783,135 @@
     function tierLabel() { $('dg-tier').textContent = tl('tier', { n: tier }); $('dg-tier').hidden = meta.ng < 1; }
     $('dg-help').addEventListener('click', helpModal);
 
+    // ── watch the bot play: a separate state (spec.s), a separate save (WATCH_KEY); the profile, the archive and the player's run are never read or written here ──
+    const STYLE_KEY = { normal: 'watch_style_normal', careful: 'watch_style_careful' };
+    const SPEED_KEYS = Object.keys(WATCH.SPEEDS);
+    let watchForm = null;          // the setup sheet: { cls, seed (text), style }
+    let watchCfg = null;           // the run on screen, to watch it again: { seed, cls, style }
+    let whyOpen = false, rafId = 0, lastFrame = 0, sinceSave = 0;
+    const randomSeed = () => WATCH.seedText((Math.random() * 4294967296) >>> 0);
+    const dailySeed = () => WATCH.seedText(R.rng.hash('daily-' + today()));
+    function savedWatch() {
+        const text = store.get(WATCH_KEY), o = text && WATCH.restore(G, text);
+        return o && o.status === 'play' ? { depth: o.s.depth, turn: o.s.turn } : null;
+    }
+    function watchSetup() {
+        if (!watchForm) watchForm = { cls: (selected && selected.id) || R.classes.CLASSES[0].id, seed: randomSeed(), style: 'normal' };
+        const f = watchForm, body = openModal(tl('watch_title'), 'watch', watchSetup);
+        body.classList.add('dg-wsheet');
+        el('p', tl('watch_note'), 'c-info', body);
+        el('label', tl('watch_class'), '', body);
+        const box = el('div', '', 'dg-classes', body);
+        for (const c of R.classes.CLASSES) {
+            const b = el('button', '', '', box); b.type = 'button'; b.setAttribute('aria-pressed', String(c.id === f.cls));
+            icon(b, R.art.chain(c, 'h'), c.col); el('span', tr(c.name), '', b);
+            b.addEventListener('click', () => { f.cls = c.id; for (const x of box.children) x.setAttribute('aria-pressed', String(x === b)); });
+        }
+        const sl = el('label', tl('watch_seed'), '', body); sl.htmlFor = 'dg-wseed';
+        const inp = el('input', undefined, '', body); inp.type = 'text'; inp.id = 'dg-wseed'; inp.value = f.seed; inp.maxLength = 10;
+        inp.autocomplete = 'off'; inp.spellcheck = false; inp.setAttribute('autocapitalize', 'characters');
+        const err = el('p', tl('watch_seed_bad'), 'c-bad', body); err.hidden = true; err.setAttribute('role', 'alert');
+        inp.addEventListener('input', () => { f.seed = inp.value; err.hidden = true; });
+        const row = el('div', '', 'dg-row', body);
+        btn(tl('watch_seed_random'), () => { f.seed = inp.value = randomSeed(); err.hidden = true; }, row);
+        btn(tl('watch_seed_daily'), () => { f.seed = inp.value = dailySeed(); err.hidden = true; }, row);
+        body.insertBefore(err, row.nextSibling);
+        el('label', tl('watch_style'), '', body);
+        const sr = el('div', '', 'dg-row', body);
+        for (const st of ['normal', 'careful']) {
+            const b = btn(tl(STYLE_KEY[st]), () => { f.style = st; for (const x of sr.children) x.setAttribute('aria-pressed', String(x === b)); }, sr);
+            b.setAttribute('aria-pressed', String(f.style === st));
+        }
+        btn(tl('watch_start'), () => {
+            const seed = WATCH.parseSeed(f.seed);
+            if (seed === null) { err.hidden = false; inp.focus(); return; }
+            $('dg-modal').hidden = true; modalKind = '';
+            startWatch({ seed, cls: f.cls, style: f.style });
+        }, body, 'dg-big');
+    }
+    function startWatch(cfg, saved) {
+        const w = WATCH.create(G, BOT, saved ? { saved } : cfg);
+        if (!w) { store.del(WATCH_KEY); return showTitle(); }
+        try { sessionStorage.setItem('vb_rogue_watching', '1'); } catch (e) { /* ignore */ }
+        spec = w; s = w.s; watchCfg = { seed: w.s.seed, cls: w.s.cls, style: w.memo.style };
+        travel = null; pan = null; aim = null; whyOpen = false; sinceSave = 0;
+        w.paused = !!saved;                                   // a resumed run waits for Play
+        $('dg-title').hidden = true; $('dg-game').hidden = false; document.body.classList.add('ingame');
+        $('dg-game').classList.add('spectating'); $('dg-spec').hidden = false; $('dg-why').hidden = true;
+        applyOpt(); render(); kick();
+    }
+    function stopWatch(keepSave) {
+        try { sessionStorage.removeItem('vb_rogue_watching'); } catch (e) { /* ignore */ }
+        if (spec && keepSave !== false) saveWatch();
+        if (rafId) cancelAnimationFrame(rafId); rafId = 0;
+        spec = null; s = null;
+        $('dg-game').classList.remove('spectating'); $('dg-spec').hidden = true;
+        showTitle();
+    }
+    function saveWatch() { if (spec && spec.status === 'play') store.set(WATCH_KEY, spec.serialise()); }
+    function togglePause() { if (!spec || spec.status !== 'play') return; spec.paused = !spec.paused; if (!spec.paused) kick(); specUi(); }
+    /** Runs the frame loop (requestAnimationFrame) while the bot plays: nothing runs when paused, finished or hidden. */
+    function kick() { if (!rafId && spec && !spec.paused && spec.status === 'play' && !document.hidden) { lastFrame = 0; rafId = requestAnimationFrame(frame); } }
+    function frame(t) {
+        rafId = 0;
+        if (!spec || spec.paused || document.hidden) return;
+        const n = spec.tick(lastFrame ? t - lastFrame : 16, 12); lastFrame = t;
+        if (n) { s = spec.s; sinceSave += n; if (sinceSave >= 25) { sinceSave = 0; saveWatch(); } render(); }
+        if (spec.status !== 'play') return watchEnd();
+        rafId = requestAnimationFrame(frame);
+    }
+    function watchStep() {
+        if (!spec || spec.status !== 'play') return;
+        spec.paused = true; spec.step(); s = spec.s; saveWatch(); render();
+        if (spec.status !== 'play') watchEnd();
+    }
+    const whyNames = { item: (k) => (G.ITEM[k] ? tr(G.ITEM[k].name) : k), mob: (k) => (G.MOB[k] ? tr(G.MOB[k].name) : k), skill: (id) => (G.SKILL[id] ? tr(G.SKILL[id].name) : id) };
+    function specUi() {
+        if (!spec) return;
+        const p = spec.s.p, st = $('dg-spec-stat');
+        st.textContent = '';
+        el('b', tl('watch_badge') + ' · ', '', st);
+        st.appendChild(document.createTextNode(tl('watch_stat', { hp: p.hp, max: p.maxHp, depth: spec.s.depth, turn: spec.s.turn, kills: spec.s.kills, style: tl(STYLE_KEY[spec.memo.style]) })));
+        const pb = $('dg-spec-pause'), over = spec.status !== 'play';
+        pb.textContent = tl(spec.paused ? 'watch_play' : 'watch_pause'); pb.disabled = over; $('dg-spec-step').disabled = over;
+        for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(b.dataset.speed === spec.speed));
+        $('dg-spec-why').setAttribute('aria-expanded', String(whyOpen)); $('dg-why').hidden = !whyOpen;
+        if (!whyOpen) return;
+        const ol = $('dg-why-list'); ol.textContent = '';
+        if (!spec.whys.length) el('li', tl('watch_why_none'), '', ol);
+        for (const y of spec.whys.slice(-8)) { const li = el('li', '', '', ol); el('small', tl('watch_why_turn', { turn: y.turn }) + ' [' + y.t + '] ', '', li); li.appendChild(document.createTextNode(TXB.explain(y.why, lang(), whyNames))); }
+    }
+    function watchEnd() {
+        const w = spec, won = w.status === 'won', dead = w.status === 'dead';
+        store.del(WATCH_KEY); if (rafId) cancelAnimationFrame(rafId); rafId = 0;
+        s = w.s; render();
+        const title = won ? tl('watch_end_won') : dead ? tl('watch_end_lost', { depth: s.depth }) : tl('watch_end_halt');
+        const body = openModal(title, 'end', watchEnd);
+        $('dg-mclose').hidden = true;
+        el('p', won ? tl('watch_end_won_line') : dead ? tl('end_lost_line', { cause: gt(s.cause), depth: s.depth }) : w.status === 'cap' ? tl('watch_cap', { n: WATCH.MAX_ACTIONS }) : tl('watch_stalled'), '', body);
+        recapGrid(body, null);
+        el('p', tl('end_seed') + ' ' + WATCH.seedText(s.seed), 'dg-seed', body);
+        const done = () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; };
+        const again = (cfg) => { done(); spec = null; startWatch(cfg); };
+        btn(tl('watch_again'), () => again({ seed: watchCfg.seed, cls: watchCfg.cls, style: watchCfg.style }), body, 'dg-big');
+        btn(tl('watch_new'), () => again({ seed: (Math.random() * 4294967296) >>> 0, cls: watchCfg.cls, style: watchCfg.style }), body, 'dg-choice');
+        btn(tl('watch_menu'), () => { done(); stopWatch(false); }, body, 'dg-choice');
+    }
+    $('dg-watch').addEventListener('click', () => { watchForm = null; watchSetup(); });
+    $('dg-watch-resume').addEventListener('click', () => { const text = store.get(WATCH_KEY); if (text) startWatch(null, text); });
+    $('dg-watch-discard').addEventListener('click', () => { store.del(WATCH_KEY); showTitle(); });
+    $('dg-spec-pause').addEventListener('click', togglePause);
+    $('dg-spec-step').addEventListener('click', watchStep);
+    $('dg-spec-stop').addEventListener('click', () => stopWatch());
+    $('dg-spec-why').addEventListener('click', () => { whyOpen = !whyOpen; specUi(); relayout(); });
+    for (const b of document.querySelectorAll('[data-speed]')) b.addEventListener('click', () => { if (spec && SPEED_KEYS.includes(b.dataset.speed)) { spec.setSpeed(b.dataset.speed); specUi(); } });
+
+
     // ── boot: resume a saved run exactly where it was ──
     const saved = store.get(RUN_KEY), resumed = saved && G.load(saved);
     if (resumed && resumed.status === 'play') { s = resumed; G.updateFov(s); enterGame(); } else showTitle();
+    // a reload while watching the bot (the tab remembers it, an explicit Stop forgets it): the watched run comes back, paused
+    try { if (!s && sessionStorage.getItem('vb_rogue_watching') === '1') { const w = store.get(WATCH_KEY); if (w) startWatch(null, w); } } catch (e) { /* no sessionStorage */ }
     if (!s) layout();
 
     // language switched (EN | IT in the menu, or the server's answer arriving late): everything on screen is written again
@@ -784,5 +922,5 @@
     });
 
     // handles for the tests and for debugging in the console
-    self.RogueUI = { state: () => s, act, command, render, tileAt, view: () => view };
+    self.RogueUI = { state: () => s, watch: () => spec, act, command, render, tileAt, view: () => view };
 })();
