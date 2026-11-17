@@ -73,6 +73,11 @@ function maybeRunRetention(): void {
             require_once __DIR__ . '/debug_logger.php';
             logSystemError('RETENTION', $e->getMessage());
         }
+        // the country database for the statistics map: refreshed monthly by itself (GEOIP_AUTO=false switches it off)
+        if (strtolower((string)envValue('GEOIP_AUTO', 'true')) !== 'false') {
+            require_once __DIR__ . '/geoip.php';
+            geoipRefreshIfDue();
+        }
     });
 }
 

@@ -46,7 +46,7 @@ async function startSite(env = {}) {
     fs.cpSync(path.join(REPO, 'bin'), path.join(root, 'bin'), { recursive: true });
     fs.mkdirSync(path.join(root, 'data'), { mode: 0o750 });
     fs.writeFileSync(path.join(root, '.env'),
-        Object.entries({ DEMO_CLASS: 'false', ...env }).map(([k, v]) => `${k}=${v}`).join('\n') + '\n');   // the example class is for demo.test.js only
+        Object.entries({ DEMO_CLASS: 'false', GEOIP_AUTO: 'false', ...env }).map(([k, v]) => `${k}=${v}`).join('\n') + '\n');   // the example class is for demo.test.js only
 
     const port = await freePort();
     const proc = spawn('php', ['-S', `127.0.0.1:${port}`, '-t', path.join(root, 'public')], {

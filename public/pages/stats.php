@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 require_once __DIR__ . '/../api/bots.php';
+require_once __DIR__ . '/../api/geoip.php';
 
 initSession();
 if (empty($_SESSION['is_admin'])) {
@@ -86,6 +87,38 @@ foreach (['bots.log', 'bots.log.1'] as $f) {   // newest file first, each read f
     }
 }
 
+// ---- where do they come from? (country of every address, from the local DB-IP database; nothing leaves the server) ----
+$geoReady = is_file(geoipFile());
+$mapData = json_decode((string)@file_get_contents(__DIR__ . '/../assets/stats/world.json'), true) ?: ['viewBox' => '0 0 360 142', 'countries' => []];
+$countryName = fn($cc) => $mapData['countries'][$cc]['n'] ?? $cc;
+$byCountry = [];        // cc => ['h' => human visits, 'b' => bot requests, 'hip' => [ip => 1], 'bip' => [ip => 1]]
+$ipTop = [];            // ip => ['h' => n, 'b' => n, 'label' => ..., 'cc' => ...]
+$ccOf = function (string $ip) use ($geoReady) { return $geoReady ? (geoipLookup($ip) ?? '??') : '??'; };
+foreach ($rows as $r) {
+    $cc = $ccOf($r['ip']);
+    $byCountry[$cc]['h'] = ($byCountry[$cc]['h'] ?? 0) + 1;
+    $byCountry[$cc]['hip'][$r['ip']] = 1;
+    $ipTop[$r['ip']]['h'] = ($ipTop[$r['ip']]['h'] ?? 0) + 1;
+    $ipTop[$r['ip']]['cc'] = $cc;
+}
+foreach (['bots.log', 'bots.log.1'] as $f) {          // every bot line of the period (the log keeps at most RETENTION_BOTS_DAYS)
+    if (!is_file($dir . $f)) continue;
+    foreach (file($dir . $f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $c = explode("\t", $line);
+        if (count($c) < 6 || substr($c[0], 0, 10) < $since) continue;
+        $cc = $ccOf($c[1]);
+        $byCountry[$cc]['b'] = ($byCountry[$cc]['b'] ?? 0) + 1;
+        $byCountry[$cc]['bip'][$c[1]] = 1;
+        $ipTop[$c[1]]['b'] = ($ipTop[$c[1]]['b'] ?? 0) + 1;
+        $ipTop[$c[1]]['label'] = $c[3];
+        $ipTop[$c[1]]['cc'] = $cc;
+    }
+}
+uasort($byCountry, fn($a, $b) => (($b['h'] ?? 0) + ($b['b'] ?? 0)) <=> (($a['h'] ?? 0) + ($a['b'] ?? 0)));
+uasort($ipTop, fn($a, $b) => (($b['h'] ?? 0) + ($b['b'] ?? 0)) <=> (($a['h'] ?? 0) + ($a['b'] ?? 0)));
+$ipTop = array_slice($ipTop, 0, 15, true);
+$ccKnown = fn($cc) => preg_match('/^[A-Z]{2}$/', $cc) && $cc !== '??';
+
 function barList(array $items, int $total, callable $h): void {
     if (!$items) { echo '<p class="empty">Ancora nessun dato.</p>'; return; }
     $max = max($items);
@@ -105,8 +138,8 @@ function barList(array $items, int $total, callable $h): void {
 <head>
     <?php renderHead('Statistiche // Vector-Box', true); ?>
     <meta name="robots" content="noindex">
-    <link rel="stylesheet" href="../css/stats.css?v=3">
-    <script src="../js/stats.js?v=1" defer></script>
+    <link rel="stylesheet" href="../css/stats.css?v=<?= filemtime(__DIR__ . '/../css/stats.css') ?>">
+    <script src="../js/stats.js?v=<?= filemtime(__DIR__ . '/../js/stats.js') ?>" defer></script>
 </head>
 <body class="stats-page">
     <header class="cyber-header">
@@ -155,17 +188,66 @@ function barList(array $items, int $total, callable $h): void {
             <section class="panel-s"><h2>Utenti con account</h2><?php barList($users, $total, $h); ?></section>
         </div>
 
+        <section class="panel-s" id="mappa">
+            <h2>Mappa: da dove arrivano visitatori e bot</h2>
+            <?php if (!$geoReady): ?>
+                <p class="empty">Il database dei paesi non c'è ancora. Si scarica da solo una volta al mese (lo fa il lavoro notturno) oppure subito con <code>php tools/geoip-update.php</code> sul server.</p>
+            <?php else: ?>
+            <div class="map-modes" role="group" aria-label="Cosa mostrare sulla mappa">
+                <button type="button" class="on" data-mode="h" aria-pressed="true">Visitatori</button>
+                <button type="button" data-mode="b" aria-pressed="false">Bot</button>
+                <button type="button" data-mode="a" aria-pressed="false">Tutti (rosso = più bot)</button>
+            </div>
+            <svg class="map" viewBox="<?= $h($mapData['viewBox']) ?>" role="img" aria-label="Mappa del mondo colorata per numero di visite" preserveAspectRatio="xMidYMid meet">
+                <?php foreach ($mapData['countries'] as $cc => $c): $hv = $byCountry[$cc]['h'] ?? 0; $bv = $byCountry[$cc]['b'] ?? 0; ?>
+                    <path d="<?= $c['d'] ?>" data-c="<?= $h($cc) ?>" data-h="<?= $hv ?>" data-b="<?= $bv ?>"
+                          data-tip="<?= $h($c['n']) ?>: <?= $hv ?> visit<?= $hv === 1 ? 'a' : 'e' ?>, <?= $bv ?> richiest<?= $bv === 1 ? 'a' : 'e' ?> di bot"></path>
+                <?php endforeach; ?>
+            </svg>
+            <div class="map-legend" aria-hidden="true"><span>meno</span><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>più</span></div>
+            <?php $known = array_filter($byCountry, fn($v, $k) => $ccKnown($k), ARRAY_FILTER_USE_BOTH); $unknown = ($byCountry['??']['h'] ?? 0) + ($byCountry['??']['b'] ?? 0); ?>
+            <?php if (!$known): ?><p class="empty">Ancora nessun indirizzo da mettere sulla mappa.</p><?php else: ?>
+            <div class="scroll"><table class="tbl">
+                <thead><tr><th>Paese</th><th>Visite</th><th>IP diversi</th><th>Richieste di bot</th><th>IP di bot</th></tr></thead>
+                <tbody>
+                <?php foreach (array_slice($known, 0, 12, true) as $cc => $v): ?>
+                    <tr class="<?= ($v['b'] ?? 0) > ($v['h'] ?? 0) ? 'row-bot' : '' ?>"><td><span class="cc"><?= $h($cc) ?></span> <?= $h($countryName($cc)) ?></td>
+                        <td><?= $v['h'] ?? 0 ?></td><td><?= count($v['hip'] ?? []) ?></td><td><?= $v['b'] ?? 0 ?></td><td><?= count($v['bip'] ?? []) ?></td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+            <?php endif; ?>
+            <?php if ($unknown): ?><p class="note"><?= $unknown ?> richieste da indirizzi senza paese (rete locale, indirizzi riservati o non nel database).</p><?php endif; ?>
+            <h3 class="sub-title">Indirizzi più attivi</h3>
+            <?php if (!$ipTop): ?><p class="empty">Ancora nessun dato.</p><?php else: ?>
+            <div class="scroll"><table class="tbl">
+                <thead><tr><th>IP</th><th>Paese</th><th>Chi</th><th>Visite</th><th>Richieste di bot</th></tr></thead>
+                <tbody>
+                <?php foreach ($ipTop as $ip => $v): $isBot = ($v['b'] ?? 0) > 0; ?>
+                    <tr class="<?= $isBot ? 'row-bot' : '' ?>"><td class="mono"><?= $h($ip) ?></td>
+                        <td><?= $ccKnown($v['cc'] ?? '??') ? '<span class="cc">' . $h($v['cc']) . '</span> ' . $h($countryName($v['cc'])) : '–' ?></td>
+                        <td><?php if ($isBot): ?><span class="badge-bot">BOT</span> <?= $h($v['label'] ?? '') ?><?php else: ?>persona<?php endif; ?></td>
+                        <td><?= $v['h'] ?? 0 ?></td><td><?= $v['b'] ?? 0 ?></td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+            <?php endif; ?>
+            <p class="note">Il paese si ricava dall'indirizzo IP con un database scaricato sul server: nessun indirizzo dei visitatori viene mandato a servizi esterni. <a href="https://db-ip.com" rel="noopener noreferrer">IP Geolocation by DB-IP</a> (CC BY 4.0). Un paese non è una persona: VPN, reti mobili e proxy spostano i punti.</p>
+            <?php endif; ?>
+        </section>
+
         <section class="panel-s">
             <h2>Ultime visite</h2>
             <?php if (!$recent): ?><p class="empty">Ancora nessuna visita registrata.</p><?php else: ?>
             <div class="scroll"><table class="tbl">
-                <thead><tr><th>Quando</th><th>Chi</th><th>Pagina</th><th>Dispositivo</th><th>Da</th><th>IP</th></tr></thead>
+                <thead><tr><th>Quando</th><th>Chi</th><th>Pagina</th><th>Dispositivo</th><th>Da</th><th>IP</th><th>Paese</th></tr></thead>
                 <tbody>
                 <?php foreach ($recent as $r): ?>
                     <tr><td><?= $h(substr($r['at'], 5, 11)) ?></td>
                         <td><?= $r['user'] !== '-' ? $h($r['user']) : ($r['returning'] ? 'di ritorno' : 'nuovo') ?></td>
                         <td><?= $h($r['page']) ?></td><td><?= $h($r['device']) ?></td>
-                        <td><?= $r['ref'] !== '-' ? $h($r['ref']) : '–' ?></td><td class="mono"><?= $h($r['ip']) ?></td></tr>
+                        <td><?= $r['ref'] !== '-' ? $h($r['ref']) : '–' ?></td><td class="mono"><?= $h($r['ip']) ?></td>
+                        <td><?php $cc = $ccOf($r['ip']); echo $ccKnown($cc) ? '<span class="cc">' . $h($cc) . '</span>' : '–'; ?></td></tr>
                 <?php endforeach; ?>
                 </tbody>
             </table></div>
@@ -202,11 +284,12 @@ function barList(array $items, int $total, callable $h): void {
             <h2>Ultime richieste di bot</h2>
             <?php if (!$botRecent): ?><p class="empty">Ancora nessuna richiesta di bot registrata.</p><?php else: ?>
             <div class="scroll"><table class="tbl">
-                <thead><tr><th>Quando</th><th>Tipo</th><th>Chi / cosa</th><th>Percorso</th><th>Esito</th><th>IP</th></tr></thead>
+                <thead><tr><th>Quando</th><th>Tipo</th><th>Chi / cosa</th><th>Percorso</th><th>Esito</th><th>IP</th><th>Paese</th></tr></thead>
                 <tbody>
                 <?php foreach ($botRecent as $r): ?>
-                    <tr><td><?= $h(substr($r['at'], 5, 11)) ?></td><td><?= $h($r['kind']) ?></td><td><?= $h($r['label']) ?></td>
-                        <td><?= $h($r['page']) ?></td><td><?= $h($r['status']) ?></td><td class="mono"><?= $h($r['ip']) ?></td></tr>
+                    <tr class="row-bot"><td><?= $h(substr($r['at'], 5, 11)) ?></td><td><span class="badge-bot">BOT</span> <?= $h($r['kind']) ?></td><td><?= $h($r['label']) ?></td>
+                        <td><?= $h($r['page']) ?></td><td><?= $h($r['status']) ?></td><td class="mono"><?= $h($r['ip']) ?></td>
+                        <td><?php $cc = $ccOf($r['ip']); echo $ccKnown($cc) ? '<span class="cc">' . $h($cc) . '</span>' : '–'; ?></td></tr>
                 <?php endforeach; ?>
                 </tbody>
             </table></div>
