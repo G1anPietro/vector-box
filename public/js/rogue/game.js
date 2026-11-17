@@ -69,7 +69,7 @@
         if (crit) d *= 2;
         return Math.max(1, d - RNG.int(r, (def || 0) + 1));
     }
-    const xpNeed = (lvl) => 10 * lvl;
+    const xpNeed = META.xpNeed || ((lvl) => 10 * lvl);                        // the curve lives in meta.js (numbers only)
 
     // ── things ──────────────────────────────────────────────────────────────
     const known = (s, it) => !cat(it).unknown || !!s.known[it.k];

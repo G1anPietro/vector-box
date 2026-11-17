@@ -84,23 +84,42 @@ Fuori dalla partita: Archivio (albero dei potenziamenti comprati con i crediti, 
 - Ganci del motore richiesti: `docs/rogue-engine-hooks.patch` (da applicare a `game.js` quando l'agente dei sistemi lo permette): `to` nelle tabelle di bottino (gli oggetti bassi spariscono nei settori alti), spawn del mini-boss (+ messaggio `mini_here`, già in `text.js`), `drop` alla morte, e due boss sullo stesso piano scelti dal seme (`bossOf(depth, seed)`). Senza il patch i dati sono validi ma i mini-boss non compaiono e il secondo boss dei settori 5 e 10 non viene scelto.
 
 ## Bilanciamento
-`node tools/rogue-balance.js [partite per classe=200] [turni max=40000] [classe,classe]` fa giocare a un bot semplice (combatte, equipaggia il meglio, beve, mangia, usa l'abilità, compra cure) partite con seme, e stampa per classe: piano medio raggiunto, % vittorie, turni medi, morti per settore. Obiettivo: un bot decente muore in media tra i settori 4 e 7 e una partita fortunata o forte vince. Ritocchi fatti per arrivarci: vita e bonus di base delle classi, rapporto tra cure e cibo nel bottino, mostri nuovi dei primi settori più deboli.
+Il bot (`public/js/rogue/bot.js`, modulo che funziona in Node e nel browser: `Rogue.bot.decide(s, memo)` guarda lo stato e restituisce UNA azione per `Rogue.game.act`, `null` a partita finita; `memo` e' un oggetto JSON che il chiamante conserva, `memo.style` = `'normal'` o `'careful'`; ~1 ms a decisione, senza casualita': stesso stato e stesso memo = stessa azione) gioca partite con seme. Le sue regole sono spiegate in italiano e inglese in cima a `bot.js`: ordine fisso, fa la PRIMA cosa che vale (abilita', negozio/panca; emergenza: cura sotto il 35%; combattimento: abilita' di classe per tipo, oggetti sui nemici duri, colpisce il piu' debole, aspetta che il nemico arrivi; calma: equipaggia il meglio, mangia, prova pozioni ignote da ferito, dorme per curarsi sotto la soglia; luoghi: panca, negozi, terminale; pugnala i dormienti, esplora, scende).
+- `normal` (predefinito) = giocatore competente: riposa sotto il 50% di vita (75% prima di un boss), usa oggetti solo se sta male, combatte dove sta. `careful` = giocatore esperto: riposa sotto il 70% (97% prima di un boss), combatte nei corridoi, usa oggetti su ogni nemico duro, scappa per le scale sotto il 35%. Nessuno dei due ha potenziamenti dell'Archivio.
+- `tools/rogue-bot.js` e' solo il giro `decide()` + `act()` per Node (`play(seed, classe, {maxTurns, style})`, `ending(s)`).
+- **Misurare**: `node tools/rogue-balance.js [partite per classe=100] [turni max=40000] [classe,classe] [--jobs=N] [--seed=N]`. Usa N processi (predefinito CPU-1), stampa per classe: piano medio e mediano, % vittorie, turni medi, morti per causa (mostro / pericolo / fame) e per settore; sotto: quota di morti per settore, morti per piano, killer piu' frequenti, scarto di ogni classe dalla mediana. `ROGUE_STYLE=careful` misura il bot esperto; `ROGUE_JSON=file` salva i record; `ROGUE_PARTIAL=file` rende la misura riprendibile (ogni partita finita viene aggiunta al file, una nuova esecuzione salta quelle gia' fatte: cancella il file se cambiano dati o bot); `ROGUE_DIR=cartella/rogue` misura un'altra copia delle regole (confronto prima/dopo). Tempi: ~0,8 s a partita su un PC libero, 384 partite in ~5 minuti con 4 processi.
+- **Test**: `tests/dungeon-balance.test.js` fa 24 partite (3 per classe, seme fisso) e controlla: nessun blocco, piano medio tra 8 e 40, nessuna classe sotto il 60% della mediana, pochi morti nei settori 1-2 e di fame; piu' una prova che `bot.js` si carica in una sandbox `vm` senza globali di Node e gioca con un memo che passa da JSON.
+- **Cosa decide i numeri** (solo dati): `mobs.js` `mk()` (vita `5+0.9*d^1.3`, colpi `[1+d/3.6, 3+d/2]` con d = 5*settore-2; mostri veloci x0.5 e che si dividono x0.8 nei colpi; tabella `SHAPE` per settore che moltiplica vita e colpi; `SUMMON_SLOW` allunga gli intervalli di evocazione; XP `2+3*sqrt(d)`), `meta.js` `xpNeed` (curva dell'esperienza `10*L + L^2`, l'unico gancio nel motore: `game.js` la legge da li'), `classes.js` (vita, vita per livello, bonus, abilita'), `hazards.js` (invariato), prezzi in `items.js` (invariati).
 
-Ultima misura (12 partite per classe, bot semplice, 20000 turni al massimo; 200 per classe con il comando sopra richiede ore su un PC condiviso):
+### Prima / dopo (bot `normal`, 48 partite per classe, 384 in tutto, stessi semi)
+Prima = dati di `main` prima di questo lavoro, dopo = dati di questo ramo.
 
-| classe | piano medio | vittorie | morti nei settori 1..10 |
-|---|---|---|---|
-| studente | 22.7 | 0% | 0 1 1 1 4 0 0 3 0 0 |
-| hacker | 17.0 | 0% | 0 0 6 4 1 0 0 1 0 0 |
-| prof | 13.2 | 0% | 0 5 4 1 0 0 1 0 0 0 |
-| tecnico | 17.8 | 0% | 0 2 5 2 1 0 0 2 0 0 |
-| bidello | 28.8 | 0% (15% in una misura da 20) | 0 0 0 3 3 1 2 1 0 1 |
-| sistemista | 15.0 | 0% | 1 2 4 2 2 1 0 0 0 0 |
-| designer | 13.1 | 0% | 0 1 10 1 0 0 0 0 0 0 |
-| segreteria | 14.8 | 0% | 2 0 6 1 2 1 0 0 0 0 |
-| **tutte** | **17.8 (settore 4)** | ~2% | muro al settore 3 |
+| classe | piano medio prima | vittorie prima | piano medio dopo | vittorie dopo |
+|---|---|---|---|---|
+| studente | 45.4 | 65% | 33.5 | 10% |
+| hacker | 49.6 | 92% | 33.7 | 25% |
+| prof | 47.9 | 92% | 34.1 | 2% |
+| tecnico | 48.9 | 94% | 31.5 | 2% |
+| bidello | 50.0 | 98% | 39.5 | 17% |
+| sistemista | 47.6 | 79% | 30.0 | 0% |
+| designer | 49.7 | 98% | 36.5 | 21% |
+| segreteria | 42.9 | 63% | 32.2 | 2% |
+| **tutte** | **47.7** | **85%** | **33.9** | **10%** |
 
-Il bot è più debole di una persona (non scappa, non sceglie le abilità), quindi 4-5 settori di media sono in linea con l'obiettivo 4-7. Da ritoccare: il settore 3 (cavi: ranged corto, nodo che si divide) uccide troppo le classi fragili (designer, segreteria); bidello e studente sono i più forti. I mini-boss non entrano nella misura finché non c'è il patch del motore.
+Morti per settore (1..10), tutte le classi: prima `3 2 0 2 6 0 4 11 1 16` (solo 45 morti su 384: il resto vince o e' ancora vivo al limite di turni); dopo `1 0 1 49 79 24 57 80 24 31` (345 morti). Quota massima di un settore dopo: 23% (settori 5 e 8). Morti nei settori 1-2: 1.3% prima, 0.3% dopo. Fame: 0.8% prima, 0.5% dopo. Scarto delle classi dalla mediana: da -11%/+3% a -11%/+18% (bidello il piu' forte, sistemista il piu' debole).
+Bot `careful` (32 partite per classe, dati dopo): piano medio 38.0, vittorie 14% (da 6% a 22% per classe), quota massima di un settore 31% (settore 8), fame 1.6%.
+Prima i dati erano troppo facili per un giocatore che si cura dormendo (dormire e' gratis e la panca cura del tutto): l'85% di vittorie del bot competente e il livello 60+ al piano 48 mostravano che l'eroe cresceva molto piu' dei mostri.
+
+### Cosa e' cambiato (in ordine)
+1. XP: mostri `2+3*sqrt(d)` invece di `2+0.8*d`, curva `10L+L^2` invece di `10L` (livello finale ~30 invece di ~65).
+2. Mostri: colpi `[1+d/3.6, 3+d/2]` (prima `[1+d/6, 3+d/3.2]`), vita con esponente 1.3, i veloci e quelli che si dividono colpiscono meno (contano doppio), evocazioni x1.25 piu' lente, `SHAPE` per smussare i gradini fra settori; boss7 e mini7 ammorbiditi, boss7 evoca ogni 8.
+3. Classi: prof vita per livello 5 e atk +2; tecnico vita 38 e 4 per livello; bidello 5 per livello; sistemista vita 38, 5 per livello, kill -9 ricarica 50 e potenza 16; designer schivata 2; segreteria vita 36, 6 per livello, atk +1 e def +1.
+
+### Limiti (cosa un bot non mostra)
+- Una persona gioca meglio (fugge, usa le porte, sceglie le abilita' con un piano, gestisce gli oggetti ignoti): i numeri qui sono per un giocatore competente, uno forte vincera' di piu'. I potenziamenti dell'Archivio (comprati con i crediti tra una partita e l'altra) non sono nelle misure: aiutano i giocatori veri.
+- Muri di boss: i piani 20, 25, 35, 40, 45, 50 raccolgono ognuno il 6-11% delle partite (accettabile per un boss), il piano 20 (Gateway + DDoS che si dividono) e il piu' duro per il bot.
+- Il bot non soffre la noia: una partita vera dura 4-6 ore di tempo reale, il bot ~8000 turni.
+- Il bot non usa mai le ricette del banco di lavoro ne' i mini-boss con astuzia; i pericoli del terreno li evita solo quando il percorso lo permette.
 
 ## Stato e idee future
 Fatto: motore, 10 settori con 74 tipi di nemico e 10 boss, 54 oggetti, 8 classi, hub, negozi, potenziamenti, 33 medaglie, bestiario, accesso, sfida del giorno.

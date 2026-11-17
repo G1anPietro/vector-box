@@ -70,5 +70,7 @@
         { id: 'm_lvl20', name: { en: 'Bookworm', it: 'Secchione' }, info: { en: 'Reach level 20 in one run.', it: 'Arriva al livello 20 in una partita.' }, need: { maxLvl: 20 } },
         { id: 'm_lvl40', name: { en: 'Top of the Class', it: 'Primo della classe' }, info: { en: 'Reach level 40 in one run.', it: 'Arriva al livello 40 in una partita.' }, need: { maxLvl: 40 } },
     ];
-    return { UPGRADES, MEDALS };
+    /** Experience needed to go from level `lvl` to the next. Gently steeper than linear so the hero stops outgrowing the later sectors. */
+    const xpNeed = (lvl) => Math.round(10 * lvl + 1.0 * lvl * lvl);
+    return { UPGRADES, MEDALS, xpNeed };
 });

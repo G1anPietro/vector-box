@@ -48,13 +48,18 @@
     ];
     const FIRST = 1;
     /** Fills the numbers of a monster from the depth of its sector (1-based). */
+    // BALANCE KNOBS (numbers only, measured with tools/rogue-balance.js, see docs/ROGUELIKE.md): SHAPE multiplies life and blows sector by sector
+    // (smooths the steps between sectors), SUMMON_SLOW stretches every `summon.every` of a monster made with mk (summoners are a damage race).
+    const SHAPE = [1, 1, 1.05, 1.15, 1.1, 1.2, 1.08, 1.1, 1.1, 1.05], SUMMON_SLOW = 1.25;
     function mk(sector, o) {
-        const d = sector * 5 - 2, lo = 5 * (sector - 1) + 1, boss = !!o.boss, hx = (o.hpx || 1) * (boss ? 3.2 : 1), ax = (o.atkx || 1) * (boss ? 1.3 : 1);
+        const sh = SHAPE[sector - 1] || 1;
+        const d = sector * 5 - 2, lo = 5 * (sector - 1) + 1, boss = !!o.boss, hx = (o.hpx || 1) * sh * (boss ? 3.2 : 1), ax = (o.atkx || 1) * sh * (boss ? 1.3 : 1) * (o.speed >= 2 ? 0.5 : 1) * (o.split ? 0.8 : 1);   // two moves a turn, or splitting in two, counts double: weaker blows
         const m = Object.assign({
-            hp: Math.round((5 + 0.9 * Math.pow(d, 1.25)) * hx), atk: [Math.max(1, Math.round((1 + d / 6) * ax)), Math.round((3 + d / 3.2) * ax)],
-            xp: Math.round((2 + d * 0.8) * (o.xpx || 1) * (boss ? 5 : 1)), floors: [lo, lo + 4],
+            hp: Math.round((5 + 0.9 * Math.pow(d, 1.3)) * hx), atk: [Math.max(1, Math.round((1 + d / 3.6) * ax)), Math.round((3 + d / 2) * ax)],
+            xp: Math.round((2 + 3 * Math.sqrt(d)) * (o.xpx || 1) * (boss ? 5 : 1)), floors: [lo, lo + 4],
         }, o);
         delete m.hpx; delete m.atkx; delete m.xpx;
+        if (m.summon) m.summon = { k: m.summon.k, every: Math.round(m.summon.every * SUMMON_SLOW) };
         if (boss) { m.boss = sector * 5; delete m.floors; }
         return m;
     }
@@ -127,7 +132,7 @@
         mk(7, { id: 'rootkit', name: { en: 'Rootkit', it: 'Rootkit' }, shape: 'ghost', col: '#6a6a7a', invisible: true, undead: true, info: { en: 'It isn’t there. It has been here for years.', it: 'Non c’è. È qui da anni.' } }),
         mk(7, { id: 'ids', name: { en: 'Intrusion Detection System', it: 'Sistema anti-intrusione' }, shape: 'daemon', col: '#ff7a4a', stun: true, hpx: 1.2, info: { en: 'It has seen everything. It has logged everything.', it: 'Ha visto tutto. Ha segnato tutto.' } }),
         mk(7, { id: 'brute', name: { en: 'Brute Force', it: 'Brute force' }, shape: 'swarm', col: '#ffb060', speed: 2, hpx: 0.8, info: { en: 'Tries every combination. You included.', it: 'Prova ogni combinazione. Anche te.' } }),
-        mk(7, { id: 'boss7', name: { en: 'The Great Firewall', it: 'Il Grande Firewall' }, shape: 'robot', col: '#ffb000', boss: true, def: 3, stun: true, summon: { k: 'brute', every: 5 }, info: { en: 'Nobody gets in. Nobody gets out. Not even the staff.', it: 'Nessuno entra. Nessuno esce. Neanche il personale.' } }),
+        mk(7, { hpx: 0.7, atkx: 0.9, id: 'boss7', name: { en: 'The Great Firewall', it: 'Il Grande Firewall' }, shape: 'robot', col: '#ffb000', boss: true, def: 3, stun: true, summon: { k: 'brute', every: 8 }, info: { en: 'Nobody gets in. Nobody gets out. Not even the staff.', it: 'Nessuno entra. Nessuno esce. Neanche il personale.' } }),
         mk(8, { id: 'panic', name: { en: 'Kernel Panic', it: 'Kernel panic' }, shape: 'daemon', col: '#ff5a8a', explode: [6, 14], hpx: 0.8, info: { en: 'Better not to stand next to it when it happens.', it: 'Meglio non stargli accanto quando succede.' } }),
         mk(8, { id: 'zombie', name: { en: 'Zombie Process', it: 'Processo zombie' }, shape: 'human', col: '#8aa07a', undead: true, regen: 1, info: { en: 'It’s dead, but nobody told it.', it: 'È morto ma nessuno gliel’ha detto.' } }),
         mk(8, { id: 'deadlock', name: { en: 'Deadlock', it: 'Deadlock' }, shape: 'eye', col: '#c0c0ff', still: true, ranged: { range: 6, dmg: [5, 10], verb: { en: 'locks you up', it: 'ti blocca' } }, w: 6, info: { en: 'Waiting for something that will never arrive.', it: 'Aspetta qualcosa che non arriverà.' } }),
@@ -186,7 +191,7 @@
         mini(4, { id: 'mini4', name: { en: 'Packet Sniffer Prime', it: 'Sniffer Capo' }, shape: 'spider', sprite: 'monster_mini4', col: '#f0f0a0', invisible: true, steal: 'item', dodge: 3, drop: 'u_tempesta', info: { en: 'Reads all your messages. Rates them 3 out of 10.', it: 'Legge tutti i tuoi messaggi. Li giudica 3 su 10.' } }),  // art: a pale yellow spider made of cables with a satellite-dish head and many small ears
         mini(5, { id: 'mini5', name: { en: 'The Archive Clerk', it: 'L’Archivista' }, shape: 'ghost', sprite: 'monster_mini5', col: '#f0e8d0', undead: true, weaken: true, regen: 1, summon: { k: 'bibli', every: 8 }, drop: 'w_timbro', info: { en: 'Stamps everything. Including you, in triplicate.', it: 'Timbra tutto. Anche te, in triplice copia.' } }),  // art: a tall ghostly clerk in cream robes holding a giant rubber stamp and a binder
         mini(6, { id: 'mini6', name: { en: 'The Spot Auctioneer', it: 'Il Banditore Spot' }, shape: 'hood', sprite: 'monster_mini6', col: '#ffd24a', steal: 'gold', blink: true, ranged: { range: 5, dmg: [5, 11], verb: { en: 'outbids you', it: 'rilancia su di te' } }, drop: 'a_nuvola', info: { en: 'Going once, going twice, gone. That was your gold.', it: 'Aggiudicato! Erano i tuoi soldi.' } }),  // art: a gold-hooded figure with an auction gavel and a coin-shaped mask, floating
-        mini(7, { id: 'mini7', name: { en: 'The Bouncer Daemon', it: 'Il Demone Buttafuori' }, shape: 'daemon', sprite: 'monster_mini7', col: '#ff5a5a', def: 3, stun: true, summon: { k: 'brute', every: 6 }, drop: 'w_banhammer', info: { en: 'Your name is not on the list. Nobody’s is.', it: 'Il tuo nome non è sulla lista. Il nome di nessuno lo è.' } }),  // art: a red daemon bouncer with sunglasses, folded arms and a velvet-rope in front of him
+        mini(7, { hpx: 1.5, atkx: 1.1, id: 'mini7', name: { en: 'The Bouncer Daemon', it: 'Il Demone Buttafuori' }, shape: 'daemon', sprite: 'monster_mini7', col: '#ff5a5a', def: 3, stun: true, summon: { k: 'brute', every: 6 }, drop: 'w_banhammer', info: { en: 'Your name is not on the list. Nobody’s is.', it: 'Il tuo nome non è sulla lista. Il nome di nessuno lo è.' } }),  // art: a red daemon bouncer with sunglasses, folded arms and a velvet-rope in front of him
         mini(8, { id: 'mini8', name: { en: 'The Process Reaper', it: 'Il Mietitore di Processi' }, shape: 'human', sprite: 'monster_mini8', col: '#8a5aff', undead: true, leech: true, explode: [6, 12], drop: 'u_sigkill', info: { en: 'It only ever sends one signal. It isn’t SIGTERM.', it: 'Manda un solo segnale. Non è SIGTERM.' } }),  // art: a purple hooded reaper holding a scythe made of a blinking process list
         mini(9, { id: 'mini9', name: { en: 'The Night Operator', it: 'L’Operatore Notturno' }, shape: 'human', sprite: 'monster_mini9', col: '#e0e0a0', regen: 2, def: 3, ranged: { range: 6, dmg: [6, 13], verb: { en: 'throws a binder at you', it: 'ti tira un faldone' } }, drop: 'a_camice', info: { en: 'Alone since 1989. He has lots of opinions about cables.', it: 'Da solo dal 1989. Ha molte opinioni sui cavi.' } }),  // art: a tired old human operator in a yellow-tinted lab coat holding a binder like a shield, ruffled hair
         mini(10, { id: 'mini10', name: { en: 'The Sudo Intern', it: 'Lo Stagista Sudo' }, shape: 'hood', sprite: 'monster_mini10', col: '#ffffff', steal: 'item', phase: true, invisible: true, summon: { k: 'forkbomb', every: 7 }, drop: 'w_chiave', info: { en: 'Was only supposed to make the coffee. Now has all the permissions.', it: 'Doveva solo fare il caffè. Ora ha tutti i permessi.' } }),  // art: a white hoodie figure with a name tag that says INTERN, carrying a tray of coffee and a glowing master key
