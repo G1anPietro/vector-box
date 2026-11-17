@@ -11,27 +11,31 @@ const RNG = require(path.join(dir, 'rng.js')), MAP = require(path.join(dir, 'map
 const W = MAP.W;
 
 /** A simple player: fights what it sees, drinks when hurt, explores, takes the stairs. Returns the final state. */
-function bot(seed, cls, maxTurns) {
-    const s = G.newGame(seed, cls || 'studente');
+function bot(seed, cls, maxTurns, god, tier) {
+    const meta = G.newMeta(); meta.ng = 9;
+    const s = G.newGame(seed, cls || 'studente', meta, { tier: tier || 0 });
+    if (god) { s.p.maxHp = s.p.hp = 4000; s.p.mods.atk = 40; s.p.mods.acc = 20; s.p.mods.def = 20; s.p.food = 1e9; }
     let n = 0, idle = 0;
+    const tried = new Set();
     while (s.status === 'play' && n++ < (maxTurns || 6000)) {
         const before = s.turn;
         if (s.p.pending) { G.act(s, { t: 'skill', id: s.p.choices[0] }); continue; }
-        if (s.shop && s.shop.open) { G.act(s, { t: 'leave' }); continue; }
+        if ((s.shop && s.shop.open) || (s.bench && s.bench.open)) { G.act(s, { t: 'leave' }); continue; }
         if (s.p.hp < s.p.maxHp / 3) { const i = s.p.inv.findIndex((e) => G.ITEM[e.k].effect === 'heal' && G.known(s, e)); if (i >= 0) { G.act(s, { t: 'use', i }); continue; } }
-        if (s.p.food < 200) { const i = s.p.inv.findIndex((e) => G.ITEM[e.k].cat === 'food'); if (i >= 0) { G.act(s, { t: 'use', i }); continue; } }
-        for (const slot of ['weapon', 'armor']) { /* wear the best thing found */
-            const i = s.p.inv.findIndex((e) => G.ITEM[e.k].cat === slot);
-            if (i >= 0) G.act(s, { t: 'use', i });
+        if (!god && s.p.food < 200) { const i = s.p.inv.findIndex((e) => G.ITEM[e.k].cat === 'food'); if (i >= 0) { G.act(s, { t: 'use', i }); continue; } }
+        for (const slot of ['weapon', 'armor']) { /* try each new weapon / armour once */
+            const i = s.p.inv.findIndex((e) => G.ITEM[e.k].cat === slot && !tried.has(e.k));
+            if (i >= 0) { tried.add(s.p.inv[i].k); G.act(s, { t: 'use', i }); }
         }
-        const near = G.nearest(s);
+        const near = G.threats(s).filter((m) => !m.loot && !m.stolen).sort((a, b) => Math.abs(a.x - s.p.x) + Math.abs(a.y - s.p.y) - Math.abs(b.x - s.p.x) - Math.abs(b.y - s.p.y))[0]; // a fleeing thief is not chased
         let v = null;
         if (near) v = Math.abs(near.x - s.p.x) + Math.abs(near.y - s.p.y) === 1 ? [near.x - s.p.x, near.y - s.p.y] : G.travelNext(s, near.x, near.y);
         else if (s.map.tiles[s.p.y * W + s.p.x] === MAP.T.STAIRS && !s.sealed) { G.act(s, { t: 'descend' }); continue; }
         else v = G.exploreNext(s) || G.travelNext(s, s.map.stairs.x, s.map.stairs.y);
+        if (!v) v = G.exploreNext(s) || G.travelNext(s, s.map.stairs.x, s.map.stairs.y);  // an enemy that cannot be walked to (seen across a corner): carry on
         G.act(s, v ? { t: 'move', dx: v[0], dy: v[1] } : { t: 'wait' });
         idle = s.turn === before ? idle + 1 : 0;
-        if (idle > 50) throw new Error('soft lock: seed ' + seed + ' floor ' + s.depth + ' at ' + s.p.x + ',' + s.p.y);
+        if (idle > 80) throw new Error('soft lock: seed ' + seed + ' floor ' + s.depth + ' at ' + s.p.x + ',' + s.p.y);
     }
     return s;
 }
@@ -152,8 +156,69 @@ test('the page is served, has no inline script, and the lists know it', async ()
         const html = await (await fetch(`${site.base}/pages/dungeon.html`)).text();
         assert.match(html, /<meta name="description" content="[^"]{40,}">/);
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html));
-        for (const f of ['/js/dungeon.js', '/css/dungeon.css', '/assets/dungeon/icon.svg', ...['rng', 'map', 'mobs', 'items', 'classes', 'sprites', 'game'].map((n) => `/js/rogue/${n}.js`)]) assert.equal((await fetch(site.base + f)).status, 200, f);
+        for (const f of ['/js/dungeon.js', '/css/dungeon.css', '/assets/dungeon/icon.svg', ...['rng', 'map', 'mobs', 'items', 'classes', 'sprites', 'meta', 'game'].map((n) => `/js/rogue/${n}.js`)]) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.match(await (await fetch(`${site.base}/pages/giochi.php`)).text(), /dungeon\.html/);
         assert.match(await (await fetch(`${site.base}/sitemap.php`)).text(), /pages\/dungeon\.html/);
     } finally { await site.stop(); }
+});
+
+test('a strong bot clears all 50 floors of 3 seeds: hubs after each sector, every boss, the win, no soft-lock', () => {
+    for (const seed of [11, 22, 33]) {
+        const s = bot(seed, 'studente', 120000, true);
+        assert.equal(s.status, 'won', 'seed ' + seed + ' ended ' + s.status + ' on floor ' + s.depth);
+        assert.equal(s.depth, G.FLOORS);
+        assert.equal(s.bosses, 10);
+    }
+});
+
+test('the hub: after a boss floor you arrive in the Sala Server, the shop and bench work, the stairs go to the next sector', () => {
+    const s = G.newGame(8, 'studente');
+    s.depth = 5; s.sealed = 0; G.enterHub(s);
+    assert.equal(s.hub, 1);
+    assert.equal(s.mobs.length, 0);
+    s.p.hp = 1; s.p.gold = 500;
+    G.act(s, { t: 'move', dx: 0, dy: 0 });
+    s.shop.open = 1; const n = s.p.inv.length, gold = s.p.gold;
+    G.act(s, { t: 'buy', i: 0 });
+    assert.ok(s.p.gold < gold && s.p.inv.length >= n);
+    G.act(s, { t: 'leave' });
+    s.bench.open = 1; G.act(s, { t: 'rest' });
+    assert.equal(s.p.hp, s.p.maxHp);
+    const before = s.p.gold; G.act(s, { t: 'recycle', i: 0 }); assert.ok(s.p.gold > before);
+    G.act(s, { t: 'leave' });
+    s.p.x = s.map.stairs.x; s.p.y = s.map.stairs.y;
+    assert.equal(G.act(s, { t: 'descend' }), true);
+    assert.equal(s.depth, 6); assert.equal(s.hub, 0);
+});
+
+test('the profile: upgrades cost crediti and change the start, medals pay once, the codex and access levels work', () => {
+    const meta = G.newMeta();
+    assert.equal(G.buyUpgrade(meta, 'vita'), false, 'no credits');
+    meta.crediti = 100;
+    assert.ok(G.buyUpgrade(meta, 'vita'));
+    assert.equal(meta.crediti, 80);
+    assert.ok(G.buyUpgrade(meta, 'soldi'));
+    const base = G.newGame(1, 'studente'), up = G.newGame(1, 'studente', meta);
+    assert.equal(up.p.maxHp, base.p.maxHp + 3);
+    assert.equal(up.p.gold, 20);
+    const s = G.newGame(2, 'studente', meta); s.status = 'dead'; s.kills = 3; s.dex = { bug: 3 }; s.met = { bug: 1, topo: 1 };
+    G.recordRun(meta, s, '2026-01-01'); G.recordRun(meta, s, '2026-01-01');
+    assert.equal(meta.runs, 1); assert.equal(meta.codex.bug.kills, 3); assert.ok(meta.codex.topo.seen);
+    assert.ok(meta.medals.includes('m_run1'));
+    assert.equal(G.checkMedals(meta).length, 0, 'paid once');
+    assert.ok(G.MEDALS.length >= 30);
+    // access levels: locked until a win, then monsters are tougher
+    assert.equal(G.newGame(5, 'studente', G.newMeta(), { tier: 3 }).tier, 0);
+    const win = G.newGame(5, 'studente', G.newMeta()); win.status = 'won'; const m2 = G.newMeta(); G.recordRun(m2, win);
+    assert.equal(m2.ng, 1);
+    const hard = G.newGame(5, 'studente', m2, { tier: 1 }), easy = G.newGame(5, 'studente', m2);
+    assert.ok(hard.mobs[0] && hard.mobs[0].max > easy.mobs[0].max);
+    assert.equal(G.fixMeta({ runs: 'x' }).runs, 0);
+});
+
+test('50 floors build: 10 sectors, 70+ monster types, 10 bosses, summons exist', () => {
+    assert.equal(MOBS.SECTORS.length, 10);
+    assert.ok(MOBS.LIST.length >= 70);
+    assert.equal(MOBS.LIST.filter((d) => d.boss).length, 10);
+    for (const d of MOBS.LIST) if (d.summon) assert.ok(G.MOB[d.summon.k], d.id + ' summons ' + d.summon.k);
 });

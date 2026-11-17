@@ -14,7 +14,7 @@
         del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
     };
     function readJson(k, fallback) { try { const v = JSON.parse(store.get(k)); return v && typeof v === 'object' ? v : fallback; } catch (e) { return fallback; } }
-    let meta = Object.assign(G.newMeta(), readJson(META_KEY, {}));
+    let meta = G.fixMeta(readJson(META_KEY, {}));
     const opt = Object.assign({ sound: false, scan: false }, readJson(OPT_KEY, {}));
     const saveMeta = () => store.set(META_KEY, JSON.stringify(meta));
     const saveOpt = () => store.set(OPT_KEY, JSON.stringify(opt));
@@ -125,7 +125,7 @@
         const info = $('dg-info');
         info.textContent = '';
         const add = (t, b) => { const e = document.createElement(b ? 'b' : 'span'); e.textContent = t; info.appendChild(e); };
-        add('P' + s.depth + ' ' + sec.name, true); add('Lv ' + p.lvl + ' (' + p.xp + '/' + G.xpNeed(p.lvl) + ')'); add(p.gold + ' cr');
+        add(s.hub ? 'Sala Server' : 'P' + s.depth + ' ' + sec.name, true); add('Lv ' + p.lvl + ' (' + p.xp + '/' + G.xpNeed(p.lvl) + ')'); add(p.gold + ' cr');
         add('Atk ' + st.atk + ' Dif ' + st.def);
         if (status) add(status);
         const sk = $('dg-skill'), a = G.CLASS[s.cls].active;
@@ -140,7 +140,7 @@
     // ── modal sheets ──
     let modalKind = '';
     function openModal(title, kind) { $('dg-mtitle').textContent = title; $('dg-mbody').textContent = ''; $('dg-modal').hidden = false; modalKind = kind || ''; return $('dg-mbody'); }
-    function closeModal() { $('dg-modal').hidden = true; modalKind = ''; if (s && s.shop && s.shop.open) { act({ t: 'leave' }); } }
+    function closeModal() { $('dg-modal').hidden = true; modalKind = ''; if (s && ((s.shop && s.shop.open) || (s.bench && s.bench.open))) act({ t: 'leave' }); }
     function el(tag, text, cls, host) { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; if (host) host.appendChild(e); return e; }
     function btn(label, fn, host, cls) { const b = el('button', label, cls, host); b.type = 'button'; b.addEventListener('click', fn); return b; }
 
@@ -183,6 +183,18 @@
             const b = btn(G.price(s, it) + ' cr', () => { act({ t: 'buy', i }); }, r); b.disabled = s.p.gold < G.price(s, it);
         });
     }
+    function benchModal() {
+        const body = openModal('Panchina', 'bench');
+        btn('Riposa: cura tutto e ricarica l’abilità', () => { act({ t: 'rest' }); }, body, 'dg-choice');
+        el('h2', 'Ricicla (metà del prezzo in crediti)', '', body);
+        if (!s.p.inv.length) el('p', 'Lo zaino è vuoto.', '', body);
+        s.p.inv.forEach((it, i) => {
+            const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it);
+            icon(r, l.shape, l.col, 32);
+            const t = el('div', '', 't', r); el('span', G.itemName(s, it), '', t); el('small', 'Ne ricavi ' + Math.max(1, Math.round(G.ITEM[it.k].price / 2)) + ' cr', '', t);
+            btn('Ricicla', () => act({ t: 'recycle', i }), r);
+        });
+    }
     function logModal() {
         const body = openModal('Registro', 'log'), box = el('div', '', 'dg-logfull', body);
         for (const l of s.log) el('div', l.t, l.c ? 'c-' + l.c : '', box);
@@ -195,8 +207,48 @@
         el('p', 'Livello ' + s.p.lvl + ', ' + s.kills + ' nemici, ' + s.turn + ' turni, ' + s.earned + ' crediti trovati.');
         const last = meta.history[0];
         if (last) el('p', 'Crediti guadagnati per il futuro: +' + last.crediti, 'c-info');
+        for (const id of s.medals || []) el('p', 'Nuova medaglia: ' + G.MEDALS.find((d) => d.id === id).name, 'c-good');
         btn('Torna al menu', () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; s = null; showTitle(); }, body, 'dg-big');
     }
+    // ── the archive: upgrade tree, medals, bestiary, history ──
+    function archiveModal(tab) {
+        tab = tab || 'tree';
+        const body = openModal('Archivio — ' + meta.crediti + ' crediti', 'archive'), bar = el('div', '', 'dg-row', body);
+        for (const [id, label] of [['tree', 'Albero'], ['medals', 'Medaglie'], ['dex', 'Bestiario'], ['hist', 'Storia']]) {
+            const b = btn(label, () => archiveModal(id), bar); b.setAttribute('aria-pressed', String(id === tab));
+        }
+        if (tab === 'tree') {
+            el('p', 'Ogni potenziamento vale per tutte le partite future.', '', body);
+            for (const u of G.UPGRADES) {
+                const lv = G.level(meta, u.id), r = el('div', '', 'dg-item', body), t = el('div', '', 't', r);
+                el('span', u.name + '  ' + lv + '/' + u.max, '', t); el('small', u.info, '', t);
+                const full = lv >= u.max, cost = full ? 0 : G.upCost(meta, u.id);
+                const b = btn(full ? 'Max' : cost + ' cr', () => { if (G.buyUpgrade(meta, u.id)) { saveMeta(); blip(660, 60); archiveModal('tree'); } }, r);
+                b.disabled = full || meta.crediti < cost;
+            }
+        } else if (tab === 'medals') {
+            const got = new Set(meta.medals);
+            el('p', got.size + ' di ' + G.MEDALS.length + ' medaglie.', '', body);
+            for (const d of G.MEDALS) { const r = el('div', '', 'dg-item', body), t = el('div', '', 't', r); el('span', (got.has(d.id) ? '[x] ' : '[ ] ') + d.name, got.has(d.id) ? 'c-good' : '', t); el('small', d.info, '', t); }
+        } else if (tab === 'dex') {
+            const all = R.mobs.LIST, met = all.filter((d) => meta.codex[d.id]).length;
+            el('p', 'Nemici incontrati: ' + met + ' di ' + all.length + '.', '', body);
+            for (const d of all) {
+                const e = meta.codex[d.id], r = el('div', '', 'dg-item', body), t = el('div', '', 't', r);
+                icon(r, d.shape, e ? d.col : '#2a3a30', 32); r.appendChild(t);
+                el('span', e ? d.name : '???', '', t);
+                el('small', e ? d.info + ' (visto ' + e.seen + ', eliminato ' + e.kills + ')' : 'Non l’hai ancora incontrato.', '', t);
+            }
+        } else {
+            if (!meta.history.length) el('p', 'Nessuna partita finita.', '', body);
+            for (const h of meta.history) {
+                const r = el('div', '', 'dg-item', body), t = el('div', '', 't', r);
+                el('span', (h.won ? 'VITTORIA ' : '') + (G.CLASS[h.cls] ? G.CLASS[h.cls].name : h.cls) + ' — piano ' + h.depth + ', liv ' + h.lvl, h.won ? 'c-good' : '', t);
+                el('small', (h.date || '') + (h.daily ? ' sfida del giorno' : '') + (h.tier ? ' accesso ' + h.tier : '') + ' · ' + h.kills + ' nemici, ' + h.turns + ' turni' + (h.won ? '' : ' · ' + h.cause) + ' · +' + h.crediti + ' cr', '', t);
+            }
+        }
+    }
+
     function menuModal() {
         const body = openModal('Menu', 'menu');
         btn('Come si gioca', helpModal, body, 'dg-choice');
@@ -228,6 +280,7 @@
         if (s.status !== 'play') { stopTravel(); endModal(); }
         else if (s.p.pending && modalKind !== 'level') levelModal();
         else if (s.shop && s.shop.open) shopModal();
+        else if (s.bench && s.bench.open) benchModal();
     }
     function act(a) {
         if (!s || s.status !== 'play') return false;
@@ -349,6 +402,9 @@
             b.addEventListener('click', () => pick(c, b));
         }
         pick(R.classes.CLASSES[0], box.firstChild);
+        tier = Math.min(tier, meta.ng); tierLabel();
+        const db = meta.dailyBest[today()];
+        $('dg-daily').textContent = 'Sfida del giorno' + (db ? ' (record ' + db + ')' : '');
     }
     function pick(c, b) {
         selected = c;
@@ -360,8 +416,10 @@
         if (open) el('div', 'Abilità: ' + c.active.name + ' — ' + c.active.info, 'c-info', box);
         $('dg-start').disabled = !open;
     }
-    function startRun(seed) {
-        s = G.newGame(seed, selected.id, meta);
+    let tier = 0;
+    const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    function startRun(seed, daily) {
+        s = G.newGame(seed, selected.id, meta, { tier: daily ? 0 : tier, daily: daily || '' });
         persist(); enterGame();
     }
     function enterGame() {
@@ -370,6 +428,10 @@
         if (s.p.pending) levelModal();
     }
     $('dg-start').addEventListener('click', () => startRun((Math.random() * 4294967296) >>> 0));
+    $('dg-daily').addEventListener('click', () => { const d = today(); startRun(R.rng.hash('daily-' + d), d); });
+    $('dg-archive').addEventListener('click', () => archiveModal());
+    $('dg-tier').addEventListener('click', () => { tier = (tier + 1) % (meta.ng + 1); tierLabel(); });
+    function tierLabel() { $('dg-tier').textContent = 'Livello di accesso: ' + tier; $('dg-tier').hidden = meta.ng < 1; }
     $('dg-help').addEventListener('click', helpModal);
 
     // ── boot: resume a saved run exactly where it was ──

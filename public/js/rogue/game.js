@@ -1,16 +1,16 @@
 // js/rogue/game.js — the rules of "Il Dungeon del Server". No DOM, no clock, no Math.random: the whole run is one
 // plain object (JSON), so it is saved after every turn and a seed always replays the same way.
 //   const s = newGame(seed, 'studente', meta);  act(s, { t: 'move', dx: 1, dy: 0 });  save(s) / load(text)
-// Actions: move {dx,dy} · wait · use {i} · drop {i} · unequip {slot} · descend · active · skill {id} · buy {i} · leave
+// Actions: move {dx,dy} · wait · use {i} · drop {i} · unequip {slot} · descend · active · skill {id} · buy {i} · rest · recycle {i} · leave
 // HOW TO ADD AN EFFECT (for a new item, trap or active skill): add a function to EFFECTS below; it receives
 // (state, power, targetMonster). Put its name in TARGETED if it needs an enemy in sight.
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'));
-    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes); }
-})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS) {
+        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'));
+    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta); }
+})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META) {
     'use strict';
-    const VERSION = 1, W = MAP.W, H = MAP.H, T = MAP.T, DIRS = MAP.DIRS;
+    const VERSION = 2, W = MAP.W, H = MAP.H, T = MAP.T, DIRS = MAP.DIRS;
     const FLOORS = MOBS.SECTORS.length * MOBS.PER_SECTOR;
     const MOB_CAP = 40, INV_CAP = 24, MAX_FOOD = 1200, SIGHT = 8;
     const byId = (list) => Object.fromEntries(list.map((e) => [e.id, e]));
@@ -123,13 +123,14 @@
         return null;
     }
     function spawn(s, k, x, y, asleep) {
-        const m = { id: s.nid++, k, x, y, hp: MOB[k].hp, max: MOB[k].hp, asleep: asleep ? 1 : 0 };
+        const hp = Math.round(MOB[k].hp * (1 + 0.3 * (s.tier || 0))), m = { id: s.nid++, k, x, y, hp, max: hp, asleep: asleep ? 1 : 0 };
         s.mobs.push(m);
         return m;
     }
     function updateFov(s) {
         s.vis = MAP.fov(s.map, s.p.x, s.p.y, SIGHT + stats(s).sight);
         for (let i = 0; i < s.vis.length; i++) if (s.vis[i]) s.seen[i] = 1;
+        for (const m of s.mobs) if (!s.met[m.k] && s.vis[idx(m.x, m.y)] && shown(s, m)) s.met[m.k] = 1;
     }
     /** Can the player see this monster? (Crates that bite and invisible things are not seen from far.) */
     function shown(s, m) {
@@ -150,7 +151,7 @@
         const m = MAP.generate(s.seed, depth), tiles = m.tiles;
         s.map = { w: W, h: H, tiles, stairs: m.stairs };
         s.seen = new Array(W * H).fill(0);
-        s.mobs = []; s.items = []; s.traps = []; s.shop = null; s.altar = null; s.sealed = 0;
+        s.mobs = []; s.items = []; s.traps = []; s.shop = null; s.bench = null; s.hub = 0; s.altar = null; s.sealed = 0;
         s.p.x = m.start.x; s.p.y = m.start.y;
         const plain = m.rooms.filter((o) => !o.vault), last = m.rooms.find((o) => o.last);
         const others = RNG.shuffle(r, plain.filter((o) => o !== m.rooms[0] && !o.last));
@@ -195,6 +196,35 @@
         fx(s, 'stairs');
     }
 
+
+    /** The safe room between two sectors (the Sala Server): a shop, a bench to rest and recycle, and the stairs down. */
+    function enterHub(s) {
+        const m = MAP.hub(), r = RNG.make(RNG.mix(s.seed, s.depth * 31 + 5)), nextSector = sectorOf(s.depth + 1);
+        s.map = { w: W, h: H, tiles: m.tiles, stairs: m.stairs };
+        s.seen = new Array(W * H).fill(0);
+        for (let y = 8; y < 19; y++) for (let x = 13; x < 28; x++) s.seen[idx(x, y)] = 1;
+        s.mobs = []; s.items = []; s.traps = []; s.altar = null; s.sealed = 0; s.hub = 1;
+        s.p.x = m.start.x; s.p.y = m.start.y;
+        m.tiles[idx(16, 12)] = T.SHOP; m.tiles[idx(24, 12)] = T.BENCH;
+        const stock = [{ k: 'd_cura', n: 1 }, { k: 'd_cura', n: 1 }, { k: 'merendina', n: 1 }, { k: 'panino', n: 1 }];
+        while (stock.length < 9) stock.push(makeItem(r, s.depth + 3));
+        s.shop = { x: 16, y: 12, open: 0, stock };
+        s.bench = { x: 24, y: 12, open: 0 };
+        updateFov(s);
+        log(s, 'Sala Server: un posto sicuro. Negozio a sinistra, panchina a destra, scale in fondo.', 'info');
+        log(s, 'Il prossimo settore: ' + nextSector.name + '.', 'info');
+        fx(s, 'stairs');
+    }
+    function rest(s) { s.p.hp = s.p.maxHp; s.p.st = {}; s.p.cd = 0; log(s, 'Ti riposi sulla panchina: sei come nuovo.', 'good'); }
+    /** Recycling: an item from the bag becomes credits (half its price). Only in the hub. */
+    function recycle(s, i) {
+        const it = s.p.inv[i];
+        if (!it) return;
+        const gain = Math.max(1, Math.round(ITEM[it.k].price / 2));
+        useUp(s, i); s.p.gold += gain;
+        log(s, 'Riciclato: ' + ITEM[it.k].name + ' (+' + gain + ' crediti).', 'good');
+    }
+
     // ── fighting ────────────────────────────────────────────────────────────
     function gainXp(s, n) {
         const p = s.p;
@@ -210,6 +240,7 @@
     function rollChoices(s) {
         const p = s.p;
         const pool = CLS.SKILLS.filter((k) => (!k.cls || k.cls.includes(s.cls)) && (p.skills[k.id] || 0) < (k.max || 3));
+        if (!pool.length) { addMods(p, { maxHp: 4 * p.pending }); p.pending = 0; p.choices = null; log(s, 'Hai imparato tutto: vita massima +4.', 'good'); return; }   // nothing left to learn
         p.choices = RNG.shuffle(s.rng, pool.map((k) => k.id)).slice(0, 3);
     }
     function chooseSkill(s, id) {
@@ -232,7 +263,7 @@
     function killMob(s, m) {
         const d = MOB[m.k], p = s.p;
         s.mobs.splice(s.mobs.indexOf(m), 1);
-        s.kills++;
+        s.kills++; s.dex[m.k] = (s.dex[m.k] || 0) + 1;
         log(s, `${d.name}: eliminato.`, 'good');
         fx(s, 'kill', m.x, m.y);
         if (m.loot) s.items.push({ x: m.x, y: m.y, it: { k: '$', n: m.loot } });
@@ -290,7 +321,7 @@
             const c = freeCell(s, s.rng); if (c) { m.x = c[0]; m.y = c[1]; }
             return;
         }
-        const n = rollDamage(s.rng, dmg, 0, st.def, false);
+        const n = rollDamage(s.rng, dmg, s.tier || 0, st.def, false);
         log(s, `${d.name} ${ranged ? d.ranged.verb : 'ti colpisce'}: ${n}.`, 'bad');
         hurtPlayer(s, n, d.name);
         if (d.poison && RNG.chance(s.rng, 0.5)) p.st.poison = Math.max(p.st.poison || 0, d.poison);
@@ -378,7 +409,14 @@
         invis(s, pw) { s.p.st.invis = pw; log(s, 'Nessuno fa più caso a te.', 'good'); },
         regen(s, pw) { s.p.st.regen = pw; log(s, 'Ti rilassi: recuperi vita a ogni turno.', 'good'); },
         xp(s) { gainXp(s, Math.ceil((xpNeed(s.p.lvl) - s.p.xp) / (1 + stats(s).xp / 100))); },
-        teleport(s) { const c = freeCell(s, s.rng); if (c) { s.p.x = c[0]; s.p.y = c[1]; } log(s, 'Ti ritrovi da un’altra parte.', 'info'); },
+        teleport(s) {
+            // never into a closed secret room: only cells that can be walked to from the stairs without secret doors
+            const open = MAP.flood(s.map, [idx(s.map.stairs.x, s.map.stairs.y)], (i, t) => MAP.walkable(t));
+            let c = null;
+            for (let n = 0; n < 60 && !c; n++) { const q = freeCell(s, s.rng); if (q && open[idx(q[0], q[1])] >= 0) c = q; }
+            if (c) { s.p.x = c[0]; s.p.y = c[1]; }
+            log(s, 'Ti ritrovi da un’altra parte.', 'info');
+        },
         map(s) {
             const t = s.map.tiles;
             for (let i = 0; i < t.length; i++) {
@@ -453,6 +491,7 @@
         const x = p.x + dx, y = p.y + dy, t = s.map.tiles[idx(x, y)], m = mobAt(s, x, y);
         if (m) { attackMob(s, m); return true; }
         if (t === T.SHOP) { s.shop.open = 1; return false; }
+        if (t === T.BENCH) { s.bench.open = 1; return false; }
         if (t === T.ALTAR) return pray(s);
         if (!MAP.walkable(t)) return false;
         p.x = x; p.y = y;
@@ -524,6 +563,8 @@
     function descend(s) {
         if (s.map.tiles[idx(s.p.x, s.p.y)] !== T.STAIRS) { log(s, 'Qui non ci sono scale.'); return false; }
         if (s.sealed) { log(s, 'Le scale sono bloccate: c’è ancora il boss.'); return false; }
+        if (s.hub) { s.depth++; newFloor(s); return true; }
+        if (s.depth % MOBS.PER_SECTOR === 0 && s.depth < FLOORS) { enterHub(s); return true; }
         s.depth++;
         newFloor(s);
         return true;
@@ -582,6 +623,10 @@
             if (a.t === 'buy') buy(s, a.i); else s.shop.open = 0;
             return false;
         }
+        if (s.bench && s.bench.open) {
+            if (a.t === 'rest') rest(s); else if (a.t === 'recycle') recycle(s, a.i); else s.bench.open = 0;
+            return false;
+        }
         let took = false;
         if (p.st.stun) { log(s, 'Sei bloccato!', 'bad'); took = true; }
         else if (a.t === 'move') took = move(s, a.dx, a.dy);
@@ -597,54 +642,75 @@
     }
 
     // ── walking by itself (tap a cell, the Esplora button, the test bot) ────
-    function knownPass(s) {
-        const traps = new Set(s.traps.filter((t) => t.found).map((t) => idx(t.x, t.y)));
+    /** Cells the player has seen and can walk on; known traps are avoided unless `through` (a trap in a corridor must not block the way). */
+    function knownPass(s, through) {
+        const traps = new Set(through ? [] : s.traps.filter((t) => t.found).map((t) => idx(t.x, t.y)));
         return (i, t) => !!s.seen[i] && MAP.walkable(t) && !traps.has(i);
     }
     /** The next step [dx, dy] towards a cell, over what the player has seen; null when there is no known way. */
     function travelNext(s, tx, ty) {
-        const ok = knownPass(s), ti = idx(tx, ty);
+        const ti = idx(tx, ty);
         if (!s.seen[ti]) return null;
-        const dist = MAP.flood(s.map, [ti], ok);
-        return MAP.downhill(s.map, dist, s.p.x, s.p.y);
+        for (const through of [false, true]) {
+            const v = MAP.downhill(s.map, MAP.flood(s.map, [ti], knownPass(s, through)), s.p.x, s.p.y);
+            if (v) return v;
+        }
+        return null;
     }
     /** The next step towards the nearest thing worth walking to: something to pick up, or a place not seen yet. */
     function exploreNext(s) {
-        const p = s.p, ok = knownPass(s), dist = MAP.flood(s.map, [idx(p.x, p.y)], ok);
-        const loot = new Set(s.items.filter((e) => s.seen[idx(e.x, e.y)] && canTake(s, e.it)).map((e) => idx(e.x, e.y)));
-        let best = -1;
-        for (let i = 0; i < dist.length; i++) {
-            if (dist[i] < 1 || (best >= 0 && dist[i] >= dist[best])) continue;
-            if (loot.has(i) || !s.seen[i - 1] || !s.seen[i + 1] || !s.seen[i - W] || !s.seen[i + W]) best = i;
+        const p = s.p, loot = new Set(s.items.filter((e) => s.seen[idx(e.x, e.y)] && canTake(s, e.it)).map((e) => idx(e.x, e.y)));
+        for (const through of [false, true]) {
+            const dist = MAP.flood(s.map, [idx(p.x, p.y)], knownPass(s, through));
+            let best = -1;
+            for (let i = 0; i < dist.length; i++) {
+                if (dist[i] < 1 || (best >= 0 && dist[i] >= dist[best])) continue;
+                if (loot.has(i) || !s.seen[i - 1] || !s.seen[i + 1] || !s.seen[i - W] || !s.seen[i + W]) best = i;
+            }
+            if (best < 0) continue;
+            while (dist[best] > 1) for (const v of DIRS) { const j = best + v[0] + v[1] * W; if (dist[j] === dist[best] - 1) { best = j; break; } }
+            return [best % W - p.x, ((best / W) | 0) - p.y];
         }
-        if (best < 0) return null;
-        while (dist[best] > 1) for (const v of DIRS) { const j = best + v[0] + v[1] * W; if (dist[j] === dist[best] - 1) { best = j; break; } }
-        return [best % W - p.x, ((best / W) | 0) - p.y];
+        return null;
     }
 
     // ── a new run, saving, the profile ──────────────────────────────────────
-    function newGame(seed, cls, meta) {
-        const c = CLASS[cls] && unlocked(meta || newMeta(), CLASS[cls]) ? CLASS[cls] : CLS.CLASSES[0];
+    const UP = byId(META.UPGRADES);
+    const level = (meta, id) => Math.min(UP[id].max, (meta.up && meta.up[id]) || 0);
+    /** `opts`: { tier } = "livello di accesso" (0 = normal, each step makes monsters 30% tougher and harder-hitting), { daily } = date text. */
+    function newGame(seed, cls, meta, opts) {
+        meta = meta || newMeta(); opts = opts || {};
+        const c = CLASS[cls] && unlocked(meta, CLASS[cls]) ? CLASS[cls] : CLS.CLASSES[0];
         const s = {
             v: VERSION, seed: seed >>> 0, cls: c.id, rng: RNG.make(RNG.mix(seed, 4242)), depth: 1, turn: 0, status: 'play', cause: '',
+            tier: Math.min(opts.tier || 0, meta.ng || 0), daily: opts.daily || '', met: {}, dex: {}, hub: 0, bench: null,
             log: [], fx: [], known: {}, looks: {}, nid: 1, kills: 0, bosses: 0, earned: 0,
             p: { x: 0, y: 0, hp: c.hp, maxHp: c.hp, lvl: 1, xp: 0, gold: 0, food: 900, cd: 0, weapon: null, armor: null, plugin: null,
                  inv: [], st: {}, mods: {}, skills: {}, pending: 0, choices: null },
         };
         addMods(s.p, c.mods);
+        const kit = c.kit.slice();
+        for (const u of META.UPGRADES) {
+            const n = level(meta, u.id);
+            if (!n) continue;
+            if (u.mod) for (let i = 0; i < n; i++) addMods(s.p, u.mod);
+            if (u.gold) s.p.gold += u.gold * n;
+            if (u.kit) for (let i = 0; i < n; i++) kit.push(...u.kit);
+            if (u.known) for (const k of u.known) s.known[k] = 1;
+        }
         const looks = RNG.make(RNG.mix(seed, 777));
         for (const k in ITEMS.LOOKS) {
             const order = RNG.shuffle(looks, ITEMS.LOOKS[k].map((e, i) => i));
             ITEMS.LIST.filter((d) => d.cat === k).forEach((d, i) => { s.looks[d.id] = order[i % order.length]; });
         }
-        for (const k of c.kit) {
+        for (const k of kit) {
             const d = ITEM[k], slot = ITEMS.CATS[d.cat].slot, it = { k };
             if (d.cat === 'usb') it.ch = d.ch;
             if (ITEMS.CATS[d.cat].stack) it.n = 1;
             s.known[k] = 1;
             if (slot && !s.p[slot]) s.p[slot] = it; else addInv(s, it);
         }
-        log(s, `Sei ${c.name}. Scendi fino in fondo e spegni il server.`, 'info');
+        log(s, `Sei ${c.name}. Scendi fino in fondo e spegni il server.` + (s.tier ? ` Livello di accesso ${s.tier}.` : ''), 'info');
         newFloor(s);
         return s;
     }
@@ -656,22 +722,46 @@
             return s;
         } catch (e) { return null; }
     }
-    const newMeta = () => ({ v: 1, best: 0, wins: 0, bosses: 0, runs: 0, crediti: 0, history: [] });
+    const newMeta = () => ({ v: 2, best: 0, wins: 0, bosses: 0, runs: 0, crediti: 0, total: 0, kills: 0, turns: 0, ng: 0, daily: 0, maxLvl: 0, up: {}, medals: [], codex: {}, dailyBest: {}, history: [] });
+    /** Fills in what an older or damaged profile lacks. */
+    function fixMeta(m) { const n = newMeta(); for (const k in n) if (m[k] === undefined || typeof m[k] !== typeof n[k]) m[k] = n[k]; return m; }
+    const counters = (meta) => Object.assign({}, meta, { codex: Object.keys(meta.codex || {}).length });
     const unlocked = (meta, c) => !c.unlock || Object.keys(c.unlock).every((k) => (meta[k] || 0) >= c.unlock[k]);
+    const upCost = (meta, id) => UP[id].cost * (level(meta, id) + 1);
+    function buyUpgrade(meta, id) {
+        if (!UP[id] || level(meta, id) >= UP[id].max || meta.crediti < upCost(meta, id)) return false;
+        meta.crediti -= upCost(meta, id);
+        meta.up = meta.up || {}; meta.up[id] = level(meta, id) + 1;
+        return true;
+    }
+    /** Medals whose counters are reached and that are not yet in the profile: they are added and pay 20 crediti each. Returns the new ones. */
+    function checkMedals(meta) {
+        const got = [], c = counters(meta);
+        for (const d of META.MEDALS) {
+            if (meta.medals.includes(d.id) || !Object.keys(d.need).every((k) => (c[k] || 0) >= d.need[k])) continue;
+            meta.medals.push(d.id); meta.crediti += 20; got.push(d);
+        }
+        return got;
+    }
     /** Adds a finished run to the profile (once). `date` comes from the page: the rules have no clock. */
     function recordRun(meta, s, date) {
         if (s.status === 'play' || s.recorded) return meta;
         s.recorded = 1;
-        const gain = s.depth * 2 + s.bosses * 10 + (s.status === 'won' ? 50 : 0);
+        const gain = Math.round((s.depth * 2 + s.bosses * 10 + (s.status === 'won' ? 50 : 0)) * (1 + 0.25 * (s.tier || 0)));
         meta.best = Math.max(meta.best, s.depth);
-        meta.runs++; meta.bosses += s.bosses; meta.crediti += gain;
-        if (s.status === 'won') meta.wins++;
-        meta.history.unshift({ cls: s.cls, depth: s.depth, lvl: s.p.lvl, turns: s.turn, kills: s.kills, won: s.status === 'won', cause: s.cause, seed: s.seed, date: date || '', crediti: gain });
+        meta.runs++; meta.bosses += s.bosses; meta.crediti += gain; meta.total += gain + s.earned;
+        meta.kills += s.kills; meta.turns += s.turn; meta.maxLvl = Math.max(meta.maxLvl, s.p.lvl);
+        for (const k in s.met) { const e = meta.codex[k] = meta.codex[k] || { seen: 0, kills: 0 }; e.seen++; }
+        for (const k in s.dex) { const e = meta.codex[k] = meta.codex[k] || { seen: 0, kills: 0 }; e.kills += s.dex[k]; }
+        if (s.status === 'won') { meta.wins++; meta.ng = Math.max(meta.ng, (s.tier || 0) + 1); }
+        if (s.daily) { meta.daily++; meta.dailyBest[s.daily] = Math.max(meta.dailyBest[s.daily] || 0, s.depth); }
+        meta.history.unshift({ cls: s.cls, depth: s.depth, lvl: s.p.lvl, turns: s.turn, kills: s.kills, won: s.status === 'won', cause: s.cause, seed: s.seed, date: date || '', crediti: gain, tier: s.tier || 0, daily: s.daily || '' });
         meta.history.length = Math.min(meta.history.length, 30);
+        s.medals = checkMedals(meta).map((d) => d.id);
         return meta;
     }
 
     return { VERSION, FLOORS, INV_CAP, MAX_FOOD, MOB, ITEM, CLASS, SKILL, EFFECTS, TARGETED, newGame, act, save, load, stats, hitChance, rollDamage, xpNeed,
         itemName, itemInfo, itemLook, known, price, canTake, shown, threats, nearest, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext,
-        newMeta, unlocked, recordRun, updateFov };
+        newMeta, fixMeta, unlocked, recordRun, updateFov, buyUpgrade, upCost, level, checkMedals, counters, UPGRADES: META.UPGRADES, MEDALS: META.MEDALS, enterHub };
 });

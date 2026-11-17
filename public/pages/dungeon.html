@@ -14,16 +14,17 @@
     <meta property="og:url" content="https://vector-box.duckdns.org/pages/dungeon.html">
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
     <meta name="twitter:card" content="summary">
-    <link rel="icon" href="../assets/dungeon/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/dungeon.css?v=1">
-    <script src="../js/rogue/rng.js?v=1" defer></script>
-    <script src="../js/rogue/map.js?v=1" defer></script>
-    <script src="../js/rogue/mobs.js?v=1" defer></script>
-    <script src="../js/rogue/items.js?v=1" defer></script>
-    <script src="../js/rogue/classes.js?v=1" defer></script>
-    <script src="../js/rogue/sprites.js?v=1" defer></script>
-    <script src="../js/rogue/game.js?v=1" defer></script>
-    <script src="../js/dungeon.js?v=1" defer></script>
+    <link rel="icon" href="../assets/dungeon/icon.svg?v=2" type="image/svg+xml">
+    <link rel="stylesheet" href="../css/dungeon.css?v=2">
+    <script src="../js/rogue/rng.js?v=2" defer></script>
+    <script src="../js/rogue/map.js?v=2" defer></script>
+    <script src="../js/rogue/mobs.js?v=2" defer></script>
+    <script src="../js/rogue/items.js?v=2" defer></script>
+    <script src="../js/rogue/classes.js?v=2" defer></script>
+    <script src="../js/rogue/sprites.js?v=2" defer></script>
+    <script src="../js/rogue/meta.js?v=2" defer></script>
+    <script src="../js/rogue/game.js?v=2" defer></script>
+    <script src="../js/dungeon.js?v=2" defer></script>
 </head>
 <body>
     <header class="dg-top">
@@ -41,6 +42,11 @@
         <div id="dg-classinfo" class="dg-classinfo"></div>
         <div class="dg-row">
             <button type="button" id="dg-start" class="dg-big">Inizia la discesa</button>
+        </div>
+        <div class="dg-row">
+            <button type="button" id="dg-daily">Sfida del giorno</button>
+            <button type="button" id="dg-archive">Archivio</button>
+            <button type="button" id="dg-tier" hidden>Livello di accesso: 0</button>
             <button type="button" id="dg-help">Come si gioca</button>
         </div>
     </main>
