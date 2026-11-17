@@ -7,7 +7,7 @@
     const $ = (id) => document.getElementById(id);
     const fmt = (t) => new Date(t * 1000).toLocaleString(it ? 'it-IT' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
     const el = (tag, props = {}, ...kids) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(props)) { if (k === 'text') n.textContent = v; else n.setAttribute(k, v); } n.append(...kids); return n; };
-    const btn = (text, fn) => { const b = el('button', { type: 'button', class: 'nav-btn', style: 'margin-top:6px;padding:6px 10px;', text }); b.addEventListener('click', fn); return b; };
+    const btn = (text, fn) => { const b = el('button', { type: 'button', class: 'nav-btn', style: 'margin-top:6px;padding:6px 12px;min-height:40px;', text }); b.addEventListener('click', fn); return b; };
     async function api(body) {
         const r = await fetch('../api/sessions.php', body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
         return r.json().catch(() => ({ success: false }));
