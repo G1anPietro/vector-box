@@ -59,6 +59,7 @@
         mob_hits: { en: '{mob} hits you: {n}.', it: '{mob} ti colpisce: {n}.' },
         mob_ranged: { en: '{mob} {verb}: {n}.', it: '{mob} {verb}: {n}.' },
         mob_escaped: { en: '{mob} vanished with the loot.', it: '{mob} è sparito con il bottino.' },
+        mini_here: { en: 'Something big sleeps on this floor: {mob}. {mobinfo}', it: 'Su questo piano dorme qualcosa di grosso: {mob}. {mobinfo}' },
         mob_calls: { en: '{mob} calls in {mob2}!', it: '{mob} chiama {mob2}!' },
         mob_ambush: { en: 'That was no cardboard box: it’s {mob}!', it: 'Non era uno scatolone: {mob}!' },
         stunned: { en: 'You are frozen in place!', it: 'Sei bloccato!' },
