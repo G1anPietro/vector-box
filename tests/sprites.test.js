@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const dir = path.join(__dirname, '..', 'public', 'js', 'rogue');
 const A = require(path.join(dir, 'sprites-art.js'));
-for (const f of ['heroes', 'mobs', 'bosses', 'items']) require(path.join(dir, `sprites-art-${f}.js`));
+for (const f of ['heroes', 'mobs', 'bosses', 'mobs2', 'items']) require(path.join(dir, `sprites-art-${f}.js`));
 const MOBS = require(path.join(dir, 'mobs.js')), ITEMS = require(path.join(dir, 'items.js')), CLS = require(path.join(dir, 'classes.js')), SP = require(path.join(dir, 'sprites.js'));
 const ROLES = new Set('osblaewnNhHkgGyrtpc'.split(''));
 
@@ -71,4 +71,24 @@ test('the sprite cache is bounded (needs a DOM-less fake canvas)', () => {
         A.sprite('bug', '#123456', 0); const n = made.length; A.sprite('bug', '#123456', 0);
         assert.equal(made.length, n, 'a repeated sprite is not painted again');
     } finally { delete global.document; }
+});
+
+// ── own drawings: every `sprite` key declared in the data has its own picture (no archetype / generic fallback) ──
+const hash = (n) => A.pixels(n, '#8fa3b8', 0).join('|');
+test('every monster with a `sprite` key has its own drawing, distinct from all others, with a different second frame', () => {
+    const own = MOBS.LIST.filter((d) => d.sprite), noArt = [], seen = new Map(), twins = [], still = [];
+    assert.ok(own.length >= 39, 'new monsters: ' + own.length);
+    for (const d of own) {
+        if (!A.def(d.sprite)) { noArt.push(d.id + ' -> ' + A.resolve(A.chain(d, 'm')).key); continue; }
+        const h = hash(d.sprite);
+        if (seen.has(h)) twins.push(d.id + ' = ' + seen.get(h)); else seen.set(h, d.id);
+        if (A.pixels(d.sprite, '#8fa3b8', 0).join() === A.pixels(d.sprite, '#8fa3b8', 1).join()) still.push(d.id);
+    }
+    assert.deepEqual(noArt, []); assert.deepEqual(twins, []); assert.deepEqual(still, []);
+    // the 10 mini-bosses and the 2 alternative bosses fill more of the box than the regular newcomers
+    const fill = (n) => A.pixels(n, '#8fa3b8', 0).filter(Boolean).length;
+    const avg = (l) => l.reduce((a, d) => a + fill(d.sprite), 0) / l.length;
+    const big = own.filter((d) => d.boss || /^mini\d+$/.test(d.id));
+    assert.equal(big.length, 12);
+    assert.ok(avg(big) > avg(own.filter((d) => !big.includes(d))), 'mini-bosses and alternative bosses are bigger');
 });

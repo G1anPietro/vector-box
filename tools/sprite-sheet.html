@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprite sheet — Il Dungeon del Server</title>
 <!-- Open this file straight from the disk (file://): no server. Every sprite at 64 px (both idle frames) and at the 16 / 24 / 36 px of the game, with its name;
-     orange frame = drawn through a fallback (the line says which drawing). Query: ?f=text (only labels containing it)  ?only=heroes|mobs|items|keys|strip  &floor=%23hex -->
+     orange frame = drawn through a fallback (the line says which drawing). Query: ?f=text (only labels containing it)  ?only=heroes|mobs|items|keys|strip  ?new=1 (only entries with a `sprite` key)  ?f=a,b (several)  &floor=%23hex -->
 <style>
 body { background: #05080a; color: #b8d8c0; font: 12px monospace; margin: 12px; }
 h2 { color: #00ff66; margin: 18px 0 6px; font-size: 14px; }
@@ -22,6 +22,7 @@ canvas { image-rendering: pixelated; }
 <script src="../public/js/rogue/sprites-art-mobs.js"></script>
 <script src="../public/js/rogue/sprites-art-bosses.js"></script>
 <script src="../public/js/rogue/sprites-art-items.js"></script>
+<script src="../public/js/rogue/sprites-art-mobs2.js"></script>
 <script src="../public/js/rogue/mobs.js"></script>
 <script src="../public/js/rogue/items.js"></script>
 <script src="../public/js/rogue/classes.js"></script>

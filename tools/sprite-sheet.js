@@ -10,7 +10,7 @@
         c.getContext('2d').drawImage(A.sprite(name, col, frame), 0, 0); host.appendChild(c);
     }
     function cell(g, label, name, col) {
-        if (q.get('f') && !label.includes(q.get('f'))) return;
+        if (q.get('f') && !q.get('f').split(',').some((t) => label.includes(t))) return;
         const r = A.resolve(name), exact = r.exact && r.kind === 'art', c = el('div', 'c' + (r.kind === 'missing' ? ' miss' : exact ? '' : ' fb'), g), row = el('div', 'r', c);
         draw(row, name, col, 0, 64); draw(row, name, col, 1, 64); draw(row, name, col, 0, 16); draw(row, name, col, 0, 24); draw(row, name, col, 0, 36);
         el('div', 'n', c, label);
@@ -21,11 +21,11 @@
     if (!only || only === 'heroes') { const g = sec('Heroes'); for (const c of R.classes.CLASSES) cell(g, c.id, A.chain(c, 'h'), c.col); }
     if (!only || only === 'mobs') {
         const g = sec('Monsters (* = boss)');
-        for (const d of R.mobs.LIST) cell(g, (d.boss ? '* ' : '') + d.id + ' (' + L(d.name) + ')', A.chain(d, 'm'), d.col);
+        for (const d of R.mobs.LIST) if (!q.get('new') || d.sprite) cell(g, (d.boss ? '* ' : '') + d.id + ' (' + L(d.name) + ')', A.chain(d, 'm'), d.col);
     }
     if (!only || only === 'items') {
         const g = sec('Items');
-        for (const d of R.items.LIST) { const c = R.items.CATS[d.cat]; cell(g, d.id + ' [' + d.cat + ']', A.chain(Object.assign({}, d, { shape: d.shape || c.shape }), 'i'), d.col || c.col || '#c9d6e3'); }
+        for (const d of R.items.LIST) { if (q.get('new') && !d.sprite) continue; const c = R.items.CATS[d.cat]; cell(g, d.id + ' [' + d.cat + ']', A.chain(Object.assign({}, d, { shape: d.shape || c.shape }), 'i'), d.col || c.col || '#c9d6e3'); }
         const g2 = sec('Categories (what an unknown item looks like)');
         for (const k of Object.keys(R.items.CATS)) cell(g2, k, R.items.CATS[k].shape, R.items.CATS[k].col || '#c9d6e3');
         const g3 = sec('Unknown-item looks (can / usb / script / plugin)');
