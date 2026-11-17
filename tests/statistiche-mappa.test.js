@@ -77,6 +77,7 @@ test.describe('the statistics page', () => {
         assert.match(html, /<span class="badge-bot">BOT<\/span> wp-login probe/);
         assert.match(html, /Indirizzi più attivi/);
         assert.match(html, /IP Geolocation by DB-IP/);
+        assert.match(html, /class="map-zoom"[\s\S]*data-z="in"[\s\S]*data-z="reset"/, 'zoom buttons');
         assert.ok(html.includes('<span class="cc">IT</span>'));
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), 'no inline script');
     });

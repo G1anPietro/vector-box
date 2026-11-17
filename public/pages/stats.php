@@ -198,12 +198,16 @@ function barList(array $items, int $total, callable $h): void {
                 <button type="button" data-mode="b" aria-pressed="false">Bot</button>
                 <button type="button" data-mode="a" aria-pressed="false">Tutti (rosso = più bot)</button>
             </div>
+            <div class="map-wrap">
+            <div class="map-zoom" role="group" aria-label="Zoom della mappa"><button type="button" data-z="in" aria-label="Ingrandisci">+</button><button type="button" data-z="out" aria-label="Rimpicciolisci">−</button><button type="button" data-z="reset" aria-label="Mostra tutto il mondo">⟲</button></div>
             <svg class="map" viewBox="<?= $h($mapData['viewBox']) ?>" role="img" aria-label="Mappa del mondo colorata per numero di visite" preserveAspectRatio="xMidYMid meet">
                 <?php foreach ($mapData['countries'] as $cc => $c): $hv = $byCountry[$cc]['h'] ?? 0; $bv = $byCountry[$cc]['b'] ?? 0; ?>
                     <path d="<?= $c['d'] ?>" data-c="<?= $h($cc) ?>" data-h="<?= $hv ?>" data-b="<?= $bv ?>"
                           data-tip="<?= $h($c['n']) ?>: <?= $hv ?> visit<?= $hv === 1 ? 'a' : 'e' ?>, <?= $bv ?> richiest<?= $bv === 1 ? 'a' : 'e' ?> di bot"></path>
                 <?php endforeach; ?>
             </svg>
+            </div>
+            <p class="note map-hint">Zoom: rotella del mouse, due dita o i tasti; trascina per spostarti; doppio clic per avvicinarti.</p>
             <div class="map-legend" aria-hidden="true"><span>meno</span><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>più</span></div>
             <?php $known = array_filter($byCountry, fn($v, $k) => $ccKnown($k), ARRAY_FILTER_USE_BOTH); $unknown = ($byCountry['??']['h'] ?? 0) + ($byCountry['??']['b'] ?? 0); ?>
             <?php if (!$known): ?><p class="empty">Ancora nessun indirizzo da mettere sulla mappa.</p><?php else: ?>
