@@ -3,6 +3,8 @@
 // (textContent / text nodes), never as HTML.
 (() => {
     'use strict';
+    // the texts of the pages are built once: a language switch (EN | IT) simply reloads the page in the new language
+    window.addEventListener('vb-lang', () => location.reload());
 
     function el(tag, props = {}, ...children) {
         const n = document.createElement(tag);
@@ -35,7 +37,7 @@
             document.body.append(toastBox);
         }
         const t = el('div', { class: 'toast' + (kind ? ' ' + kind : '') }, el('span', { text: msg }),
-            el('button', { type: 'button', class: 'toast-x', 'aria-label': 'Chiudi', text: '×', onclick: () => t.remove() }));
+            el('button', { type: 'button', class: 'toast-x', 'aria-label': VBLang.t('close'), text: '×', onclick: () => t.remove() }));
         toastBox.append(t);
         while (toastBox.children.length > 3) toastBox.firstElementChild.remove();
         setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms || (kind === 'err' ? 7000 : 3500));
@@ -79,7 +81,7 @@
     async function getJson(url) {
         const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
         const j = await r.json().catch(() => null);
-        if (!r.ok || !j || !j.success) throw Object.assign(new Error((j && j.error) || 'Qualcosa è andato storto.'), { json: j, status: r.status });
+        if (!r.ok || !j || !j.success) throw Object.assign(new Error((j && j.error) || VBLang.t('something_went_wrong')), { json: j, status: r.status });
         return j;
     }
 
@@ -93,7 +95,7 @@
             body: isForm ? body : JSON.stringify(body),
         });
         const j = await r.json().catch(() => null);
-        if (!r.ok || !j || !j.success) throw Object.assign(new Error((j && j.error) || 'Qualcosa è andato storto.'), { json: j, status: r.status });
+        if (!r.ok || !j || !j.success) throw Object.assign(new Error((j && j.error) || VBLang.t('something_went_wrong')), { json: j, status: r.status });
         return j;
     }
 
@@ -236,7 +238,7 @@
             const h = label.length * LH + note.length * NH + PAD * 2 - (note.length ? 0 : 2);
             return { label, note, w, h, depth, hue, kids: (Array.isArray(n.children) ? n.children : []).map((c, i) => mk(c, depth + 1, depth === 0 ? HUES[i % HUES.length] : hue)) };
         };
-        const root = mk({ label: data.title || 'Schema', children: [] }, 0, 0);
+        const root = mk({ label: data.title || VBLang.t('diagram'), children: [] }, 0, 0);
         const tops = (Array.isArray(data.children) ? data.children : []).map((c, i) => mk(c, 1, HUES[i % HUES.length]));
         // same balance as on the site: about half of the nodes on each side
         const weight = (n) => 1 + n.kids.reduce((x, k) => x + weight(k), 0);
@@ -294,7 +296,7 @@
             out.push('</g>');
             n.kids.forEach(boxes);
         })(root);
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(W)}" height="${Math.ceil(H)}" viewBox="0 0 ${Math.ceil(W)} ${Math.ceil(H)}" font-family="Arial, Helvetica, sans-serif"><title>${esc(plain(data.title || 'Schema'))}</title><rect width="100%" height="100%" fill="#ffffff"/>${out.join('')}</svg>`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(W)}" height="${Math.ceil(H)}" viewBox="0 0 ${Math.ceil(W)} ${Math.ceil(H)}" font-family="Arial, Helvetica, sans-serif"><title>${esc(plain(data.title || VBLang.t('diagram')))}</title><rect width="100%" height="100%" fill="#ffffff"/>${out.join('')}</svg>`;
     }
 
     /** Saves a Blob as a file (works on phones too: the browser's own download). */
@@ -355,13 +357,13 @@
         if ((text || url) && navigator.share) {
             try { await navigator.share({ title: title || '', ...(text ? { text } : {}), ...(url ? { url } : {}) }); return 'shared'; } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
         }
-        if (blob) { saveBlob(blob, name); toast(why === 'no-share' ? 'Qui non c\'è il menu di condivisione: ho scaricato il file, allegalo alla tua e-mail.' : 'Questo browser non condivide i file: l\'ho scaricato. Prova con Chrome per il menu di condivisione.', 'ok', 6000); return 'saved'; }
+        if (blob) { saveBlob(blob, name); toast(why === 'no-share' ? VBLang.t('there_is_no_share_menu_here') : VBLang.t('this_browser_cannot_share_files_i'), 'ok', 6000); return 'saved'; }
         if (text || url) { window.open('mailto:?subject=' + encodeURIComponent(title || '') + '&body=' + encodeURIComponent(((text || '') + (url ? '\n\n' + url : '')).slice(0, 1800)), '_self'); return 'mailto'; }
         return 'none';
     }
     /** A schema as plain indented text (for a share sheet that cannot take a picture). */
     function schemaText(data) {
-        const out = [String(data.title || 'Schema')];
+        const out = [String(data.title || VBLang.t('diagram'))];
         const walk = (list, d) => (Array.isArray(list) ? list : []).forEach((n) => { out.push('  '.repeat(d) + '- ' + String(n.label || '') + (n.note ? ': ' + n.note : '')); walk(n.children, d + 1); });
         walk(data.children, 1);
         return out.join('\n');
@@ -382,29 +384,29 @@
     const canShareFiles = () => { try { return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [new File(['x'], 'a.txt', { type: 'text/plain' })] })); } catch (e) { return false; } };
     function shareDialog(title, choices, ref) {
         const dlg = el('dialog', { class: 'tt-dialog share-dialog' });
-        const fail = (e) => toast(e && e.message && !/^Failed|NetworkError|Load failed/.test(e.message) ? e.message : 'Non sono riuscito a preparare la condivisione.', 'err');
+        const fail = (e) => toast(e && e.message && !/^Failed|NetworkError|Load failed/.test(e.message) ? e.message : VBLang.t('could_not_prepare_the_sharing'), 'err');
         const go = (fn) => async () => { dlg.close(); try { await fn(); } catch (e) { fail(e); } };
-        const days = el('select', { 'aria-label': 'Quanto vale il link' }, el('option', { value: '1', text: '1 giorno' }), el('option', { value: '7', text: '7 giorni', selected: true }), el('option', { value: '30', text: '30 giorni' }));
-        const views = el('select', { 'aria-label': 'Quante volte si può aprire' }, el('option', { value: '0', text: 'quante volte vuole' }), el('option', { value: '1', text: 'una sola volta' }), el('option', { value: '5', text: 'al massimo 5 volte' }), el('option', { value: '20', text: 'al massimo 20 volte' }));
+        const days = el('select', { 'aria-label': VBLang.t('how_long_the_link_lasts') }, el('option', { value: '1', text: '1 giorno' }), el('option', { value: '7', text: '7 giorni', selected: true }), el('option', { value: '30', text: '30 giorni' }));
+        const views = el('select', { 'aria-label': VBLang.t('how_many_times_it_can_be') }, el('option', { value: '0', text: 'quante volte vuole' }), el('option', { value: '1', text: VBLang.t('only_once') }), el('option', { value: '5', text: VBLang.t('at_most_5_times') }), el('option', { value: '20', text: VBLang.t('at_most_20_times') }));
         const opt = (label, hint, fn) => el('button', { type: 'button', class: 'ghost share-opt', onclick: go(fn) }, el('b', { text: label }), el('small', { class: 'muted', text: hint }));
         // Firefox on a phone (and some others) cannot hand a FILE to the share sheet: there the link works everywhere, and files are downloaded
         const noFiles = !canShareFiles();
         const fileChoice = (c) => (noFiles && c.file)
-            ? opt(c.label, 'questo browser non condivide i file: si scarica', async () => { const f = await c.get(); saveBlob(f.blob, f.name); toast('Scaricato: lo trovi nei file del telefono.', 'ok'); })
+            ? opt(c.label, VBLang.t('this_browser_does_not_share_files'), async () => { const f = await c.get(); saveBlob(f.blob, f.name); toast(VBLang.t('downloaded_you_will_find_it_in'), 'ok'); })
             : opt(c.label, c.hint || '', async () => { await shareOut({ ...(await c.get()), title }); });
-        const linkPart = ref ? [el('h3', { text: 'Link temporaneo' }),
-            el('p', { class: 'muted small', text: noFiles ? 'È il modo che funziona con questo browser: chi apre il link vede il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere.' : 'Chi ha il link apre il materiale in una pagina (anche senza account) e può ingrandire, scaricare e condividere. Si può revocare dalle Impostazioni.' }),
-            el('label', { text: 'Il link vale' }, days),
-            el('label', { text: 'Si può aprire' }, views),
-            opt('Manda il link', 'menu del telefono', async () => { await shareOut({ title, text: title, url: await makeShareLink(ref, Number(days.value), Number(views.value)) }); }),
-            opt('Copia il link', 'da incollare dove vuoi', async () => { await navigator.clipboard.writeText(await makeShareLink(ref, Number(days.value), Number(views.value))); toast('Link copiato.', 'ok'); })] : [];
+        const linkPart = ref ? [el('h3', { text: VBLang.t('temporary_link') }),
+            el('p', { class: 'muted small', text: noFiles ? VBLang.t('it_is_the_way_that_works') : VBLang.t('whoever_has_the_link_opens_the_2') }),
+            el('label', { text: VBLang.t('the_link_lasts') }, days),
+            el('label', { text: VBLang.t('it_can_be_opened') }, views),
+            opt(VBLang.t('send_the_link'), VBLang.t('phone_menu'), async () => { await shareOut({ title, text: title, url: await makeShareLink(ref, Number(days.value), Number(views.value)) }); }),
+            opt(VBLang.t('copy_the_link'), VBLang.t('to_paste_wherever_you_like'), async () => { await navigator.clipboard.writeText(await makeShareLink(ref, Number(days.value), Number(views.value))); toast(VBLang.t('link_copied'), 'ok'); })] : [];
         dlg.append(el('div', { class: 'stack' },
-            el('h3', { text: 'Condividi' }),
-            el('p', { class: 'muted small', text: noFiles && ref ? 'Questo browser non può mandare file con il menu del telefono: usa il link. (Con Chrome i file escono allegati.)' : 'Scegli cosa mandare: poi si apre il menu del telefono con le tue app (Gmail, WhatsApp, Drive…).' }),
-            ...(noFiles && ref ? [...linkPart, el('h3', { text: 'Oppure scarica' })] : []),
+            el('h3', { text: VBLang.t('share') }),
+            el('p', { class: 'muted small', text: noFiles && ref ? VBLang.t('this_browser_cannot_send_files_with') : VBLang.t('choose_what_to_send_then_the') }),
+            ...(noFiles && ref ? [...linkPart, el('h3', { text: VBLang.t('or_download') })] : []),
             ...choices.map(fileChoice),
             ...(noFiles && ref ? [] : linkPart),
-            el('button', { type: 'button', class: 'ghost', text: 'Annulla', onclick: () => dlg.close() })));
+            el('button', { type: 'button', class: 'ghost', text: VBLang.t('cancel'), onclick: () => dlg.close() })));
         dlg.addEventListener('close', () => dlg.remove());
         dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
         document.body.append(dlg);
@@ -412,15 +414,15 @@
     }
     /** The formats a schema can be sent in. */
     const schemaChoices = (data) => [
-        { file: true, label: 'Immagine PNG a colori', hint: 'per chat e social', get: async () => { const f = await schemaBlob(data, 'png', false, data.title); return { blob: f.blob, name: f.name }; } },
-        { file: true, label: 'Immagine PNG bianco e nero', hint: 'per stampare', get: async () => { const f = await schemaBlob(data, 'png', true, data.title); return { blob: f.blob, name: f.name }; } },
-        { file: true, label: 'SVG modificabile (colori)', hint: 'per Inkscape, Figma…', get: async () => { const f = await schemaBlob(data, 'svg', false, data.title); return { blob: f.blob, name: f.name }; } },
-        { file: true, label: 'SVG modificabile (bianco e nero)', hint: '', get: async () => { const f = await schemaBlob(data, 'svg', true, data.title); return { blob: f.blob, name: f.name }; } },
-        { label: 'Solo testo (elenco dei punti)', hint: 'nel corpo del messaggio', get: async () => ({ text: schemaText(data) }) }];
+        { file: true, label: VBLang.t('colour_png_image'), hint: VBLang.t('for_chats_and_social_media'), get: async () => { const f = await schemaBlob(data, 'png', false, data.title); return { blob: f.blob, name: f.name }; } },
+        { file: true, label: VBLang.t('black_and_white_png_image'), hint: VBLang.t('for_printing'), get: async () => { const f = await schemaBlob(data, 'png', true, data.title); return { blob: f.blob, name: f.name }; } },
+        { file: true, label: VBLang.t('editable_svg_colour'), hint: VBLang.t('for_inkscape_figma'), get: async () => { const f = await schemaBlob(data, 'svg', false, data.title); return { blob: f.blob, name: f.name }; } },
+        { file: true, label: VBLang.t('editable_svg_black_and_white'), hint: '', get: async () => { const f = await schemaBlob(data, 'svg', true, data.title); return { blob: f.blob, name: f.name }; } },
+        { label: VBLang.t('text_only_list_of_points'), hint: VBLang.t('in_the_body_of_the_message'), get: async () => ({ text: schemaText(data) }) }];
     /** The formats of a written document / note. */
     const textChoices = (title, content) => [
-        { file: true, label: 'File .md', hint: 'allegato, con la formattazione', get: async () => markdownFile(title, content) },
-        { label: 'Solo testo', hint: 'nel corpo del messaggio', get: async () => ({ text: `${title}\n\n${content}` }) }];
+        { file: true, label: VBLang.t('file_md'), hint: VBLang.t('attached_with_formatting'), get: async () => markdownFile(title, content) },
+        { label: VBLang.t('text_only'), hint: VBLang.t('in_the_body_of_the_message'), get: async () => ({ text: `${title}\n\n${content}` }) }];
 
     /**
      * Full screen for a block (a document, a schema, a preview): the browser's own full screen when there is one (not on iPhone),
@@ -437,7 +439,7 @@
             if (cb) cb(false);
         };
         if (fsOn) { exit(); return; }
-        const btn = el('button', { type: 'button', class: 'fs-close', text: 'Chiudi', onclick: exit });
+        const btn = el('button', { type: 'button', class: 'fs-close', text: VBLang.t('close'), onclick: exit });
         target.classList.add('is-fs'); target.append(btn);
         document.documentElement.classList.add('has-fs');
         fsOn = { t: target, cb: onChange, btn, exit };
@@ -495,7 +497,7 @@
         path.setAttribute('d', 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5');
         for (const [k, v] of Object.entries({ fill: 'none', stroke: 'currentColor', 'stroke-width': '2.2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) path.setAttribute(k, v);
         svg.append(path);
-        return el('button', { type: 'button', class: 'fs-icon ' + cls, title: 'Schermo intero', 'aria-label': 'Schermo intero', onclick: () => toggleFull(getTarget(), onChange) }, svg);
+        return el('button', { type: 'button', class: 'fs-icon ' + cls, title: VBLang.t('full_screen'), 'aria-label': VBLang.t('full_screen'), onclick: () => toggleFull(getTarget(), onChange) }, svg);
     }
 
     /**
@@ -505,7 +507,7 @@
     function renderSchema(content, opts = {}) {
         let data = null;
         try { data = typeof content === 'string' ? JSON.parse(content) : content; } catch (e) { /* below */ }
-        if (!data || !Array.isArray(data.children)) return el('p', { class: 'empty', text: 'Schema non leggibile.' });
+        if (!data || !Array.isArray(data.children)) return el('p', { class: 'empty', text: VBLang.t('diagram_cannot_be_read') });
         const node = (n, depth) => {
             const label = el('span', { class: 'sc-label' }, inline(String(n.label || '')));
             const note = n.note ? el('span', { class: 'sc-note' }, inline(String(n.note))) : null;
@@ -517,12 +519,12 @@
         };
         const tree = el('ul', { class: 'schema-tree' }, ...data.children.map((c) => node(c, 1)));
         let opened = false;
-        const toggle = el('button', { type: 'button', class: 'ghost mini', text: 'Apri tutto', onclick: () => {
+        const toggle = el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('open_all'), onclick: () => {
             opened = !opened;
             tree.querySelectorAll('details').forEach((d) => { d.open = opened; });
             map.querySelectorAll('.mm-branch.has-kids').forEach((b) => b.classList.toggle('collapsed', !opened));
             requestAnimationFrame(drawLinks);
-            toggle.textContent = opened ? 'Chiudi tutto' : 'Apri tutto';
+            toggle.textContent = opened ? VBLang.t('close_all') : VBLang.t('open_all');
         } });
 
         /* The same data as a two-dimensional map: the main topic in the centre, branches to the right and to the left,
@@ -549,7 +551,7 @@
         const links = document.createElementNS(SVGNS, 'svg');
         links.setAttribute('class', 'mm-links');
         links.setAttribute('aria-hidden', 'true');
-        const center = el('div', { class: 'mm-center' }, inline(String(data.title || 'Schema')));
+        const center = el('div', { class: 'mm-center' }, inline(String(data.title || VBLang.t('diagram'))));
         const canvas = el('div', { class: 'mm-canvas' }, links,
             el('div', { class: 'mm-side left' }, ...left), center, el('div', { class: 'mm-side right' }, ...right));
         /** Position of an element inside the canvas (layout pixels, not affected by the zoom). */
@@ -578,7 +580,7 @@
             }
             links.replaceChildren(...paths);
         }
-        const map = el('div', { class: 'mm', tabIndex: 0, 'aria-label': 'Mappa dello schema: trascina per spostarti' }, canvas);
+        const map = el('div', { class: 'mm', tabIndex: 0, 'aria-label': VBLang.t('map_of_the_diagram_drag_to') }, canvas);
         let scale = 1;
         const zoom = (z) => { scale = Math.max(0.3, Math.min(3, z)); canvas.style.zoom = String(scale); return scale; };
         const fit = () => {
@@ -610,28 +612,28 @@
         const setView = (v) => {
             wrap.dataset.view = v;
             store(VIEW_KEY, v);
-            viewBtn.textContent = v === 'map' ? 'Elenco' : 'Mappa';
+            viewBtn.textContent = v === 'map' ? VBLang.t('list') : VBLang.t('map');
             if (v === 'map') requestAnimationFrame(fit);
         };
         const viewBtn = el('button', { type: 'button', class: 'ghost mini', onclick: () => setView(wrap.dataset.view === 'map' ? 'list' : 'map') });
         const zoomBtns = el('span', { class: 'mm-zoom' },
-            el('button', { type: 'button', class: 'ghost mini', text: '−', 'aria-label': 'Rimpicciolisci', onclick: () => zoom(scale - 0.15) }),
-            el('button', { type: 'button', class: 'ghost mini', text: '+', 'aria-label': 'Ingrandisci', onclick: () => zoom(scale + 0.15) }),
-            el('button', { type: 'button', class: 'ghost mini', text: 'Adatta', onclick: fit }));
+            el('button', { type: 'button', class: 'ghost mini', text: '−', 'aria-label': VBLang.t('zoom_out'), onclick: () => zoom(scale - 0.15) }),
+            el('button', { type: 'button', class: 'ghost mini', text: '+', 'aria-label': VBLang.t('zoom_in'), onclick: () => zoom(scale + 0.15) }),
+            el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('fit'), onclick: fit }));
         wrap.append(
-            el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || 'Schema'))),
+            el('div', { class: 'schema-head' }, el('b', { class: 'schema-title' }, inline(String(data.title || VBLang.t('diagram')))),
                 el('span', { class: 'schema-tools' }, zoomBtns, toggle, viewBtn)),
             el('div', { class: 'mm-frame' }, map, fullButton(() => wrap, () => requestAnimationFrame(() => { if (wrap.dataset.view === 'map') fit(); }), 'on-map')), tree);
         const closeMenu = () => { menu.hidden = true; dlBtn.setAttribute('aria-expanded', 'false'); };
-        const run = (fn) => async () => { closeMenu(); try { await fn(); } catch (e) { toast('Non sono riuscito a creare il file.', 'err'); } };
+        const run = (fn) => async () => { closeMenu(); try { await fn(); } catch (e) { toast(VBLang.t('could_not_create_the_file'), 'err'); } };
         const item = (label, hint, fn) => el('button', { type: 'button', class: 'ghost', onclick: run(fn) }, el('span', { text: label }), el('small', { class: 'muted', text: hint }));
         const menu = el('div', { class: 'schema-dl-menu', hidden: true },
-            item('PNG a colori', 'immagine', () => downloadSchema(data, 'png', false, data.title)),
-            item('PNG bianco e nero', 'immagine', () => downloadSchema(data, 'png', true, data.title)),
-            item('SVG a colori', 'modificabile', () => downloadSchema(data, 'svg', false, data.title)),
-            item('SVG bianco e nero', 'modificabile', () => downloadSchema(data, 'svg', true, data.title)),
-            item('Condividi…', 'scegli il formato', async () => shareDialog(String(data.title || 'Schema'), schemaChoices(data), opts.ref)));
-        const dlBtn = el('button', { type: 'button', class: 'mini dl-btn', text: 'Scarica', 'aria-expanded': 'false', onclick: (ev) => { ev.stopPropagation(); const open = menu.hidden; menu.hidden = !open; dlBtn.setAttribute('aria-expanded', String(open)); } });
+            item(VBLang.t('colour_png'), 'immagine', () => downloadSchema(data, 'png', false, data.title)),
+            item(VBLang.t('black_and_white_png'), 'immagine', () => downloadSchema(data, 'png', true, data.title)),
+            item(VBLang.t('colour_svg'), 'modificabile', () => downloadSchema(data, 'svg', false, data.title)),
+            item(VBLang.t('black_and_white_svg'), 'modificabile', () => downloadSchema(data, 'svg', true, data.title)),
+            item(VBLang.t('share_2'), VBLang.t('choose_the_format'), async () => shareDialog(String(data.title || VBLang.t('diagram')), schemaChoices(data), opts.ref)));
+        const dlBtn = el('button', { type: 'button', class: 'mini dl-btn', text: VBLang.t('download'), 'aria-expanded': 'false', onclick: (ev) => { ev.stopPropagation(); const open = menu.hidden; menu.hidden = !open; dlBtn.setAttribute('aria-expanded', String(open)); } });
         document.addEventListener('click', (ev) => { if (!menu.hidden && !menu.contains(ev.target)) closeMenu(); });
         const dl = el('span', { class: 'schema-dl' }, dlBtn, menu);
         wrap.querySelector('.schema-tools').append(dl);
@@ -652,17 +654,17 @@
         let data = null;
         try { data = typeof content === 'string' ? JSON.parse(content) : content; } catch (e) { /* below */ }
         const list = data && Array.isArray(data.domande) ? data.domande : null;
-        if (!list) return el('p', { class: 'empty', text: 'Domande non leggibili.' });
+        if (!list) return el('p', { class: 'empty', text: VBLang.t('questions_cannot_be_read') });
         const prof = list.filter((q) => q.origine === 'prof');
         const ai = list.filter((q) => q.origine !== 'prof');
         const item = (q) => el('li', { class: 'qa' },
-            el('div', { class: 'qa-q' }, el('span', { class: 'qa-badge ' + (q.origine === 'prof' ? 'prof' : 'ai'), text: q.origine === 'prof' ? 'Fatta dal prof' : 'Probabile' }),
+            el('div', { class: 'qa-q' }, el('span', { class: 'qa-badge ' + (q.origine === 'prof' ? 'prof' : 'ai'), text: q.origine === 'prof' ? VBLang.t('made_by_the_teacher') : VBLang.t('likely') }),
                 inline(String(q.domanda || '')), q.fonte ? el('span', { class: 'cite', text: ' ' + q.fonte }) : null),
-            q.risposta ? el('details', {}, el('summary', { text: 'Risposta' }), el('div', { class: 'qa-a md' }, md(String(q.risposta)))) : null);
+            q.risposta ? el('details', {}, el('summary', { text: VBLang.t('answer') }), el('div', { class: 'qa-a md' }, md(String(q.risposta)))) : null);
         return el('div', { class: 'questions' },
-            prof.length ? el('h3', { text: `Domande del prof (${prof.length})` }) : el('p', { class: 'muted small', text: 'Nel materiale non ci sono domande fatte dal prof: queste sono quelle probabili.' }),
+            prof.length ? el('h3', { text: VBLang.t('teacher_s_questions', { n: prof.length }) }) : el('p', { class: 'muted small', text: VBLang.t('there_are_no_questions_made_by') }),
             prof.length ? el('ol', { class: 'qa-list' }, ...prof.map(item)) : null,
-            ai.length ? el('h3', { text: prof.length ? `Altre domande probabili (${ai.length})` : `Domande probabili (${ai.length})` }) : null,
+            ai.length ? el('h3', { text: prof.length ? VBLang.t('other_likely_questions', { n: ai.length }) : VBLang.t('likely_questions', { n: ai.length }) }) : null,
             ai.length ? el('ol', { class: 'qa-list' }, ...ai.map(item)) : null);
     }
 
@@ -671,7 +673,7 @@
         return /(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s|```)|\*\*\S|__\S|\|\s*-{3,}/.test(String(s || ''));
     }
 
-    const dayFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const dayFmt = new Intl.DateTimeFormat(VBLang.t('locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
     function sizeText(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
     function store(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private mode */ } }
@@ -685,7 +687,7 @@
     const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
     const WD = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
     const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const shortFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const shortFmt = new Intl.DateTimeFormat(VBLang.t('locale'), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
     const valueDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
 
     function enhanceDate(input) {
@@ -698,7 +700,7 @@
         const btn = el('button', { type: 'button', class: 'dp-btn' });
         const label = () => {
             const v = valueDesc.get.call(input);
-            btn.textContent = /^\d{4}-\d{2}-\d{2}$/.test(v) ? '📅 ' + shortFmt.format(parseDate(v)) : '📅 Scegli il giorno';
+            btn.textContent = /^\d{4}-\d{2}-\d{2}$/.test(v) ? '📅 ' + shortFmt.format(parseDate(v)) : VBLang.t('choose_the_day_2');
             btn.classList.toggle('dp-empty', !v);
         };
         Object.defineProperty(input, 'value', { configurable: true, get() { return valueDesc.get.call(this); }, set(v) { valueDesc.set.call(this, v); label(); } });
@@ -712,7 +714,7 @@
         const cur = /^\d{4}-\d{2}-\d{2}$/.test(input.value) ? parseDate(input.value) : new Date();
         let y = cur.getFullYear();
         let m = cur.getMonth();
-        const dlg = el('dialog', { class: 'dp-dialog', 'aria-label': 'Scegli il giorno' });
+        const dlg = el('dialog', { class: 'dp-dialog', 'aria-label': VBLang.t('choose_the_day_3') });
         const pick = (v) => {
             input.value = v;
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -737,17 +739,17 @@
             }
             dlg.replaceChildren(
                 el('div', { class: 'dp-head' },
-                    el('button', { type: 'button', class: 'ghost mini', text: '‹', 'aria-label': 'Mese prima', onclick: () => { if (--m < 0) { m = 11; y--; } draw(); } }),
+                    el('button', { type: 'button', class: 'ghost mini', text: '‹', 'aria-label': VBLang.t('previous_month'), onclick: () => { if (--m < 0) { m = 11; y--; } draw(); } }),
                     el('b', { text: `${MONTHS[m]} ${y}` }),
-                    el('button', { type: 'button', class: 'ghost mini', text: '›', 'aria-label': 'Mese dopo', onclick: () => { if (++m > 11) { m = 0; y++; } draw(); } })),
+                    el('button', { type: 'button', class: 'ghost mini', text: '›', 'aria-label': VBLang.t('next_month'), onclick: () => { if (++m > 11) { m = 0; y++; } draw(); } })),
                 grid,
                 el('div', { class: 'dp-foot' },
-                    el('button', { type: 'button', class: 'ghost mini', text: 'Oggi', onclick: () => pick(today) }),
-                    input.required ? null : el('button', { type: 'button', class: 'ghost mini', text: 'Nessuna', onclick: () => pick('') }),
-                    el('label', { class: 'dp-week' }, 'Settimana da ',
-                        el('select', { 'aria-label': 'La settimana inizia', onchange: (ev) => { store(WEEK_KEY, ev.target.value); draw(); } },
-                            el('option', { value: 'mon', text: 'lunedì', selected: ws === 1 }),
-                            el('option', { value: 'sun', text: 'domenica', selected: ws === 0 })))));
+                    el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('today_2'), onclick: () => pick(today) }),
+                    input.required ? null : el('button', { type: 'button', class: 'ghost mini', text: VBLang.t('none_2'), onclick: () => pick('') }),
+                    el('label', { class: 'dp-week' }, VBLang.t('week_from'),
+                        el('select', { 'aria-label': VBLang.t('the_week_starts'), onchange: (ev) => { store(WEEK_KEY, ev.target.value); draw(); } },
+                            el('option', { value: 'mon', text: VBLang.t('weekday_mon_lc'), selected: ws === 1 }),
+                            el('option', { value: 'sun', text: VBLang.t('weekday_sun_lc'), selected: ws === 0 })))));
             const sel = dlg.querySelector('.dp-day.sel') || dlg.querySelector('.dp-day.today');
             if (sel) sel.focus();
         };
@@ -775,7 +777,7 @@
     window.addEventListener('scroll', closeMenus, { passive: true });
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeMenus(); });
     /** items: [{label, onclick, danger?}] (falsy entries are skipped). Returns null when there is nothing to do. */
-    function menu(items, label = 'Altre azioni') {
+    function menu(items, label = VBLang.t('more_actions')) {
         const list = items.filter(Boolean);
         if (!list.length) return null;
         const box = el('div', { class: 'kebab-list', hidden: true, role: 'menu' }, ...list.map((i) => el('button', {
@@ -801,12 +803,12 @@
     }
 
     /** A small modal form. build(form) appends the fields; onSave(form) may throw to keep it open. */
-    function dialogForm(title, build, onSave, saveText = 'Salva') {
+    function dialogForm(title, build, onSave, saveText = VBLang.t('save')) {
         const dlg = el('dialog', { class: 'tt-dialog' });
         const form = el('form', { method: 'dialog', class: 'stack' }, el('h3', { text: title }));
         build(form);
         form.append(el('div', { class: 'row' }, el('button', { value: 'save', text: saveText }),
-            el('button', { type: 'button', class: 'ghost', text: 'Annulla', onclick: () => dlg.close() })));
+            el('button', { type: 'button', class: 'ghost', text: VBLang.t('cancel'), onclick: () => dlg.close() })));
         form.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             try { await onSave(form); dlg.close(); } catch (e) { toast(e.message, 'err'); }
@@ -846,15 +848,15 @@
                 furthest = r.idx; store(k, String(furthest)); paint();
                 if (furthest < heads.length - 1 && !box.querySelector('.idx-resume')) {
                     const w = box.querySelector('.doc-index-wrap');
-                    if (w) w.append(el('button', { type: 'button', class: 'idx-resume', text: `Riprendi da «${heads[furthest].textContent}»`, onclick: () => heads[furthest].scrollIntoView({ behavior: 'smooth', block: 'start' }) }));
+                    if (w) w.append(el('button', { type: 'button', class: 'idx-resume', text: VBLang.t('resume_from', { name: heads[furthest].textContent }), onclick: () => heads[furthest].scrollIntoView({ behavior: 'smooth', block: 'start' }) }));
                 }
             } else if (furthest > (r.idx ?? -1)) push();
         }).catch(() => {});
         const resume = furthest >= 0 && furthest < heads.length - 1
-            ? el('button', { type: 'button', class: 'idx-resume', text: `Riprendi da «${heads[furthest].textContent}»`,
+            ? el('button', { type: 'button', class: 'idx-resume', text: VBLang.t('resume_from', { name: heads[furthest].textContent }),
                 onclick: () => { heads[furthest].scrollIntoView({ behavior: 'smooth', block: 'start' }); } }) : null;
         const idx = el('details', { class: 'doc-index' },
-            el('summary', { text: `Indice (${heads.length})` }), ...links);
+            el('summary', { text: VBLang.t('index', { n: heads.length }) }), ...links);
         box.insertBefore(el('div', { class: 'doc-index-wrap' }, idx, resume), box.firstChild);
         paint();
         let queued = false;
@@ -888,7 +890,7 @@
                 tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
             });
             location.href = 'appunti-carica.php?m=files&drop=1';
-        } catch (e) { toast('Non riesco a passare i file alla pagina Carica: usa il pulsante Carica.', 'err'); }
+        } catch (e) { toast(VBLang.t('could_not_pass_the_files_to'), 'err'); }
     }
     /** On the upload page: the files that were dropped elsewhere (and forgets them). */
     async function takeHandOff() {
@@ -1005,6 +1007,6 @@
 
     window.AppuntiCommon = { shareDialog, schemaChoices, textChoices, makeShareLink, pinchZoom, enableZoom, saveBlob, schemaText, shareOut, markdownFile, schemaBlob, toggleFull, fullButton, weekStart, el, addIndex, mediaTime, canSpeak, speak, handOff, takeHandOff, menu, dialogForm, getJson, post, rawPost, toast, busy, md, renderSchema, renderQuestions, inline, looksLikeMarkdown, dayFmt, parseDate, sizeText, store, stored,
         CLASS_KEY: 'vb_appunti_class',
-        KINDS: { appunti: 'Appunti', slide: 'Slide / prof', libro: 'Libro', domande: 'Domande del prof', prova: 'Verifica di prova', altro: 'Altro' },
-        DOC_KINDS: { completo: 'Completo', riassunto: 'Riassunto', scheda: 'Scheda', preparazione: 'Preparazione', quiz: 'Quiz', lezione: 'Lezione', schema: 'Schema', domande: 'Domande' } };
+        KINDS: { appunti: VBLang.t('notes'), slide: VBLang.t('slides_teacher'), libro: VBLang.t('book'), domande: VBLang.t('teacher_s_questions_2'), prova: VBLang.t('practice_test'), altro: VBLang.t('other') },
+        DOC_KINDS: { completo: VBLang.t('full'), riassunto: VBLang.t('summary'), scheda: VBLang.t('sheet'), preparazione: VBLang.t('preparation'), quiz: VBLang.t('quiz'), lezione: VBLang.t('lesson'), schema: VBLang.t('diagram'), domande: VBLang.t('questions_2') } };
 })();
