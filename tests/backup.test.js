@@ -78,3 +78,21 @@ test('it refuses without the stick, without the database, and with too little ro
     assert.ok(!fs.existsSync(oldFile), 'a daily copy older than 30 days is deleted');
     assert.equal(run(['--bogus']).status, 2, 'unknown option');
 });
+
+test('--restore-test: restores into a temp folder, runs the migrations, checks the books; a book missing from the mirror fails', () => {
+    // the site database has no admin yet in this test: make one, then back up again
+    site.db("INSERT INTO accounts (username, password_hash, is_admin) VALUES ('restore_admin', 'x', 1)");
+    site.db("INSERT INTO books (title, author, file_path, cover_path, format, uploaded_by) VALUES ('t', 'a', ?, '', 'epub', 'restore_admin')", [path.join(site.root, 'data', 'books', 'libro.epub')]);
+    assert.equal(run().status, 0);
+    const ok = run(['--restore-test']);
+    assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+    assert.match(ok.stdout, /restore OK: vector_uplink-.*accounts=\d+ admins=1 books=1/);
+    // a book named in the database but gone from the mirror: the restore would lose it
+    fs.rmSync(path.join(dest, 'b', 'files', 'books', 'libro.epub'));
+    const lost = run(['--restore-test']);
+    assert.equal(lost.status, 1);
+    assert.match(lost.stdout + lost.stderr, /not in the files mirror/);
+    fs.writeFileSync(path.join(dest, 'b', 'files', 'books', 'libro.epub'), 'a book');
+    // nothing was written on the stick or in the live site
+    assert.ok(!fs.readdirSync(path.join(dest, 'b')).some((f) => /restore/i.test(f)));
+});

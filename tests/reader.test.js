@@ -66,7 +66,7 @@ test('books: list hides server paths; covers served via action=cover (images onl
     const list = (await reader.get('/api/books.php?action=list')).json.books;
     assert.ok(list.every((b) => !('file_path' in b)));
     const cov = list.find((b) => b.title === 'Cov');
-    assert.match(cov.cover_path, /^\.\.\/api\/books\.php\?action=cover&id=\d+&v=\d+$/);
+    assert.match(cov.cover_path, /^\.\.\/api\/books\.php\?action=cover&id=\d+&w=thumb&v=\d+$/);
 
     const img = await reader.get(`/api/books.php?action=cover&id=${cov.id}`);
     assert.equal(img.status, 200);
@@ -99,7 +99,7 @@ test('PDF covers made in the browser: uploaders only, PDFs only, real images onl
     const list = (await reader.get('/api/books.php?action=list')).json;
     assert.equal(list.can_upload, true);
     const book = list.books.find((b) => b.id === pdfId);
-    assert.match(book.cover_path, new RegExp(`^\\.\\./api/books\\.php\\?action=cover&id=${pdfId}&v=\\d+$`));
+    assert.match(book.cover_path, new RegExp(`^\\.\\./api/books\\.php\\?action=cover&id=${pdfId}&w=thumb&v=\\d+$`));
     const img = await fetch(`${site.base}/api/books.php?action=cover&id=${pdfId}`, { headers: { Cookie: reader.cookieHeader() } });
     assert.equal(img.headers.get('content-type'), 'image/png');
 

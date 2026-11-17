@@ -20,6 +20,7 @@ Since the 2026-11 update the script also:
 - refuses to run when the stick is **too full**, and cannot run twice at once;
 - sends **one short push** to `NTFY_TOPIC_URL` (from `.env`) if anything fails: no paths, no data in the message;
 - has `--check`, which writes nothing and says whether the newest backup is fresh (under 26 hours) and restorable.
+- has `--restore-test`: restores the newest daily, weekly and monthly copy into a temp folder (nothing is written on the stick or in the live site), runs today's migrations on it, checks there is an admin account and that every book and cover named in the database exists in the files mirror. Exit 1 and one push on any problem. Run it monthly: `0 4 1 * * root bash /var/www/vector-box/tools/backup.sh --restore-test >> /var/log/vector-box-backup.log 2>&1` (in `/etc/cron.d/`, like the weekly `--check`).
 
 Nothing here runs automatically until you do the steps below.
 

@@ -3,6 +3,8 @@
 #
 # Usage:   sudo bash tools/backup.sh              the backup (normally from cron, see docs/BACKUP.md)
 #          sudo bash tools/backup.sh --check      does NOT write: says whether the newest backup is fresh and restorable
+#          sudo bash tools/backup.sh --restore-test  restores the newest daily/weekly/monthly copy into a temp folder, runs the site's migrations on it
+#                                                 and checks the books and covers are there (monthly cron; writes nothing on the stick)
 #                                                 (exit 0 = fine, 1 = problem; handy for a monitor or a weekly cron)
 #
 # What it saves, under $BACKUP_DIR:
@@ -80,7 +82,50 @@ if [ "$MODE" = "--check" ]; then
     log "OK: $(basename "$newest"), $age_h h old, $info"
     exit 0
 fi
-[ "$MODE" = "backup" ] || { echo "usage: $0 [--check]"; exit 2; }
+# ---------- --restore-test: really restore the newest daily, weekly and monthly copies into a temp folder and run the site's own code on them ----------
+# Writes NOTHING on the stick or in the live site: everything happens in a temp folder that is deleted. Checks, for each copy:
+#   gzip + SQLite integrity + the tables; the site's migrations run cleanly on it (an old backup must still be restorable by today's code);
+#   there is an admin account; every book and cover the database names exists in the files mirror. Exit 1 and one push on any problem.
+if [ "$MODE" = "--restore-test" ]; then
+    if [ "${BACKUP_REQUIRE_MOUNT:-1}" = "1" ]; then mountpoint -q "$BACKUP_MOUNT" || die "restore test: $BACKUP_MOUNT is not mounted"; fi
+    SRC="$(cd "$(dirname "$0")/.." && pwd)"                      # the code that would run after a restore
+    [ -d "$SRC/public/api" ] || die "restore test: no site code found next to this script"
+    T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+    tested=0
+    for dir in "$BACKUP_DIR/db" "$BACKUP_DIR/db/weekly" "$BACKUP_DIR/db/monthly"; do
+        gz="$(ls -1t "$dir"/vector_uplink-*.sqlite.gz 2>/dev/null | head -1 || true)"
+        [ -n "$gz" ] || continue
+        name="$(basename "$gz")"
+        gzip -t "$gz" || die "restore test: $name is damaged (gzip)"
+        rm -rf "$T/site"; mkdir -p "$T/site/public" "$T/site/data"
+        cp -r "$SRC/public/api" "$T/site/public/api"; [ -d "$SRC/lib" ] && cp -r "$SRC/lib" "$T/site/lib"
+        gunzip -c "$gz" > "$T/site/data/vector_uplink.sqlite"
+        out="$(php -r '
+            require $argv[1] . "/public/api/database.php";           // opens the restored copy and runs the migrations on it, like a real restore
+            $db = getDbConnection();
+            $ok = $db->query("PRAGMA integrity_check")->fetchColumn();
+            if ($ok !== "ok") { fwrite(STDERR, "integrity: $ok\n"); exit(1); }
+            $v = (int)$db->query("PRAGMA user_version")->fetchColumn();
+            if ($v !== DB_SCHEMA_VERSION) { fwrite(STDERR, "schema $v after the migrations, the code expects " . DB_SCHEMA_VERSION . "\n"); exit(1); }
+            $admins = (int)$db->query("SELECT COUNT(*) FROM accounts WHERE is_admin = 1")->fetchColumn();
+            $people = (int)$db->query("SELECT COUNT(*) FROM accounts")->fetchColumn();
+            if ($admins < 1) { fwrite(STDERR, "no admin account in the copy\n"); exit(1); }
+            $missing = 0; $books = 0;
+            foreach ($db->query("SELECT file_path, cover_path FROM books") as $b) {
+                $books++;
+                if (preg_match("~/data/(.+)$~", (string)$b["file_path"], $m) && !is_file($argv[2] . "/files/" . $m[1])) $missing++;
+                if ((string)$b["cover_path"] !== "" && !is_file($argv[2] . "/files/covers/" . basename($b["cover_path"]))) $missing++;
+            }
+            if ($missing > 0) { fwrite(STDERR, "$missing book or cover files named in the database are not in the files mirror\n"); exit(1); }
+            echo "schema=$v accounts=$people admins=$admins books=$books";
+        ' "$T/site" "$BACKUP_DIR" 2>&1)" || die "restore test: $name did not restore: $out"
+        log "restore OK: $name ($out)"
+        tested=$((tested + 1))
+    done
+    [ "$tested" -gt 0 ] || die "restore test: no backup found in $BACKUP_DIR/db"
+    exit 0
+fi
+[ "$MODE" = "backup" ] || { echo "usage: $0 [--check|--restore-test]"; exit 2; }
 
 # ---------- 0. One run at a time ----------
 exec 9>"${TMPDIR:-/tmp}/vector-box-backup.lock"

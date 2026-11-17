@@ -3,6 +3,30 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/epub_meta.php';
 
+/** A small JPEG of a cover (360 px wide) made with ffmpeg (no shell: the arguments go in as a list) and kept in data/covers/thumb/.
+ *  Returns null when the picture is already small or ffmpeg is not there or fails: the caller then serves the original.
+ *  shortcut: ffmpeg is the only image tool on the server (no GD); if php-gd is ever installed, resize with it and drop the process. */
+function coverThumb(string $src): ?string {
+    if ((int)@filesize($src) < 60000) return null;
+    $dir = dirname($src) . '/thumb';
+    $dest = $dir . '/' . basename($src) . '.jpg';
+    if (is_file($dest) && filemtime($dest) >= filemtime($src)) return $dest;
+    $ff = null;
+    foreach (['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg'] as $c) if (is_executable($c)) { $ff = $c; break; }
+    if ($ff === null || !function_exists('proc_open') || (!is_dir($dir) && !@mkdir($dir, 0770, true))) return null;
+    $tmp = $dest . '.' . bin2hex(random_bytes(4)) . '.jpg';
+    $p = @proc_open([$ff, '-v', 'error', '-y', '-i', $src, '-vf', "scale='min(360,iw)':-2", '-frames:v', '1', '-q:v', '5', $tmp],
+                    [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
+    if (!is_resource($p)) return null;
+    for ($i = 0; $i < 80 && proc_get_status($p)['running']; $i++) usleep(100000);   // at most 8 s
+    if (proc_get_status($p)['running']) proc_terminate($p, 9);
+    proc_close($p);
+    if (!is_file($tmp) || filesize($tmp) < 500 || !@rename($tmp, $dest)) { @unlink($tmp); return null; }
+    return $dest;
+}
+
+
+
 initSession();
 header('Content-Type: application/json');
 
@@ -105,6 +129,8 @@ try {
             http_response_code(404);
             exit();
         }
+        // the list asks for w=thumb: a small copy (the originals are 300-800 KB each, 11 MB for the whole shelf on a phone connection)
+        if (($_GET['w'] ?? '') === 'thumb' && ($small = coverThumb($file)) !== null) { $file = $small; $ext = 'jpg'; }
         header('Content-Type: ' . $types[$ext]);
         header('X-Content-Type-Options: nosniff');
         header('Content-Length: ' . filesize($file));
@@ -192,7 +218,7 @@ try {
         // Never expose server paths: covers are served by ?action=cover
         $books = array_map(function ($b) {
             $coverFile = !empty($b['cover_path']) ? dirname(__DIR__, 2) . '/data/covers/' . basename((string)$b['cover_path']) : '';
-            $b['cover_path'] = $coverFile !== '' ? '../api/books.php?action=cover&id=' . (int)$b['id'] . '&v=' . (int)@filemtime($coverFile) : '';
+            $b['cover_path'] = $coverFile !== '' ? '../api/books.php?action=cover&id=' . (int)$b['id'] . '&w=thumb&v=' . (int)@filemtime($coverFile) : '';
             unset($b['file_path']);
             return $b;
         }, $books);
