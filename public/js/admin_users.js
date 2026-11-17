@@ -27,6 +27,24 @@
             .map(([k, v]) => h('div', { class: 'au-stat' }, h('b', { text: String(v) }), k)));
     }
 
+    // ---- the admin action log: who did what to whom, and when (texts come from the server's whitelist, shown with textContent)
+    let logPage = 0;
+    async function loadLog(more) {
+        logPage = more ? logPage + 1 : 1;
+        const j = await api('?action=log&page=' + logPage);
+        const box = $('au-log');
+        if (!more) box.replaceChildren();
+        for (const r of j.rows) {
+            let d = {}; try { d = JSON.parse(r.detail) || {}; } catch (e) { /* old or odd row: show without details */ }
+            const what = [r.script, r.action || d.action, d.flag, d.value !== undefined ? '=' + d.value : '', d.minutes ? d.minutes + ' min' : '', d.status, d.slug].filter(Boolean).join(' ');
+            box.append(h('div', { class: 'au-logrow' }, h('span', { class: 'au-logtime', text: new Date(r.created_at * 1000).toLocaleString() }),
+                h('b', { text: r.admin_name }), h('span', { text: what }), r.target_name ? h('span', { class: 'au-tag', text: '→ ' + r.target_name }) : null));
+        }
+        $('au-log-more').hidden = !j.more;
+    }
+    $('au-log-more').addEventListener('click', () => loadLog(true).catch(() => {}));
+    loadLog(false).catch(() => {});
+
     async function load() {
         const q = new URLSearchParams({ action: 'list', q: $('au-q').value, filter: $('au-filter').value, page: String(page) });
         const r = await api('?' + q);

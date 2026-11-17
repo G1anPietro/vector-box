@@ -18,9 +18,11 @@ $log = getenv('NGINX_ACCESS_LOG') ?: '/var/log/nginx/access.log';
 if (is_readable($log)) {                           // the last ~40000 lines are plenty for a week of this site
     $web = explode("\n", (string)shell_exec('tail -n 40000 ' . escapeshellarg($log)));
 }
+$prev = attacksRead();
 $d = attacksBuild($ssh, $web, $ban);
 $tmp = attacksFile() . '.tmp';
 if (file_put_contents($tmp, json_encode($d), LOCK_EX) === false || !rename($tmp, attacksFile())) { fwrite(STDERR, "cannot write " . attacksFile() . "\n"); exit(1); }
 @chgrp(attacksFile(), 'www-data');   // the web server (group www-data) reads it; the owner's user is a member of that group
 @chmod(attacksFile(), 0660);
+foreach (attacksAlerts($prev, $d) as [$t, $m]) attacksNotify($t, $m);   // after the file is written: a slow phone service never loses the summary
 echo "ssh {$d['ssh']['total']}  web {$d['web']['total']}  bans {$d['bans']['total']}\n";

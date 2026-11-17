@@ -13,7 +13,7 @@
 require_once __DIR__ . '/helpers.php';
 
 function retentionDays(string $key): int {
-    static $defaults = ['VISITS' => 90, 'BOTS' => 30, 'IP' => 90, 'CHAT' => 365, 'DM' => 365, 'NOTIF' => 180, 'SHARE' => 30];
+    static $defaults = ['VISITS' => 90, 'BOTS' => 30, 'IP' => 90, 'CHAT' => 365, 'DM' => 365, 'NOTIF' => 180, 'SHARE' => 30, 'ADMINLOG' => 365];
     $n = (int)envValue('RETENTION_' . $key . '_DAYS', (string)$defaults[$key]);
     return $n >= 1 ? $n : $defaults[$key];
 }
@@ -41,6 +41,8 @@ function runRetention(PDO $db): array {
     $run('guestbook_ip', "UPDATE guestbook SET sender_ip = '' WHERE sender_ip != '' AND created_at < :d", [':d' => $date(retentionDays('IP'))]);
     $run('chat', 'DELETE FROM transmissions WHERE created_at < :d', [':d' => $date(retentionDays('CHAT'))]);
     $run('guestbook', 'DELETE FROM guestbook WHERE created_at < :d', [':d' => $date(retentionDays('CHAT'))]);
+    $run('admin_log', 'DELETE FROM admin_log WHERE created_at < :t', [':t' => $day(retentionDays('ADMINLOG'))]);
+    $run('idea_votes', 'DELETE FROM news_idea_votes WHERE idea_id NOT IN (SELECT id FROM news_ideas)', []);
     $run('news_ideas', 'DELETE FROM news_ideas WHERE created_at < :t', [':t' => $day(retentionDays('CHAT'))]);
     $run('dm', 'DELETE FROM dm_messages WHERE created_at < :d', [':d' => $date(retentionDays('DM'))]);
     $run('notifications', 'DELETE FROM notifications WHERE created_at < :t', [':t' => $day(retentionDays('NOTIF'))]);

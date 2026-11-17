@@ -121,6 +121,37 @@ function requireAdmin(): void {
     if (!$row || empty($row['is_admin'])) {
         jsonResponse(['success' => false, 'error' => 'UNAUTHORIZED: Admin privileges required'], 403);
     }
+    adminLogRequest((int)($_SESSION['user_id'] ?? 0), (string)($_SESSION['username'] ?? ''));
+}
+
+/** Admin action log: remember what this admin POST asks for and, when the request ends with a success status, write one row to admin_log.
+ *  Only a short whitelist of fields is kept (never message texts, passwords or mail bodies). GET requests are not logged. */
+function adminLogRequest(int $adminId, string $adminName): void {
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') return;
+    $in = readJsonBody() ?: $_POST;
+    $detail = [];
+    foreach (['action', 'flag', 'value', 'minutes', 'status', 'id', 'slug', 'room_id', 'audience'] as $k) {
+        if (isset($in[$k]) && is_scalar($in[$k])) $detail[$k] = mb_substr((string)$in[$k], 0, 60);
+    }
+    $target = (int)($in['user_id'] ?? 0);
+    $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''), '.php');
+    register_shutdown_function(function () use ($adminId, $adminName, $detail, $target, $script) {
+        if (http_response_code() >= 400 || !function_exists('getDbConnection')) return;
+        try {
+            $db = getDbConnection();
+            $name = '';
+            if ($target > 0) {
+                $st = $db->prepare('SELECT username FROM accounts WHERE id = :i');
+                $st->execute([':i' => $target]);
+                $name = (string)$st->fetchColumn();
+                $st->closeCursor();
+            }
+            $db->prepare('INSERT INTO admin_log (admin_id, admin_name, script, action, target_user_id, target_name, detail, created_at)
+                          VALUES (:a, :an, :s, :ac, :t, :tn, :d, :n)')
+               ->execute([':a' => $adminId, ':an' => $adminName, ':s' => $script, ':ac' => (string)($detail['action'] ?? ''),
+                          ':t' => $target > 0 ? $target : null, ':tn' => $name, ':d' => json_encode($detail), ':n' => time()]);
+        } catch (Throwable $e) { /* a log failure must never break the admin's request */ }
+    });
 }
 
 function requireLogin(): void {

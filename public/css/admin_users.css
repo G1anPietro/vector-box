@@ -31,3 +31,7 @@
 .au-msg { min-height: 1.3em; font-size: 0.8rem; }
 .au-hist { font-size: 0.75rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; }
 @media (max-width: 800px) { .au-grid { grid-template-columns: 1fr; } .au-detail { position: static; } }
+
+.au-logbox { margin-top: 28px; }
+.au-logrow { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border-color, #333); overflow-wrap: anywhere; }
+.au-logtime { opacity: .7; font-size: .85em; }

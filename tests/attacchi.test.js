@@ -43,3 +43,14 @@ test('the stats page shows the summary to the admin, and the collector writes it
         assert.equal((await new Client(site).init().then(c => c.get('/pages/stats.php'))).status, 403);
     } finally { site.stop(); }
 });
+
+test('alerts: new bans and bursts only, nothing on the first run, never more than 3', () => {
+    const now = { bans: { recent: [{ ts: 200, ip: '1.1.1.1', jail: 'sshd', cc: 'RU' }, { ts: 50, ip: '2.2.2.2', jail: 'sshd' }] }, ssh: { logins: 130 } };
+    const prev = { generated_at: 100, ssh: { logins: 100 } };
+    const out = php(`echo json_encode(attacksAlerts(json_decode('${JSON.stringify(prev)}', true), json_decode('${JSON.stringify(now)}', true)));`);
+    assert.equal(out.length, 2);                       // the ban after the last run + the burst of 30
+    assert.match(out[0][1], /1\.1\.1\.1 \(RU\)/);
+    assert.deepEqual(php(`echo json_encode(attacksAlerts(null, json_decode('${JSON.stringify(now)}', true)));`), []);
+    const quiet = php(`echo json_encode(attacksAlerts(json_decode('${JSON.stringify({ generated_at: 300, ssh: { logins: 125 } })}', true), json_decode('${JSON.stringify(now)}', true)));`);
+    assert.deepEqual(quiet, []);
+});

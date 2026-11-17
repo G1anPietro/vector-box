@@ -2,6 +2,7 @@
 // public/api/attacks.php — what the server saw of attacks in the last 7 days (SSH, web probes, fail2ban bans), shown on the stats page.
 // bin/attacks-collect.php (cron, as the owner's user, who may read the system logs) calls attacksBuild() and writes data/attacks.json;
 // the web server only ever reads that summary, never the logs.
+require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/geoip.php';
 
 const ATTACK_DAYS = 7;
@@ -90,4 +91,27 @@ function attacksRead(): ?array {
     $j = @file_get_contents(attacksFile());
     $d = $j === false ? null : json_decode($j, true);
     return is_array($d) && isset($d['ssh']) ? $d : null;
+}
+
+/** What deserves a phone notification, comparing the previous summary with the new one: addresses fail2ban banned since the last run, and a burst
+ *  of SSH login guesses (20+ more than before; shortcut: the 7-day window slides, so the difference can undercount, fine for a burst). */
+function attacksAlerts(?array $prev, array $now): array {
+    if (!$prev) return [];                                   // first run: nothing to compare with
+    $out = [];
+    foreach ($now['bans']['recent'] as $b) {
+        if ($b['ts'] > $prev['generated_at']) $out[] = ['Banned: ' . $b['jail'], $b['ip'] . ' (' . ($b['cc'] ?? '??') . ') was banned by fail2ban'];
+    }
+    $burst = $now['ssh']['logins'] - $prev['ssh']['logins'];
+    if ($burst >= 20) $out[] = ['SSH guessing', "$burst login attempts since the last check"];
+    return array_slice($out, 0, 3);                          // never a flood on the phone
+}
+
+function attacksNotify(string $title, string $body): void {
+    $url = (string)envValue('NTFY_TOPIC_URL', '');
+    if ($url === '' || strtolower((string)envValue('ATTACK_NOTIFY', 'true')) === 'false') return;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body, CURLOPT_HTTPHEADER => ['Title: ' . preg_replace('/[^\x20-\x7E]/', '', $title), 'Tags: warning'],
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5, CURLOPT_SSL_VERIFYPEER => true]);
+    curl_exec($ch);
+    curl_close($ch);
 }

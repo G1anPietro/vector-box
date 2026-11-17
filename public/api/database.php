@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 39;
+const DB_SCHEMA_VERSION = 40;
 
 /**
  * Session bootstrap.
@@ -583,6 +583,23 @@ function migrateV16(PDO $db): void {
 /** v37: the language of the person (accounts.lang, 'en' or 'it'): the e-mails and notifications we send follow it, not the admin's. */
 /** v38: the news board (pages/novita.php): what is new, what is being worked on right now, what comes next. Texts in both languages. */
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
+/** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
+function migrateV40(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS admin_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        admin_id INTEGER NOT NULL, admin_name TEXT NOT NULL,
+        script TEXT NOT NULL, action TEXT NOT NULL DEFAULT '',
+        target_user_id INTEGER, target_name TEXT NOT NULL DEFAULT '',
+        detail TEXT NOT NULL DEFAULT '',                -- JSON of a short whitelist of fields: never texts, passwords or mail bodies
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_admin_log_time ON admin_log(id DESC)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_admin_log_target ON admin_log(target_user_id)');
+    $db->exec('CREATE TABLE IF NOT EXISTS news_idea_votes (
+        idea_id INTEGER NOT NULL, user_id INTEGER NOT NULL, PRIMARY KEY (idea_id, user_id)
+    ) WITHOUT ROWID');
+}
+
 function migrateV39(PDO $db): void {
     $db->exec("CREATE TABLE IF NOT EXISTS news_ideas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1078,6 +1095,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 39) {
             migrateV39($db);
+        }
+        if ($current < 40) {
+            migrateV40($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

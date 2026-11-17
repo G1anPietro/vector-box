@@ -50,6 +50,11 @@ $v = max(filemtime(__DIR__ . '/../js/admin_users.js'), filemtime(__DIR__ . '/../
             </div>
             <aside id="au-detail" class="au-detail" hidden aria-label="<?= tt('User details', 'Dettagli utente') ?>"></aside>
         </div>
+        <section class="au-logbox" aria-labelledby="au-log-title">
+            <h2 id="au-log-title"><?= tt('Admin actions', 'Azioni degli admin') ?></h2>
+            <div id="au-log" class="au-log" aria-live="polite"></div>
+            <button type="button" class="nav-btn" id="au-log-more" hidden><?= tt('Older', 'Più vecchie') ?></button>
+        </section>
     </main>
 </body>
 </html>

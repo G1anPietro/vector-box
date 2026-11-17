@@ -24,3 +24,6 @@
 
 /* the last card must never end at the very edge of the screen (phone browsers with bars and gesture areas) */
 .doc { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+
+.nv-vote { font: inherit; min-height: 44px; margin-top: 8px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--link); background: transparent; color: var(--link); cursor: pointer; }
+.nv-vote[aria-pressed="true"] { background: var(--link); color: #231a08; font-weight: 800; }

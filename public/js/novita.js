@@ -55,8 +55,8 @@
     }
     // ---- tabs and the ideas box ----
     const L = lang === 'it'
-        ? { st: { new: 'inviata', considering: 'in valutazione', planned: 'in programma', done: 'fatta', declined: 'non per ora' }, sent: 'Idea inviata, grazie!', err: 'Non è stato possibile inviarla.', none: 'Ancora nessuna idea.', save: 'Salva', del: 'Elimina', reply: 'Risposta (facoltativa)' }
-        : { st: { new: 'sent', considering: 'under review', planned: 'planned', done: 'done', declined: 'not for now' }, sent: 'Idea sent, thank you!', err: 'It could not be sent.', none: 'No ideas yet.', save: 'Save', del: 'Delete', reply: 'Answer (optional)' };
+        ? { st: { new: 'inviata', considering: 'in valutazione', planned: 'in programma', done: 'fatta', declined: 'non per ora' }, sent: 'Idea inviata, grazie!', err: 'Non è stato possibile inviarla.', none: 'Ancora nessuna idea.', votes: 'voti', vote: 'Vota', voted: 'Votata', save: 'Salva', del: 'Elimina', reply: 'Risposta (facoltativa)' }
+        : { st: { new: 'sent', considering: 'under review', planned: 'planned', done: 'done', declined: 'not for now' }, sent: 'Idea sent, thank you!', err: 'It could not be sent.', none: 'No ideas yet.', votes: 'votes', vote: 'Vote', voted: 'Voted', save: 'Save', del: 'Delete', reply: 'Answer (optional)' };
     const tabNews = document.getElementById('tab-news'), tabIdeas = document.getElementById('tab-ideas');
     const paneNews = document.getElementById('pane-news'), paneIdeas = document.getElementById('pane-ideas');
     function show(ideas) {
@@ -84,6 +84,7 @@
         m.append(el('span', '', fmt.format(new Date(i.created_at * 1000))));
         c.append(m);
         if (i.reply) c.append(el('p', '', '→ ' + i.reply));
+        if (i.votes) m.append(el('span', '', i.votes + ' ' + L.votes));
         const box = el('div', 'nv-admin');
         if (admin) {
             const sel = el('select');
@@ -99,6 +100,21 @@
         c.append(box);
         return c;
     }
+    function pubCard(i) {
+        const c = el('article', 'nv-card');
+        c.append(el('p', '', i.text));
+        const m = el('div', 'nv-meta');
+        m.append(el('span', 'nv-status', L.st[i.status] || i.status));
+        c.append(m);
+        if (i.reply) c.append(el('p', '', '→ ' + i.reply));
+        const b = el('button', 'nv-vote');
+        b.type = 'button';
+        const paint = (voted, n) => { b.textContent = '▲ ' + (voted ? L.voted : L.vote) + ' · ' + n; b.setAttribute('aria-pressed', String(voted)); };
+        paint(i.voted, i.votes);
+        b.addEventListener('click', async () => { const d = await api({ action: 'vote', id: i.id }); if (d.success) paint(d.voted, d.votes); });
+        c.append(b);
+        return c;
+    }
     async function loadIdeas() {
         try {
             const r = await fetch('../api/news_ideas.php', { cache: 'no-store' });
@@ -107,6 +123,9 @@
             if (!d.success) return;
             document.getElementById('id-login').hidden = true; idForm.hidden = false;
             idList.replaceChildren(...(d.ideas.length ? d.ideas.map(i => ideaCard(i, d.admin)) : [el('p', 'muted', L.none)]));
+            const pub = d.admin ? [] : d.public;
+            document.getElementById('id-pub-title').hidden = !pub.length;
+            document.getElementById('id-pub').replaceChildren(...pub.map(pubCard));
         } catch (e) { /* offline: the list stays as it was */ }
     }
     idForm.addEventListener('submit', async (e) => {

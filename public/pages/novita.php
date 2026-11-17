@@ -49,6 +49,8 @@ $v = filemtime(__DIR__ . '/../js/novita.js') . '-' . filemtime(__DIR__ . '/../cs
                 <p id="id-msg" class="muted" role="status"></p>
             </form>
             <div class="nv-list" id="id-list"></div>
+            <h2 id="id-pub-title" hidden><?= $it ? 'Idee in valutazione: vota quelle che vuoi' : 'Ideas under review: vote for the ones you want' ?></h2>
+            <div class="nv-list" id="id-pub"></div>
         </div>
         <noscript><p><?= $it ? 'Serve JavaScript per vedere l\'elenco.' : 'JavaScript is needed to see the list.' ?></p></noscript>
     </main>

@@ -1,6 +1,7 @@
 <?php
 // public/api/admin_users.php — the people of the site, for the admin (admin only, CSRF on every POST).
 //   GET  ?action=list&q=&filter=all|admins|banned|email|news|supporters|nobooks&page=1   -> 50 per page + totals
+//   GET  ?action=log&page=1                                                                -> the admin action log, 50 per page, newest first
 //   GET  ?action=user&id=N                                                                  -> one person in detail
 //   POST {action:'set_flag', user_id, flag: can_read_books|can_upload_books|can_view_resume|ads_free, value}
 //   POST {action:'ban'|'unban'|'timeout', user_id, minutes?}                                (never on an admin)
@@ -41,6 +42,14 @@ function auTarget(PDO $db, int $id): array {
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $action = (string)($_GET['action'] ?? 'list');
+        if ($action === 'log') {
+            $pg = max(1, (int)($_GET['page'] ?? 1));
+            $st = $db->prepare('SELECT id, admin_name, script, action, target_name, detail, created_at FROM admin_log ORDER BY id DESC LIMIT 51 OFFSET :o');
+            $st->bindValue(':o', ($pg - 1) * 50, PDO::PARAM_INT);
+            $st->execute();
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+            jsonResponse(['success' => true, 'more' => count($rows) > 50, 'rows' => array_slice($rows, 0, 50)]);
+        }
         if ($action === 'list') {
             $q = trim((string)($_GET['q'] ?? ''));
             $filter = (string)($_GET['filter'] ?? 'all');
