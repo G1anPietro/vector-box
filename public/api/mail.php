@@ -16,10 +16,6 @@ requireAdmin();
 $db = getDbConnection();
 $me = (int)$_SESSION['user_id'];
 
-function mailFail(string $code, string $msg, int $status = 400): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);
-}
-
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $action = (string)($_GET['action'] ?? 'status');
@@ -38,29 +34,29 @@ try {
                 $st = $db->prepare('SELECT id, folder, subject, audience, recipients, created_at, sent_at FROM mail_messages WHERE folder = :f ORDER BY id DESC LIMIT 200');
                 $st->execute([':f' => $folder]);
                 $rows = $st->fetchAll();
-            } else mailFail('bad_folder', 'Unknown folder');
+            } else jsonFail('bad_folder', 'Unknown folder');
             jsonResponse(['success' => true, 'rows' => $rows]);
         }
         if ($action === 'get') {
             $st = $db->prepare('SELECT * FROM mail_messages WHERE id = :id');
             $st->execute([':id' => (int)($_GET['id'] ?? 0)]);
             $m = $st->fetch();
-            if (!$m) mailFail('not_found', 'Message not found', 404);
+            if (!$m) jsonFail('not_found', 'Message not found', 404);
             jsonResponse(['success' => true, 'message' => $m]);
         }
-        mailFail('unknown_action', 'Unknown action');
+        jsonFail('unknown_action', 'Unknown action');
     }
 
     requireCsrf();
     $in = readJsonBody();
     $action = (string)($in['action'] ?? '');
-    if (!checkRateLimit('mail_admin', 120, 3600, 'user:' . $me)) mailFail('slow_down', 'Too many requests', 429);
+    if (!checkRateLimit('mail_admin', 120, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many requests', 429);
 
     $load = function () use ($db, $in): array {
         $st = $db->prepare('SELECT * FROM mail_messages WHERE id = :id');
         $st->execute([':id' => (int)($in['id'] ?? 0)]);
         $m = $st->fetch();
-        if (!$m) mailFail('not_found', 'Message not found', 404);
+        if (!$m) jsonFail('not_found', 'Message not found', 404);
         return $m;
     };
 
@@ -71,7 +67,7 @@ try {
         $id = (int)($in['id'] ?? 0);
         if ($id) {
             $m = $load();
-            if ($m['folder'] !== 'draft') mailFail('not_draft', 'A sent message cannot be changed', 409);
+            if ($m['folder'] !== 'draft') jsonFail('not_draft', 'A sent message cannot be changed', 409);
             $db->prepare('UPDATE mail_messages SET subject = :s, body = :b, audience = :a WHERE id = :id')->execute([':s' => $subject, ':b' => $body, ':a' => $audience, ':id' => $id]);
         } else {
             $db->prepare('INSERT INTO mail_messages (folder, subject, body, audience, created_by, created_at) VALUES (\'draft\', :s, :b, :a, :u, :t)')
@@ -89,18 +85,18 @@ try {
 
     if ($action === 'send_test' || $action === 'send') {
         $m = $load();
-        if ($m['folder'] !== 'draft') mailFail('not_draft', 'Already sent', 409);
-        if (mailLine($m['subject']) === '' || trim($m['body']) === '') mailFail('empty', 'Write a subject and a text first');
+        if ($m['folder'] !== 'draft') jsonFail('not_draft', 'Already sent', 409);
+        if (mailLine($m['subject']) === '' || trim($m['body']) === '') jsonFail('empty', 'Write a subject and a text first');
         if ($action === 'send_test') {
             $st = $db->prepare("SELECT email FROM accounts WHERE id = :id AND email != ''");
             $st->execute([':id' => $me]);
             $to = (string)$st->fetchColumn();
-            if ($to === '') mailFail('no_address', 'Add your own e-mail address in the account settings first');
+            if ($to === '') jsonFail('no_address', 'Add your own e-mail address in the account settings first');
             mailEnqueue($db, null, $me, $to, '[TEST] ' . $m['subject'], $m['body'] . mailFooter($db, $me), 'test');
             jsonResponse(['success' => true, 'queued' => 1]);
         }
         $people = mailAudience($db, (string)$m['audience']);
-        if (!$people) mailFail('nobody', 'Nobody has verified an address and agreed to news yet');
+        if (!$people) jsonFail('nobody', 'Nobody has verified an address and agreed to news yet');
         $db->exec('BEGIN IMMEDIATE');
         try {
             foreach ($people as $p) mailEnqueue($db, (int)$m['id'], (int)$p['id'], $p['email'], $m['subject'], $m['body'] . mailFooter($db, (int)$p['id']), 'bulk');
@@ -117,7 +113,7 @@ try {
         jsonResponse(['success' => true] + mailProcessQueue($db, 20));
     }
 
-    mailFail('unknown_action', 'Unknown action');
+    jsonFail('unknown_action', 'Unknown action');
 } catch (Throwable $e) {
     failInternal('MAIL', $e);
 }

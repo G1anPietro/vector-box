@@ -19,10 +19,6 @@ requireLogin();
 header('Cache-Control: no-store');
 $me = (int)$_SESSION['user_id'];
 
-function ntFail(string $code, string $msg, int $status = 400): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);
-}
-
 try {
     $db = getDbConnection();
 
@@ -32,7 +28,7 @@ try {
             $st = $db->prepare('SELECT settings, bell_notify FROM class_members WHERE class_id = :c AND user_id = :u');
             $st->execute([':c' => (int)($_GET['class_id'] ?? 0), ':u' => $me]);
             $m = $st->fetch();
-            if (!$m) ntFail('not_member', 'You are not in this class', 404);
+            if (!$m) jsonFail('not_member', 'You are not in this class', 404);
             jsonResponse(['success' => true, 'prefs' => notifyPrefs((string)$m['settings']), 'bell' => (int)$m['bell_notify'] === 1,
                           'slots' => array_map(fn($k) => ['key' => $k, 'days' => REMINDER_SLOTS[$k][0], 'from' => REMINDER_SLOTS[$k][1]], array_keys(REMINDER_SLOTS))]);
         }
@@ -56,10 +52,10 @@ try {
         if ($action === 'vapid') {
             jsonResponse(['success' => true, 'public_key' => vapidKeys()['public']]);
         }
-        ntFail('unknown_action', 'Unknown action');
+        jsonFail('unknown_action', 'Unknown action');
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') ntFail('method', 'Method not allowed', 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonFail('method', 'Method not allowed', 405);
     requireCsrf();
     $in = readJsonBody();
     $action = (string)($in['action'] ?? '');
@@ -75,12 +71,12 @@ try {
     }
 
     if ($action === 'subscribe') {
-        if (!checkRateLimit('push_subscribe', 20, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many attempts', 429);
+        if (!checkRateLimit('push_subscribe', 20, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many attempts', 429);
         $endpoint = (string)($in['endpoint'] ?? '');
         $p256dh = (string)($in['keys']['p256dh'] ?? '');
         $auth = (string)($in['keys']['auth'] ?? '');
-        if (!webpushEndpointAllowed($endpoint)) ntFail('bad_endpoint', 'Unknown push service');
-        if (strlen(b64uDecode($p256dh)) !== 65 || strlen(b64uDecode($auth)) !== 16) ntFail('bad_keys', 'Invalid subscription keys');
+        if (!webpushEndpointAllowed($endpoint)) jsonFail('bad_endpoint', 'Unknown push service');
+        if (strlen(b64uDecode($p256dh)) !== 65 || strlen(b64uDecode($auth)) !== 16) jsonFail('bad_keys', 'Invalid subscription keys');
         // One device = one endpoint; it moves to whoever is logged in on it now
         $db->prepare('INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at) VALUES (:u, :e, :p, :a, :t)
                       ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, failures = 0
@@ -96,16 +92,16 @@ try {
     }
 
     if ($action === 'bell_notify') {
-        if (!checkRateLimit('bell_notify', 60, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many changes, try later', 429);
+        if (!checkRateLimit('bell_notify', 60, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many changes, try later', 429);
         $st = $db->prepare('UPDATE class_members SET bell_notify = :on WHERE class_id = :c AND user_id = :u');
         $st->execute([':on' => empty($in['on']) ? 0 : 1, ':c' => (int)($in['class_id'] ?? 0), ':u' => $me]);
-        if ($st->rowCount() === 0) ntFail('not_member', 'You are not in this class', 403);
+        if ($st->rowCount() === 0) jsonFail('not_member', 'You are not in this class', 403);
         jsonResponse(['success' => true]);
     }
 
     if ($action === 'delete') {
         // Remove my notifications: some ids, a whole kind, or all of them (only ever my own)
-        if (!checkRateLimit('notify_delete', 120, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many changes, try later', 429);
+        if (!checkRateLimit('notify_delete', 120, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many changes, try later', 429);
         if (is_array($in['ids'] ?? null)) {
             $ids = array_values(array_filter(array_map('intval', array_slice($in['ids'], 0, 200)), fn($i) => $i > 0));
             if ($ids) $db->prepare('DELETE FROM notifications WHERE user_id = ? AND id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')')->execute(array_merge([$me], $ids));
@@ -114,19 +110,19 @@ try {
         } elseif (!empty($in['all'])) {
             $db->prepare('DELETE FROM notifications WHERE user_id = :u')->execute([':u' => $me]);
         } else {
-            ntFail('nothing', 'Nothing to delete');
+            jsonFail('nothing', 'Nothing to delete');
         }
         jsonResponse(['success' => true]);
     }
 
     if ($action === 'save_prefs') {
         // My notification choices in one class: kinds on/off and which reminders of a test I want
-        if (!checkRateLimit('notify_prefs', 60, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many changes, try later', 429);
+        if (!checkRateLimit('notify_prefs', 60, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many changes, try later', 429);
         $classId = (int)($in['class_id'] ?? 0);
         $st = $db->prepare('SELECT settings FROM class_members WHERE class_id = :c AND user_id = :u');
         $st->execute([':c' => $classId, ':u' => $me]);
         $cur = $st->fetchColumn();
-        if ($cur === false) ntFail('not_member', 'You are not in this class', 404);
+        if ($cur === false) jsonFail('not_member', 'You are not in this class', 404);
         $p = is_array($in['prefs'] ?? null) ? $in['prefs'] : [];
         $settings = json_decode((string)$cur, true);
         if (!is_array($settings)) $settings = [];
@@ -144,12 +140,12 @@ try {
     }
 
     if ($action === 'test') {
-        if (!checkRateLimit('push_test', 5, 3600, 'user:' . $me)) ntFail('slow_down', 'Too many tests, try later', 429);
+        if (!checkRateLimit('push_test', 5, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many tests, try later', 429);
         $n = notifyUsers($db, [$me], null, 'prova', 'Notifiche attive ✓', 'Così ti arriveranno i promemoria delle verifiche.', '/pages/appunti.php');
         jsonResponse(['success' => true, 'delivered' => $n]);
     }
 
-    ntFail('unknown_action', 'Unknown action');
+    jsonFail('unknown_action', 'Unknown action');
 } catch (Throwable $e) {
     failInternal('NOTIFY', $e);
 }

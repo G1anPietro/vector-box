@@ -17,13 +17,9 @@ header('Cache-Control: no-store');
 $me = (int)($_SESSION['user_id'] ?? 0);
 $isAdmin = sessionIsAdmin();
 
-function scFail(string $code, string $msg, int $status = 400): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);
-}
-
 function scClass(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
-    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) scFail('not_found', 'Class not found', 404);
+    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) jsonFail('not_found', 'Class not found', 404);
     return [$class, classPerms($db, $class, $me, $isAdmin)];
 }
 
@@ -47,7 +43,7 @@ try {
     $db = getDbConnection();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        if ((string)($_GET['action'] ?? '') !== 'board') scFail('unknown_action', 'Unknown action');
+        if ((string)($_GET['action'] ?? '') !== 'board') jsonFail('unknown_action', 'Unknown action');
         [$class, $perms] = scClass($db, (int)($_GET['class_id'] ?? 0), $me, $isAdmin);
         $set = scoreSettings($class);
         $in = scoreMemberIn($db, (int)$class['id'], $me);
@@ -68,16 +64,16 @@ try {
             'mine' => ['week' => $pw, 'total' => $pt, 'rank_week' => $rw, 'rank_total' => $rt, 'count' => count($week)]]);
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') scFail('method', 'Method not allowed', 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonFail('method', 'Method not allowed', 405);
     requireCsrf();
     $in = readJsonBody();
     $action = (string)($in['action'] ?? '');
-    if (!checkRateLimit('class_score', 60, 3600, 'user:' . $me)) scFail('slow_down', 'Too many changes, try later', 429);
+    if (!checkRateLimit('class_score', 60, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many changes, try later', 429);
     [$class, $perms] = scClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
     $classId = (int)$class['id'];
 
     if ($action === 'set_in') {
-        if (!classIsMember($db, $classId, $me)) scFail('not_member', 'You are not in this class', 403);
+        if (!classIsMember($db, $classId, $me)) jsonFail('not_member', 'You are not in this class', 403);
         $want = !empty($in['in']);
         $st = $db->prepare('SELECT settings FROM class_members WHERE class_id = :c AND user_id = :u');
         $st->execute([':c' => $classId, ':u' => $me]);
@@ -98,7 +94,7 @@ try {
     }
 
     if ($action === 'settings') {
-        if (!in_array('settings', $perms, true)) scFail('forbidden', 'You do not have the permission to do this', 403);
+        if (!in_array('settings', $perms, true)) jsonFail('forbidden', 'You do not have the permission to do this', 403);
         $settings = json_decode((string)($class['settings'] ?? '{}'), true);
         if (!is_array($settings)) $settings = [];
         $settings['scoreboard'] = ['on' => !empty($in['on']), 'who' => ($in['who'] ?? 'all') === 'perm' ? 'perm' : 'all'];
@@ -106,7 +102,7 @@ try {
         jsonResponse(['success' => true] + $settings['scoreboard']);
     }
 
-    scFail('unknown_action', 'Unknown action');
+    jsonFail('unknown_action', 'Unknown action');
 } catch (Throwable $e) {
     failInternal('SCORE', $e);
 }

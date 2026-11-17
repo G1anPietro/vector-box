@@ -31,34 +31,30 @@ header('Cache-Control: no-store');
 $me = (int)($_SESSION['user_id'] ?? 0);
 $isAdmin = !empty($_SESSION['is_admin']);
 
-function clFail(string $code, string $message, int $status = 400): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $message], $status);
-}
-
 /** Loads a class the caller may see (member or admin), or stops with 404. */
 function clVisible(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
     if ($class && !$isAdmin && !classCanView($db, $id, $me)) {
-        if ((int)($class['is_demo'] ?? 0) === 1) clFail('demo', CLASS_DEMO_MESSAGE, 403);
+        if ((int)($class['is_demo'] ?? 0) === 1) jsonFail('demo', CLASS_DEMO_MESSAGE, 403);
         $class = null;
     }
-    if (!$class) clFail('not_found', 'Class not found', 404);
+    if (!$class) jsonFail('not_found', 'Class not found', 404);
     return $class;
 }
 
 /** Loads an active class where the caller has a permission (the representative and the admin have all), or stops. */
 function clManaged(PDO $db, int $id, int $me, bool $isAdmin, string $perm = 'settings'): array {
     $class = clVisible($db, $id, $me, $isAdmin);
-    if ($class['status'] !== 'active') clFail('not_active', 'This class is not active', 409);
-    if (!in_array($perm, classPerms($db, $class, $me, $isAdmin), true)) clFail('not_manager', 'You do not have the permission to do this', 403);
+    if ($class['status'] !== 'active') jsonFail('not_active', 'This class is not active', 409);
+    if (!in_array($perm, classPerms($db, $class, $me, $isAdmin), true)) jsonFail('not_manager', 'You do not have the permission to do this', 403);
     return $class;
 }
 
 /** Only the representative (or the site admin). */
 function clRepresentative(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = clVisible($db, $id, $me, $isAdmin);
-    if ($class['status'] !== 'active') clFail('not_active', 'This class is not active', 409);
-    if (!$isAdmin && (int)$class['manager_id'] !== $me) clFail('not_manager', 'Only the representative can do this', 403);
+    if ($class['status'] !== 'active') jsonFail('not_active', 'This class is not active', 409);
+    if (!$isAdmin && (int)$class['manager_id'] !== $me) jsonFail('not_manager', 'Only the representative can do this', 403);
     return $class;
 }
 
@@ -163,10 +159,10 @@ try {
             ]);
         }
 
-        clFail('unknown_action', 'Unknown action');
+        jsonFail('unknown_action', 'Unknown action');
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') clFail('method', 'Method not allowed', 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonFail('method', 'Method not allowed', 405);
     requireCsrf();
     $in = str_starts_with((string)($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/') ? $_POST : readJsonBody();
     $action = (string)($in['action'] ?? '');
@@ -174,32 +170,32 @@ try {
 
     if ($action === 'request') {
         $restriction = accountRestriction($db, $me);
-        if ($restriction) clFail('restricted', $restriction, 403);
-        if (!$isAdmin && !classRequestsOpen($db)) clFail('requests_closed', 'New class requests are closed right now', 403);
+        if ($restriction) jsonFail('restricted', $restriction, 403);
+        if (!$isAdmin && !classRequestsOpen($db)) jsonFail('requests_closed', 'New class requests are closed right now', 403);
         // Spam brakes (a bot, or someone with a lot of patience): per person and per address, per hour and per day;
         // the same class already waiting; too many refused lately; and a ceiling on the requests waiting for the admin at once
         if (!checkRateLimit('class_request', 5, 3600, 'user:' . $me)
             || !checkRateLimit('class_request_day', 10, 86400, 'user:' . $me)
-            || !checkRateLimit('class_request_ip', 10, 86400, 'ip:' . getClientIp())) clFail('slow_down', 'Too many requests, try again later', 429);
+            || !checkRateLimit('class_request_ip', 10, 86400, 'ip:' . getClientIp())) jsonFail('slow_down', 'Too many requests, try again later', 429);
         $refused = $db->prepare("SELECT COUNT(*) FROM school_classes WHERE manager_id = :me AND status = 'rejected' AND created_at > :t");
         $refused->execute([':me' => $me, ':t' => time() - 7 * 86400]);
-        if (!$isAdmin && (int)$refused->fetchColumn() >= CLASS_MAX_REFUSED_WEEK) clFail('too_many_refused', 'Several of your requests were refused this week: try again later', 429);
+        if (!$isAdmin && (int)$refused->fetchColumn() >= CLASS_MAX_REFUSED_WEEK) jsonFail('too_many_refused', 'Several of your requests were refused this week: try again later', 429);
         if (!$isAdmin && (int)$db->query("SELECT COUNT(*) FROM school_classes WHERE status = 'pending'")->fetchColumn() >= CLASS_MAX_PENDING_ALL) {
-            clFail('requests_full', 'There are too many requests waiting right now: try again in a few days', 429);
+            jsonFail('requests_full', 'There are too many requests waiting right now: try again in a few days', 429);
         }
 
         $name = clText($in['name'] ?? '', CLASS_NAME_MAX);
         $school = clText($in['school'] ?? '', CLASS_SCHOOL_MAX);
         $note = clText($in['note'] ?? '', CLASS_NOTE_MAX);
-        if ($name === '') clFail('bad_name', 'Write the name of the class');
-        if (textLength($school) < 2) clFail('bad_school', 'Write the name of the school');
+        if ($name === '') jsonFail('bad_name', 'Write the name of the class');
+        if (textLength($school) < 2) jsonFail('bad_school', 'Write the name of the school');
 
         $st = $db->prepare("SELECT COUNT(*) FROM school_classes WHERE manager_id = :me AND status = 'pending'");
         $st->execute([':me' => $me]);
-        if ((int)$st->fetchColumn() >= CLASS_MAX_PENDING) clFail('too_many', 'You already have requests waiting');
+        if ((int)$st->fetchColumn() >= CLASS_MAX_PENDING) jsonFail('too_many', 'You already have requests waiting');
         $dup = $db->prepare("SELECT 1 FROM school_classes WHERE status = 'pending' AND LOWER(name) = LOWER(:n) AND LOWER(school) = LOWER(:s)");
         $dup->execute([':n' => $name, ':s' => $school]);
-        if ($dup->fetchColumn()) clFail('duplicate', 'This class was already requested and is waiting for approval');
+        if ($dup->fetchColumn()) jsonFail('duplicate', 'This class was already requested and is waiting for approval');
 
         // "All the students are adults": only then the AI may read the class material (Google Gemini). Unticked = AI off,
         // and the representative can switch it on later in the class settings.
@@ -215,8 +211,8 @@ try {
     if ($action === 'decide') {
         requireAdmin();
         $class = classLoad($db, $id);
-        if (!$class) clFail('not_found', 'Class not found', 404);
-        if ($class['status'] !== 'pending') clFail('already_decided', 'This request was already decided', 409);
+        if (!$class) jsonFail('not_found', 'Class not found', 404);
+        if ($class['status'] !== 'pending') jsonFail('already_decided', 'This request was already decided', 409);
         $approve = !empty($in['approve']);
 
         $db->exec('BEGIN IMMEDIATE');
@@ -249,22 +245,22 @@ try {
         requireAdmin();
         $file = classParseLimit($in['file_mb'] ?? null, CLASS_LIMIT_FILE_MB_MAX);
         $class = classParseLimit($in['class_mb'] ?? null, CLASS_LIMIT_CLASS_MB_MAX);
-        if (is_string($file)) clFail('bad_limit', $file);
-        if (is_string($class)) clFail('bad_limit', $class);
+        if (is_string($file)) jsonFail('bad_limit', $file);
+        if (is_string($class)) jsonFail('bad_limit', $class);
         if ($id > 0) {
             $row = classLoad($db, $id);
-            if (!$row) clFail('not_found', 'Class not found', 404);
+            if (!$row) jsonFail('not_found', 'Class not found', 404);
             $db->prepare('UPDATE school_classes SET max_file_mb = :f, max_class_mb = :c WHERE id = :id')
                ->execute([':f' => $file, ':c' => $class, ':id' => $id]);
             jsonResponse(['success' => true, 'limits_mb' => classLimits($db, classLoad($db, $id))]);
         }
-        if ($file === null || $class === null) clFail('bad_limit', 'Both site-wide limits are required');
+        if ($file === null || $class === null) jsonFail('bad_limit', 'Both site-wide limits are required');
         appSettingSet($db, 'notes_max_file_mb', (string)$file);
         appSettingSet($db, 'notes_max_class_mb', (string)$class);
         // the other upload limits: optional, each within its range
         foreach (['files' => ['notes_max_files', 1, 100], 'per_hour' => ['notes_per_hour', 10, 3000], 'open' => ['notes_max_open', 5, 200]] as $key => [$setting, $lo, $hi]) {
             if (!array_key_exists($key, $in) || $in[$key] === '' || $in[$key] === null) continue;
-            if (!is_numeric($in[$key]) || (int)$in[$key] < $lo || (int)$in[$key] > $hi) clFail('bad_limit', "Limit must be between $lo and $hi");
+            if (!is_numeric($in[$key]) || (int)$in[$key] < $lo || (int)$in[$key] > $hi) jsonFail('bad_limit', "Limit must be between $lo and $hi");
             appSettingSet($db, $setting, (string)(int)$in[$key]);
         }
         jsonResponse(['success' => true, 'limits_mb' => classDefaultLimits($db), 'upload' => classUploadLimits($db)]);
@@ -272,23 +268,23 @@ try {
 
     if ($action === 'delete_class') {
         requireAdmin();
-        if (!classLoad($db, $id)) clFail('not_found', 'Class not found', 404);
+        if (!classLoad($db, $id)) jsonFail('not_found', 'Class not found', 404);
         classDelete($db, $id);
         jsonResponse(['success' => true]);
     }
 
     if ($action === 'join') {
         $restriction = accountRestriction($db, $me);
-        if ($restriction) clFail('restricted', $restriction, 403);
+        if ($restriction) jsonFail('restricted', $restriction, 403);
         // Invite codes must not be guessable by trying: tight limits per account and per address
         if (!checkRateLimit('class_join', 10, 600, 'user:' . $me) || !checkRateLimit('class_join_ip', 20, 600)) {
-            clFail('slow_down', 'Too many attempts, try again in a few minutes', 429);
+            jsonFail('slow_down', 'Too many attempts, try again in a few minutes', 429);
         }
         $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)($in['code'] ?? '')) ?? '');
         $st = $db->prepare("SELECT * FROM school_classes WHERE invite_code = :c AND status = 'active'");
         $st->execute([':c' => $code]);
         $class = $code === '' ? null : ($st->fetch() ?: null);
-        if (!$class) clFail('bad_code', 'Invalid invite code', 404);
+        if (!$class) jsonFail('bad_code', 'Invalid invite code', 404);
 
         $db->prepare('INSERT OR IGNORE INTO class_members (class_id, user_id, joined_at) VALUES (:c, :u, :t)')
            ->execute([':c' => $class['id'], ':u' => $me, ':t' => time()]);
@@ -297,7 +293,7 @@ try {
 
     if ($action === 'leave') {
         $class = clVisible($db, $id, $me, false);
-        if ((int)$class['manager_id'] === $me) clFail('manager_cannot_leave', 'Give the class to another member before leaving', 409);
+        if ((int)$class['manager_id'] === $me) jsonFail('manager_cannot_leave', 'Give the class to another member before leaving', 409);
         $db->prepare('DELETE FROM class_members WHERE class_id = :c AND user_id = :u')->execute([':c' => $id, ':u' => $me]);
         jsonResponse(['success' => true]);
     }
@@ -313,9 +309,9 @@ try {
     if ($action === 'remove_member' || $action === 'set_manager') {
         $class = $action === 'set_manager' ? clRepresentative($db, $id, $me, $isAdmin) : clManaged($db, $id, $me, $isAdmin, 'members');
         $userId = (int)($in['user_id'] ?? 0);
-        if (!classIsMember($db, $id, $userId)) clFail('not_member', 'That user is not in the class', 404);
+        if (!classIsMember($db, $id, $userId)) jsonFail('not_member', 'That user is not in the class', 404);
         if ($action === 'remove_member') {
-            if ($userId === (int)$class['manager_id']) clFail('is_manager', 'The manager cannot be removed', 409);
+            if ($userId === (int)$class['manager_id']) jsonFail('is_manager', 'The manager cannot be removed', 409);
             $db->prepare('DELETE FROM class_members WHERE class_id = :c AND user_id = :u')->execute([':c' => $id, ':u' => $userId]);
         } else {
             $db->prepare('UPDATE school_classes SET manager_id = :u WHERE id = :id')->execute([':u' => $userId, ':id' => $id]);
@@ -326,7 +322,7 @@ try {
 
     if (in_array($action, ['display_name', 'save_role', 'delete_role', 'set_member_access', 'merge_subject', 'delete_subject'], true)
         && !checkRateLimit('class_manage', 120, 3600, 'user:' . $me)) {
-        clFail('slow_down', 'Too many changes, try later', 429);
+        jsonFail('slow_down', 'Too many changes, try later', 429);
     }
 
     if ($action === 'display_name') {
@@ -334,7 +330,7 @@ try {
         $class = clVisible($db, $id, $me, $isAdmin);
         $userId = (int)($in['user_id'] ?? $me);
         if ($userId !== $me) clManaged($db, $id, $me, $isAdmin, 'members');
-        if (!classIsMember($db, $id, $userId)) clFail('not_member', 'That user is not in the class', 404);
+        if (!classIsMember($db, $id, $userId)) jsonFail('not_member', 'That user is not in the class', 404);
         $name = clText($in['name'] ?? '', 40);
         $db->prepare('UPDATE class_members SET display_name = :n WHERE class_id = :c AND user_id = :u')
            ->execute([':n' => $name !== '' ? $name : null, ':c' => $id, ':u' => $userId]);
@@ -345,20 +341,20 @@ try {
         // Create (no role_id) or change a role: name, colour, permissions
         $class0 = clManaged($db, $id, $me, $isAdmin, 'roles');
         $name = clText($in['name'] ?? '', 30);
-        if ($name === '') clFail('bad_name', 'Give the role a name');
+        if ($name === '') jsonFail('bad_name', 'Give the role a name');
         $color = preg_match('/^#[0-9a-fA-F]{6}$/', (string)($in['color'] ?? '')) ? (string)$in['color'] : '#5b8def';
         $roleId = (int)($in['role_id'] ?? 0);
         $oldRole = $roleId ? clRoleOf($db, $id, $roleId) : null;
         $oldPerms = $oldRole ? (json_decode((string)$oldRole['perms'], true) ?: []) : [];
         $perms = json_encode(clGrantableKeep($db, $class0, $me, $isAdmin, classCleanPerms($in['perms'] ?? []), $oldPerms));
         if ($roleId) {
-            if (!$oldRole) clFail('not_found', 'Role not found', 404);
+            if (!$oldRole) jsonFail('not_found', 'Role not found', 404);
             $db->prepare('UPDATE class_roles SET name = :n, color = :col, perms = :p WHERE id = :r')
                ->execute([':n' => $name, ':col' => $color, ':p' => $perms, ':r' => $roleId]);
         } else {
             $n = $db->prepare('SELECT COUNT(*) FROM class_roles WHERE class_id = :c');
             $n->execute([':c' => $id]);
-            if ((int)$n->fetchColumn() >= 20) clFail('too_many', 'At most 20 roles');
+            if ((int)$n->fetchColumn() >= 20) jsonFail('too_many', 'At most 20 roles');
             $db->prepare('INSERT INTO class_roles (class_id, name, color, perms, created_at) VALUES (:c, :n, :col, :p, :t)')
                ->execute([':c' => $id, ':n' => $name, ':col' => $color, ':p' => $perms, ':t' => time()]);
             $roleId = (int)$db->lastInsertId();
@@ -370,7 +366,7 @@ try {
     if ($action === 'delete_role') {
         clManaged($db, $id, $me, $isAdmin, 'roles');
         $roleId = (int)($in['role_id'] ?? 0);
-        if (!clRoleOf($db, $id, $roleId)) clFail('not_found', 'Role not found', 404);
+        if (!clRoleOf($db, $id, $roleId)) jsonFail('not_found', 'Role not found', 404);
         $db->prepare('UPDATE class_members SET role_id = NULL WHERE class_id = :c AND role_id = :r')->execute([':c' => $id, ':r' => $roleId]);
         $db->prepare('DELETE FROM class_roles WHERE id = :r')->execute([':r' => $roleId]);
         classLog($db, $id, $me, 'Ruolo eliminato', 'ruolo ' . $roleId);
@@ -381,14 +377,14 @@ try {
         // A member's role and personal permissions (on top of the role's)
         $class = clManaged($db, $id, $me, $isAdmin, 'roles');
         $userId = (int)($in['user_id'] ?? 0);
-        if (!classIsMember($db, $id, $userId)) clFail('not_member', 'That user is not in the class', 404);
-        if ($userId === (int)$class['manager_id']) clFail('is_manager', 'The representative already has every permission', 409);
+        if (!classIsMember($db, $id, $userId)) jsonFail('not_member', 'That user is not in the class', 404);
+        if ($userId === (int)$class['manager_id']) jsonFail('is_manager', 'The representative already has every permission', 409);
         $roleId = (int)($in['role_id'] ?? 0);
         $role = $roleId ? clRoleOf($db, $id, $roleId) : null;
-        if ($roleId && !$role) clFail('not_found', 'Role not found', 404);
+        if ($roleId && !$role) jsonFail('not_found', 'Role not found', 404);
         if ($role) {
             $rp = json_decode((string)$role['perms'], true);
-            if (is_array($rp) && count(clGrantable($db, $class, $me, $isAdmin, $rp)) !== count($rp)) clFail('not_allowed', 'That role has permissions you do not hold', 403);
+            if (is_array($rp) && count(clGrantable($db, $class, $me, $isAdmin, $rp)) !== count($rp)) jsonFail('not_allowed', 'That role has permissions you do not hold', 403);
         }
         $cur = $db->prepare('SELECT perms FROM class_members WHERE class_id = :c AND user_id = :u');
         $cur->execute([':c' => $id, ':u' => $userId]);
@@ -404,16 +400,16 @@ try {
         clManaged($db, $id, $me, $isAdmin, 'subjects');
         $from = (int)($in['subject_id'] ?? 0);
         $subs = array_column(classSubjects($db, $id), 'name', 'id');
-        if (!isset($subs[$from])) clFail('not_found', 'Subject not found', 404);
+        if (!isset($subs[$from])) jsonFail('not_found', 'Subject not found', 404);
         $into = (int)($in['into'] ?? 0);
-        if ($action === 'merge_subject' && (!isset($subs[$into]) || $into === $from)) clFail('bad_target', 'Choose another subject of this class');
+        if ($action === 'merge_subject' && (!isset($subs[$into]) || $into === $from)) jsonFail('bad_target', 'Choose another subject of this class');
         $used = 0;
         foreach (['class_items', 'class_events', 'class_docs'] as $t) {
             $q = $db->prepare("SELECT COUNT(*) FROM $t WHERE class_id = :c AND subject_id = :s");
             $q->execute([':c' => $id, ':s' => $from]);
             $used += (int)$q->fetchColumn();
         }
-        if ($action === 'delete_subject' && $used > 0) clFail('not_empty', 'This subject has material: merge it into another one instead');
+        if ($action === 'delete_subject' && $used > 0) jsonFail('not_empty', 'This subject has material: merge it into another one instead');
         $db->exec('BEGIN IMMEDIATE');
         try {
             if ($action === 'merge_subject') {
@@ -461,7 +457,7 @@ try {
         // Switching it on needs that declaration again (people grow up, but it must be true); switching off is always allowed.
         $class = clRepresentative($db, $id, $me, $isAdmin);   // the declaration "all adults" is the representative's, not any settings holder's
         if (!empty($in['on'])) {
-            if (empty($in['adults_confirm'])) clFail('adults_needed', 'Confirm that all the students of the class are adults to switch the AI on', 400);
+            if (empty($in['adults_confirm'])) jsonFail('adults_needed', 'Confirm that all the students of the class are adults to switch the AI on', 400);
             $db->prepare('UPDATE school_classes SET ai_allowed = 1, ai_adults_at = :t, ai_adults_by = :u WHERE id = :id')->execute([':t' => time(), ':u' => $me, ':id' => $id]);
             classLog($db, $id, $me, 'AI attivata', 'dichiarati tutti maggiorenni');
         } else {
@@ -474,9 +470,9 @@ try {
     if ($action === 'settings') {
         $class = clManaged($db, $id, $me, $isAdmin, 'settings');
         $time = (string)($in['summary_time'] ?? '');
-        if (!classValidTime($time)) clFail('bad_time', 'Time must be HH:MM');
+        if (!classValidTime($time)) jsonFail('bad_time', 'Time must be HH:MM');
         $tz = (string)($in['timezone'] ?? 'Europe/Rome');
-        if (!in_array($tz, timezone_identifiers_list(), true)) clFail('bad_timezone', 'Unknown time zone');
+        if (!in_array($tz, timezone_identifiers_list(), true)) jsonFail('bad_timezone', 'Unknown time zone');
         // the automatic daily summary can be switched off (kept in the class settings; "Genera ora" still works)
         $settings = json_decode((string)($class['settings'] ?? '{}'), true);
         if (!is_array($settings)) $settings = [];
@@ -508,9 +504,9 @@ try {
     if ($action === 'read_timetable') {
         require_once __DIR__ . '/classi_ai.php';
         $class = clManaged($db, $id, $me, $isAdmin, 'timetable');
-        if (empty($class['ai_allowed'])) clFail('ai_not_allowed', 'The AI is off for this class', 403);
-        if (!geminiConfigured()) clFail('ai_off', 'The AI is not configured on this server', 503);
-        if (!checkRateLimit('timetable_ai', 5, 3600, 'class:' . $id)) clFail('slow_down', 'Too many attempts, try again later', 429);
+        if (empty($class['ai_allowed'])) jsonFail('ai_not_allowed', 'The AI is off for this class', 403);
+        if (!geminiConfigured()) jsonFail('ai_off', 'The AI is not configured on this server', 503);
+        if (!checkRateLimit('timetable_ai', 5, 3600, 'class:' . $id)) jsonFail('slow_down', 'Too many attempts, try again later', 429);
         $files = [];
         $raw = $_FILES['files'] ?? null;
         if (is_array($raw) && isset($raw['name'])) {
@@ -518,37 +514,37 @@ try {
                 $err = (int)((array)$raw['error'])[$i];
                 if ($err === UPLOAD_ERR_NO_FILE) continue;
                 $tmp = (string)((array)$raw['tmp_name'])[$i];
-                if ($err !== UPLOAD_ERR_OK || !is_uploaded_file($tmp) || filesize($tmp) > TIMETABLE_AI_MAX_BYTES) clFail('bad_file', 'Upload a photo or PDF up to 15 MB');
+                if ($err !== UPLOAD_ERR_OK || !is_uploaded_file($tmp) || filesize($tmp) > TIMETABLE_AI_MAX_BYTES) jsonFail('bad_file', 'Upload a photo or PDF up to 15 MB');
                 $type = timetableFileType($tmp, (string)$name);
-                if (!$type) clFail('bad_type', 'Use a photo (JPG, PNG, WEBP, HEIC) or a PDF');
+                if (!$type) jsonFail('bad_type', 'Use a photo (JPG, PNG, WEBP, HEIC) or a PDF');
                 $files[] = ['mime' => $type, 'data' => (string)file_get_contents($tmp)];
             }
         }
-        if (!$files || count($files) > 3) clFail('no_file', 'Upload one to three photos or PDFs');
+        if (!$files || count($files) > 3) jsonFail('no_file', 'Upload one to three photos or PDFs');
         set_time_limit(170);
         try {
             $result = timetableFromImages($db, $class, $files);
         } catch (GeminiError $e) {
             require_once __DIR__ . '/debug_logger.php';
             logSystemError('TIMETABLE_AI', $e->getMessage());
-            if ($e->busy) clFail('ai_busy', 'Gemini is busy right now, try again in a few minutes', 503);
-            clFail($e->quota ? 'ai_quota' : 'ai_failed', $e->quota ? 'The AI has no requests left today' : 'The AI could not read the timetable', 502);
+            if ($e->busy) jsonFail('ai_busy', 'Gemini is busy right now, try again in a few minutes', 503);
+            jsonFail($e->quota ? 'ai_quota' : 'ai_failed', $e->quota ? 'The AI has no requests left today' : 'The AI could not read the timetable', 502);
         }
         require_once __DIR__ . '/debug_logger.php';
         logSystemError('TIMETABLE_AI', 'class ' . $id . ': ' . (is_string($result) ? 'unreadable' : 'read') . ' with ' . ($result['model'] ?? 'the AI'));
-        if (is_string($result)) clFail('ai_unreadable', $result, 422);
+        if (is_string($result)) jsonFail('ai_unreadable', $result, 422);
         jsonResponse(['success' => true] + $result);
     }
 
     if ($action === 'save_timetable') {
         $class = clManaged($db, $id, $me, $isAdmin, 'timetable');
         $periods = classParsePeriods($in['periods'] ?? null);
-        if (is_string($periods)) clFail('bad_periods', $periods);
+        if (is_string($periods)) jsonFail('bad_periods', $periods);
         $slots = classParseSlots($in['slots'] ?? null, $periods);
-        if (is_string($slots)) clFail('bad_slots', $slots);
+        if (is_string($slots)) jsonFail('bad_slots', $slots);
         $validFrom = (string)($in['valid_from'] ?? '');
         if ($validFrom === '') $validFrom = classToday($class);
-        if (!classValidDate($validFrom)) clFail('bad_date', 'Date must be YYYY-MM-DD');
+        if (!classValidDate($validFrom)) jsonFail('bad_date', 'Date must be YYYY-MM-DD');
 
         $db->exec('BEGIN IMMEDIATE');
         try {
@@ -571,7 +567,7 @@ try {
         jsonResponse(['success' => true, 'valid_from' => $validFrom]);
     }
 
-    clFail('unknown_action', 'Unknown action');
+    jsonFail('unknown_action', 'Unknown action');
 } catch (Throwable $e) {
     failInternal('CLASSES', $e);
 }

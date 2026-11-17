@@ -20,14 +20,10 @@ $isAdmin = sessionIsAdmin();
 
 const BOARD_MAX_ANNOUNCEMENTS = 50;   // per class: the oldest must be deleted before adding more
 
-function bbFail(string $code, string $msg, int $status = 400): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);
-}
-
 /** An active class the caller belongs to (any class for the admin). Returns [class, my permissions]. */
 function bbClass(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
-    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) bbFail('not_found', 'Class not found', 404);
+    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) jsonFail('not_found', 'Class not found', 404);
     return [$class, classPerms($db, $class, $me, $isAdmin)];
 }
 
@@ -54,7 +50,7 @@ try {
     $db = getDbConnection();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        if ((string)($_GET['action'] ?? '') !== 'overview') bbFail('unknown_action', 'Unknown action');
+        if ((string)($_GET['action'] ?? '') !== 'overview') jsonFail('unknown_action', 'Unknown action');
         [$class, $perms] = bbClass($db, (int)($_GET['class_id'] ?? 0), $me, $isAdmin);
         $classId = (int)$class['id'];
         $local = (new DateTimeImmutable('now', classTimezone($class)));
@@ -95,18 +91,18 @@ try {
             'missing' => array_slice(notesMissing($db, $class), 0, 12), 'can_skip' => $canBoard || in_array('material', $perms, true) || in_array('settings', $perms, true)]);
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') bbFail('method', 'Method not allowed', 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonFail('method', 'Method not allowed', 405);
     requireCsrf();
     $in = readJsonBody();
     $action = (string)($in['action'] ?? '');
-    if (!checkRateLimit('class_board', 60, 3600, 'user:' . $me)) bbFail('slow_down', 'Too many changes, try later', 429);
+    if (!checkRateLimit('class_board', 60, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many changes, try later', 429);
     $now = time();
 
     if ($action === 'save_announcement') {
         [$class, $perms] = bbClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         $classId = (int)$class['id'];
         $title = bbText($in['title'] ?? '', 100);
-        if ($title === '') bbFail('empty', 'Give the announcement a title');
+        if ($title === '') jsonFail('empty', 'Give the announcement a title');
         $body = bbText($in['body'] ?? '', 2000, true);
         $pinned = !empty($in['pinned']) ? 1 : 0;
         $id = (int)($in['id'] ?? 0);
@@ -114,16 +110,16 @@ try {
             $st = $db->prepare("SELECT * FROM class_board WHERE id = :id AND class_id = :c AND kind = 'annuncio'");
             $st->execute([':id' => $id, ':c' => $classId]);
             $b = $st->fetch();
-            if (!$b) bbFail('not_found', 'Not found', 404);
-            if ((int)$b['author_id'] !== $me && !in_array('board', $perms, true)) bbFail('forbidden', 'You do not have the permission to do this', 403);
+            if (!$b) jsonFail('not_found', 'Not found', 404);
+            if ((int)$b['author_id'] !== $me && !in_array('board', $perms, true)) jsonFail('forbidden', 'You do not have the permission to do this', 403);
             $db->prepare('UPDATE class_board SET title = :t, body = :b, pinned = :p WHERE id = :id')
                ->execute([':t' => $title, ':b' => $body, ':p' => $pinned, ':id' => $id]);
             jsonResponse(['success' => true, 'id' => $id]);
         }
-        if (!in_array('board', $perms, true)) bbFail('forbidden', 'You do not have the permission to do this', 403);
+        if (!in_array('board', $perms, true)) jsonFail('forbidden', 'You do not have the permission to do this', 403);
         $n = $db->prepare("SELECT COUNT(*) FROM class_board WHERE class_id = :c AND kind = 'annuncio'");
         $n->execute([':c' => $classId]);
-        if ((int)$n->fetchColumn() >= BOARD_MAX_ANNOUNCEMENTS) bbFail('too_many', 'Delete an old announcement first');
+        if ((int)$n->fetchColumn() >= BOARD_MAX_ANNOUNCEMENTS) jsonFail('too_many', 'Delete an old announcement first');
         $db->prepare("INSERT INTO class_board (class_id, kind, title, body, status, pinned, author_id, created_at) VALUES (:c, 'annuncio', :t, :b, 'open', :p, :a, :n)")
            ->execute([':c' => $classId, ':t' => $title, ':b' => $body, ':p' => $pinned, ':a' => $me, ':n' => $now]);
         $id = (int)$db->lastInsertId();
@@ -141,10 +137,10 @@ try {
         $st = $db->prepare("SELECT * FROM class_board WHERE id = :id AND kind IN ('segnalazione', 'proposta_verifica') AND status = 'open'");
         $st->execute([':id' => (int)($in['id'] ?? 0)]);
         $b = $st->fetch();
-        if (!$b) bbFail('not_found', 'Not found', 404);
+        if (!$b) jsonFail('not_found', 'Not found', 404);
         [$class, $perms] = bbClass($db, (int)$b['class_id'], $me, $isAdmin);
         $mayAll = in_array('reports', $perms, true);
-        if (!$mayAll && !($b['kind'] === 'segnalazione' && (int)$b['user_id'] === $me)) bbFail('forbidden', 'You do not have the permission to do this', 403);
+        if (!$mayAll && !($b['kind'] === 'segnalazione' && (int)$b['user_id'] === $me)) jsonFail('forbidden', 'You do not have the permission to do this', 403);
         $d = json_decode($b['data'], true) ?: [];
         $accept = !empty($in['accept']);
         $classId = (int)$class['id'];
@@ -171,10 +167,10 @@ try {
     if ($action === 'skip_missing') {
         // "Not needed" for one lesson: it stops appearing in the missing notes (who may manage material or settings)
         [$class, $perms] = bbClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
-        if (!in_array('material', $perms, true) && !in_array('settings', $perms, true) && !in_array('board', $perms, true)) bbFail('forbidden', 'You do not have the permission to do this', 403);
+        if (!in_array('material', $perms, true) && !in_array('settings', $perms, true) && !in_array('board', $perms, true)) jsonFail('forbidden', 'You do not have the permission to do this', 403);
         $date = (string)($in['date'] ?? '');
         $sid = (int)($in['subject_id'] ?? 0);
-        if (!classValidDate($date) || !notesSubjectOf($db, (int)$class['id'], $sid)) bbFail('bad_request', 'Unknown lesson');
+        if (!classValidDate($date) || !notesSubjectOf($db, (int)$class['id'], $sid)) jsonFail('bad_request', 'Unknown lesson');
         $cfg = json_decode((string)($class['settings'] ?? '{}'), true);
         if (!is_array($cfg)) $cfg = [];
         $m = notesMissingSettings($class);
@@ -188,15 +184,15 @@ try {
         $st = $db->prepare("SELECT * FROM class_board WHERE id = :id AND kind = 'annuncio'");
         $st->execute([':id' => (int)($in['id'] ?? 0)]);
         $b = $st->fetch();
-        if (!$b) bbFail('not_found', 'Not found', 404);
+        if (!$b) jsonFail('not_found', 'Not found', 404);
         [, $perms] = bbClass($db, (int)$b['class_id'], $me, $isAdmin);
-        if ((int)$b['author_id'] !== $me && !in_array('board', $perms, true)) bbFail('forbidden', 'You do not have the permission to do this', 403);
+        if ((int)$b['author_id'] !== $me && !in_array('board', $perms, true)) jsonFail('forbidden', 'You do not have the permission to do this', 403);
         $db->prepare('DELETE FROM class_board WHERE id = :id')->execute([':id' => $b['id']]);
         classLog($db, (int)$b['class_id'], $me, 'Annuncio eliminato', $b['title'] ?? '');
         jsonResponse(['success' => true]);
     }
 
-    bbFail('unknown_action', 'Unknown action');
+    jsonFail('unknown_action', 'Unknown action');
 } catch (Throwable $e) {
     failInternal('BOARD', $e);
 }
