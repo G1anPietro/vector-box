@@ -4,7 +4,7 @@
 // rules (log, cause, info card). All three use the language of the moment (VBLang); the `vb-lang` event redraws everything.
 (function () {
     'use strict';
-    const R = self.Rogue, G = R.game, SP = R.sprites, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T, TX = R.text;
+    const R = self.Rogue, G = R.game, SP = R.sprites, TL = R.tiles, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T, TX = R.text;
     const lang = () => (self.VBLang && self.VBLang.lang) || 'en';
     const tl = (key, vars) => TX.t(key, vars, lang());
     const tr = (v) => TX.tx(v, lang());
@@ -14,6 +14,7 @@
         for (const k in TX.MSG) { en[k] = TX.MSG[k].en; it[k] = TX.MSG[k].it; }
         self.VBI18N.add('en', en); self.VBI18N.add('it', it);
     }
+    for (const k in TL.SPR) if (!SP[k]) SP[k] = TL.SPR[k];            // the hazard pictures join the sprite table
     const RUN_KEY = 'vb_dg_run', META_KEY = 'vb_dg_meta', OPT_KEY = 'vb_dg_opt';
     const $ = (id) => document.getElementById(id);
     const reduce = !!(self.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -112,17 +113,23 @@
             const i = idx(x, y), seen = s.seen[i];
             if (!seen) continue;
             const t = s.map.tiles[i], [px, py] = cell(x, y), wall = t === T.WALL || t === T.SECRET;
-            ctx.fillStyle = wall ? sec.wall : sec.floor; ctx.fillRect(px, py, ts, ts);
-            if (wall) { ctx.fillStyle = sec.edge; ctx.fillRect(px, py, ts, 2); ctx.fillRect(px, py, 2, ts); }
-            else if ((x + y) % 2 === 0) { ctx.fillStyle = sec.dot; ctx.fillRect(px + (ts >> 1) - 1, py + (ts >> 1) - 1, 2, 2); }
+            TL.drawTile(ctx, sec, wall, px, py, ts, x, y);               // the sector's own floor and wall pattern
             if (t === T.STAIRS) spr('stairs', '#00ff66', x, y);
-            else if (t === T.DOOR) spr('door', '#b98a55', x, y);
+            else if (t === T.DOOR) spr('door', TL.doorColour(sec.id), x, y);
             else if (t === T.ALTAR) spr('altar', '#00e5ff', x, y);
             else if (t === T.SHOP) spr('shop', '#ffb000', x, y);
             else if (t === T.BENCH) spr('bench', '#b98a55', x, y);
         }
+        for (const h of s.haz) {                                          // terrain hazards: always visible once seen
+            if (!s.seen[idx(h.x, h.y)] || h.x < x0 || h.y < y0 || h.x >= x1 || h.y >= y1) continue;
+            const d = G.HAZARD[h.k], [px, py] = cell(h.x, h.y);
+            ctx.fillStyle = d.kind === 'fog' ? 'rgba(184,200,255,.28)' : 'rgba(0,0,0,.25)'; ctx.fillRect(px, py, ts, ts);
+            ctx.strokeStyle = d.col; ctx.globalAlpha = 0.55; ctx.lineWidth = 1; ctx.strokeRect(px + 0.5, py + 0.5, ts - 1, ts - 1); ctx.globalAlpha = 1;
+            if (h.d) { ctx.save(); ctx.translate(px + ts / 2, py + ts / 2); ctx.rotate(Math.atan2(h.d[1], h.d[0])); ctx.drawImage(sprite(d.shape, d.col), -ts / 2, -ts / 2, ts, ts); ctx.restore(); }
+            else { ctx.globalAlpha = d.kind === 'fog' ? 0.85 : 0.95; ctx.drawImage(sprite(d.shape, d.col), px, py, ts, ts); ctx.globalAlpha = 1; }
+        }
         for (const t of s.traps) if (t.found && s.seen[idx(t.x, t.y)]) spr('trap', '#ff5e5e', t.x, t.y);
-        for (const e of s.items) if (s.seen[idx(e.x, e.y)]) { const l = G.itemLook(s, e.it); spr(l.shape, l.col, e.x, e.y); }
+        for (const e of s.items) if (s.seen[idx(e.x, e.y)] && !G.fogAt(s, e.x, e.y)) { const l = G.itemLook(s, e.it); spr(l.shape, l.col, e.x, e.y); }
         for (const m of s.mobs) {
             if (!G.shown(s, m) || m.x < x0 || m.y < y0 || m.x >= x1 || m.y >= y1) continue;
             const d = G.MOB[m.k], boss = !!d.boss;
@@ -165,7 +172,7 @@
         $('dg-hptxt').textContent = tl('hp', { hp: p.hp, max: p.maxHp });
         $('dg-fd').style.width = (100 * p.food / G.MAX_FOOD) + '%';
         $('dg-fdtxt').textContent = tl(p.food < 150 ? 'food_low' : 'food');
-        const ST = { sleep: 'st_sleep', poison: 'st_poison', haste: 'st_haste', conf: 'st_conf', invis: 'st_invis', regen: 'st_regen', weak: 'st_weak', stun: 'st_stun', ping: 'st_ping' };
+        const ST = { burn: 'st_burn', sleep: 'st_sleep', poison: 'st_poison', haste: 'st_haste', conf: 'st_conf', invis: 'st_invis', regen: 'st_regen', weak: 'st_weak', stun: 'st_stun', ping: 'st_ping' };
         const status = (s.sleeping ? [tl('st_sleep')] : []).concat(Object.keys(p.st).map((k) => (ST[k] ? tl(ST[k]) : k))).join(', ');
         const info = $('dg-info');
         info.textContent = '';

@@ -9,9 +9,9 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
         require('./text-systems.js');                                  // merges its sentences into text.js's MSG
-        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'), require('./text.js'));
-    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta, R.text); }
-})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META, TX) {
+        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'), require('./text.js'), require('./hazards.js'));
+    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta, R.text, R.hazards); }
+})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META, TX, HZ) {
     'use strict';
     const VERSION = 2, W = MAP.W, H = MAP.H, T = MAP.T, DIRS = MAP.DIRS;
     const FLOORS = MOBS.SECTORS.length * MOBS.PER_SECTOR;
@@ -20,7 +20,7 @@
     const MOB = byId(MOBS.LIST), ITEM = byId(ITEMS.LIST), CLASS = byId(CLS.CLASSES), SKILL = byId(CLS.SKILLS);
     const idx = (x, y) => y * W + x;
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const SECTOR = byId(MOBS.SECTORS), MEDAL = byId(META.MEDALS), TRAP = byId(MOBS.TRAPS);
+    const HAZ = HZ.BY_ID, SECTOR = byId(MOBS.SECTORS), MEDAL = byId(META.MEDALS), TRAP = byId(MOBS.TRAPS);
     const sectorOf = (depth) => MOBS.SECTORS[Math.min(MOBS.SECTORS.length - 1, Math.floor((depth - 1) / MOBS.PER_SECTOR))];
     const bossOf = (depth) => MOBS.LIST.find((d) => d.boss === depth);
     const cat = (it) => ITEMS.CATS[ITEM[it.k].cat];
@@ -106,7 +106,7 @@
     const safe = (table, pick) => (v, lang) => (table[v] ? TX.tx(pick(table[v]), lang) : String(v));
     const RESOLVE = {
         mob: safe(MOB, (d) => d.name), item: (v, lang) => itemText(v, lang), skill: safe(SKILL, (d) => d.name), cls: safe(CLASS, (d) => d.name),
-        active: safe(CLASS, (d) => d.active.name), trap: safe(TRAP, (d) => d.name), sector: safe(SECTOR, (d) => d.name), intro: safe(SECTOR, (d) => d.intro),
+        active: safe(CLASS, (d) => d.active.name), haz: safe(HAZ, (d) => d.name), hazinfo: safe(HAZ, (d) => d.info), trap: safe(TRAP, (d) => d.name), sector: safe(SECTOR, (d) => d.name), intro: safe(SECTOR, (d) => d.intro),
         verb: safe(MOB, (d) => (d.ranged ? d.ranged.verb : '')), desc: safe(ITEM, (d) => d.info || ''), medal: safe(MEDAL, (d) => d.name), mobinfo: safe(MOB, (d) => d.info || ''),
         cause: (v, lang) => text(v, lang),
     };
@@ -151,7 +151,8 @@
     // ── the floor ───────────────────────────────────────────────────────────
     const mobAt = (s, x, y) => s.mobs.find((m) => m.x === x && m.y === y);
     const itemsAt = (s, x, y) => s.items.filter((e) => e.x === x && e.y === y);
-    const free = (s, x, y) => s.map.tiles[idx(x, y)] === T.FLOOR && !mobAt(s, x, y) && (s.p.x !== x || s.p.y !== y);
+    const hazAt = (s, x, y) => (s.haz || []).find((h) => h.x === x && h.y === y);
+    const free = (s, x, y) => s.map.tiles[idx(x, y)] === T.FLOOR && !hazAt(s, x, y) && !mobAt(s, x, y) && (s.p.x !== x || s.p.y !== y);
     /** A free floor cell: near (x, y) when given, anywhere otherwise. */
     function freeCell(s, r, x, y) {
         if (x !== undefined) {
@@ -180,8 +181,10 @@
         const d = MOB[m.k], near = Math.max(Math.abs(m.x - s.p.x), Math.abs(m.y - s.p.y)) <= 1;
         if (d.ambush && !m.shown) return false;
         if (d.invisible && !near) return false;
-        return !!s.vis[idx(m.x, m.y)] || !!s.p.st.ping;
+        return (!!s.vis[idx(m.x, m.y)] && (near || !fogAt(s, m.x, m.y))) || !!s.p.st.ping;
     }
+    /** Fog hides what is inside it unless you stand next to it. */
+    const fogAt = (s, x, y) => { const h = hazAt(s, x, y); return !!h && HAZ[h.k].kind === 'fog' && Math.max(Math.abs(x - s.p.x), Math.abs(y - s.p.y)) > 1; };
     const threats = (s) => s.mobs.filter((m) => shown(s, m) && s.vis[idx(m.x, m.y)]);
     function nearest(s) {
         let best = null, bd = 99;
@@ -195,12 +198,68 @@
         return Math.max(Math.abs(dx), Math.abs(dy)) === 1 && MAP.diagOk(s.map, s.p.x, s.p.y, dx, dy);
     }
 
+    // ── terrain hazards (see hazards.js) ──
+    /** Scatters the sector's hazard in a few small patches over the plain rooms: deterministic from (seed, floor), never on the spawn, the stairs or anything
+     *  already placed (`taken`), and never cutting the floor: every cell that was reachable without hazards still is (checked cell by cell). */
+    function placeHazards(s, m, taken) {
+        const def = HZ.ofSector(sectorOf(s.depth).id);
+        s.haz = [];
+        if (!def) return;
+        const r = RNG.make(RNG.mix(s.seed, s.depth * 104729 + 11)), fi = (s.depth - 1) % MOBS.PER_SECTOR, tiles = s.map.tiles;
+        const rooms = m.rooms.filter((o) => !o.vault && o !== m.rooms[0] && !o.last);
+        if (!rooms.length) return;
+        const from = [idx(m.start.x, m.start.y)], blocked = new Set(), solid = (i, t) => MAP.walkable(t) && !blocked.has(i);
+        const count = () => { let n = 0; for (const d of MAP.flood(s.map, from, solid)) if (d >= 0) n++; return n; };
+        const base = count();
+        const ok = (i) => {
+            blocked.add(i);
+            const good = count() === base - blocked.size && MAP.flood(s.map, from, solid)[idx(m.stairs.x, m.stairs.y)] >= 0;
+            if (!good) blocked.delete(i);
+            return good;
+        };
+        for (let n = 1 + (fi >= 2 ? 1 : 0) + (fi >= 4 ? 1 : 0) + RNG.int(r, 2); n > 0; n--) {
+            const d = def.mix ? HAZ[RNG.pick(r, def.mix)] : def, o = RNG.pick(r, rooms), size = 2 + RNG.int(r, 3), dir = RNG.pick(r, DIRS);
+            let x = o.x + RNG.int(r, o.w), y = o.y + RNG.int(r, o.h);
+            for (let k = 0; k < size; k++) {
+                const i = idx(x, y);
+                if (x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h && tiles[i] === T.FLOOR && !taken.has(i) && !hazAt(s, x, y) && (d.kind === 'fog' || ok(i))) {
+                    taken.add(i);
+                    s.haz.push(d.kind === 'push' ? { x, y, k: d.id, d: dir } : { x, y, k: d.id });
+                }
+                if (d.kind === 'push') { x += dir[0]; y += dir[1]; } else { const v = RNG.pick(r, DIRS); x = clamp(x + v[0], o.x, o.x + o.w - 1); y = clamp(y + v[1], o.y, o.y + o.h - 1); }
+            }
+        }
+    }
+    const hazCause = (id) => ({ k: 'cause_haz', p: { haz: id } });
+    const hazDamage = (s, d) => { const [a, b] = HZ.damageRange(d, s.depth, s.tier); return RNG.range(s.rng, a, b); };
+    /** What each kind of hazard does to the hero who steps on it (dx, dy = the step that brought him). */
+    const HAZARD_FX = {
+        poison(s, h, d) { s.p.st.poison = Math.max(s.p.st.poison || 0, d.turns); log(s, 'haz_poison', { haz: d.id }, 'bad'); },
+        slide(s, h, d, dx, dy) {
+            const p = s.p, x = p.x + dx, y = p.y + dy;
+            log(s, 'haz_slide', { haz: d.id }, 'bad');
+            if (MAP.walkable(s.map.tiles[idx(x, y)]) && !mobAt(s, x, y) && MAP.diagOk(s.map, p.x, p.y, dx, dy)) { p.x = x; p.y = y; }
+        },
+        shock(s, h, d) { const n = hazDamage(s, d); log(s, 'haz_shock', { haz: d.id, n }, 'bad'); hurtPlayer(s, n, hazCause(d.id)); },
+        push(s, h, d, dx, dy) {
+            const p = s.p, x = p.x + h.d[0], y = p.y + h.d[1];
+            if (h.d[0] === -dx && h.d[1] === -dy) { log(s, 'haz_push_against', { haz: d.id }, 'info'); return; }     // wading against the stream: no push (else it could never be crossed)
+            log(s, 'haz_push', { haz: d.id }, 'bad');
+            if (MAP.walkable(s.map.tiles[idx(x, y)]) && !mobAt(s, x, y)) { p.x = x; p.y = y; }
+        },
+        collapse(s, h, d) { const n = hazDamage(s, d); s.haz.splice(s.haz.indexOf(h), 1); log(s, 'haz_collapse', { haz: d.id, n }, 'bad'); hurtPlayer(s, n, hazCause(d.id)); },
+        fog() { /* harmless: it only hides things */ },
+        fire(s, h, d) { const n = hazDamage(s, d); log(s, 'haz_fire', { haz: d.id, n }, 'bad'); s.p.st.burn = Math.max(s.p.st.burn || 0, d.turns); hurtPlayer(s, n, hazCause(d.id)); },
+        lag(s, h, d) { s.p.st.stun = 2; log(s, 'haz_lag', { haz: d.id }, 'bad'); },
+        heat(s, h, d) { s.p.food = Math.max(0, s.p.food - d.food); s.p.cd += 3; log(s, 'haz_heat', { haz: d.id }, 'bad'); },
+    };
+
     function newFloor(s) {
         const depth = s.depth, r = RNG.make(RNG.mix(s.seed, depth * 7919 + 17));
         const m = MAP.generate(s.seed, depth), tiles = m.tiles;
         s.map = { w: W, h: H, tiles, stairs: m.stairs };
         s.seen = new Array(W * H).fill(0);
-        s.mobs = []; s.items = []; s.traps = []; s.shop = null; s.bench = null; s.hub = 0; s.altar = null; s.sealed = 0;
+        s.mobs = []; s.items = []; s.traps = []; s.haz = []; s.shop = null; s.bench = null; s.hub = 0; s.altar = null; s.sealed = 0;
         s.p.x = m.start.x; s.p.y = m.start.y;
         const plain = m.rooms.filter((o) => !o.vault), last = m.rooms.find((o) => o.last);
         const others = RNG.shuffle(r, plain.filter((o) => o !== m.rooms[0] && !o.last));
@@ -239,6 +298,7 @@
             const kinds = MOBS.TRAPS.filter((t) => t.effect !== 'pit' || (!boss && depth < FLOORS));
             for (let n = 2 + RNG.int(r, 3); n > 0; n--) { const c = cellIn(RNG.pick(r, plain)); if (c) s.traps.push({ x: c[0], y: c[1], k: RNG.weighted(r, kinds).id, found: 0 }); }
         }
+        placeHazards(s, m, taken);
         updateFov(s);
         if ((depth - 1) % MOBS.PER_SECTOR === 0) log(s, 'sector_intro', { intro: sectorOf(depth).id }, 'info');
         log(s, boss ? 'floor_enter_boss' : 'floor_enter', { depth, sector: sectorOf(depth).id }, 'info');
@@ -252,7 +312,7 @@
         s.map = { w: W, h: H, tiles: m.tiles, stairs: m.stairs };
         s.seen = new Array(W * H).fill(0);
         for (let y = 8; y < 19; y++) for (let x = 13; x < 28; x++) s.seen[idx(x, y)] = 1;
-        s.mobs = []; s.items = []; s.traps = []; s.altar = null; s.sealed = 0; s.hub = 1;
+        s.mobs = []; s.items = []; s.traps = []; s.haz = []; s.altar = null; s.sealed = 0; s.hub = 1;
         s.p.x = m.start.x; s.p.y = m.start.y;
         m.tiles[idx(16, 12)] = T.SHOP; m.tiles[idx(24, 12)] = T.BENCH;
         const stock = [{ k: 'd_cura', n: 1 }, { k: 'd_cura', n: 1 }, { k: 'merendina', n: 1 }, { k: 'panino', n: 1 }];
@@ -564,8 +624,10 @@
             EFFECTS[byTrap[trap.k].effect](s, byTrap[trap.k].power);
             if (s.depth !== was) return true;
         }
+        const hz = hazAt(s, x, y);
+        if (hz) { const d = HAZ[hz.k]; HAZARD_FX[d.kind](s, hz, d, dx, dy); if (s.status !== 'play') return true; }
         pickUp(s);
-        if (t === T.STAIRS) log(s, s.sealed ? 'stairs_locked' : 'stairs_here', null, 'info');
+        if (s.map.tiles[idx(p.x, p.y)] === T.STAIRS) log(s, s.sealed ? 'stairs_locked' : 'stairs_here', null, 'info');
         return true;
     }
     function pray(s) {
@@ -716,6 +778,7 @@
         if (!(p.st.haste && s.turn % 2)) mobsAct(s);                       // with haste the enemies move every other turn
         if (s.status !== 'play') return;
         if (p.st.poison) hurtPlayer(s, 1, { k: 'cause_sick' });
+        if (p.st.burn && s.status === 'play') hurtPlayer(s, 1, { k: 'cause_haz', p: { haz: 'flame' } });
         for (const k in p.st) if (--p.st[k] <= 0) delete p.st[k];
         if (p.cd > 0) p.cd--;
         if (s.turn % 100 >= st.hunger) {
@@ -770,8 +833,10 @@
     // ── walking by itself (tap a cell, the Esplora button, the test bot) ────
     /** Cells the player has seen and can walk on; known traps are avoided unless `through` (a trap in a corridor must not block the way). */
     function knownPass(s, through) {
-        const traps = new Set(through ? [] : s.traps.filter((t) => t.found).map((t) => idx(t.x, t.y)));
-        return (i, t) => !!s.seen[i] && MAP.walkable(t) && !traps.has(i);
+        const avoid = new Set(through ? [] : s.traps.filter((t) => t.found).map((t) => idx(t.x, t.y)));
+        if (!through) for (const h of s.haz || []) if (HAZ[h.k].kind !== 'fog') avoid.add(idx(h.x, h.y));       // seen hazards are walked round (fog is harmless)
+        const me = idx(s.p.x, s.p.y);
+        return (i, t) => !!s.seen[i] && MAP.walkable(t) && (i === me || !avoid.has(i));
     }
     /** The next step [dx, dy] towards a cell, over what the player has seen; null when there is no known way. */
     function travelNext(s, tx, ty) {
@@ -785,12 +850,13 @@
     }
     /** The next step towards the nearest thing worth walking to: something to pick up, or a place not seen yet. */
     function exploreNext(s) {
-        const p = s.p, loot = new Set(s.items.filter((e) => s.seen[idx(e.x, e.y)] && canTake(s, e.it)).map((e) => idx(e.x, e.y)));
+        const hzSet = new Set((s.haz || []).filter((h) => HAZ[h.k].kind !== "fog").map((h) => idx(h.x, h.y)));   // a hazard cell is never an exploration goal (the walk would cross it back and forth)
+        const p = s.p, loot = new Set(s.items.filter((e) => s.seen[idx(e.x, e.y)] && canTake(s, e.it) && !s.traps.some((t) => t.found && t.x === e.x && t.y === e.y) && !fogAt(s, e.x, e.y)).map((e) => idx(e.x, e.y)));
         for (const through of [false, true]) {
             const dist = MAP.flood(s.map, [idx(p.x, p.y)], knownPass(s, through), true);
             let best = -1;
             for (let i = 0; i < dist.length; i++) {
-                if (dist[i] < 1 || (best >= 0 && dist[i] >= dist[best])) continue;
+                if (dist[i] < 1 || hzSet.has(i) || (best >= 0 && dist[i] >= dist[best])) continue;
                 if (loot.has(i) || !s.seen[i - 1] || !s.seen[i + 1] || !s.seen[i - W] || !s.seen[i + W]) best = i;
             }
             if (best < 0) continue;
@@ -819,7 +885,7 @@
     /** The info card of a cell: { title, lines[] } of messages (text(msg, lang)) — what a long press shows. Never acts. */
     function infoAt(s, x, y) {
         const p = s.p, i = idx(x, y);
-        if (x === p.x && y === p.y) { const st = stats(s); return { title: msg('card_you', { cls: s.cls }), lines: [msg('card_you_hp', { hp: p.hp, max: p.maxHp, lvl: p.lvl }), msg('card_you_atk', { atk: st.atk, def: st.def })] }; }
+        if (x === p.x && y === p.y) { const st = stats(s); return { title: msg('card_you', { cls: s.cls }), lines: [msg('card_you_hp', { hp: p.hp, max: p.maxHp, lvl: p.lvl }), msg('card_you_atk', { atk: st.atk, def: st.def })].concat(s.sleeping ? [msg('card_you_sleep')] : []) }; }
         const m = s.mobs.find((e) => e.x === x && e.y === y && shown(s, e));
         if (m) {
             const d = MOB[m.k], lines = [];
@@ -834,6 +900,12 @@
         if (!s.seen[i]) return { title: msg('card_unseen'), lines: [msg('card_unseen_info')] };
         const here = s.items.filter((e) => e.x === x && e.y === y);
         if (here.length) return { title: here.map((e) => msg('m_item', { item: itemRef(s, e.it) })), lines: here.map((e) => e.it.k === '$' ? msg('card_credits') : itemInfoMsg(s, e.it)) };
+        const hz = hazAt(s, x, y);
+        if (hz && !here.length) {
+            const d = HAZ[hz.k], lines = [msg('haz_desc', { hazinfo: d.id })];
+            if (d.dmg) { const [a, b] = HZ.damageRange(d, s.depth, s.tier); lines.push(msg('card_haz_dmg', { a, b })); }
+            return { title: msg('haz_title', { haz: d.id }), lines };
+        }
         const trap = s.traps.find((e) => e.x === x && e.y === y && e.found);
         if (trap) return { title: msg('card_trap', { trap: trap.k }), lines: [msg('card_trap_info')] };
         const t = s.map.tiles[i];
@@ -929,7 +1001,7 @@
     function load(text) {
         try {
             const s = JSON.parse(text);
-            if (s) s.sleeping = 0;
+            if (s) { s.sleeping = 0; s.haz = s.haz || []; }
             if (!s || s.v !== VERSION || !s.p || !s.map || s.map.tiles.length !== W * H || !CLASS[s.cls]) return null;
             return s;
         } catch (e) { return null; }
@@ -974,6 +1046,6 @@
     }
 
     return { VERSION, FLOORS, INV_CAP, MAX_FOOD, MOB, ITEM, CLASS, SKILL, EFFECTS, TARGETED, newGame, act, save, load, stats, hitChance, rollDamage, xpNeed,
-        text, logText, log, itemRef, itemText, itemName, itemInfo, itemLook, MSG: TX.MSG, known, price, canTake, shown, threats, nearest, touching, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, sleepRun, SLEEP_CAP, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
+        text, logText, log, itemRef, itemText, itemName, itemInfo, itemLook, MSG: TX.MSG, known, price, canTake, shown, threats, nearest, touching, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, newFloor, HAZARD_FX, HAZARD: HAZ, hazAt, fogAt, sleepRun, SLEEP_CAP, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
         newMeta, fixMeta, unlocked, recordRun, updateFov, buyUpgrade, upCost, level, checkMedals, counters, UPGRADES: META.UPGRADES, MEDALS: META.MEDALS, enterHub };
 });
