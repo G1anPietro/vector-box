@@ -169,7 +169,7 @@ require_once __DIR__ . '/../includes/head.php';
             <li>A usare gli strumenti giusti, compreso un assistente AI per scrivere e rivedere il codice, controllando sempre il risultato
             con test e prove vere.</li>
         </ul>
-        <p class="muted">In arrivo: Tetris e un roguelike con una lunga campagna, <em>Il Dungeon del Server</em>. Poi: un dominio proprio e un secondo computer per backup e servizi di casa.</p>
+        <p class="muted">In arrivo: un roguelike con una lunga campagna, <em>Il Dungeon del Server</em>. Poi: un dominio proprio e un secondo computer per backup e servizi di casa.</p>
         <p><a class="cta" href="giochi.php">Prova i giochi</a></p>
     </main>
 

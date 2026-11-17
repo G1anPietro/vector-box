@@ -109,7 +109,7 @@ $updated = '2026-11-17';
         <ul>
             <li>Tutto sta su un piccolo server di casa: un database e una cartella di file, fuori dalla parte pubblica del sito. I dettagli su cosa e per quanto tempo sono nella <a href="privacy.php">pagina privacy</a>.</li>
             <li>I dati vecchi si cancellano da soli una volta al giorno (per esempio gli indirizzi IP dei messaggi dopo <?= retentionDays('IP') ?> giorni).</li>
-            <li>Ogni notte è prevista una copia di sicurezza del database, controllata prima di essere salvata, su un secondo disco; le copie sono tenute 30 giorni.</li>
+            <li>Ogni notte è prevista una copia di sicurezza del database, controllata prima di essere salvata, su un secondo disco; le copie giornaliere sono tenute 30 giorni, quelle settimanali 12 settimane e quelle mensili 12 mesi.</li>
             <li>Gli errori del server finiscono in un registro che vede solo l'amministratore: al browser arriva un messaggio generico.</li>
         </ul>
 
@@ -209,7 +209,7 @@ $updated = '2026-11-17';
         <ul>
             <li>Everything is on a small home server: one database and one folder of files, outside the public part of the site. What is kept and for how long is on the <a href="privacy.php">privacy page</a>.</li>
             <li>Old data is deleted automatically once a day (for example the IP addresses of messages after <?= retentionDays('IP') ?> days).</li>
-            <li>A backup copy of the database is scheduled every night, checked before it is saved, on a second disk; copies are kept 30 days.</li>
+            <li>A backup copy of the database is scheduled every night, checked before it is saved, on a second disk; daily copies are kept 30 days, weekly ones 12 weeks and monthly ones 12 months.</li>
             <li>Server errors go to a log only the admin can see: the browser gets a generic message.</li>
         </ul>
 
