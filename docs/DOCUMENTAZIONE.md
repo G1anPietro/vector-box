@@ -1,6 +1,6 @@
 # vector-box — documentazione
 
-> Aggiornata al 2026-11-13 (schema del database **v17**, 186 test). Codice: <https://github.com/G1anPietro/vector-box>
+> Aggiornata al 2026-11-17 (schema del database **v35**, circa 340 test). Mappa del codice: [`ARCHITETTURA.md`](ARCHITETTURA.md). Codice: <https://github.com/G1anPietro/vector-box>
 
 vector-box è un sito personale in stile desktop cyberpunk: finestre, terminale e barra delle applicazioni nel browser.
 Dentro ci sono una chat con stanze e messaggi privati, un lettore di libri privato, giochi da festa per telefono e giochi
@@ -54,6 +54,15 @@ nero) restano nel browser; le etichette sono in inglese come l'index. Nel menu c
 - **Con un account** (MENU → LOGIN / REGISTER; password di almeno 8 caratteri) hai il tuo nome in chat, i messaggi
   privati, il poker con la classifica e il tema grafico che resta.
 - La **biblioteca** e il **curriculum** si vedono solo se l'admin ti dà il permesso (`/grantbook`, `/grantcv`).
+- Per registrarti confermi di aver letto la pagina privacy e di avere almeno 14 anni (o il consenso di un genitore).
+  I nomi sono unici anche cambiando maiuscole e minuscole; i nomi che sembrano dello staff sono riservati.
+- Nella pagina **Account**: biografia, tema, cambio password, **indirizzo e-mail facoltativo** (vale dopo il clic sul
+  link di conferma; le novità del sito arrivano solo se spunti la casella a parte, e ogni messaggio ha il link per
+  smettere), **scarica i tuoi dati** (un file JSON) e **cancella l'account** (chiede la password; chi gestisce una classe
+  deve prima cederla o chiuderla).
+- Pagine pubbliche: **Privacy** (`/pages/privacy.php`), **Sicurezza** (`/pages/sicurezza.php`: come sono protetti
+  account e dati, i limiti, come segnalare una vulnerabilità), **Il progetto**, **Supporta**, **Dona** e
+  **Dove vanno i soldi** (chi dona può avere il distintivo di sostenitore).
 
 ## Chat e messaggi privati
 
@@ -102,9 +111,16 @@ Tutti i giochi sono nella pagina **Giochi** (MENU → GIOCHI), in italiano e ing
   clic su una pila raccoglie tutto quello che può salire). Suggerimento, annulla/ripeti, punteggio, quattro tavoli
   (Classico, Neon, Legno, Notte). Sul computer ha menu e scorciatoie: Ctrl+Z, Ctrl+Y, H (suggerimento), D (distribuisci),
   F2 (nuova partita).
+- **Giochi da soli, senza account** (pagine statiche, record nel browser): **Campo minato** (3 livelli, bandierine,
+  tocco lungo, tastiera), **2048** (scorrimento, frecce, WASD), **Memory** (3 livelli), **Tris** (facile, medio,
+  imbattibile, o in due), **Snake** (scorrimento o tasti; si ferma quando la scheda è nascosta), **Forza 4** (computer
+  a tre livelli o in due), **Impiccato** (parole italiane, 5 argomenti, serie di vittorie), **Simon** (luci e suoni).
 - **Node Breach**: trova la sequenza esadecimale nella griglia in 15 secondi.
 - **ARG Vault**: le chiavi sono nascoste in giro per il sito.
-- **Poker**: per ora è la finestra POKER del desktop.
+- **Poker**: Texas Hold'em nella finestra POKER del desktop (serve un account), fino a 4 al tavolo, anche con i bot.
+  La mano migliore è scelta davvero (le cinque carte migliori su sette, kicker, scala minima A-2-3-4-5, piatto diviso
+  in caso di parità); chi esce a metà mano passa il turno senza bloccare il tavolo.
+- In arrivo (non ancora in questo ramo): **Tetris** e il roguelike **Il Dungeon del Server**.
 
 <img src="img/spia-telefono.png" alt="Chi è la spia? sul telefono" width="300"> <img src="img/solitario.png" alt="Il solitario" width="480">
 
@@ -214,7 +230,9 @@ accanto agli altri, con il nome di chi l'ha caricato. Guida completa per tutti, 
 `/pages/appunti-guida.php` (gli ospiti che aprono gli Appunti arrivano lì).
 
 **Privacy:** il materiale viene letto da Google Gemini (livello gratuito: Google può usarlo per migliorare i suoi
-prodotti). Niente dati personali, voti o documenti.
+prodotti) **solo nelle classi dichiarate di soli maggiorenni** (casella nella richiesta della classe; il rappresentante
+può accendere o spegnere l'AI dalle impostazioni; schema v33, `school_classes.ai_allowed`). Nelle altre classi gli
+appunti funzionano senza AI. Niente dati personali, voti o documenti.
 
 ## Comandi del terminale
 
@@ -243,8 +261,10 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
 | **Chat** | Stanze pubbliche, private (solo l'admin scrive) e nascoste (solo l'admin legge). |
 | **Messaggi privati** | `api/dm.php`, `js/dm.js`. Nessuna via di accesso per l'admin nelle API. |
 | **Lettore di libri** | `pages/reader.php`, `js/reader.js` (epub.js e pdf.js da CDN), `api/books.php`. |
-| **Giochi** | Pagine statiche (`pages/spia.html`, `lupus.html`, `nonhomai.html`, `solitario.html`) con motori lato server per le stanze (`api/spia_lib.php`, `api/lupus_lib.php`). |
-| **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Privacy, Credits. Curriculum (`resume.php`) privato. |
+| **Giochi** | Pagine statiche: da festa (`pages/spia.html`, `lupus.html`, `cucu.html`, `nonhomai.html`) con motori lato server per le stanze (`api/spia_lib.php`, `api/lupus_lib.php`, `api/cucu_lib.php`); da soli (`solitario.html`, `minato.html`, `dueamila.html`, `memory.html`, `tris.html`, `snake.html`, `forza4.html`, `impiccato.html`, `simon.html`), ognuno con il suo `js/` e `css/`, senza server. Poker: `api/poker.php`, `js/poker.js`. |
+| **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Dona (`dona.php`), Dove vanno i soldi (`soldi.php`), Privacy, Sicurezza (`sicurezza.php`, con `/.well-known/security.txt`), Il progetto, Credits. Curriculum (`resume.php`) privato. |
+| **Account e dati** | `pages/account.php`, `api/account_data.php` (esporta/cancella), `api/retention.php` (cancellazione automatica dei dati vecchi), `js/cookie_consent.js` (annunci di Google solo dopo il consenso). |
+| **Amministrazione** | Persone (`pages/admin_users.php`, `api/admin_users.php`), casella e-mail (`pages/mail.php`, `api/mail.php`, `api/mailer.php`, `bin/mail-worker.php`), donatori (`api/donors.php`), statistiche di visite e bot (`pages/stats.php`, `api/bots.php`). |
 | **Appunti di classe** | `pages/appunti.php`, `js/appunti.js`; API `api/classi.php`, `api/appunti.php`, `api/notifiche.php`; lavoratore AI `bin/appunti-ai.php` (Gemini, promemoria). |
 | **Hub Node** (`server.js`) | Facoltativo: chat in tempo reale con una sola connessione SSE per browser. |
 
@@ -283,22 +303,25 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
 ```
 public/            radice del sito (l'unica cartella servita da nginx)
   index.php        il desktop
-  pages/           pagine: giochi, lettore, curriculum, privacy, supporta, giochi statici
-  api/             endpoint JSON e librerie condivise (helpers, database, rate limiter, motori dei giochi, visite)
-  includes/        head.php (intestazioni di sicurezza, versione, registro visite), ads.php
+  pages/           pagine: giochi, lettore, appunti, account, privacy, sicurezza, supporta, pannelli admin, giochi statici
+  api/             endpoint JSON e librerie condivise (helpers, database, rate limiter, motori dei giochi, visite, posta)
+  includes/        head.php (intestazioni di sicurezza, versione, registro visite), ads.php, appunti-top.php
   js/ css/ assets/ script, stili, icone, font self-hosted
-bin/appunti-ai.php lavoratore degli Appunti (promemoria, trascrizioni, documenti AI), da lanciare ogni 5 minuti
-lib/               codice condiviso con i test
+  errors/          pagine di errore statiche (generate da tools/make-error-pages.py)
+  .well-known/     security.txt (come segnalare una vulnerabilità)
+bin/               lavoratori da riga di comando: appunti-ai.php (promemoria, trascrizioni, documenti AI; ogni 5 minuti),
+                   appunti-whisper.php (audio), appunti-demo.php (classe di esempio), mail-worker.php (coda delle e-mail)
+lib/               codice condiviso con i test e con Node
 server.js          hub Node / pannello
 tests/             test automatici (node:test)
-tools/backup.sh    backup notturno
+tools/             backup.sh (backup notturno), make-error-pages.py, make-lefty-css.py, whisper-transcribe.py
 updatesite.sh      aggiornamento del sito sul server
 data/              (non in git) database, sessioni, libri, copertine, log, appunti/ (file delle classi), vapid.json
 ```
 
 ## 4. Database
 
-SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **14**): le modifiche sono funzioni
+SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi **35**): le modifiche sono funzioni
 `migrateVN()` in `public/api/database.php`, eseguite una sola volta sotto lock.
 
 | Versione | Cosa aggiunge |
@@ -317,6 +340,27 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V12 | Appunti di classe: `app_settings`, `school_classes`, `class_members`, `class_subjects`, `class_timetables` (orario a versioni, JSON), `class_items` e `class_item_files` (materiale e trascrizioni), `class_events` (calendario), `class_docs` (documenti dell'AI), `ai_usage` |
 | V13 | notifiche: `notifications` (campanella), `push_subscriptions` (Web Push), `class_event_reminders` (promemoria già mandati) |
 | V14 | `class_docs.author_id`: documenti fatti con un'altra AI e caricati a mano (NULL = scritti dall'AI del sito) |
+| V15 | `class_events.period_from/period_to` (materiale da studiare), `class_bell_sent` (avvisi di fine ora), `review_cards` (ripasso a intervalli) |
+| V16 | `class_roles`, `class_members.role_id/perms` (ruoli e permessi) |
+| V17 | `class_topics`, `class_homework`, `class_days_off`, `class_turns`, `class_board` (argomenti, compiti, giorni senza lezione, turni, bacheca) |
+| V18 | `class_item_files.sha256` (file doppi riconosciuti) |
+| V19 | `quiz_answers`, `quiz_seen`, `score_events` (classifica, risposte giudicate dal server) |
+| V20 | `notes_fts` (ricerca a testo pieno FTS5, tenuta aggiornata da trigger) |
+| V21 | `custom_quizzes` (quiz su misura) |
+| V22 | `class_log` (registro delle modifiche di una classe) |
+| V23 | `review_cards.fails` |
+| V24 | `class_items.ai_state` (controllo dell'AI sui caricamenti) |
+| V25 | `read_progress` (avanzamento di lettura dei documenti) |
+| V26 | `class_items.topic_id/topic_manual`, `class_docs.topic_id` (materiale per argomento) |
+| V27 | `share_links` (link temporanei: si salva solo l'hash del token) |
+| V28 | tema predefinito `monochrome` per gli account con i vecchi temi |
+| V29 | `school_classes.is_demo` (classe di esempio) |
+| V30 | `share_links.max_views` |
+| V31 | `bot_stats` (bot contati per giorno, tipo ed etichetta) |
+| V32 | `donors` (donazioni annotate a mano, distintivo di sostenitore, account senza annunci) |
+| V33 | `school_classes.ai_allowed`, `ai_adults_at`, `ai_adults_by` (AI solo per le classi dichiarate di maggiorenni) |
+| V34 | indice unico `idx_accounts_username_nocase` (nomi unici senza distinguere maiuscole) |
+| V35 | e-mail: `accounts.email`, `email_verified`, `email_optin`, `email_optin_at`; `mail_messages` (bozze e inviati), `mail_queue` (coda) |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
 `runMigrations()` (`updatesite.sh` legge la versione attesa da `database.php`). Sul server il database non va aperto con `sqlite3` da un utente
@@ -336,7 +380,7 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | Endpoint | Chi | Richiesta | Risposta |
 |---|---|---|---|
 | `check_session.php` | tutti | GET | `logged_in`, `username`, `user_id`, `is_admin`, `csrf_token`, `chat_stream` (`url`, `token` monouso da 60 s, `cookie`: se l'hub è sullo stesso sito il token arriva nel cookie `vb_chat_ticket` e qui è `null`) |
-| `login.php` | tutti | POST `{username, password}`; registrazione `{action:"register", username, password}` | `username`, `is_admin`, `theme`, `csrf_token`. Limiti: 10 tentativi/5 min per IP, 5 per utente; 5 registrazioni/ora per IP |
+| `login.php` | tutti | POST `{username, password}`; registrazione `{action:"register", username, password}` | `username`, `is_admin`, `theme`, `csrf_token`. La registrazione vuole anche `accept_terms` (privacy letta, almeno 14 anni). Limiti: 10 tentativi/5 min per IP, 5 per coppia utente + IP; 5 registrazioni/ora per IP; se il limitatore si guasta qui si rifiuta. Nomi unici senza distinguere maiuscole (v34), nomi da staff riservati |
 | `logout.php` | tutti | GET o POST (rifiutato se parte da un altro sito) | redirect a `pages/login.php`, o JSON con `Accept: application/json` |
 | `save_theme.php` | registrati | POST `{theme}` | `theme` |
 | `get_user_profile.php` | tutti | GET `?username=` | `username`, `is_admin`, `created_at`, `bio` |
@@ -396,6 +440,14 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | `appunti.php` | membri della classe (admin: tutte) | GET `?action=` `tree` (materie → giorni con i conteggi, per l'Archivio), `file_text&id=` (testo estratto o trascritto di un file), `lessons&date=` (lezioni del giorno), `suggest&ts=` (lezione di un momento), `items` (filtri `subject_id`, `kind`, `from`, `to`), `file&id=`, `events`, `usage`, `docs`, `doc&id=`, `zip&scope=day&date=[&subject_id]` / `scope=subject&subject_id` / `scope=event&event_id` (materiale + INDICE.txt + PROMPT.txt, al massimo 300 MB), `ai_pack` con gli stessi parametri (un file Markdown con prompt e tutto il testo). POST `upload_doc {kind, target:"lesson"|"event", subject_id+lesson_date | event_id, title, content o file}` e `delete_doc {id}` (solo documenti caricati a mano, autore o responsabile). POST multipart `upload {class_id, subject_id, kind, lesson_date, period, title, body, files[]}`; JSON `edit_item`, `delete_item` (autore o responsabile), `add_event`, `edit_event`, `delete_event`, `generate` ("Genera ora", una volta l'ora per classe) |
 | `notifiche.php` | registrati | GET `?action=list` (ultime 30, non lette, dispositivi), `vapid` (chiave pubblica). POST `read {ids}`, `read_all`, `subscribe {endpoint, keys}`, `unsubscribe {endpoint}`, `test` |
 
+| `bacheca.php` | membri | GET `?action=overview&class_id=` (lezione in corso, la prossima, annunci). POST `save_announcement`, `delete_announcement` (rappresentante o permesso "bacheca") |
+| `calendario.php` | membri | GET `?action=overview&class_id=[&from&to]` (argomenti, compiti, giorni senza lezione, turni). POST `save_topic`, `confirm_topic`, `delete_topic`, `save_homework`, `delete_homework`, `save_dayoff`, `delete_dayoff`, `save_turn_order`, `make_turns`, `save_turn`, `delete_turn`, `clear_turns` |
+| `classifica.php` | membri | GET `?action=board&class_id=`. POST `set_in {class_id, in}` (partecipo / esco: i miei punti si cancellano), `settings {class_id, on, who}` |
+| `condividi.php` | tutti (il link è la chiave) | GET `?t=TOKEN&action=info` (conta un'apertura), `?t=TOKEN&action=file[&dl=1]`; mai indicizzato, limite per IP |
+
+Le altre azioni di `appunti.php` aggiunte dopo (caricamenti a pezzi `upload_*`, `search`, `quiz_answer`, `review_answer`,
+`custom_quiz_*`, `share_*`, `move_items`, `delete_items`) sono descritte nelle sezioni in fondo.
+
 Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `altro`. Tipi di data: `verifica`,
 `interrogazione`, `altro`. Tipi di documento: `lezione`, `domande` (JSON: `{domande:[{domanda, risposta, origine: prof|ai, fonte}]}`), `completo`,
 `riassunto`, `preparazione`, `quiz` (JSON), `schema` (JSON:
@@ -406,21 +458,40 @@ Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `al
 | Endpoint | Chi | Cosa fa |
 |---|---|---|
 | `moderate_user.php` | admin | POST `{action:"ban"|"timeout"|"unban", username, minutes}` |
+| `admin_users.php` | admin | Pannello delle persone (`pages/admin_users.php`). GET `?action=list&q=&filter=all\|admins\|banned\|email\|news\|supporters\|nobooks&page=` (50 per pagina), `?action=user&id=`. POST `set_flag {user_id, flag, value}` (`can_read_books`, `can_upload_books`, `can_view_resume`, `ads_free`), `ban` / `unban` / `timeout {user_id, minutes}` (mai su un admin), `badge {user_id, value}`, `send_mail {user_id, subject, body}` (un messaggio, solo a un indirizzo confermato) |
+| `mail.php` | admin | Casella e-mail (`pages/mail.php`). GET `status`, `list&folder=draft\|sent\|queue`, `get&id=`. POST `save_draft {id?, subject, body, audience: optin\|supporters}`, `delete`, `send_test` (solo al proprio indirizzo confermato), `send` (una riga in coda per chi ha confermato l'indirizzo e chiesto le novità), `process` (manda subito ciò che aspetta) |
+| `mail_link.php` | tutti (token firmato) | GET `?a=verify&t=` conferma l'indirizzo, `?a=unsub&t=` ferma le novità; risponde in testo semplice |
+| `donors.php` | admin | GET `list`; POST `add {amount, username?, name?, date?, public?, note?}`, `remove {id}`, `badge {username, value}`, `ads_free {username, value}` |
+| `account_data.php` | registrati | GET `?action=export` (file JSON con tutti i dati dell'account); POST `{action:"delete", password, delete_materials}` cancella l'account e chiude la sessione |
+| `pihole.php` | admin | numeri di Pi-hole per la finestra STATUS |
 | `get_log.php` | admin | log degli errori (contiene IP) |
 | `status.php` | tutti | uptime, carico, memoria, servizi di `STATUS_CHECKS` (solo i nomi) |
 | `telemetry.php` | tutti | percentuali di CPU e RAM |
 
 Le librerie (`helpers.php`, `database.php`, `rate_limiter.php`, `epub_meta.php`, `spia_lib.php`, `lupus_lib.php`,
 `visits.php`, `debug_logger.php`, `classi_lib.php`, `classi_ai.php`, `appunti_lib.php`, `appunti_ai.php`, `gemini.php`,
-`webpush.php`, `notifiche_lib.php`) non sono endpoint: se richieste direttamente definiscono solo funzioni.
+`webpush.php`, `notifiche_lib.php`, `cucu_lib.php`, `classifica_lib.php`, `account_data_lib.php`, `mailer.php`,
+`retention.php`, `bots.php`, `pdf_lib.php`, `appunti_zip.php`, `appunti_pptx.php`, `appunti_demo.php`, `poker_stats.php`)
+non sono endpoint: se richieste direttamente definiscono solo funzioni.
 
 ## 6. Sicurezza
 
 - **Sessioni:** cookie `HttpOnly`, `Secure` (in HTTPS), `SameSite=Lax`, modalità strict (ID inventati rifiutati), ID
   rigenerato al login. `initSession()` apre e chiude subito (sola lettura); chi scrive in sessione usa `initSession(true)`
   e `session_write_close()`.
+  A ogni richiesta `initSession()` rilegge dal database se l'account esiste ancora e se è admin: un account cancellato
+  torna ospite, un admin declassato perde subito i diritti (`sessionIsAdmin()`, `requireAdmin()`, `requireLogin()`
+  guardano il database, non il valore in sessione).
+- **Password:** solo l'hash (`password_hash(…, PASSWORD_DEFAULT)`, oggi bcrypt), da 8 a 72 byte; `verifyPasswordSafe()`
+  costa lo stesso per un utente che non esiste. Non c'è recupero della password né accesso in due passaggi.
+- **Accesso:** `login_ip` 10/5 min per indirizzo e `login_user` 5/5 min per coppia nome + indirizzo (un estraneo non
+  blocca il vero proprietario); `register` 5/ora. Per questi il limitatore **rifiuta se si guasta** (`$failClosed`);
+  per tutti gli altri lascia passare. Le stesse regole valgono per il modulo di `pages/login.php`.
+- **Nomi:** unici senza distinguere maiuscole (indice v34), riservati `guest_`, `demo_` e quelli da staff
+  (`validateNewUsername()`).
 - **CSRF:** ogni endpoint che modifica chiama `requireCsrf()`; quelli admin anche `requireAdmin()`. Il logout (un link)
-  rifiuta le richieste che partono da altri siti (`Sec-Fetch-Site`).
+  rifiuta le richieste che partono da altri siti (`Sec-Fetch-Site`). Eccezioni volute: login e registrazione (solo
+  limiti di richieste) e `mail_link.php` (GET con token firmato).
 - **Errori:** mai il messaggio dell'eccezione al browser: `failInternal()` scrive nel log e risponde in modo generico.
 - **IP del client:** solo con `getClientIp()`; `X-Forwarded-For` vale solo dai proxy in `TRUSTED_PROXIES`.
 - **XSS:** il testo degli utenti entra con `textContent`, mai `innerHTML` o `onclick` inline.
@@ -443,6 +514,28 @@ Le librerie (`helpers.php`, `database.php`, `rate_limiter.php`, `epub_meta.php`,
   indirizzi scelti dagli utenti.
 - **File caricati:** estensione e contenuto vero controllati, nome ripulito, salvati fuori dalla cartella pubblica.
 - **Biblioteca e curriculum privati:** solo per gli account con il permesso; `robots.txt` tiene fuori i motori di ricerca.
+- **Lettore:** jszip, pdf.js ed epub.js arrivano da CDN con `integrity` (SRI) e `crossorigin`; pdf.js è aperto con
+  `isEvalSupported: false` (anche nel lettore PDF degli Appunti). Negli EPUB le voci lette dallo zip hanno un tetto
+  di dimensione (`epub_meta.php`).
+- **Intestazioni** (`sendBaseSecurityHeaders()`, su ogni risposta PHP): `nosniff`, `X-Frame-Options: SAMEORIGIN`,
+  `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, e HSTS quando la richiesta è HTTPS. Le pagine
+  statiche le ricevono solo da nginx (`docs/DEPLOY.md`).
+- **Stream PHP della chat:** al massimo 40 aperture al minuto per indirizzo (`sse_open`), poi il browser aspetta.
+- **E-mail** (`api/mailer.php`): token dei link firmati con HMAC e un segreto generato dal sito (`app_settings.mail_secret`);
+  quello di conferma è firmato sull'indirizzo, quindi dopo un cambio non vale più. Oggetto e mittente passano da
+  `mailLine()` (niente a capo: nessuna intestazione aggiunta). Le novità si mandano solo a indirizzo confermato + consenso,
+  ricontrollati al momento dell'invio; ogni riga della coda viene prenotata prima dell'invio (niente doppioni); tetto
+  giornaliero `MAIL_DAILY_LIMIT`. La chiave del servizio sta solo nel `.env`.
+- **Dati personali:** `api/retention.php` cancella da solo, una volta al giorno, i dati vecchi (`RETENTION_*_DAYS`);
+  `api/account_data.php` esporta e cancella l'account (con la password). Gli annunci di Google si caricano solo dopo il
+  consenso (`js/cookie_consent.js`).
+- **Bot** (`api/bots.php`): scraper rifiutati con 403, scanner frenati con 429, crawler di AI rifiutati con `BOT_BLOCK_AI=true`.
+- **Pannello Node:** niente sorgente PHP servito tramite percorsi con `%` codificati (`tests/node-sorgenti.test.js`).
+- **Segnalazioni:** `public/.well-known/security.txt` (RFC 9116) porta alla pagina `pages/sicurezza.php`, che descrive
+  queste difese in parole semplici, i limiti e come segnalare un problema. Il campo `Expires` va rinnovato a mano
+  (meno di un anno avanti): `tests/sicurezza-pagina.test.js` fallisce quando è scaduto.
+- **Limiti da conoscere:** il database e le copie di backup non sono cifrati; i token dei link temporanei e delle
+  e-mail stanno nell'URL (quindi nei log di nginx); la CSP ammette gli stili inline.
 
 ## 7. Configurazione (`.env`)
 
@@ -467,6 +560,15 @@ Si parte da `.env.example`, che spiega ogni voce.
 | `DEMO_CLASS` | `false` = il lavoratore non crea la classe di esempio degli Appunti (predefinito: acceso) |
 | `SITE_URL` | indirizzo del sito (anteprime dei link, contatto VAPID delle notifiche push) |
 | `WEBPUSH_EXTRA_HOSTS` | solo per i test: servizi push finti ammessi |
+| `MAIL_DRIVER`, `MAIL_FROM`, `MAIL_HTTP_URL`, `MAIL_API_KEY`, `MAIL_DAILY_LIMIT` | e-mail: spenta se `MAIL_DRIVER` è vuoto; `log` scrive in `data/mail.log`, `http` manda a `MAIL_HTTP_URL` (formato JSON di Resend) con la chiave; tetto di messaggi al giorno |
+| `DONATE_URL`, `DONATE_PAYPAL_URL`, `DONATE_GOAL_TEXT`, `DONATE_GOAL_EUR`, `DONATE_RAISED_EUR` | pulsanti e obiettivo della pagina Dona (nascosti se vuoti) |
+| `RETENTION_VISITS_DAYS`, `RETENTION_BOTS_DAYS`, `RETENTION_IP_DAYS`, `RETENTION_CHAT_DAYS`, `RETENTION_DM_DAYS`, `RETENTION_NOTIF_DAYS`, `RETENTION_SHARE_DAYS` | giorni di conservazione (predefiniti 90, 30, 90, 365, 365, 180, 30); la pagina privacy stampa gli stessi numeri |
+| `PIHOLE_URL`, `PIHOLE_PASSWORD`, `PIHOLE_API_TOKEN` | numeri di Pi-hole nella finestra STATUS (solo admin) |
+| `WHISPER_CMD`, `WHISPER_MODEL`, `WHISPER_MODELS_DIR`, `WHISPER_TIMEOUT` | trascrizione degli audio sul server |
+| `GEMINI_SMART2_RPM`, `GEMINI_SMART2_RPD`, `GEMINI_SMART3_RPM`, `GEMINI_SMART3_RPD` | limiti dei modelli di riserva |
+| `AI_CLASSIFY` | `false` = l'AI non controlla i caricamenti (non è in `.env.example`; predefinito acceso) |
+| `BOT_BLOCK_AI` | `true` = rifiuta anche i crawler di AI (non è in `.env.example`; predefinito spento) |
+| `NODE_ENV`, `COOKIE_SECURE`, `NODE_SESSION_DB` | Node: modalità, cookie solo in HTTPS, file delle sessioni del pannello (predefinito `data/node_sessions.sqlite`) |
 
 ## 8. Sviluppo in locale
 
@@ -475,7 +577,7 @@ cp .env.example .env              # e riempirlo
 npm install
 php -S 127.0.0.1:8080 -t public   # PHP_CLI_SERVER_WORKERS=4 per provare SSE e concorrenza
 npm start                         # hub Node (facoltativo)
-npm test                          # 186 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
+npm test                          # circa 340 test: account, CSRF, stanze, chat, hub, giochi, DM, visite, permessi, appunti…
 php bin/appunti-ai.php            # un giro del lavoratore degli Appunti (serve GEMINI_API_KEY per la parte AI)
 ```
 
@@ -520,6 +622,9 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - Il pannello Node (Minecraft, Wake-on-LAN) è vecchio e non va esposto.
 - La pagina Doom non funziona.
 - Il poker è ancora una finestra del desktop: va rifatto come pagina della sezione Giochi.
+- Account: niente accesso in due passaggi e niente recupero della password dimenticata.
+- E-mail: spenta finché non c'è `MAIL_DRIVER`; il driver `http` parla solo il formato di Resend.
+- Database e copie di backup non cifrati (vedi `pages/sicurezza.php`, "I limiti").
 - Le cancellazioni dei messaggi arrivano in tempo reale solo con l'hub Node attivo.
 - Appunti: con il livello gratuito di Gemini le richieste al giorno sono poche (circa 450 veloci e 18 del modello migliore):
   con molte classi i documenti possono arrivare il giorno dopo. Non c'è ancora la copia su Google Drive.
@@ -567,3 +672,15 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - **LIVE dell'admin nei giochi da festa** (`lib/spia-admin.js`, servito solo alle sessioni admin da `api/spia.php?action=ext`): oltre alla pressione lunga sul titolo, c'è un piccolo pulsante **● LIVE** in basso a sinistra su ogni schermata, anche senza essere in una stanza e con i giocatori su altri telefoni. Mostra tutte le stanze con ruoli, luoghi e voti; in **Cucù** per ogni giocatore le vite e la carta (i giocatori non le vedono), il mazziere e di chi è il turno. In una stanza di Cucù si apre come foglio a mezza altezza, così il tavolo resta visibile. `tests/cucu-casi-limite.test.js` controlla che solo l'admin riceva questi dati.
 - **Link temporanei, due freni in più (schema v30):** `share_links.max_views` (0 = nessun limite; 1, 5 o 20 scelti nel Condividi; conta le aperture della pagina `info`, non i byte del file, quindi non è una difesa contro chi scarica direttamente) e l'interruttore del rappresentante `settings.links_on` della classe (Impostazioni › "Link temporanei della classe", permesso `settings`): spento, `share_create` risponde `links_off` e `condividi.php` risponde 404 anche ai link già mandati (tornano validi se si riaccende).
 
+
+## 16–17/11 — sicurezza, privacy, e-mail, persone, giochi (schema v35)
+- **Sei giri di sicurezza** (vedi la sezione 6): sessione ricontrollata sul database, admin letto dal database in giochi, libri, calendario e bacheca, limiti di accesso per account + indirizzo con limitatore che rifiuta se si guasta, nomi unici senza maiuscole (v34), risposte dei quiz fuori dallo zip della verifica, permessi dei ruoli limitati a quelli di chi li modifica, SRI e pdf.js più chiuso, tetto alle aperture dello stream, tetti alle voci degli zip e copertine controllate, niente sorgente PHP dal pannello Node, cartella temporanea del backup non più scrivibile da tutti. Test: `tests/sicurezza-fase1.test.js`, `tests/node-sorgenti.test.js`, `tests/classi-permessi.test.js`.
+- **Privacy (GDPR):** pagina `pages/privacy.php` completa, conferma di privacy ed età alla registrazione, `api/account_data.php` (scarica i dati, cancella l'account), `api/retention.php` (conservazione automatica), banner dei cookie (`js/cookie_consent.js`: niente da Google prima del consenso), AI degli Appunti solo per le classi dichiarate di maggiorenni (v33). Test: `tests/privacy-diritti.test.js`, `tests/cookie-consenso.test.js`, `tests/ai-maggiorenni.test.js`.
+- **Donazioni:** `pages/dona.php`, `pages/soldi.php` ("Dove vanno i soldi"; dati in `data/soldi.json`, esempio in `docs/soldi.example.json`), `api/donors.php`, distintivo di sostenitore e account senza annunci (v32). Test: `tests/supporto.test.js`.
+- **Bot** (v31): `api/bots.php` li classifica e li conta, sezione nella pagina `pages/stats.php`.
+- **E-mail** (v35, spenta finché `MAIL_DRIVER` è vuoto): indirizzo facoltativo con conferma e consenso separato alle novità, coda `mail_queue`, trasporto `log` o `http`, casella dell'admin `pages/mail.php` (bozze, inviati, coda, prova, invia), link per smettere in ogni messaggio (`api/mail_link.php`), lavoratore `bin/mail-worker.php`. Test: `tests/email.test.js`.
+- **Pannello delle persone** (`pages/admin_users.php`, `api/admin_users.php`, `js/admin_users.js`): ricerca, filtri, permessi, ban/timeout, distintivo, un messaggio diretto a un indirizzo confermato. Test: `tests/admin-utenti.test.js`.
+- **Poker:** classifica vera delle mani, piatti divisi, chi esce a metà mano non blocca il tavolo. Test: `tests/poker.test.js`, `tests/poker-mano.test.js`.
+- **Giochi nuovi** (pagine statiche in `pages/*.html`, regole provate senza browser in `tests/minato.test.js`, `tests/dueamila.test.js`, `tests/arcade.test.js`, `tests/arcade2.test.js`): Campo minato, 2048, Memory, Tris, Snake, Forza 4, Impiccato, Simon. Stile comune in `css/arcade.css`.
+- **Lettore:** opzione "Come un libro" (un foglio che gira sulla pagina; spenta con `prefers-reduced-motion`).
+- **Pagina Sicurezza** (`pages/sicurezza.php`) e `/.well-known/security.txt`. Test: `tests/sicurezza-pagina.test.js`.

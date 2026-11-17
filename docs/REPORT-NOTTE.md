@@ -1,6 +1,6 @@
 # Report della notte (lavoro autonomo sul piano Appunti)
 
-Locale, non in git. Ogni voce: cosa è stato fatto, dove, versione in produzione. Test: `npm test`.
+Resoconto storico della notte del 14–15/11 (schema v26); lo stato di oggi è in `DOCUMENTAZIONE.md`. Ogni voce: cosa è stato fatto, dove, versione in produzione. Test: `npm test`.
 
 ## Fatto
 1. **Pulsanti troppo larghi sul telefono** — la testata non scorre più di lato (pulsanti che si restringono sotto i 560 px, `overflow-x: clip` su tutte le pagine Appunti). v2.4.86→87.

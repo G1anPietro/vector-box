@@ -29,14 +29,14 @@ require_once __DIR__ . '/../includes/head.php';
 
         <nav class="toc" aria-label="Indice">
             <a href="#cosa">Cos'è</a><a href="#come">Come funziona</a><a href="#parti">Le parti</a><a href="#sicurezza">Sicurezza</a>
-            <a href="#server">Il server</a><a href="#problemi">Problemi risolti</a><a href="#numeri">In numeri</a><a href="#imparato">Cosa ho imparato</a>
+            <a href="#server">Il server</a><a href="#limiti">I limiti</a><a href="#problemi">Problemi risolti</a><a href="#numeri">In numeri</a><a href="#imparato">Cosa ho imparato</a>
         </nav>
 
         <h2 id="cosa">Cos'è</h2>
         <p>vector-box è un sito in stile "desktop cyberpunk": si apre nel browser e sembra un sistema operativo, con finestre da
         trascinare, un terminale con i suoi comandi e una barra delle applicazioni. Dentro ci sono una chat con stanze e messaggi
         privati, una biblioteca di libri da leggere online per gli amici, gli appunti condivisi di una classe di scuola e una serie di giochi: giochi da festa da fare con il
-        telefono (Chi è la spia?, Lupus, Non ho mai…) e giochi da soli come il Solitario. Lo usa ogni giorno un gruppo di amici.</p>
+        telefono (Chi è la spia?, Lupus, Cucù, Non ho mai…), il poker e una decina di giochi da soli, dal Solitario al Campo minato. Lo usa ogni giorno un gruppo di amici.</p>
 
         <h2 id="come">Come funziona</h2>
         <div class="flow" role="img" aria-label="Schema: il browser parla con nginx; nginx passa le pagine a PHP, che usa il database SQLite, e la chat in tempo reale a Node.js">
@@ -49,7 +49,7 @@ require_once __DIR__ . '/../includes/head.php';
             </div>
         </div>
         <p><strong>PHP</strong> è la "fonte di verità": salva ogni messaggio, controlla chi può fare cosa e fa girare i giochi.
-        Il database è <strong>SQLite</strong>, un unico file, con le modifiche alla struttura numerate (oggi siamo alla versione 26)
+        Il database è <strong>SQLite</strong>, un unico file, con le modifiche alla struttura numerate (oggi siamo alla versione 35)
         e applicate da sole a ogni aggiornamento. Per la chat in tempo reale c'è un piccolo server <strong>Node.js</strong>: invece di
         far chiedere a ogni browser "ci sono messaggi nuovi?" ogni pochi secondi, tiene aperta una sola connessione
         (<abbr title="Server-Sent Events">SSE</abbr>) e spinge i messaggi appena arrivano. Se Node si ferma, il sito torna da solo al
@@ -61,31 +61,59 @@ require_once __DIR__ . '/../includes/head.php';
             riconosciuto da un token. Il server distribuisce i ruoli segreti e ogni telefono vede solo la sua parte, così nessuno può
             sbirciare dal codice della pagina. Tutte le mosse avvengono dentro una transazione del database, per evitare che due
             telefoni che votano insieme si "pestino i piedi".</li>
-            <li><strong>Cinque lingue</strong> nei giochi (italiano, inglese, spagnolo, francese, tedesco).</li>
+            <li><strong>Cinque lingue</strong> nei giochi da festa (italiano, inglese, spagnolo, francese, tedesco).</li>
+            <li><strong>Sedici giochi:</strong> quattro da festa (Chi è la spia?, Lupus, Cucù, Non ho mai…), il poker Texas Hold'em
+            con la vera classifica delle mani (le cinque carte migliori su sette, piatti divisi), e undici da soli: Solitario, Campo
+            minato, 2048, Memory, Tris (con un computer imbattibile), Snake, Forza 4, Impiccato, Simon, Node Breach e la caccia al
+            tesoro dell'ARG Vault. Quasi tutti i giochi da soli sono pagine che non hanno bisogno del server; le regole dei più recenti sono provate dai test senza aprire un browser.</li>
             <li><strong>Pensato prima per il telefono:</strong> su schermo piccolo il desktop diventa un'app alla volta con una barra di
             schede; i giochi si installano come app e il Solitario funziona anche offline.</li>
             <li><strong>Messaggi privati</strong> con blocco degli utenti, e i messaggi vecchi che si caricano da soli scorrendo.</li>
-            <li><strong>Biblioteca</strong> con lettore EPUB e PDF, copertine, segnalibri e avanzamento salvato.</li>
+            <li><strong>Biblioteca</strong> con lettore EPUB e PDF, copertine, segnalibri, avanzamento salvato e, a scelta, la pagina
+            che gira "come un libro".</li>
+            <li><strong>Privacy presa sul serio:</strong> una <a href="privacy.php">pagina privacy</a> completa, il pulsante per scaricare
+            tutti i propri dati e quello per cancellare l'account, i dati vecchi che si cancellano da soli, e un avviso sui cookie
+            che non carica niente da Google prima del consenso.</li>
+            <li><strong>E-mail facoltativa:</strong> indirizzo confermato con un link firmato, consenso separato per le novità, una coda
+            di invio e un link per smettere in ogni messaggio. Resta spenta finché non viene configurata.</li>
+            <li><strong>Pannelli per chi gestisce:</strong> le persone (permessi, sospensioni, distintivo di sostenitore), la casella
+            e-mail, le donazioni con la pagina <a href="soldi.php">Dove vanno i soldi</a>, le statistiche di visite e bot.</li>
             <li><strong>Appunti di classe:</strong> gli studenti caricano foto, audio e file delle lezioni (a pezzi, così riprendono anche se cade la
             connessione) e un'AI li unisce in appunti, schemi, dispense, riassunti e quiz per ogni verifica, divisi per materia, giorno e
             argomento. C'è una ricerca nel materiale, un calendario, i turni delle interrogazioni, una classifica in cui i punti li conta il
-            server (la pagina non conosce la risposta giusta prima che tu risponda) e promemoria sul telefono scelti da ciascuno.</li>
-            <li><strong>Test automatici:</strong> oltre 200 test che avviano ogni volta una copia del sito con un database vuoto e controllano
+            server (la pagina non conosce la risposta giusta prima che tu risponda) e promemoria sul telefono scelti da ciascuno.
+            L'AI lavora solo nelle classi dichiarate di soli maggiorenni; una classe di esempio è aperta a tutti, in sola lettura.</li>
+            <li><strong>Test automatici:</strong> circa 340 test che avviano ogni volta una copia del sito con un database vuoto e controllano
             account, permessi, chat, giochi, sicurezza. Prima di ogni modifica pubblicata devono passare tutti.</li>
         </ul>
 
         <h2 id="sicurezza">Sicurezza</h2>
         <p>Un sito aperto su Internet riceve tentativi di attacco ogni giorno. Le difese principali:</p>
         <ul>
-            <li><strong>CSRF:</strong> ogni azione che modifica qualcosa richiede un token segreto legato alla sessione, così un altro sito
+            <li><strong>CSRF:</strong> le azioni che modificano qualcosa richiedono un token segreto legato alla sessione, così un altro sito
             non può far compiere azioni al tuo browser a tua insaputa.</li>
             <li><strong>XSS:</strong> il testo scritto dagli utenti viene sempre inserito come testo, mai come HTML, quindi non può
             contenere codice.</li>
-            <li><strong>Content-Security-Policy:</strong> il browser esegue solo gli script del sito e di pochi indirizzi fidati.</li>
-            <li><strong>Sessioni</strong> con cookie protetti e ID rigenerato a ogni accesso; <strong>password</strong> salvate solo come
-            impronta (hash); <strong>limiti di richieste</strong> contro i tentativi a raffica.</li>
+            <li><strong>Content-Security-Policy:</strong> dice al browser da quali indirizzi possono arrivare gli script (si può
+            tenere in modalità "solo segnalazione" oppure applicare).</li>
+            <li><strong>Sessioni</strong> con cookie protetti, ID rigenerato a ogni accesso e account ricontrollato nel database a ogni
+            azione con accesso; <strong>password</strong> salvate solo come impronta (hash); <strong>limiti di tentativi</strong> per indirizzo
+            e per account contro le password provate a raffica.</li>
             <li><strong>File caricati</strong> controllati per contenuto, non solo per estensione, e salvati fuori dalla cartella pubblica.</li>
             <li><strong>Token monouso</strong> per la chat in diretta, perché finiscono nei registri del server.</li>
+            <li><strong>Più giri di revisione</strong> di tutto il codice, ognuno chiuso con nuovi test.</li>
+        </ul>
+        <p>La versione completa, in parole semplici, con i limiti e il modo per segnalare un problema: <a href="sicurezza.php">pagina Sicurezza</a>.</p>
+
+        <h2 id="limiti">I limiti, detti onestamente</h2>
+        <ul>
+            <li>È il lavoro di una persona sola: nessun controllo di sicurezza fatto da professionisti esterni.</li>
+            <li>Un solo server in una casa: se manca la corrente o la connessione il sito non c'è, e le copie di sicurezza stanno
+            nella stessa casa.</li>
+            <li>Niente accesso in due passaggi e niente recupero automatico della password.</li>
+            <li>L'AI degli appunti usa il livello gratuito di un servizio esterno: poche richieste al giorno, e può sbagliare.</li>
+            <li>SQLite e un solo computer bastano per un gruppo di amici e qualche classe, non per migliaia di persone insieme.</li>
+            <li>Il poker è ancora una finestra del desktop, non una pagina tra i giochi.</li>
         </ul>
 
         <h2 id="server">Il server di casa</h2>
@@ -124,12 +152,12 @@ require_once __DIR__ . '/../includes/head.php';
 
         <h2 id="numeri">In numeri</h2>
         <div class="numbers">
-            <div><b>~46.000</b><span>righe di codice e testo</span></div>
-            <div><b>190+</b><span>modifiche registrate (commit)</span></div>
-            <div><b>200+</b><span>test automatici</span></div>
-            <div><b>26</b><span>versioni della struttura del database</span></div>
-            <div><b>8</b><span>giochi</span></div>
-            <div><b>5</b><span>lingue</span></div>
+            <div><b>~52.000</b><span>righe di codice e testo</span></div>
+            <div><b>260+</b><span>modifiche registrate (commit)</span></div>
+            <div><b>340</b><span>test automatici</span></div>
+            <div><b>35</b><span>versioni della struttura del database</span></div>
+            <div><b>16</b><span>giochi</span></div>
+            <div><b>5</b><span>lingue nei giochi da festa</span></div>
         </div>
 
         <h2 id="imparato">Cosa ho imparato</h2>
@@ -141,12 +169,14 @@ require_once __DIR__ . '/../includes/head.php';
             <li>A usare gli strumenti giusti, compreso un assistente AI per scrivere e rivedere il codice, controllando sempre il risultato
             con test e prove vere.</li>
         </ul>
-        <p class="muted">Prossimi passi: un dominio proprio, un secondo computer per backup e servizi di casa, nuovi giochi.</p>
+        <p class="muted">In arrivo: Tetris e un roguelike con una lunga campagna, <em>Il Dungeon del Server</em>. Poi: un dominio proprio e un secondo computer per backup e servizi di casa.</p>
         <p><a class="cta" href="giochi.php">Prova i giochi</a></p>
     </main>
 
     <footer class="foot">
         <a href="giochi.php">Giochi</a>
+        <a href="privacy.php">Privacy</a>
+        <a href="sicurezza.php">Sicurezza</a>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener">Codice sorgente</a>
         <a href="../index.php">Torna al sito</a>
     </footer>

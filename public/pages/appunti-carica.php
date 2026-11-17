@@ -203,6 +203,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
     <footer class="foot">
         <a href="appunti-guida.php">Guida</a>
         <a href="privacy.php">Privacy</a>
+        <a href="sicurezza.php">Sicurezza</a>
     </footer>
 </body>
 </html>

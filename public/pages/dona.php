@@ -94,6 +94,7 @@ $service = $main ? (preg_match('#ko-fi\.com#', $main) ? 'Ko-fi' : (preg_match('#
         <a href="ads.php"><?= $it ? 'Supporta vector-box' : 'Support vector-box' ?></a>
         <a href="soldi.php"><?= $it ? 'Dove vanno i soldi' : 'Where the money goes' ?></a>
         <a href="privacy.php">Privacy</a>
+        <a href="sicurezza.php"><?= $it ? 'Sicurezza' : 'Security' ?></a>
         <a href="../index.php"><?= $it ? 'Torna al sito' : 'Back to the site' ?></a>
     </footer>
 </body>

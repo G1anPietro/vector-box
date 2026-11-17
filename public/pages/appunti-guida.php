@@ -263,6 +263,7 @@ $login = 'login.php?next=appunti.php';
 
     <footer class="foot">
         <a href="privacy.php">Privacy</a>
+        <a href="sicurezza.php">Sicurezza</a>
         <a href="../index.php">Torna al sito</a>
     </footer>
 </body>
