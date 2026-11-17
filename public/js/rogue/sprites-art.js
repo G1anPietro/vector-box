@@ -94,5 +94,56 @@
         for (const [y, x, t] of patches || []) for (let i = 0; i < t.length; i++) if (x + i < 16) g[y][x + i] = t[i];
         return g.map((r) => r.join(''));
     };
-    return { N, add, mirror, resolve, chain, pixels, sprite, animate, frame: clock, ramp, keys: () => Object.keys(DEFS), def: (k) => DEFS[k], cacheSize: () => CACHE.size, CACHE_MAX };
+    // PAINTED drawings (used by the item files): write only the silhouette and the details, the engine adds the outline and the three tones.
+    //   rows: up to 16 strings (shorter ones are padded with '.'). Lower case and '.' are literal (see the role list above).
+    //   Upper case letters are shaded groups: B = the item's tint (b/l/s), G grey, T wood, Y gold, R red, W white, K dark metal, C glass, P paper; `groups` overrides or adds { X: '#hex' }.
+    //   Output: { r, p }: 'o' goes around every filled pixel (4 neighbours); a group pixel on the top/left edge gets the light tone, on the bottom/right edge the shade (1 px wide parts stay base).
+    const GROUPS = { G: '#7d8794', T: '#9a6a3a', Y: '#ffd24a', R: '#e04848', W: '#e8ecf0', K: '#3a4450', C: '#6ad8f0', P: '#e8e2cc' };
+    function paint(rows, groups) {
+        const grp = Object.assign({}, GROUPS, groups || {}), g = [], own = {}, pool = '0123456789'.split('');
+        for (let y = 0; y < N; y++) g.push(((rows[y] || '') + '.'.repeat(N)).slice(0, N).split(''));
+        const f = (x, y) => x >= 0 && y >= 0 && x < N && y < N && g[y][x] !== '.';
+        const tones = {}, ch = (L) => {
+            if (L === 'B') return { b: 'b', l: 'l', s: 's' };
+            if (!tones[L]) {
+                const t = hex(grp[L]), l = pool.shift(), s = pool.shift();
+                own[L] = grp[L]; own[l] = css(mix(t, [255, 255, 255], 0.4)); own[s] = css(mix(mix(t, [18, 20, 56], 0.5), t, 0.25));
+                tones[L] = { b: L, l, s };
+            }
+            return tones[L];
+        };
+        const out = g.map((r) => r.slice());
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+            const c = g[y][x];
+            if (c === '.') { if (f(x - 1, y) || f(x + 1, y) || f(x, y - 1) || f(x, y + 1)) out[y][x] = 'o'; continue; }
+            if (!/[A-Z]/.test(c)) continue;
+            const t = ch(c), thin = (!f(x - 1, y) && !f(x + 1, y)) || (!f(x, y - 1) && !f(x, y + 1));
+            out[y][x] = thin ? t.b : !f(x, y - 1) || !f(x - 1, y) ? t.l : !f(x, y + 1) || !f(x + 1, y) ? t.s : t.b;
+        }
+        return { r: out.map((r) => r.join('')), p: own };
+    }
+    // pic(fn, groups): a painted drawing made by calls on a small pencil: px(x,y,c) rect(x,y,w,h,c) line(x0,y0,x1,y1,c,wide) disc(cx,cy,r,c) st(x,y,rows) (stamp; '.' skips, '_' erases) er(x,y,w,h) (erase).
+    // Every call returns the pencil, so a drawing is one chain. Then paint() adds outline and tones.
+    function pic(fn, groups) {
+        const g = Array.from({ length: N }, () => Array(N).fill('.'));
+        const px = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < N && y < N) g[y][x] = c; };
+        const o = {
+            px: (x, y, c) => (px(x, y, c), o),
+            rect: (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) px(x + i, y + j, c); return o; },
+            er: (x, y, w, h) => o.rect(x, y, w, h, '.'),
+            disc: (cx, cy, r, c) => { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r + 0.3) px(x, y, c); return o; },
+            line: (x0, y0, x1, y1, c, wide) => {
+                const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1;
+                for (let i = 0; i <= n; i++) {
+                    const x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n;
+                    px(x, y, c); if (wide) px(x + 1, y, c);
+                }
+                return o;
+            },
+            st: (x, y, rows) => { rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] !== '.') px(x + i, y + j, r[i] === '_' ? '.' : r[i]); }); return o; },
+        };
+        fn(o);
+        return paint(g.map((r) => r.join('')), groups);
+    }
+    return { N, add, mirror, paint, pic, resolve, chain, pixels, sprite, animate, frame: clock, ramp, keys: () => Object.keys(DEFS), def: (k) => DEFS[k], cacheSize: () => CACHE.size, CACHE_MAX };
 });

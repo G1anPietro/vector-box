@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const dir = path.join(__dirname, '..', 'public', 'js', 'rogue');
 const A = require(path.join(dir, 'sprites-art.js'));
-for (const f of ['heroes', 'mobs', 'bosses', 'mobs2', 'items']) require(path.join(dir, `sprites-art-${f}.js`));
+for (const f of ['heroes', 'mobs', 'bosses', 'mobs2', 'items', 'items2']) require(path.join(dir, `sprites-art-${f}.js`));
 const MOBS = require(path.join(dir, 'mobs.js')), ITEMS = require(path.join(dir, 'items.js')), CLS = require(path.join(dir, 'classes.js')), SP = require(path.join(dir, 'sprites.js'));
 const ROLES = new Set('osblaewnNhHkgGyrtpc'.split(''));
 
@@ -91,4 +91,19 @@ test('every monster with a `sprite` key has its own drawing, distinct from all o
     const big = own.filter((d) => d.boss || /^mini\d+$/.test(d.id));
     assert.equal(big.length, 12);
     assert.ok(avg(big) > avg(own.filter((d) => !big.includes(d))), 'mini-bosses and alternative bosses are bigger');
+});
+
+// every item (by category) whose `sprite` key is declared has its own drawing, and no two in the same family are identical.
+// Only the categories listed here are finished; an unfinished one keeps its category icon (the fallback chain), see docs/ROGUELIKE.md.
+const DRAWN = ['weapon', 'throw'];
+test('items of the drawn categories have their own, mutually different drawings', () => {
+    const noArt = [], twins = [], seen = new Map();
+    for (const d of ITEMS.LIST) {
+        if (!d.sprite || !DRAWN.includes(d.cat)) continue;
+        if (!A.def(d.sprite)) { noArt.push(d.id); continue; }
+        const key = d.cat + hash(d.sprite);
+        if (seen.has(key)) twins.push(d.id + ' = ' + seen.get(key)); else seen.set(key, d.id);
+    }
+    assert.deepEqual(noArt, []); assert.deepEqual(twins, []);
+    assert.ok(seen.size >= 60, 'drawn items: ' + seen.size);
 });
