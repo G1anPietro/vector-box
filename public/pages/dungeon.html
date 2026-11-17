@@ -15,16 +15,16 @@
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
     <meta name="twitter:card" content="summary">
     <link rel="icon" href="../assets/dungeon/icon.svg?v=2" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/dungeon.css?v=2">
+    <link rel="stylesheet" href="../css/dungeon.css?v=3">
     <script src="../js/rogue/rng.js?v=2" defer></script>
     <script src="../js/rogue/map.js?v=2" defer></script>
     <script src="../js/rogue/mobs.js?v=2" defer></script>
-    <script src="../js/rogue/items.js?v=2" defer></script>
-    <script src="../js/rogue/classes.js?v=2" defer></script>
-    <script src="../js/rogue/sprites.js?v=2" defer></script>
+    <script src="../js/rogue/items.js?v=3" defer></script>
+    <script src="../js/rogue/classes.js?v=3" defer></script>
+    <script src="../js/rogue/sprites.js?v=3" defer></script>
     <script src="../js/rogue/meta.js?v=2" defer></script>
-    <script src="../js/rogue/game.js?v=2" defer></script>
-    <script src="../js/dungeon.js?v=2" defer></script>
+    <script src="../js/rogue/game.js?v=3" defer></script>
+    <script src="../js/dungeon.js?v=3" defer></script>
 </head>
 <body>
     <header class="dg-top">
@@ -59,10 +59,23 @@
             </div>
             <div id="dg-info" class="dg-infoline"></div>
         </div>
-        <div class="dg-stage" id="dg-stage"><canvas id="dg-canvas" aria-label="Mappa del dungeon"></canvas></div>
+        <div class="dg-stage" id="dg-stage">
+            <canvas id="dg-canvas" aria-label="Mappa del dungeon"></canvas>
+            <div class="dg-zoom"><button type="button" id="dg-zin" aria-label="Ingrandisci">+</button><button type="button" id="dg-zout" aria-label="Rimpicciolisci">−</button></div>
+            <div id="dg-card" class="dg-card" hidden role="status"></div>
+        </div>
         <button type="button" id="dg-log" class="dg-log" aria-label="Apri il registro completo"></button>
         <div class="dg-controls">
-            <div class="dg-dpad" aria-label="Direzioni">
+            <div class="dg-toolbar only-touch" id="dg-toolbar" aria-label="Barra rapida">
+                <button type="button" data-a="wait" aria-label="Aspetta un turno"><span>Aspetta</span></button>
+                <button type="button" data-a="search" aria-label="Cerca porte segrete e trappole"><span>Cerca</span></button>
+                <button type="button" data-a="bag" aria-label="Zaino"><span>Zaino</span></button>
+                <button type="button" class="dg-slot" data-slot="0" aria-label="Slot rapido 1"></button>
+                <button type="button" class="dg-slot" data-slot="1" aria-label="Slot rapido 2"></button>
+                <button type="button" class="dg-slot" data-slot="2" aria-label="Slot rapido 3"></button>
+                <button type="button" class="dg-slot" data-slot="3" aria-label="Slot rapido 4"></button>
+            </div>
+            <div class="dg-dpad only-dpad" aria-label="Direzioni">
                 <button type="button" data-d="0,-1" aria-label="Su" class="up">▲</button>
                 <button type="button" data-d="-1,0" aria-label="Sinistra" class="lf">◀</button>
                 <button type="button" data-a="wait" aria-label="Aspetta" class="ce">z</button>
@@ -70,7 +83,8 @@
                 <button type="button" data-d="0,1" aria-label="Giù" class="dn">▼</button>
             </div>
             <div class="dg-acts">
-                <button type="button" data-a="bag">Zaino</button>
+                <button type="button" data-a="bag" class="only-dpad">Zaino</button>
+                <button type="button" data-a="search" class="only-dpad">Cerca</button>
                 <button type="button" data-a="skill" id="dg-skill">Abilità</button>
                 <button type="button" data-a="explore">Esplora</button>
                 <button type="button" data-a="stairs">Scale</button>

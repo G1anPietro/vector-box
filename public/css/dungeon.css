@@ -35,7 +35,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dg-stage { position: relative; line-height: 0; border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 0 14px rgba(0, 255, 102, .12); }
 .dg-stage.hurt { box-shadow: 0 0 18px rgba(255, 60, 60, .8); border-color: var(--bad); }
 .dg-stage.scan::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px); }
-#dg-canvas { image-rendering: pixelated; touch-action: none; display: block; background: #000; }
+#dg-canvas { image-rendering: pixelated; touch-action: none; display: block; background: #000; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .dg-log { width: 100%; text-align: left; line-height: 1.3; font-size: .78rem; padding: 4px 8px; margin: 4px 0; height: 7.4em; border-radius: 4px; background: #070d0a; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
 .dg-log div:last-child { color: #fff; }
 .c-good { color: #6dff9d; } .c-bad { color: #ff8a8a; } .c-info { color: var(--amber); }
@@ -68,3 +68,23 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dg-row { margin-top: 6px; }
 .dg-row button { flex: 1 1 auto; }
 .dg-row button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+
+/* touch controls (like Pixel Dungeon): the toolbar and the zoom buttons; the D-pad is the other mode */
+.dg-stage, .dg-toolbar { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+#dg-game.mode-touch .only-dpad, #dg-game.mode-dpad .only-touch { display: none !important; }
+.dg-toolbar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; width: 100%; }
+.dg-toolbar button { padding: 0; min-height: 48px; font-size: .68rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; position: relative; }
+.dg-slot { border-style: dashed; }
+.dg-slot canvas { width: 28px; height: 28px; image-rendering: pixelated; }
+.dg-slot b { position: absolute; right: 3px; bottom: 1px; font-size: .62rem; color: var(--amber); text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.dg-slot.aiming { border-color: var(--amber); box-shadow: 0 0 8px rgba(255, 176, 0, .6); }
+.dg-slot.empty { opacity: .55; }
+#dg-game.mode-touch .dg-controls { flex-direction: column; align-items: stretch; }
+#dg-game.mode-touch .dg-acts { max-width: none; grid-template-columns: repeat(5, 1fr); }
+#dg-game.mode-touch .dg-acts button { min-height: 44px; font-size: .72rem; padding: 2px; }
+.dg-zoom { position: absolute; top: 4px; right: 4px; display: flex; flex-direction: column; gap: 4px; }
+.dg-zoom button { width: 44px; min-height: 44px; height: 44px; padding: 0; font-size: 1.3rem; line-height: 1; background: rgba(5, 8, 10, .7); }
+.dg-card { position: absolute; left: 6px; right: 58px; top: 6px; padding: 8px 10px; background: rgba(8, 16, 12, .94); border: 1px solid var(--accent); border-radius: 6px; line-height: 1.4; font-size: .8rem; pointer-events: none; box-shadow: 0 0 12px rgba(0, 255, 102, .25); }
+.dg-card b { display: block; color: var(--amber); font-size: .88rem; }
+.dg-card div { color: var(--ink); }
+.dg-stage.aiming { border-color: var(--amber); box-shadow: 0 0 14px rgba(255, 176, 0, .45); }

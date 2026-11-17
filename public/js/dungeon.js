@@ -15,7 +15,9 @@
     };
     function readJson(k, fallback) { try { const v = JSON.parse(store.get(k)); return v && typeof v === 'object' ? v : fallback; } catch (e) { return fallback; } }
     let meta = G.fixMeta(readJson(META_KEY, {}));
-    const opt = Object.assign({ sound: false, scan: false }, readJson(OPT_KEY, {}));
+    const opt = Object.assign({ sound: false, scan: false, controls: 'touch', zoom: 1, slots: [null, null, null, null] }, readJson(OPT_KEY, {}));
+    if (!Array.isArray(opt.slots) || opt.slots.length !== 4) opt.slots = [null, null, null, null];
+    if (opt.controls !== 'dpad') opt.controls = 'touch';
     const saveMeta = () => store.set(META_KEY, JSON.stringify(meta));
     const saveOpt = () => store.set(OPT_KEY, JSON.stringify(opt));
 
@@ -23,6 +25,10 @@
     let selected = null;        // class chosen on the title screen
     let travel = null;          // a walk in progress
     let view = { ts: 24, vw: 13, vh: 13 };
+    let pan = null;             // camera dragged by the finger: { ox, oy } in tiles; null = follow the hero
+    let aim = null;             // targeting a throwable: { k, slot }
+    let flash = null;           // a tapped tile, briefly highlighted
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
     // ── sound: tiny blips, off unless the player turns it on ──
     let actx = null;
@@ -61,25 +67,34 @@
 
     // ── drawing the floor ──
     const cv = $('dg-canvas'), ctx = cv.getContext('2d');
+    const touchMode = () => opt.controls !== 'dpad';
     function layout() {
-        const ts = innerWidth >= 800 ? 32 : 24;
-        const vw = Math.max(9, Math.min(21, Math.floor(Math.min(innerWidth - 14, 640) / ts)));
-        const vh = Math.max(9, Math.min(vw + 4, Math.floor((innerHeight - 310) / ts)));
+        const ts = (innerWidth >= 800 ? [20, 32, 48] : [16, 24, 36])[clamp(opt.zoom | 0, 0, 2)];
+        const vw = Math.min(W, Math.max(8, Math.floor(Math.min(innerWidth - 14, 640) / ts)));
+        const vh = Math.min(H, Math.max(8, Math.min(vw + 4, Math.floor((innerHeight - (touchMode() ? 290 : 310)) / ts))));
         view = { ts, vw, vh };
         cv.width = vw * ts; cv.height = vh * ts;
         cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
         $('dg-stage').style.width = cv.width + 2 + 'px';
+        $('dg-zin').disabled = opt.zoom >= 2; $('dg-zout').disabled = opt.zoom <= 0;
+    }
+    function setZoom(d) {
+        const z = clamp((opt.zoom | 0) + d, 0, 2);
+        if (z === opt.zoom) return;
+        opt.zoom = z; saveOpt(); pan = null; layout(); if (s) render();
     }
     const idx = (x, y) => y * W + x;
     function draw() {
         if (!s) return;
         const { ts, vw, vh } = view, sec = G.sectorOf(s.depth);
-        const ox = Math.max(0, Math.min(W - vw, s.p.x - (vw >> 1))), oy = Math.max(0, Math.min(H - vh, s.p.y - (vh >> 1)));
+        let ox = clamp(s.p.x - (vw >> 1), 0, W - vw), oy = clamp(s.p.y - (vh >> 1), 0, H - vh);
+        if (pan) { ox = clamp(pan.ox, 0, W - vw); oy = clamp(pan.oy, 0, H - vh); }
+        const x0 = Math.floor(ox), y0 = Math.floor(oy), x1 = Math.min(W, Math.ceil(ox + vw)), y1 = Math.min(H, Math.ceil(oy + vh));
         ctx.imageSmoothingEnabled = false;
         ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
-        const cell = (x, y) => [(x - ox) * ts, (y - oy) * ts];
+        const cell = (x, y) => [Math.round((x - ox) * ts), Math.round((y - oy) * ts)];
         const spr = (name, col, x, y) => { const [px, py] = cell(x, y); ctx.drawImage(sprite(name, col), px, py, ts, ts); };
-        for (let y = oy; y < oy + vh; y++) for (let x = ox; x < ox + vw; x++) {
+        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
             const i = idx(x, y), seen = s.seen[i];
             if (!seen) continue;
             const t = s.map.tiles[i], [px, py] = cell(x, y), wall = t === T.WALL || t === T.SECRET;
@@ -95,7 +110,7 @@
         for (const t of s.traps) if (t.found && s.seen[idx(t.x, t.y)]) spr('trap', '#ff5e5e', t.x, t.y);
         for (const e of s.items) if (s.seen[idx(e.x, e.y)]) { const l = G.itemLook(s, e.it); spr(l.shape, l.col, e.x, e.y); }
         for (const m of s.mobs) {
-            if (!G.shown(s, m) || m.x < ox || m.y < oy || m.x >= ox + vw || m.y >= oy + vh) continue;
+            if (!G.shown(s, m) || m.x < x0 || m.y < y0 || m.x >= x1 || m.y >= y1) continue;
             const d = G.MOB[m.k], boss = !!d.boss;
             spr(d.shape, m.asleep ? shade(d.col, 0.55) : d.col, m.x, m.y);
             if (m.hp < m.max || boss) {
@@ -107,9 +122,23 @@
         spr('hero', G.CLASS[s.cls].col, s.p.x, s.p.y);
         // what you remember but cannot see now is dimmed
         ctx.fillStyle = 'rgba(0,0,0,.55)';
-        for (let y = oy; y < oy + vh; y++) for (let x = ox; x < ox + vw; x++) {
+        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
             const i = idx(x, y);
             if (s.seen[i] && !s.vis[i]) { const [px, py] = cell(x, y); ctx.fillRect(px, py, ts, ts); }
+        }
+        // feedback: the throwing range, the path being walked (faint dots) and the target tile
+        if (aim) {
+            ctx.fillStyle = 'rgba(255,176,0,.16)';
+            for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+                if (s.vis[idx(x, y)] && Math.max(Math.abs(x - s.p.x), Math.abs(y - s.p.y)) <= G.THROW_RANGE) { const [px, py] = cell(x, y); ctx.fillRect(px, py, ts, ts); }
+            }
+        }
+        const tg = travel && travel.target ? travel.target() : flash;
+        if (tg) {
+            ctx.fillStyle = 'rgba(0,255,102,.5)';
+            if (travel && travel.target) for (const [x, y] of G.travelPath(s, tg[0], tg[1]).slice(0, -1)) { const [px, py] = cell(x, y); ctx.beginPath(); ctx.arc(px + ts / 2, py + ts / 2, Math.max(2, ts / 9), 0, 6.3); ctx.fill(); }
+            const [px, py] = cell(tg[0], tg[1]);
+            ctx.strokeStyle = 'rgba(0,255,102,.9)'; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
         }
         cv._cam = { ox, oy };
     }
@@ -135,7 +164,70 @@
         lg.textContent = '';
         for (const l of s.log.slice(-4)) { const d = document.createElement('div'); d.textContent = l.t; if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
     }
-    function render() { draw(); hud(); }
+    function render() { draw(); hud(); slots(); }
+
+    // ── the four quickslots: each holds an item kind; tap uses it (or aims it), long press chooses what lives there ──
+    const SLOT_CATS = ['drink', 'script', 'usb', 'food', 'throw'];
+    const invOf = (k) => s.p.inv.find((it) => it.k === k);
+    function slots() {
+        if (!s) return;
+        let dirty = false;
+        opt.slots.forEach((k, j) => {
+            if (k === '' || (k && invOf(k))) return;
+            const c = s.p.inv.find((it) => SLOT_CATS.includes(G.ITEM[it.k].cat) && !opt.slots.includes(it.k));
+            if (c) { opt.slots[j] = c.k; dirty = true; }
+        });
+        if (dirty) saveOpt();
+        document.querySelectorAll('.dg-slot').forEach((b, j) => {
+            const k = opt.slots[j], it = k ? invOf(k) : null;
+            b.textContent = '';
+            b.classList.toggle('empty', !it);
+            b.classList.toggle('aiming', !!aim && aim.slot === j);
+            if (!it) { b.setAttribute('aria-label', 'Slot rapido ' + (j + 1) + ': vuoto'); return; }
+            const l = G.itemLook(s, it), n = s.p.inv.filter((o) => o.k === k).reduce((a, o) => a + (o.n || 1), 0), c = G.ITEM[k].cat === 'usb' ? it.ch : n;
+            icon(b, l.shape, l.col, 28);
+            if (c > 1 || G.ITEM[k].cat === 'usb') el('b', String(c), '', b);
+            b.setAttribute('aria-label', 'Slot rapido ' + (j + 1) + ': ' + G.itemName(s, it));
+        });
+    }
+    function slotPicker(j) {
+        endAim();
+        const body = openModal('Slot rapido ' + (j + 1), 'slot');
+        const put = (k) => { const o = opt.slots.indexOf(k); if (k && o >= 0 && o !== j) opt.slots[o] = opt.slots[j]; opt.slots[j] = k; saveOpt(); $('dg-modal').hidden = true; modalKind = ''; render(); };
+        btn('Vuoto', () => put(''), body, 'dg-choice');
+        const seen = new Set();
+        for (const it of s.p.inv) {
+            if (seen.has(it.k)) continue;
+            seen.add(it.k);
+            const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it);
+            icon(r, l.shape, l.col, 32);
+            const t2 = el('div', '', 't', r); el('span', G.itemName(s, it), '', t2); el('small', G.itemInfo(s, it), '', t2);
+            btn('Qui', () => put(it.k), r);
+        }
+        if (!seen.size) el('p', 'Lo zaino è vuoto.', '', body);
+    }
+    function useSlot(j) {
+        if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
+        const was = aim && aim.slot === j;
+        stopTravel(); endAim(); travelTurn = s.turn;
+        if (was) return render();
+        const k = opt.slots[j], it = k && G.slotIntent(s, k);
+        if (!it || it.type === 'none') return slotPicker(j);
+        if (it.type === 'use') return act({ t: 'use', i: it.i });
+        aim = { k, slot: j }; $('dg-stage').classList.add('aiming');
+        note('Tocca la casella dove lanciare (portata ' + G.THROW_RANGE + ').', 'info');
+    }
+    function endAim() { if (!aim) return; aim = null; $('dg-stage').classList.remove('aiming'); if (s) render(); }
+    function showCard(it, x, y) {
+        const c = $('dg-card');
+        c.textContent = '';
+        el('b', it.title, '', c);
+        for (const l of it.lines) el('div', l, '', c);
+        const lower = cv._cam && (y - cv._cam.oy) * view.ts > cv.height / 2;
+        c.style.top = lower ? '6px' : 'auto'; c.style.bottom = lower ? 'auto' : '6px';
+        c.hidden = false;
+    }
+    const hideCard = () => { $('dg-card').hidden = true; };
 
     // ── modal sheets ──
     let modalKind = '';
@@ -161,8 +253,9 @@
         if (!p.inv.length) el('p', 'Vuoto.', '', body);
         p.inv.forEach((it, i) => {
             const d = G.ITEM[it.k], eq = !!R.items.CATS[d.cat].slot;
-            const label = eq ? 'Equip.' : d.cat === 'food' ? 'Mangia' : d.cat === 'usb' ? 'Usa' : d.cat === 'drink' ? 'Bevi' : 'Leggi';
-            row(it, G.itemInfo(s, it), [[label, () => { closeModal(); act({ t: 'use', i }); }], ['Getta', () => { closeModal(); act({ t: 'drop', i }); }]]);
+            const label = eq ? 'Equip.' : d.cat === 'food' ? 'Mangia' : d.cat === 'usb' ? 'Usa' : d.cat === 'drink' ? 'Bevi' : d.cat === 'throw' ? 'Lancia' : 'Leggi';
+            const go = () => { closeModal(); if (d.cat === 'throw') { aim = { k: it.k, slot: opt.slots.indexOf(it.k) }; $('dg-stage').classList.add('aiming'); note('Tocca la casella dove lanciare (portata ' + G.THROW_RANGE + ').', 'info'); } else act({ t: 'use', i }); };
+            row(it, G.itemInfo(s, it), [[label, go], ['Getta', () => { closeModal(); act({ t: 'drop', i }); }]]);
         });
     }
     function levelModal() {
@@ -254,6 +347,9 @@
         btn('Come si gioca', helpModal, body, 'dg-choice');
         const snd = btn('Suono: ' + (opt.sound ? 'sì' : 'no'), () => { opt.sound = !opt.sound; saveOpt(); snd.textContent = 'Suono: ' + (opt.sound ? 'sì' : 'no'); blip(660, 80); }, body, 'dg-choice');
         const sc = btn('Linee CRT: ' + (opt.scan ? 'sì' : 'no'), () => { opt.scan = !opt.scan; saveOpt(); applyOpt(); sc.textContent = 'Linee CRT: ' + (opt.scan ? 'sì' : 'no'); }, body, 'dg-choice');
+        const ct = btn('', () => { opt.controls = touchMode() ? 'dpad' : 'touch'; saveOpt(); ct.textContent = ctl(); endAim(); applyOpt(); if (s) render(); }, body, 'dg-choice');
+        const ctl = () => 'Comandi: ' + (touchMode() ? 'Tocco (come Pixel Dungeon)' : 'Croce direzionale');
+        ct.textContent = ctl();
         if (s) btn('Registro completo', logModal, body, 'dg-choice');
         if (s) btn('Abbandona la partita', () => {
             if (!confirm('Abbandonare la partita? Si perde tutto.')) return;
@@ -263,55 +359,72 @@
     function helpModal() {
         const body = openModal('Come si gioca', 'help');
         for (const t of [
-            'Muovi con le frecce, scorrendo il dito sulla mappa, o toccando una casella: ci cammini da solo finché non compare un nemico.',
+            'Tocco: tocca una casella per camminarci (ti fermi se compare un nemico), un nemico per attaccarlo, un oggetto per raccoglierlo, le scale per scendere. Tocca te stesso per aspettare un turno, doppio tocco per cercare porte segrete e trappole. Tieni premuto su qualcosa per leggerne la scheda senza agire. Trascina per spostare la vista, pizzica o usa + e − per lo zoom.',
+            'Barra in basso: Aspetta, Cerca, Zaino e 4 slot rapidi: tocca per usare un oggetto (i dardi si lanciano: poi tocca la casella). Tieni premuto uno slot per scegliere cosa ci sta. Nelle opzioni puoi tornare alla croce direzionale.',
             'Camminare su un nemico lo attacca. Ogni passo è un turno: il gioco salva da solo e riprendi da dove eri anche dopo aver chiuso la scheda.',
             'Raccogli oggetti camminandoci sopra. Lattine, script e chiavette sono sconosciuti finché non li provi: usa il Zaino.',
             'Esplora cammina verso la prossima cosa da scoprire. Scale scende se sei sulle scale (o ci cammina).',
             'Ogni 5 piani c’è un boss: le scale restano bloccate finché non lo batti.',
-            'Tastiera: frecce o WASD, spazio aspetta, I zaino, E esplora, F abilità, > scale, B nascondi lo schermo.',
+            'Tastiera: frecce o WASD, spazio aspetta, C cerca, 1-4 slot rapidi, I zaino, E esplora, F abilità, > scale, B nascondi lo schermo.',
         ]) el('p', t, '', body);
     }
 
     // ── playing ──
     function persist() { if (s && s.status === 'play') store.set(RUN_KEY, G.save(s)); }
     function afterTurn() {
+        if (s.fx.some((f) => f.t === 'hit' || f.t === 'miss' || f.t === 'kill')) { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) { /* no haptics */ } }
         for (const f of s.fx) { const b = SOUND[f.t]; if (b) blip(b[0], b[1], b[2]); if (f.t === 'hurt' && !reduce) { const st = $('dg-stage'); st.classList.add('hurt'); setTimeout(() => st.classList.remove('hurt'), 160); } }
         persist(); render();
-        if (s.status !== 'play') { stopTravel(); endModal(); }
+        if (s.status !== 'play') { stopTravel(); endAim(); endModal(); }
         else if (s.p.pending && modalKind !== 'level') levelModal();
         else if (s.shop && s.shop.open) shopModal();
         else if (s.bench && s.bench.open) benchModal();
     }
     function act(a) {
         if (!s || s.status !== 'play') return false;
+        pan = null; flash = null;
         const logLen = s.log.length, took = G.act(s, a);
         act.lastBad = s.log.slice(logLen).some((l) => l.c === 'bad');
         afterTurn();
         return took;
     }
     function note(text, c) { s.log.push({ t: text, c }); persist(); render(); }
-    function stopTravel() { if (travel) { clearTimeout(travel.timer); travel = null; } }
-    /** Walks by itself: `next()` gives the next step. Stops when an enemy shows up, something bad happens or there is no way. */
-    function startTravel(next, limit) {
+    function stopTravel() { if (travel) { clearTimeout(travel.timer); const had = !!travel.target; travel = null; if (had && s) draw(); } }
+    /** Walks by itself: `next()` gives the next step (null = arrived or no way). Stops when a new enemy shows up, something bad happens or there is no way.
+     *  o.target() = the cell to highlight; o.fin() runs when `next()` says there is nothing more to do; o.fight = an enemy is already the goal, so it does not stop the walk. */
+    function startTravel(next, limit, o) {
         stopTravel();
-        const t = travel = { timer: 0, n: 0, hp: s.p.hp, depth: s.depth };
+        o = o || {};
+        const t = travel = { timer: 0, n: 0, hp: s.p.hp, depth: s.depth, target: o.target, th0: G.threats(s).length };
+        const seen = () => o.fight ? G.threats(s).length > t.th0 : G.threats(s).length > 0;
         const step = () => {
             if (travel !== t || !s || s.status !== 'play' || document.hidden) return stopTravel();
             if (t.n++ >= (limit || 80) || s.p.pending || (s.shop && s.shop.open) || s.depth !== t.depth) return stopTravel();
-            if (t.n > 1 && G.threats(s).length) return stopTravel();
+            if (t.n > 1 && seen()) return stopTravel();
             const v = next();
-            if (!v) return stopTravel();
+            if (!v) { stopTravel(); if (o.fin) o.fin(); return; }
             act({ t: 'move', dx: v[0], dy: v[1] });
             if (s.p.hp < t.hp || act.lastBad || s.depth !== t.depth) return stopTravel();
-            if (G.threats(s).length) return stopTravel();
+            if (seen()) return stopTravel();
             t.timer = setTimeout(step, reduce ? 0 : 55);
         };
         step();
     }
-    function walkTo(tx, ty) {
-        if (tx === s.p.x && ty === s.p.y) return;
+    /** Walks to a cell, then runs `fin` there. With an enemy in view it only takes one step per tap. */
+    function goTo(tx, ty, fin) {
+        const here = () => s.p.x === tx && s.p.y === ty;
+        if (here()) return fin && fin();
         if (G.threats(s).length) { const v = G.travelNext(s, tx, ty); if (v) act({ t: 'move', dx: v[0], dy: v[1] }); return; }
-        startTravel(() => (s.p.x === tx && s.p.y === ty) ? null : G.travelNext(s, tx, ty));
+        startTravel(() => here() ? null : G.travelNext(s, tx, ty), 80, { target: () => [tx, ty], fin: () => { if (here() && fin) fin(); } });
+    }
+    function attackMob(id) {
+        const mob = () => s.mobs.find((m) => m.id === id), adj = (m) => Math.abs(m.x - s.p.x) + Math.abs(m.y - s.p.y) === 1;
+        const hit = () => { const m = mob(); if (m && adj(m)) act({ t: 'move', dx: m.x - s.p.x, dy: m.y - s.p.y }); };
+        const m0 = mob();
+        if (!m0) return;
+        if (adj(m0)) return hit();
+        if (!G.travelNext(s, m0.x, m0.y)) return note('Non riesci a raggiungerlo.', 'info');
+        startTravel(() => { const m = mob(); return !m || adj(m) ? null : G.travelNext(s, m.x, m.y); }, 60, { fight: true, target: () => { const m = mob(); return m ? [m.x, m.y] : null; }, fin: hit });
     }
     let travelTurn = 0;
     function explore() {
@@ -335,7 +448,9 @@
         if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
         stopTravel();
         travelTurn = s.turn;
+        endAim();
         if (name === 'wait') act({ t: 'wait' });
+        else if (name === 'search') act({ t: 'search' });
         else if (name === 'bag') bagModal();
         else if (name === 'skill') act({ t: 'active' });
         else if (name === 'explore') explore();
@@ -343,7 +458,7 @@
         else if (name === 'eat') useFirst((it) => G.ITEM[it.k].cat === 'food', 'Non hai niente da mangiare.');
         else if (name === 'heal') useFirst((it) => G.ITEM[it.k].cat === 'drink' && G.known(s, it) && G.ITEM[it.k].effect === 'heal', 'Non hai lattine curative che conosci.');
     }
-    function step(dx, dy) { if (s && s.status === 'play' && $('dg-modal').hidden) { stopTravel(); act({ t: 'move', dx, dy }); } }
+    function step(dx, dy) { if (s && s.status === 'play' && $('dg-modal').hidden) { stopTravel(); endAim(); act({ t: 'move', dx, dy }); } }
 
     // ── input ──
     for (const b of document.querySelectorAll('[data-d]')) b.addEventListener('click', () => { const [dx, dy] = b.dataset.d.split(',').map(Number); step(dx, dy); });
@@ -353,33 +468,113 @@
     $('dg-mclose').addEventListener('click', closeModal);
     $('dg-hide').addEventListener('click', () => { stopTravel(); $('dg-cover').hidden = false; });
     $('dg-cover').addEventListener('click', () => { $('dg-cover').hidden = true; });
-    let down = null;
-    cv.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
-    cv.addEventListener('pointerup', (e) => {
-        if (!down || !s || s.status !== 'play' || !$('dg-modal').hidden) return;
-        const dx = e.clientX - down.x, dy = e.clientY - down.y; down = null;
-        if (Math.hypot(dx, dy) > 28) { if (Math.abs(dx) > Math.abs(dy)) step(Math.sign(dx), 0); else step(0, Math.sign(dy)); return; }
+    // ── touch on the map, like Pixel Dungeon: tap = go / attack / pick up / use, tap yourself = rest, double tap (or hold) yourself = search,
+    //    hold anything else = info card, drag = pan the view, pinch = zoom. What a touch means is decided by G.intentForTap (rules, tested). ──
+    const LONG_MS = 400, SLOP = 10;
+    const ptrs = new Map();
+    let g = null, longTimer = 0, pinch = null, swallow = false, pendingHero = 0;
+    const tileAt = (px, py) => {
         const r = cv.getBoundingClientRect(), sc = cv.width / r.width, cam = cv._cam || { ox: 0, oy: 0 };
-        const x = cam.ox + Math.floor(((e.clientX - r.left) * sc) / view.ts), y = cam.oy + Math.floor(((e.clientY - r.top) * sc) / view.ts);
-        if (x < 0 || y < 0 || x >= W || y >= H) return;
+        return [Math.floor(cam.ox + ((px - r.left) * sc) / view.ts), Math.floor(cam.oy + ((py - r.top) * sc) / view.ts)];
+    };
+    const canPlay = () => s && s.status === 'play' && $('dg-modal').hidden;
+    function doIntent(it) {
+        if (!canPlay()) return;
         stopTravel();
-        if (x === s.p.x && y === s.p.y) return s.map.tiles[idx(x, y)] === T.STAIRS ? act({ t: 'descend' }) : act({ t: 'wait' });
-        const adj = Math.abs(x - s.p.x) + Math.abs(y - s.p.y) === 1;
-        if (adj) return act({ t: 'move', dx: x - s.p.x, dy: y - s.p.y });
-        if (s.seen[idx(x, y)]) walkTo(x, y);
+        switch (it.type) {
+            case 'rest': return act({ t: 'wait' });
+            case 'search': return act({ t: 'search' });
+            case 'throw': endAim(); return act({ t: 'throw', i: it.i, x: it.x, y: it.y });
+            case 'cancel': return endAim();
+            case 'walk': case 'pickup': return goTo(it.x, it.y);
+            case 'attack': return attackMob(it.id);
+            case 'use':
+                if (it.what === 'stairs') return goTo(it.x, it.y, () => act({ t: 'descend' }));
+                return goTo(it.via[0], it.via[1], () => act({ t: 'move', dx: Math.sign(it.x - s.p.x), dy: Math.sign(it.y - s.p.y) }));
+        }
+    }
+    function intentAt(x, y, kind) {
+        const ai = aim ? s.p.inv.findIndex((o) => o.k === aim.k) : null;
+        return G.intentForTap(s, x, y, kind, ai);
+    }
+    function tapAt(x, y) {
+        if (!canPlay() || x < 0 || y < 0 || x >= W || y >= H) return;
+        if (pendingHero) { clearTimeout(pendingHero.t); const p0 = pendingHero; pendingHero = 0; if (x === s.p.x && y === s.p.y) return doIntent(intentAt(x, y, 'double')); doIntent(p0.it); }
+        const it = intentAt(x, y, 'tap');
+        if (it.type === 'rest') { pendingHero = { it, t: setTimeout(() => { pendingHero = 0; doIntent(it); }, 280) }; return; }   // wait: it may be a double tap
+        if (it.type === 'none') { flash = [x, y]; draw(); setTimeout(() => { flash = null; if (s) draw(); }, 200); }
+        doIntent(it);
+    }
+    function longPress() {
+        if (!g || g.moved || g.multi || !canPlay()) return;
+        g.long = true;
+        const [x, y] = tileAt(g.x0, g.y0);
+        if (x < 0 || y < 0 || x >= W || y >= H) return;
+        const it = intentAt(x, y, 'long');
+        if (it.type === 'info') { stopTravel(); showCard(it, x, y); } else doIntent(it);
+    }
+    document.addEventListener('pointerdown', (e) => { if (!$('dg-card').hidden) { hideCard(); swallow = e.target === cv; } }, true);
+    cv.addEventListener('contextmenu', (e) => e.preventDefault());
+    cv.addEventListener('pointerdown', (e) => {
+        try { cv.setPointerCapture(e.pointerId); } catch (x) { /* not capturable */ }
+        ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (ptrs.size === 1) {
+            const cam = cv._cam || { ox: 0, oy: 0 };
+            g = { x0: e.clientX, y0: e.clientY, moved: false, long: false, multi: false, swallow, ox: cam.ox, oy: cam.oy };
+            swallow = false;
+            clearTimeout(longTimer); longTimer = setTimeout(longPress, LONG_MS);
+        } else if (g) {
+            g.multi = true; clearTimeout(longTimer);
+            const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        }
     });
-    cv.addEventListener('pointercancel', () => { down = null; });
+    cv.addEventListener('pointermove', (e) => {
+        const p = ptrs.get(e.pointerId);
+        if (!p || !g) return;
+        p.x = e.clientX; p.y = e.clientY;
+        if (g.multi) {
+            if (ptrs.size < 2) return;
+            const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+            if (d / pinch > 1.3) { setZoom(1); pinch = d; } else if (d / pinch < 0.77) { setZoom(-1); pinch = d; }
+            return;
+        }
+        const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+        if (!g.moved && Math.hypot(dx, dy) > SLOP) { g.moved = true; clearTimeout(longTimer); stopTravel(); }
+        if (g.moved && canPlay() && !g.long) { pan = { ox: g.ox - dx / view.ts, oy: g.oy - dy / view.ts }; draw(); }
+    });
+    cv.addEventListener('pointerup', (e) => {
+        if (!ptrs.delete(e.pointerId) || ptrs.size > 0 || !g) return;
+        clearTimeout(longTimer);
+        const gg = g; g = null;
+        if (gg.multi || gg.moved || gg.long || gg.swallow) return;
+        const [x, y] = tileAt(e.clientX, e.clientY);
+        tapAt(x, y);
+    });
+    cv.addEventListener('pointercancel', (e) => { ptrs.delete(e.pointerId); if (!ptrs.size) { clearTimeout(longTimer); g = null; } });
+    $('dg-zin').addEventListener('click', () => setZoom(1));
+    $('dg-zout').addEventListener('click', () => setZoom(-1));
+    // quickslots: tap = use / aim, hold = choose the item
+    document.querySelectorAll('.dg-slot').forEach((b) => {
+        let timer = 0, held = false;
+        const j = Number(b.dataset.slot);
+        b.addEventListener('contextmenu', (e) => e.preventDefault());
+        b.addEventListener('pointerdown', () => { held = false; clearTimeout(timer); timer = setTimeout(() => { held = true; if (canPlay()) slotPicker(j); }, LONG_MS); });
+        for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => clearTimeout(timer));
+        b.addEventListener('click', () => { if (held) { held = false; return; } useSlot(j); });
+    });
     addEventListener('keydown', (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (!$('dg-cover').hidden) { $('dg-cover').hidden = true; return; }
         const k = e.key;
         if (k === 'b' || k === 'B') { stopTravel(); $('dg-cover').hidden = false; return; }
-        if (k === 'Escape') { if (!$('dg-modal').hidden && modalKind !== 'level' && modalKind !== 'end') closeModal(); else stopTravel(); return; }
+        if (k === 'Escape') { if (aim) endAim(); else if (!$('dg-modal').hidden && modalKind !== 'level' && modalKind !== 'end') closeModal(); else stopTravel(); return; }
         if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
         const dirs = { ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] };
         if (dirs[k]) { e.preventDefault(); step(dirs[k][0], dirs[k][1]); }
         else if (k === ' ' || k === '.') { e.preventDefault(); command('wait'); }
         else if (k === 'i' || k === 'I') command('bag');
+        else if (k === 'c' || k === 'C') command('search');
+        else if (k >= '1' && k <= '4') useSlot(Number(k) - 1);
         else if (k === 'e' || k === 'E') command('explore');
         else if (k === 'f' || k === 'F') command('skill');
         else if (k === '>' || k === 'Enter') command('stairs');
@@ -389,7 +584,11 @@
     addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { layout(); if (s) render(); }, 100); });
 
     // ── title screen ──
-    function applyOpt() { $('dg-stage').classList.toggle('scan', !!opt.scan); }
+    function applyOpt() {
+        $('dg-stage').classList.toggle('scan', !!opt.scan);
+        $('dg-game').classList.toggle('mode-touch', touchMode()); $('dg-game').classList.toggle('mode-dpad', !touchMode());
+        layout();
+    }
     function showTitle() {
         $('dg-game').hidden = true; $('dg-title').hidden = false;
         $('dg-stats').textContent = meta.runs ? `Partite ${meta.runs} · Piano record ${meta.best} · Vittorie ${meta.wins} · Boss ${meta.bosses} · Crediti ${meta.crediti}` : 'Prima partita: buona discesa.';
@@ -424,7 +623,7 @@
     }
     function enterGame() {
         $('dg-title').hidden = true; $('dg-game').hidden = false;
-        layout(); applyOpt(); render();
+        applyOpt(); render();
         if (s.p.pending) levelModal();
     }
     $('dg-start').addEventListener('click', () => startRun((Math.random() * 4294967296) >>> 0));
@@ -440,5 +639,5 @@
     if (!s) layout();
 
     // handles for the tests and for debugging in the console
-    self.RogueUI = { state: () => s, act, command, render };
+    self.RogueUI = { state: () => s, act, command, render, tileAt, view: () => view };
 })();

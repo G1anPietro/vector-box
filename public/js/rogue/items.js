@@ -7,6 +7,7 @@
 //   cat 'food':    food (how much hunger it removes; the belly holds 1200)
 //   cat 'plugin':  mod { … } — the same numbers the skills use (see classes.js): atk, def, acc, dodge, crit, regen…
 //   cat 'drink' and 'script':  effect (+ power) — used once
+//   cat 'throw':   dmg [min, max] — thrown at a tile (range 6), hits the first enemy on the line; sometimes it can be picked up again
 //   cat 'usb':     effect (+ power), ch (charges) — hits the nearest enemy you see
 // The effects are the functions in EFFECTS in game.js: an item with an existing effect needs only its line here.
 // Drinks, scripts, USB sticks and plugins are unknown until used: each run gives them a random look from LOOKS
@@ -24,6 +25,7 @@
         script: { name: 'Script', shape: 'script', unknown: true, stack: true },
         usb:    { name: 'Chiavetta', shape: 'usb', unknown: true },
         food:   { name: 'Cibo', shape: 'food', col: '#e8b84a', stack: true },
+        throw:  { name: 'Da lancio', shape: 'dart', col: '#c9d6e3', stack: true },
     };
     const LOOKS = {
         drink: [['rossa', '#e85a5a'], ['blu', '#5a8fe8'], ['verde', '#5ad87b'], ['gialla', '#e8d45a'], ['viola', '#b06ae8'], ['arancione', '#e8964a'],
@@ -52,6 +54,10 @@
         { id: 'cappuccio', cat: 'armor', name: 'Felpa col cappuccio', def: 3, price: 70, from: 2, info: 'Col cappuccio su non ti vede nessuno. Quasi.' },
         { id: 'antistatico', cat: 'armor', name: 'Giubbotto antistatico', def: 4, price: 110, from: 4, info: 'Da tecnico vero.' },
         { id: 'zaino', cat: 'armor', name: 'Zaino pieno di libri', def: 5, dodge: -1, price: 140, from: 5, w: 6, info: 'Una corazza. Pesa come una corazza.' },
+        // ── oggetti da lancio (tocca l'icona nella barra rapida, poi la casella dove lanciare)
+        { id: 'dardi', cat: 'throw', name: 'Dardi da freccette', dmg: [2, 5], price: 12, w: 12, info: 'Si lanciano da lontano (6 caselle). A volte si recuperano.' },
+        { id: 'cd', cat: 'throw', name: 'CD graffiato', dmg: [1, 4], price: 8, w: 10, info: 'Inutile per ascoltare, ottimo da lanciare.' },
+        { id: 'taglierino', cat: 'throw', name: 'Taglierino', dmg: [3, 6], price: 25, from: 2, w: 7, info: 'Si lancia da lontano e fa più male di un dardo.' },
         // ── cibo
         { id: 'merendina', cat: 'food', name: 'Merendina', food: 350, price: 10, w: 14, info: 'Dal distributore.' },
         { id: 'mela', cat: 'food', name: 'Mela', food: 250, price: 8, info: 'Qualcuno l’ha portata davvero.' },
