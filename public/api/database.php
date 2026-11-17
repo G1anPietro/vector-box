@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 41;
+const DB_SCHEMA_VERSION = 42;
 
 /**
  * Session bootstrap.
@@ -20,7 +20,8 @@ function initSession(bool $writable = false) {
             $st = getDbConnection()->prepare('SELECT is_admin FROM accounts WHERE id = :id');
             $st->execute([':id' => (int)$_SESSION['user_id']]);
             $acc = $st->fetch();
-            if (!$acc) {
+            require_once __DIR__ . '/sessions_lib.php';
+            if (!$acc || !sessionCheck((int)$_SESSION['user_id'])) {   // deleted account, or this device was signed out from the Account page
                 unset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['is_admin'], $_SESSION['theme']);
             } else {
                 $_SESSION['is_admin'] = (int)$acc['is_admin'];
@@ -584,6 +585,20 @@ function migrateV16(PDO $db): void {
 /** v38: the news board (pages/novita.php): what is new, what is being worked on right now, what comes next. Texts in both languages. */
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
 /** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
+/** v42: where you are signed in: one row per signed-in browser (hash of the session id, a label, the country, dates; no IP). */
+function migrateV42(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS account_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        sid_hash TEXT NOT NULL UNIQUE,
+        label TEXT NOT NULL DEFAULT '',
+        country TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        last_seen INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_account_sessions_user ON account_sessions(user_id)');
+}
+
 /** v41: two-step login (TOTP) for admins: the encrypted secret, whether it is on, the last accepted 30-second step, the hashed backup codes. */
 function migrateV41(PDO $db): void {
     addColumnIfMissing($db, 'accounts', 'totp_secret', "TEXT NOT NULL DEFAULT ''");
@@ -1109,6 +1124,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 41) {
             migrateV41($db);
+        }
+        if ($current < 42) {
+            migrateV42($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

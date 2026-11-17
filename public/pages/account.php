@@ -60,6 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newHash = password_hash($newPass, PASSWORD_DEFAULT);
                 $upd = $db->prepare("UPDATE accounts SET password_hash = :p WHERE id = :id");
                 $upd->execute([':p' => $newHash, ':id' => $account['id']]);
+                // a changed password signs out every OTHER device (this one stays)
+                $db->prepare('DELETE FROM account_sessions WHERE user_id = :u AND sid_hash != :h')->execute([':u' => $account['id'], ':h' => hash('sha256', session_id())]);
                 $msg = tt('Password updated successfully.', 'Password aggiornata.');
             } else {
                 $error = tt('Incorrect current password.', 'La password attuale non è corretta.');
@@ -118,6 +120,7 @@ session_write_close();
 <head>
     <?php renderHead(tt('SYSTEM // ACCOUNT_MANAGEMENT', 'SISTEMA // GESTIONE_ACCOUNT'), true); ?>
     <script src="../js/account_data.js?v=<?php echo APP_VERSION; ?>" defer></script>
+    <script src="../js/sessions.js?v=<?= filemtime(__DIR__ . '/../js/sessions.js') ?>" defer></script>
     <?php if (!empty($account['is_admin'])): ?><script src="../js/vendor/qrcode.js?v=1.4.4" defer></script><script src="../js/totp.js?v=<?= filemtime(__DIR__ . '/../js/totp.js') ?>" defer></script><?php endif; ?>
 </head>
 <body>
@@ -206,6 +209,12 @@ session_write_close();
                 </form>
                 <?php endif; ?>
             </div>
+
+            <section id="sessions" style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;" aria-labelledby="sessions-title">
+                <h3 id="sessions-title" style="font-size: 0.9rem;">>_ <?= tt('WHERE YOU ARE SIGNED IN', 'DOVE HAI ESEGUITO L\'ACCESSO') ?></h3>
+                <p class="term-muted" id="sessions-state" style="margin: 6px 0;"></p>
+                <div id="sessions-body"></div>
+            </section>
 
             <?php if (!empty($account['is_admin'])): ?>
             <section id="totp" style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;" aria-labelledby="totp-title">
