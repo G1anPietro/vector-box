@@ -94,7 +94,7 @@ $updated = '2026-11-16';
         <p>In Italia si può dare il consenso al trattamento dei propri dati online dai <strong>14 anni</strong>. Se hai meno di 14 anni, per creare un account serve il consenso di un genitore o di chi ne fa le veci; i giochi si possono usare senza account. Non raccolgo di proposito dati di bambini piccoli: se scopro un account di qualcuno troppo giovane senza consenso, lo cancello.</p>
 
         <h2>Sicurezza</h2>
-        <p>Il sito usa HTTPS, le password sono salvate cifrate, l’accesso ai dati è limitato al gestore e il server è aggiornato e protetto da limiti contro gli abusi. Se capitasse una violazione che mette a rischio i tuoi dati, la segnalerei al Garante entro 72 ore e avviserei chi è coinvolto.</p>
+        <p>Il sito usa HTTPS, le password sono salvate cifrate, l’accesso ai dati è limitato al gestore e il server è aggiornato e protetto da limiti contro gli abusi. Se capitasse una violazione che mette a rischio i tuoi dati, la segnalerei al Garante entro 72 ore e avviserei chi è coinvolto. Come sono protetti account e dati, i limiti e come segnalare un problema: <a href="sicurezza.php">pagina Sicurezza</a>.</p>
 
         <h2>Cookie e memoria del browser</h2>
         <p>Un cookie è un piccolo file che il browser salva; la "memoria locale" (localStorage) è lo stesso, ma resta solo nel tuo browser. Qui trovi tutto quello che il sito salva, diviso per tipo.</p>
@@ -176,7 +176,7 @@ $updated = '2026-11-16';
         <p>In Italy you can give consent to the processing of your own data online from <strong>14 years</strong>. If you are under 14, creating an account needs the consent of a parent or guardian; the games can be used without an account. I do not knowingly collect data from small children: if I find an account of someone too young without consent, I delete it.</p>
 
         <h2>Security</h2>
-        <p>The site uses HTTPS, passwords are stored hashed, access to the data is limited to the owner and the server is kept updated and protected by limits against abuse. If a breach put your data at risk, I would report it to the Italian authority within 72 hours and tell the people involved.</p>
+        <p>The site uses HTTPS, passwords are stored hashed, access to the data is limited to the owner and the server is kept updated and protected by limits against abuse. If a breach put your data at risk, I would report it to the Italian authority within 72 hours and tell the people involved. How accounts and data are protected, the limits and how to report a problem: <a href="sicurezza.php">Security page</a>.</p>
 
         <h2>Cookies and browser storage</h2>
         <p>A cookie is a small file the browser keeps; "local storage" is the same, but stays only in your own browser. Here is everything the site keeps, by type.</p>
@@ -200,6 +200,7 @@ $updated = '2026-11-16';
     <footer class="foot">
         <a href="giochi.php"><?= $it ? 'Giochi' : 'Games' ?></a>
         <a href="ads.php"><?= $it ? 'Supporta vector-box' : 'Support vector-box' ?></a>
+        <a href="sicurezza.php"><?= $it ? 'Sicurezza' : 'Security' ?></a>
         <?= adsCookieLink($lang) ?>
         <a href="../index.php"><?= $it ? 'Torna al sito' : 'Back to the site' ?></a>
     </footer>

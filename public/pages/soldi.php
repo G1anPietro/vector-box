@@ -126,6 +126,7 @@ $goal = donateGoal();
         <a href="giochi.php"><?= $it ? 'Giochi' : 'Games' ?></a>
         <a href="dona.php"><?= $it ? 'Dona' : 'Donate' ?></a>
         <a href="privacy.php">Privacy</a>
+        <a href="sicurezza.php"><?= $it ? 'Sicurezza' : 'Security' ?></a>
         <a href="../index.php"><?= $it ? 'Torna al sito' : 'Back to the site' ?></a>
     </footer>
 </body>

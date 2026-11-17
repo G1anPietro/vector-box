@@ -204,6 +204,7 @@ function gameBox(array $g, callable $T): void { ?>
         <a href="ads.php"><?= $lang === 'it' ? 'Supporta vector-box' : 'Support vector-box' ?></a>
         <a href="progetto.php"><?= $lang === 'it' ? 'Il progetto' : 'About the project' ?></a>
         <a href="privacy.php">Privacy</a>
+        <a href="sicurezza.php"><?= $lang === 'it' ? 'Sicurezza' : 'Security' ?></a>
         <?= adsCookieLink($lang) ?>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>
         <a href="../index.php"><?= $lang === 'it' ? 'Torna al sito' : 'Back to the site' ?></a>

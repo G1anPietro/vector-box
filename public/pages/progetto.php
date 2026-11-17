@@ -147,6 +147,8 @@ require_once __DIR__ . '/../includes/head.php';
 
     <footer class="foot">
         <a href="giochi.php">Giochi</a>
+        <a href="privacy.php">Privacy</a>
+        <a href="sicurezza.php">Sicurezza</a>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener">Codice sorgente</a>
         <a href="../index.php">Torna al sito</a>
     </footer>
