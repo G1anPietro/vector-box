@@ -289,6 +289,7 @@ try {
     // All mutations run in one exclusive transaction: two concurrent requests can no longer
     // advance the same bot turn twice or double-submit a play. It is committed when the script exits.
     if ($action !== 'state' || botTurnPending($db, $tableId)) {
+        $stmt = null;   // the table lookup above left a read open: with it, BEGIN IMMEDIATE fails "database is locked" whenever another request committed meanwhile
         $db->exec('BEGIN IMMEDIATE');
         $GLOBALS['pokerTxOpen'] = true;
         register_shutdown_function(function () use ($db) {

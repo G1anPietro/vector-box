@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 35;
+const DB_SCHEMA_VERSION = 36;
 
 /**
  * Session bootstrap.
@@ -583,6 +583,11 @@ function migrateV16(PDO $db): void {
 /** v30: a temporary link can be limited to a number of openings (0 = no limit). */
 /** v33: the AI (Google Gemini) only reads the material of a class declared to have adult students only: the requester says so
  *  (adults_declared) and the representative can switch it on later (the students grow up). Classes that already existed keep it on. */
+/** v36: the notes list (newest day first, 300 rows) read its rows through a temp sort of the whole class; this index serves the order. */
+function migrateV36(PDO $db): void {
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_items_day ON class_items(class_id, lesson_date DESC, id DESC)');
+}
+
 /** v35: the e-mail box. An account may give an e-mail address (optional; verified by a link) and agree to site news;
  *  the admin writes messages (drafts / sent) and the site sends them through a queue (api/mailer.php). Nothing is sent
  *  unless MAIL_DRIVER is set in .env. */
@@ -1017,6 +1022,9 @@ function runMigrations(PDO $db): void {
         if ($current < 35) {
             migrateV35($db);
         }
+        if ($current < 36) {
+            migrateV36($db);
+        }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
     } catch (Throwable $e) {
@@ -1025,7 +1033,14 @@ function runMigrations(PDO $db): void {
     }
 }
 
-function getDbConnection() {
+/**
+ * The database connection of this request: opened once and shared (opening costs ~1.7 ms, a query costs microseconds).
+ * $dedicated = true gives a separate connection of its own: only the rate limiter uses it, so its short write
+ * transactions never run on the connection of a caller that may have a read still open.
+ */
+function getDbConnection(bool $dedicated = false) {
+    static $shared = null;
+    if (!$dedicated && $shared !== null) return $shared;
     $dataDir = dirname(__DIR__, 2) . '/data';
 
     if (!is_dir($dataDir)) {
@@ -1047,5 +1062,6 @@ function getDbConnection() {
         runMigrations($db);
     }
 
+    if (!$dedicated) $shared = $db;
     return $db;
 }

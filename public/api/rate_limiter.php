@@ -19,7 +19,8 @@ function checkRateLimit(string $action = 'feed', int $maxRequests = 5, int $deca
     $now = time();
 
     try {
-        $db = getDbConnection();
+        static $own = null;
+        $db = $own ??= getDbConnection(true);   // its own connection: see getDbConnection()
         $db->exec('BEGIN IMMEDIATE');
 
         $stmt = $db->prepare('DELETE FROM rate_limits WHERE bucket = :b AND ts <= :t');

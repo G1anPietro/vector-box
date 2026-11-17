@@ -110,7 +110,9 @@ try {
         if (!preg_match('/^[a-f0-9]{48}$/', $tk)) spiaFail('no_device', 401);
         $known = $db->prepare('SELECT 1 FROM spia_devices WHERE token_hash = :h');
         $known->execute([':h' => spiaTokenHash($tk)]);
-        if (!$known->fetchColumn()) spiaFail('gone', 404);
+        $exists = $known->fetchColumn();
+        $known = null;   // free the read before the write lock (see poker.php)
+        if (!$exists) spiaFail('gone', 404);
 
         $db->exec('BEGIN IMMEDIATE');
         $device = spiaDevice($db);
