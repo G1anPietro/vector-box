@@ -27,26 +27,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'login';
 
     if ($username === '' || $password === '') {
-        $errorMessage = "Please complete all fields.";
+        $errorMessage = tt('Please complete all fields.', 'Compila tutti i campi.');
     } elseif (strlen($username) > 64 || strlen($password) > 1024) {
-        $errorMessage = "Invalid username or password.";
+        $errorMessage = tt('Invalid username or password.', 'Nome utente o password non validi.');
     } else {
         try {
             $db = getDbConnection();
 
             if ($action === 'register') {
                 if (!checkRateLimit('register', 5, 3600, null, true, true)) {
-                    $errorMessage = "Too many registrations from this address. Try again later.";
+                    $errorMessage = tt('Too many registrations from this address. Try again later.', 'Troppe registrazioni da questo indirizzo. Riprova più tardi.');
                 } elseif ($err = validateNewUsername($username) ?? validateNewPassword($password)) {
-                    $errorMessage = $err;
+                    $errorMessage = trMsg($err);
                 } elseif (empty($_POST['accept_terms'])) {
-                    $errorMessage = REGISTER_TERMS_ERROR;
+                    $errorMessage = trMsg(REGISTER_TERMS_ERROR);
                 } elseif (($same = $db->prepare('SELECT 1 FROM accounts WHERE LOWER(username) = LOWER(:u)')) && $same->execute([':u' => $username]) && $same->fetchColumn()) {
                     $errorMessage = "Username is already taken.";
                 } else {
                     try {
-                        $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin) VALUES (:u, :p, 'cyan', 0)");
-                        $stmt->execute([':u' => $username, ':p' => password_hash($password, PASSWORD_DEFAULT)]);
+                        $stmt = $db->prepare("INSERT INTO accounts (username, password_hash, theme, is_admin, lang) VALUES (:u, :p, 'cyan', 0, :l)");
+                        $stmt->execute([':u' => $username, ':p' => password_hash($password, PASSWORD_DEFAULT), ':l' => pageLang()]);
 
                         establishSession(['id' => $db->lastInsertId(), 'username' => $username, 'theme' => 'cyan', 'is_admin' => 0]);
                         header('Location: ' . $afterLogin);
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // per account AND address (a stranger's guesses must not lock the owner out); a limiter error refuses instead of allowing
                 if (!checkRateLimit('login_ip', 10, 300, null, true, true) || !checkRateLimit('login_user', 5, 300, strtolower($username) . '|' . getClientIp(), true, true)
         || !checkRateLimit('login_acct', 60, 3600, strtolower($username), true, true)) {   // wide cap on one account from ALL addresses
-                    $errorMessage = "Too many attempts. Try again in a few minutes.";
+                    $errorMessage = tt('Too many attempts. Try again in a few minutes.', 'Troppi tentativi. Riprova tra qualche minuto.');
                 } else {
                     $stmt = $db->prepare("SELECT * FROM accounts WHERE username = :u");
                     $stmt->execute([':u' => $username]);
@@ -71,33 +71,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         header('Location: ' . $afterLogin);
                         exit();
                     }
-                    $errorMessage = "Invalid username or password.";
+                    $errorMessage = tt('Invalid username or password.', 'Nome utente o password non validi.');
                 }
             }
         } catch (Throwable $e) {
             require_once __DIR__ . '/../api/debug_logger.php';
             logSystemError('LOGIN_PAGE', $e->getMessage());
-            $errorMessage = "Authentication server error.";
+            $errorMessage = tt('Authentication server error.', 'Errore del server di accesso.');
         }
     }
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= pageLang() ?>">
 <head>
-    <?php renderHead("SYSTEM // AUTHENTICATION", true); ?>
+    <?php renderHead(tt('SYSTEM // AUTHENTICATION', 'SISTEMA // AUTENTICAZIONE'), true); ?>
 </head>
 <body>
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // AUTH_GATEWAY</div>
-        <a href="../index.php" class="nav-btn"><_ BACK_TO_DESKTOP</a>
+        <a href="../index.php" class="nav-btn"><_ <?= tt('BACK_TO_DESKTOP', 'TORNA_AL_DESKTOP') ?></a>
     </header>
 
     <main class="page-container-centered">
         <div class="cyber-panel hack-container" style="max-width: 420px; text-align: left;">
-            <h2 class="hack-title" style="text-align: center;">>_ USER_ACCOUNT</h2>
+            <h2 class="hack-title" style="text-align: center;">>_ <?= tt('USER_ACCOUNT', 'ACCOUNT_UTENTE') ?></h2>
             
             <?php if (!empty($errorMessage)): ?>
                 <div style="color: #ff3333; font-weight: bold; margin-bottom: 12px; font-size: 0.85rem;">>> <?php echo $errorMessage; ?></div>
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" action="login.php" style="display: flex; flex-direction: column; gap: 12px;">
                 <?php if ($next !== ''): ?><input type="hidden" name="next" value="<?php echo htmlspecialchars($next); ?>"><?php endif; ?>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <label class="toggle-label" for="login-username" style="font-size: 0.75rem; color: var(--text-muted);">USERNAME:</label>
+                    <label class="toggle-label" for="login-username" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('USERNAME', 'NOME UTENTE') ?>:</label>
                     <input type="text" id="login-username" name="username" class="terminal-input" style="background: rgba(0,0,0,0.85); border: 1px solid var(--border-color); color: #ffffff; padding: 8px;" required autocomplete="username" autocapitalize="none" spellcheck="false">
                 </div>
 
@@ -117,12 +117,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <label class="toggle-label" style="font-size: 0.72rem; color: var(--text-muted); display: flex; gap: 6px; align-items: flex-start;">
                     <input type="checkbox" name="accept_terms" value="1">
-                    <span>Only to REGISTER: I have read the <a href="privacy.php" style="color: var(--accent-color);">privacy page</a> and I am at least 14 years old (or a parent agrees).</span>
+                    <span><?php if (pageLang() === 'it'): ?>Solo per REGISTRARTI: ho letto la <a href="privacy.php" style="color: var(--accent-color);">pagina sulla privacy</a> e ho almeno 14 anni (o un genitore è d'accordo).<?php else: ?>Only to REGISTER: I have read the <a href="privacy.php" style="color: var(--accent-color);">privacy page</a> and I am at least 14 years old (or a parent agrees).<?php endif; ?></span>
                 </label>
 
                 <div style="display: flex; gap: 8px; margin-top: 10px;">
-                    <button type="submit" name="action" value="login" class="nav-btn" style="flex: 1; padding: 8px;">>_ LOGIN</button>
-                    <button type="submit" name="action" value="register" class="nav-btn" style="flex: 1; border-color: var(--text-muted); color: var(--text-muted); padding: 8px;">REGISTER</button>
+                    <button type="submit" name="action" value="login" class="nav-btn" style="flex: 1; padding: 8px;">>_ <?= tt('LOGIN', 'ACCEDI') ?></button>
+                    <button type="submit" name="action" value="register" class="nav-btn" style="flex: 1; border-color: var(--text-muted); color: var(--text-muted); padding: 8px;"><?= tt('REGISTER', 'REGISTRATI') ?></button>
                 </div>
             </form>
         </div>

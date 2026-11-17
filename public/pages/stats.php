@@ -43,7 +43,7 @@ $count = fn(callable $key) => (function () use ($rows, $key) {
 })();
 foreach ($rows as $r) if (isset($perDay[$r['day']])) $perDay[$r['day']]++;
 $pages = $count(fn($r) => $r['page']);
-$refs = $count(fn($r) => $r['ref'] === '-' ? 'diretto / app' : $r['ref']);
+$refs = $count(fn($r) => $r['ref'] === '-' ? tt('direct / app', 'diretto / app') : $r['ref']);
 $devices = $count(fn($r) => $r['device']);
 $users = $count(fn($r) => $r['user'] === '-' ? null : $r['user']);
 $total = count($rows);
@@ -53,9 +53,16 @@ $todayCount = $perDay[$today] ?? 0;
 $maxDay = max(1, max($perDay));
 $recent = array_slice(array_reverse($rows), 0, 25);
 $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
-$months = ['01' => 'gen', '02' => 'feb', '03' => 'mar', '04' => 'apr', '05' => 'mag', '06' => 'giu', '07' => 'lug',
-           '08' => 'ago', '09' => 'set', '10' => 'ott', '11' => 'nov', '12' => 'dic'];
+$months = pageLang() === 'it'
+    ? ['01' => 'gen', '02' => 'feb', '03' => 'mar', '04' => 'apr', '05' => 'mag', '06' => 'giu', '07' => 'lug', '08' => 'ago', '09' => 'set', '10' => 'ott', '11' => 'nov', '12' => 'dic']
+    : ['01' => 'Jan', '02' => 'Feb', '03' => 'Mar', '04' => 'Apr', '05' => 'May', '06' => 'Jun', '07' => 'Jul', '08' => 'Aug', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dec'];
 $fmtDay = fn($d) => (int)substr($d, 8, 2) . ' ' . $months[substr($d, 5, 2)];
+/** "1 visit" / "2 visits" (English), "1 visita" / "2 visite" (Italian). */
+$nVisits = fn($n) => $n . ' ' . (pageLang() === 'it' ? ($n === 1 ? 'visita' : 'visite') : ($n === 1 ? 'visit' : 'visits'));
+$nReq = fn($n) => $n . ' ' . (pageLang() === 'it' ? ($n === 1 ? 'richiesta' : 'richieste') : ($n === 1 ? 'request' : 'requests'));
+/** The names of the kinds of bot, in the language of the page. */
+$kindOf = fn($k) => pageLang() === 'it' ? (BOT_KINDS[$k] ?? $k) : (['crawler' => 'Search engines and link previews', 'ai' => 'AI crawlers', 'abusive' => 'Blocked scrapers',
+                   'tool' => 'Scripts and tools', 'scanner' => 'Vulnerability scanners'][$k] ?? $k);
 
 // ---- bots and automated requests (bot_stats counters + the latest lines of bots.log) ----
 $botDay = array_fill_keys(array_keys($perDay), 0);
@@ -67,7 +74,7 @@ try {
         $n = (int)$b['hits'];
         $botTotal += $n; $botBlocked += (int)$b['blocked'];
         if (isset($botDay[$b['day']])) $botDay[$b['day']] += $n;
-        $kindName = BOT_KINDS[$b['kind']] ?? $b['kind'];
+        $kindName = $kindOf($b['kind']);
         $botKind[$kindName] = ($botKind[$kindName] ?? 0) + $n;
         $botLabel[$b['label']] = ($botLabel[$b['label']] ?? 0) + $n;
     }
@@ -82,7 +89,7 @@ foreach (['bots.log', 'bots.log.1'] as $f) {   // newest file first, each read f
     foreach (array_reverse(file($dir . $f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)) as $line) {
         $c = explode("\t", $line);
         if (count($c) < 6) continue;
-        $botRecent[] = ['at' => $c[0], 'ip' => $c[1], 'kind' => BOT_KINDS[$c[2]] ?? $c[2], 'label' => $c[3], 'page' => $c[4], 'status' => $c[5]];
+        $botRecent[] = ['at' => $c[0], 'ip' => $c[1], 'kind' => $kindOf($c[2]), 'label' => $c[3], 'page' => $c[4], 'status' => $c[5]];
         if (count($botRecent) >= 25) break;
     }
 }
@@ -120,7 +127,7 @@ $ipTop = array_slice($ipTop, 0, 15, true);
 $ccKnown = fn($cc) => preg_match('/^[A-Z]{2}$/', $cc) && $cc !== '??';
 
 function barList(array $items, int $total, callable $h): void {
-    if (!$items) { echo '<p class="empty">Ancora nessun dato.</p>'; return; }
+    if (!$items) { echo '<p class="empty">' . tt('No data yet.', 'Ancora nessun dato.') . '</p>'; return; }
     $max = max($items);
     echo '<ol class="bars">';
     foreach ($items as $label => $n) {
@@ -134,39 +141,39 @@ function barList(array $items, int $total, callable $h): void {
 }
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= pageLang() ?>">
 <head>
-    <?php renderHead('Statistiche // Vector-Box', true); ?>
+    <?php renderHead(tt('Statistics // Vector-Box', 'Statistiche // Vector-Box'), true); ?>
     <meta name="robots" content="noindex">
     <link rel="stylesheet" href="../css/stats.css?v=<?= filemtime(__DIR__ . '/../css/stats.css') ?>">
     <script src="../js/stats.js?v=<?= filemtime(__DIR__ . '/../js/stats.js') ?>" defer></script>
 </head>
 <body class="stats-page">
     <header class="cyber-header">
-        <div class="glitch">// STATISTICHE</div>
-        <a href="../index.php" class="nav-btn">// RETURN</a>
+        <div class="glitch">// <?= tt('STATISTICS', 'STATISTICHE') ?></div>
+        <a href="../index.php" class="nav-btn">// <?= tt('RETURN', 'INDIETRO') ?></a>
     </header>
 
     <main class="stats">
-        <nav class="range" aria-label="Periodo">
+        <nav class="range" aria-label="<?= tt('Period', 'Periodo') ?>">
             <?php foreach ([7, 30, 90] as $d): ?>
-                <a href="?days=<?= $d ?>" class="<?= $d === $days ? 'on' : '' ?>" <?= $d === $days ? 'aria-current="page"' : '' ?>>Ultimi <?= $d ?> giorni</a>
+                <a href="?days=<?= $d ?>" class="<?= $d === $days ? 'on' : '' ?>" <?= $d === $days ? 'aria-current="page"' : '' ?>><?= tt("Last $d days", "Ultimi $d giorni") ?></a>
             <?php endforeach; ?>
         </nav>
 
         <section class="tiles">
-            <div class="tile"><span class="big"><?= $todayCount ?></span><span>visite oggi</span></div>
-            <div class="tile"><span class="big"><?= $total ?></span><span>visite in <?= $days ?> giorni</span></div>
-            <div class="tile"><span class="big"><?= $unique ?></span><span>visitatori diversi</span></div>
-            <div class="tile"><span class="big"><?= $total ? round(100 * $returning / $total) : 0 ?>%</span><span>tornano (<?= $returning ?>)</span></div>
+            <div class="tile"><span class="big"><?= $todayCount ?></span><span><?= tt('visits today', 'visite oggi') ?></span></div>
+            <div class="tile"><span class="big"><?= $total ?></span><span><?= tt("visits in $days days", "visite in $days giorni") ?></span></div>
+            <div class="tile"><span class="big"><?= $unique ?></span><span><?= tt('different visitors', 'visitatori diversi') ?></span></div>
+            <div class="tile"><span class="big"><?= $total ? round(100 * $returning / $total) : 0 ?>%</span><span><?= tt("return ($returning)", "tornano ($returning)") ?></span></div>
         </section>
 
         <section class="panel-s">
-            <h2>Visite al giorno</h2>
-            <div class="cols" role="img" aria-label="Visite al giorno, massimo <?= $maxDay ?>">
+            <h2><?= tt('Visits per day', 'Visite al giorno') ?></h2>
+            <div class="cols" role="img" aria-label="<?= tt("Visits per day, maximum $maxDay", "Visite al giorno, massimo $maxDay") ?>">
                 <span class="ymax"><?= $maxDay ?></span>
                 <?php $i = 0; foreach ($perDay as $d => $n): ?>
-                    <span class="col<?= $d === $today ? ' today' : '' ?>" data-tip="<?= $h($fmtDay($d)) ?>: <?= $n ?> visit<?= $n === 1 ? 'a' : 'e' ?>">
+                    <span class="col<?= $d === $today ? ' today' : '' ?>" data-tip="<?= $h($fmtDay($d)) ?>: <?= $nVisits($n) ?>">
                         <span class="bar" style="height:<?= $n ? max(2, round(100 * $n / $maxDay)) : 0 ?>%"></span>
                         <?php $step = max(1, intdiv($days, 7));
                               if ($d === $today || ($i % $step === 0 && $i < $days - max(2, intdiv($step, 2) + 1))): ?><span class="x"><?= $h($fmtDay($d)) ?></span><?php endif; ?>
@@ -174,45 +181,45 @@ function barList(array $items, int $total, callable $h): void {
                 <?php $i++; endforeach; ?>
             </div>
             <details>
-                <summary>Mostra come tabella</summary>
-                <table class="tbl"><thead><tr><th>Giorno</th><th>Visite</th></tr></thead><tbody>
+                <summary><?= tt('Show as a table', 'Mostra come tabella') ?></summary>
+                <table class="tbl"><thead><tr><th><?= tt('Day', 'Giorno') ?></th><th><?= tt('Visits', 'Visite') ?></th></tr></thead><tbody>
                     <?php foreach (array_reverse($perDay, true) as $d => $n): ?><tr><td><?= $h($fmtDay($d)) ?></td><td><?= $n ?></td></tr><?php endforeach; ?>
                 </tbody></table>
             </details>
         </section>
 
         <div class="grid">
-            <section class="panel-s"><h2>Pagine di arrivo</h2><?php barList($pages, $total, $h); ?></section>
-            <section class="panel-s"><h2>Da dove arrivano</h2><?php barList($refs, $total, $h); ?></section>
-            <section class="panel-s"><h2>Dispositivi</h2><?php barList($devices, $total, $h); ?></section>
-            <section class="panel-s"><h2>Utenti con account</h2><?php barList($users, $total, $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Landing pages', 'Pagine di arrivo') ?></h2><?php barList($pages, $total, $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Where they come from', 'Da dove arrivano') ?></h2><?php barList($refs, $total, $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Devices', 'Dispositivi') ?></h2><?php barList($devices, $total, $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Users with an account', 'Utenti con account') ?></h2><?php barList($users, $total, $h); ?></section>
         </div>
 
         <section class="panel-s" id="mappa">
-            <h2>Mappa: da dove arrivano visitatori e bot</h2>
+            <h2><?= tt('Map: where visitors and bots come from', 'Mappa: da dove arrivano visitatori e bot') ?></h2>
             <?php if (!$geoReady): ?>
-                <p class="empty">Il database dei paesi non c'è ancora. Si scarica da solo una volta al mese (lo fa il lavoro notturno) oppure subito con <code>php tools/geoip-update.php</code> sul server.</p>
+                <p class="empty"><?php if (pageLang() === 'it'): ?>Il database dei paesi non c'è ancora. Si scarica da solo una volta al mese (lo fa il lavoro notturno) oppure subito con <code>php tools/geoip-update.php</code> sul server.<?php else: ?>The country database is not there yet. It downloads itself once a month (the nightly job does it) or right now with <code>php tools/geoip-update.php</code> on the server.<?php endif; ?></p>
             <?php else: ?>
-            <div class="map-modes" role="group" aria-label="Cosa mostrare sulla mappa">
-                <button type="button" class="on" data-mode="h" aria-pressed="true">Visitatori</button>
+            <div class="map-modes" role="group" aria-label="<?= tt('What to show on the map', 'Cosa mostrare sulla mappa') ?>">
+                <button type="button" class="on" data-mode="h" aria-pressed="true"><?= tt('Visitors', 'Visitatori') ?></button>
                 <button type="button" data-mode="b" aria-pressed="false">Bot</button>
-                <button type="button" data-mode="a" aria-pressed="false">Tutti (rosso = più bot)</button>
+                <button type="button" data-mode="a" aria-pressed="false"><?= tt('All (red = more bots)', 'Tutti (rosso = più bot)') ?></button>
             </div>
             <div class="map-wrap">
-            <div class="map-zoom" role="group" aria-label="Zoom della mappa"><button type="button" data-z="in" aria-label="Ingrandisci">+</button><button type="button" data-z="out" aria-label="Rimpicciolisci">−</button><button type="button" data-z="reset" aria-label="Mostra tutto il mondo">⟲</button></div>
-            <svg class="map" viewBox="<?= $h($mapData['viewBox']) ?>" role="img" aria-label="Mappa del mondo colorata per numero di visite" preserveAspectRatio="xMidYMid meet">
+            <div class="map-zoom" role="group" aria-label="<?= tt('Map zoom', 'Zoom della mappa') ?>"><button type="button" data-z="in" aria-label="<?= tt('Zoom in', 'Ingrandisci') ?>">+</button><button type="button" data-z="out" aria-label="<?= tt('Zoom out', 'Rimpicciolisci') ?>">−</button><button type="button" data-z="reset" aria-label="<?= tt('Show the whole world', 'Mostra tutto il mondo') ?>">⟲</button></div>
+            <svg class="map" viewBox="<?= $h($mapData['viewBox']) ?>" role="img" aria-label="<?= tt('World map coloured by number of visits', 'Mappa del mondo colorata per numero di visite') ?>" preserveAspectRatio="xMidYMid meet">
                 <?php foreach ($mapData['countries'] as $cc => $c): $hv = $byCountry[$cc]['h'] ?? 0; $bv = $byCountry[$cc]['b'] ?? 0; ?>
                     <path d="<?= $c['d'] ?>" data-c="<?= $h($cc) ?>" data-h="<?= $hv ?>" data-b="<?= $bv ?>"
-                          data-tip="<?= $h($c['n']) ?>: <?= $hv ?> visit<?= $hv === 1 ? 'a' : 'e' ?>, <?= $bv ?> richiest<?= $bv === 1 ? 'a' : 'e' ?> di bot"></path>
+                          data-tip="<?= $h($c['n']) ?>: <?= $nVisits($hv) ?>, <?= $nReq($bv) ?> <?= tt('from bots', 'di bot') ?>"></path>
                 <?php endforeach; ?>
             </svg>
             </div>
-            <p class="note map-hint">Zoom: rotella del mouse, due dita o i tasti; trascina per spostarti; doppio clic per avvicinarti.</p>
-            <div class="map-legend" aria-hidden="true"><span>meno</span><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>più</span></div>
+            <p class="note map-hint"><?= tt('Zoom: mouse wheel, two fingers or the buttons; drag to move around; double click to zoom in.', 'Zoom: rotella del mouse, due dita o i tasti; trascina per spostarti; doppio clic per avvicinarti.') ?></p>
+            <div class="map-legend" aria-hidden="true"><span><?= tt('less', 'meno') ?></span><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span><?= tt('more', 'più') ?></span></div>
             <?php $known = array_filter($byCountry, fn($v, $k) => $ccKnown($k), ARRAY_FILTER_USE_BOTH); $unknown = ($byCountry['??']['h'] ?? 0) + ($byCountry['??']['b'] ?? 0); ?>
-            <?php if (!$known): ?><p class="empty">Ancora nessun indirizzo da mettere sulla mappa.</p><?php else: ?>
+            <?php if (!$known): ?><p class="empty"><?= tt('No address to put on the map yet.', 'Ancora nessun indirizzo da mettere sulla mappa.') ?></p><?php else: ?>
             <div class="scroll"><table class="tbl">
-                <thead><tr><th>Paese</th><th>Visite</th><th>IP diversi</th><th>Richieste di bot</th><th>IP di bot</th></tr></thead>
+                <thead><tr><th><?= tt('Country', 'Paese') ?></th><th><?= tt('Visits', 'Visite') ?></th><th><?= tt('Different IPs', 'IP diversi') ?></th><th><?= tt('Bot requests', 'Richieste di bot') ?></th><th><?= tt('Bot IPs', 'IP di bot') ?></th></tr></thead>
                 <tbody>
                 <?php foreach (array_slice($known, 0, 12, true) as $cc => $v): ?>
                     <tr class="<?= ($v['b'] ?? 0) > ($v['h'] ?? 0) ? 'row-bot' : '' ?>"><td><span class="cc"><?= $h($cc) ?></span> <?= $h($countryName($cc)) ?></td>
@@ -221,34 +228,34 @@ function barList(array $items, int $total, callable $h): void {
                 </tbody>
             </table></div>
             <?php endif; ?>
-            <?php if ($unknown): ?><p class="note"><?= $unknown ?> richieste da indirizzi senza paese (rete locale, indirizzi riservati o non nel database).</p><?php endif; ?>
-            <h3 class="sub-title">Indirizzi più attivi</h3>
-            <?php if (!$ipTop): ?><p class="empty">Ancora nessun dato.</p><?php else: ?>
+            <?php if ($unknown): ?><p class="note"><?= tt("$unknown requests from addresses with no country (local network, reserved addresses or not in the database).", "$unknown richieste da indirizzi senza paese (rete locale, indirizzi riservati o non nel database).") ?></p><?php endif; ?>
+            <h3 class="sub-title"><?= tt('Most active addresses', 'Indirizzi più attivi') ?></h3>
+            <?php if (!$ipTop): ?><p class="empty"><?= tt('No data yet.', 'Ancora nessun dato.') ?></p><?php else: ?>
             <div class="scroll"><table class="tbl">
-                <thead><tr><th>IP</th><th>Paese</th><th>Chi</th><th>Visite</th><th>Richieste di bot</th></tr></thead>
+                <thead><tr><th>IP</th><th><?= tt('Country', 'Paese') ?></th><th><?= tt('Who', 'Chi') ?></th><th><?= tt('Visits', 'Visite') ?></th><th><?= tt('Bot requests', 'Richieste di bot') ?></th></tr></thead>
                 <tbody>
                 <?php foreach ($ipTop as $ip => $v): $isBot = ($v['b'] ?? 0) > 0; ?>
                     <tr class="<?= $isBot ? 'row-bot' : '' ?>"><td class="mono"><?= $h($ip) ?></td>
                         <td><?= $ccKnown($v['cc'] ?? '??') ? '<span class="cc">' . $h($v['cc']) . '</span> ' . $h($countryName($v['cc'])) : '–' ?></td>
-                        <td><?php if ($isBot): ?><span class="badge-bot">BOT</span> <?= $h($v['label'] ?? '') ?><?php else: ?>persona<?php endif; ?></td>
+                        <td><?php if ($isBot): ?><span class="badge-bot">BOT</span> <?= $h($v['label'] ?? '') ?><?php else: ?><?= tt('person', 'persona') ?><?php endif; ?></td>
                         <td><?= $v['h'] ?? 0 ?></td><td><?= $v['b'] ?? 0 ?></td></tr>
                 <?php endforeach; ?>
                 </tbody>
             </table></div>
             <?php endif; ?>
-            <p class="note">Il paese si ricava dall'indirizzo IP con un database scaricato sul server: nessun indirizzo dei visitatori viene mandato a servizi esterni. <a href="https://db-ip.com" rel="noopener noreferrer">IP Geolocation by DB-IP</a> (CC BY 4.0). Un paese non è una persona: VPN, reti mobili e proxy spostano i punti.</p>
+            <p class="note"><?php if (pageLang() === 'it'): ?>Il paese si ricava dall'indirizzo IP con un database scaricato sul server: nessun indirizzo dei visitatori viene mandato a servizi esterni. <?php else: ?>The country comes from the IP address, using a database downloaded to the server: no visitor address is sent to outside services. <?php endif; ?><a href="https://db-ip.com" rel="noopener noreferrer">IP Geolocation by DB-IP</a> (CC BY 4.0). <?= tt('A country is not a person: VPNs, mobile networks and proxies move the dots.', 'Un paese non è una persona: VPN, reti mobili e proxy spostano i punti.') ?></p>
             <?php endif; ?>
         </section>
 
         <section class="panel-s">
-            <h2>Ultime visite</h2>
-            <?php if (!$recent): ?><p class="empty">Ancora nessuna visita registrata.</p><?php else: ?>
+            <h2><?= tt('Latest visits', 'Ultime visite') ?></h2>
+            <?php if (!$recent): ?><p class="empty"><?= tt('No visit recorded yet.', 'Ancora nessuna visita registrata.') ?></p><?php else: ?>
             <div class="scroll"><table class="tbl">
-                <thead><tr><th>Quando</th><th>Chi</th><th>Pagina</th><th>Dispositivo</th><th>Da</th><th>IP</th><th>Paese</th></tr></thead>
+                <thead><tr><th><?= tt('When', 'Quando') ?></th><th><?= tt('Who', 'Chi') ?></th><th><?= tt('Page', 'Pagina') ?></th><th><?= tt('Device', 'Dispositivo') ?></th><th><?= tt('From', 'Da') ?></th><th>IP</th><th><?= tt('Country', 'Paese') ?></th></tr></thead>
                 <tbody>
                 <?php foreach ($recent as $r): ?>
                     <tr><td><?= $h(substr($r['at'], 5, 11)) ?></td>
-                        <td><?= $r['user'] !== '-' ? $h($r['user']) : ($r['returning'] ? 'di ritorno' : 'nuovo') ?></td>
+                        <td><?= $r['user'] !== '-' ? $h($r['user']) : ($r['returning'] ? tt('returning', 'di ritorno') : tt('new', 'nuovo')) ?></td>
                         <td><?= $h($r['page']) ?></td><td><?= $h($r['device']) ?></td>
                         <td><?= $r['ref'] !== '-' ? $h($r['ref']) : '–' ?></td><td class="mono"><?= $h($r['ip']) ?></td>
                         <td><?php $cc = $ccOf($r['ip']); echo $ccKnown($cc) ? '<span class="cc">' . $h($cc) . '</span>' : '–'; ?></td></tr>
@@ -257,20 +264,20 @@ function barList(array $items, int $total, callable $h): void {
             </table></div>
             <?php endif; ?>
         </section>
-        <h2 class="sect-title" id="bot">Bot e richieste automatiche</h2>
+        <h2 class="sect-title" id="bot"><?= tt('Bots and automated requests', 'Bot e richieste automatiche') ?></h2>
         <section class="tiles">
-            <div class="tile"><span class="big"><?= $botToday ?></span><span>richieste di bot oggi</span></div>
-            <div class="tile"><span class="big"><?= $botTotal ?></span><span>in <?= $days ?> giorni</span></div>
-            <div class="tile"><span class="big"><?= $botBlocked ?></span><span>respinte (403 / 429)</span></div>
-            <div class="tile"><span class="big"><?= ($total + $botTotal) ? round(100 * $botTotal / ($total + $botTotal)) : 0 ?>%</span><span>del traffico PHP è dei bot</span></div>
+            <div class="tile"><span class="big"><?= $botToday ?></span><span><?= tt('bot requests today', 'richieste di bot oggi') ?></span></div>
+            <div class="tile"><span class="big"><?= $botTotal ?></span><span><?= tt("in $days days", "in $days giorni") ?></span></div>
+            <div class="tile"><span class="big"><?= $botBlocked ?></span><span><?= tt('turned away (403 / 429)', 'respinte (403 / 429)') ?></span></div>
+            <div class="tile"><span class="big"><?= ($total + $botTotal) ? round(100 * $botTotal / ($total + $botTotal)) : 0 ?>%</span><span><?= tt('of the PHP traffic is bots', 'del traffico PHP è dei bot') ?></span></div>
         </section>
 
         <section class="panel-s">
-            <h2>Richieste di bot al giorno</h2>
-            <div class="cols" role="img" aria-label="Richieste di bot al giorno, massimo <?= $botMax ?>">
+            <h2><?= tt('Bot requests per day', 'Richieste di bot al giorno') ?></h2>
+            <div class="cols" role="img" aria-label="<?= tt("Bot requests per day, maximum $botMax", "Richieste di bot al giorno, massimo $botMax") ?>">
                 <span class="ymax"><?= $botMax ?></span>
                 <?php $i = 0; foreach ($botDay as $d => $n): ?>
-                    <span class="col<?= $d === $today ? ' today' : '' ?>" data-tip="<?= $h($fmtDay($d)) ?>: <?= $n ?> richiest<?= $n === 1 ? 'a' : 'e' ?>">
+                    <span class="col<?= $d === $today ? ' today' : '' ?>" data-tip="<?= $h($fmtDay($d)) ?>: <?= $nReq($n) ?>">
                         <span class="bar" style="height:<?= $n ? max(2, round(100 * $n / $botMax)) : 0 ?>%"></span>
                         <?php $step = max(1, intdiv($days, 7));
                               if ($d === $today || ($i % $step === 0 && $i < $days - max(2, intdiv($step, 2) + 1))): ?><span class="x"><?= $h($fmtDay($d)) ?></span><?php endif; ?>
@@ -280,15 +287,15 @@ function barList(array $items, int $total, callable $h): void {
         </section>
 
         <div class="grid">
-            <section class="panel-s"><h2>Tipo di bot</h2><?php barList($botKind, $botTotal, $h); ?></section>
-            <section class="panel-s"><h2>Chi sono / cosa cercano</h2><?php barList($botLabel, $botTotal, $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Kind of bot', 'Tipo di bot') ?></h2><?php barList($botKind, $botTotal, $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Who they are / what they look for', 'Chi sono / cosa cercano') ?></h2><?php barList($botLabel, $botTotal, $h); ?></section>
         </div>
 
         <section class="panel-s">
-            <h2>Ultime richieste di bot</h2>
-            <?php if (!$botRecent): ?><p class="empty">Ancora nessuna richiesta di bot registrata.</p><?php else: ?>
+            <h2><?= tt('Latest bot requests', 'Ultime richieste di bot') ?></h2>
+            <?php if (!$botRecent): ?><p class="empty"><?= tt('No bot request recorded yet.', 'Ancora nessuna richiesta di bot registrata.') ?></p><?php else: ?>
             <div class="scroll"><table class="tbl">
-                <thead><tr><th>Quando</th><th>Tipo</th><th>Chi / cosa</th><th>Percorso</th><th>Esito</th><th>IP</th><th>Paese</th></tr></thead>
+                <thead><tr><th><?= tt('When', 'Quando') ?></th><th><?= tt('Kind', 'Tipo') ?></th><th><?= tt('Who / what', 'Chi / cosa') ?></th><th><?= tt('Path', 'Percorso') ?></th><th><?= tt('Result', 'Esito') ?></th><th>IP</th><th><?= tt('Country', 'Paese') ?></th></tr></thead>
                 <tbody>
                 <?php foreach ($botRecent as $r): ?>
                     <tr class="row-bot"><td><?= $h(substr($r['at'], 5, 11)) ?></td><td><span class="badge-bot">BOT</span> <?= $h($r['kind']) ?></td><td><?= $h($r['label']) ?></td>
@@ -299,8 +306,8 @@ function barList(array $items, int $total, callable $h): void {
             </table></div>
             <?php endif; ?>
         </section>
-        <p class="note">I bot sono contati solo quando la richiesta arriva a PHP (pagine e indirizzi sconosciuti); quello che nginx scarta da solo non si vede qui. Gli scraper noti (SEO, dati) e chi sonda indirizzi come wp-login o .env più di 8 volte in un'ora vengono respinti. Non sono visite: la tabella "Ultime visite" non li include.</p>
-        <p class="note">Una visita è nuova quando lo stesso IP con lo stesso browser non si vedeva da 30 minuti. Robot, controlli del server e anteprime dei link non sono contati.</p>
+        <p class="note"><?php if (pageLang() === 'it'): ?>I bot sono contati solo quando la richiesta arriva a PHP (pagine e indirizzi sconosciuti); quello che nginx scarta da solo non si vede qui. Gli scraper noti (SEO, dati) e chi sonda indirizzi come wp-login o .env più di 8 volte in un'ora vengono respinti. Non sono visite: la tabella "Ultime visite" non li include.<?php else: ?>Bots are counted only when the request reaches PHP (pages and unknown addresses); whatever nginx drops by itself does not show here. Known scrapers (SEO, data) and anyone probing addresses such as wp-login or .env more than 8 times in an hour are turned away. They are not visits: the "Latest visits" table does not include them.<?php endif; ?></p>
+        <p class="note"><?= tt('A visit counts as new when the same IP with the same browser was not seen for 30 minutes. Robots, server checks and link previews are not counted.', 'Una visita è nuova quando lo stesso IP con lo stesso browser non si vedeva da 30 minuti. Robot, controlli del server e anteprime dei link non sono contati.') ?></p>
     </main>
     <div class="tip" id="tip" hidden></div>
 </body>
