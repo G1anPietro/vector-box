@@ -120,3 +120,17 @@ test('retention removes rows idle for 90 days', async () => {
     execFileSync('php', [path.join(site.root, 'public/api/retention.php')], { cwd: site.root });
     assert.equal(rows('ses_ivy').length, 0);
 });
+
+test('a pre-feature session that first shows up on a READ-ONLY request still becomes revocable', async () => {
+    await reg('ses_hal');
+    const a = await signIn('ses_hal');
+    wipe('ses_hal');
+    const f = path.join(site.root, 'data', 'sessions', 'sess_' + a.cookies.get('PHPSESSID'));
+    fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/tracked\|i:1;/, ''));
+    await a.get('/api/get_feed.php');                                                  // a READ-ONLY endpoint (initSession() closes the session at once)
+    assert.equal(rows('ses_hal').length, 1);
+    wipe('ses_hal');                                                                   // signed out from the Account page
+    await a.get('/api/get_feed.php');                                                  // must NOT make the row again
+    assert.equal(rows('ses_hal').length, 0);
+    assert.notEqual((await a.get('/api/check_session.php')).json.username, 'ses_hal');
+});
