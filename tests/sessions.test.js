@@ -43,8 +43,10 @@ test('two devices are listed, the current one is marked, labels come from the UA
 test('revoking another device logs it out on its next request; the caller stays in', async () => {
     await reg('ses_bob');
     const a = await signIn('ses_bob'), b = await signIn('ses_bob');
-    const other = (await a.get('/api/sessions.php')).json.sessions.find((s) => !s.current);
-    assert.equal((await a.post('/api/sessions.php', { action: 'revoke', id: other.id })).json.success, true);
+    // b's own row (the registration session is a third device: "the first one that is not current" would pick either)
+    const hashB = require('crypto').createHash('sha256').update(b.cookies.get('PHPSESSID')).digest('hex');
+    const idB = site.db('SELECT id FROM account_sessions WHERE sid_hash = ?', [hashB])[0].id;
+    assert.equal((await a.post('/api/sessions.php', { action: 'revoke', id: idB })).json.success, true);
     assert.equal((await b.get('/api/sessions.php')).status, 401);
     assert.equal((await a.get('/api/sessions.php')).status, 200);
 });
