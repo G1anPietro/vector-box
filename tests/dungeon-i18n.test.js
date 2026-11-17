@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { looksItalian, looksEnglish } = require('./lang-helpers');
+const { startSite } = require('./helpers');
 const dir = path.join(__dirname, '..', 'public', 'js', 'rogue');
 const MOBS = require(path.join(dir, 'mobs.js')), ITEMS = require(path.join(dir, 'items.js')), CLS = require(path.join(dir, 'classes.js')),
     META = require(path.join(dir, 'meta.js')), TX = require(path.join(dir, 'text.js')), G = require(path.join(dir, 'game.js'));
@@ -111,4 +112,40 @@ test('item names: unknown things read in both languages and the same run keeps t
     assert.match(G.itemName(s, it, 'en'), /can$/); assert.match(G.itemName(s, it, 'it'), /^Lattina /);
     s.known.d_forza = 1;
     assert.equal(G.itemName(s, it, 'en'), 'Vanilla Protein Shake'); assert.equal(G.itemName(s, it, 'it'), 'Proteine alla vaniglia');
+});
+
+test('the boss-key notes: many subjects, each complete in both languages, true to its language', () => {
+    const { NOTES } = require(path.join(__dirname, '..', 'public', 'js', 'rogue', 'cover.js'));
+    const { looksItalian, looksEnglish } = require('./lang-helpers');
+    assert.ok(NOTES.length >= 10, 'at least ten subjects');
+    assert.ok(new Set(NOTES.map((n) => n.subject.en)).size >= 8, 'several different subjects');
+    for (const n of NOTES) {
+        const texts = [n.subject, n.title, n.lead, n.box.h, n.box.t, ...n.points];
+        assert.ok(n.points.length >= 4, n.title.en);
+        for (const x of texts) assert.ok(x.en && x.it && x.en.trim() && x.it.trim(), n.title.en + ': both languages');
+        assert.ok(!looksItalian(n.lead.en), 'English lead of ' + n.title.en);
+        assert.ok(!looksEnglish(n.lead.it), 'Italian lead of ' + n.title.en);
+        assert.notEqual(n.lead.en, n.lead.it);
+    }
+});
+
+test('the dungeon page loads the notes script and the notes show a different subject each time the cover opens', async () => {
+    const site = await startSite();
+    try {
+        const html = await (await fetch(`${site.base}/pages/dungeon.html`)).text();
+        assert.match(html, /rogue\/cover\.js\?v=/);
+        const { chromium } = (() => { try { return require('playwright'); } catch (e) { return {}; } })();
+        if (!chromium) return;                                         // the browser check needs Playwright (installed locally, not a project dependency)
+        const b = await chromium.launch();
+        const p = await b.newPage();
+        await p.goto(`${site.base}/pages/dungeon.html`);
+        const seen = new Set();
+        for (let i = 0; i < 8; i++) {
+            await p.evaluate(() => { const c = document.getElementById('dg-cover'); c.hidden = true; c.hidden = false; });
+            await p.waitForTimeout(30);
+            seen.add(await p.evaluate(() => document.querySelector('#dg-cover h2').textContent));
+        }
+        await b.close();
+        assert.ok(seen.size >= 4, 'subjects change: ' + [...seen].join(' | '));
+    } finally { await site.stop(); }
 });

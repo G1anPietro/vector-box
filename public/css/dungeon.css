@@ -164,3 +164,13 @@ body.fs .dg-top { padding-top: 0; }
 .dg-lang { align-items: center; margin: 0 0 8px; }
 .dg-lang span { flex: 0 0 auto; margin-right: 4px; }
 .dg-lang button { flex: 0 0 auto; min-width: 56px; }
+
+/* the fake notes (boss key): a sheet of squared paper with a margin, like a real notebook */
+.dg-cover { background: #fffef8 linear-gradient(#cfe0ee 1px, transparent 1px) 0 0 / 100% 1.6em; }
+.dg-cover article { background: #fffef8; padding: 6px 14px 16px 22px; border-left: 2px solid #e58a8a; box-shadow: 0 0 0 1px #eee; }
+.dg-cover h2 { margin-top: 4px; font-size: 1.3rem; }
+.dg-cover p { margin: .6em 0; }
+.dg-cover ul { padding-left: 1.2em; margin: .6em 0; }
+.dg-cover li { margin: .25em 0; }
+.dg-cover .dg-notebox { margin: 1em 0 0; padding: 8px 10px; border: 1px solid #b8c4e0; background: #f1f5ff; font-size: .95rem; }
+.dg-cover .dg-notebox b { color: #1a2a55; }
