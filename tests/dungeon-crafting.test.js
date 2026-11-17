@@ -88,8 +88,10 @@ test('discovered recipes are kept between runs', () => {
 // ── elites ──────────────────────────────────────────────────────────────────
 function withElite(def, fn) {
     const d = Object.assign({ id: 't_elite', name: { en: 'Test Elite', it: 'Élite di prova' }, shape: 'robot', col: '#ffffff', hp: 12, atk: [1, 2], xp: 20, floors: [1, 5], elite: true, info: { en: 'x', it: 'y' } }, def);
+    // the real mini-bosses of mobs.js are set aside while the injected test elite is examined
+    const real = MOBS.LIST.filter((e) => e.mini || e.elite); real.forEach((e) => MOBS.LIST.splice(MOBS.LIST.indexOf(e), 1));
     MOBS.LIST.push(d); G.MOB[d.id] = d;
-    try { fn(d); } finally { MOBS.LIST.splice(MOBS.LIST.indexOf(d), 1); delete G.MOB[d.id]; }
+    try { fn(d); } finally { MOBS.LIST.splice(MOBS.LIST.indexOf(d), 1); delete G.MOB[d.id]; real.forEach((e) => MOBS.LIST.push(e)); }
 }
 const floorAt = (seed, depth) => { const s = G.newGame(seed, 'studente'); s.depth = depth; G.newFloor(s); return s; };
 
@@ -109,7 +111,9 @@ test('an elite is placed once, on the middle floor of its sector, in its own roo
         }
         const other = floorAt(5, 8); assert.ok(!other.mobs.some((m) => m.elite), 'the next sector has none');
     });
-    assert.equal(G.eliteOf(3), undefined, 'no elite without a definition');
+    assert.equal(G.eliteOf(3).id, 'mini1', 'the real mini-boss of sector 1 is the elite of floor 3');
+    for (let sector = 1; sector <= 10; sector++) assert.equal(G.eliteOf(sector * 5 - 2).id, 'mini' + sector, 'sector ' + sector);
+    assert.equal(G.eliteOf(2), undefined);
 });
 
 test('killing an elite gives a victory message and a guaranteed item (its own `drop` when it names one)', () => {

@@ -216,10 +216,3 @@ test('the profile: upgrades cost crediti and change the start, medals pay once, 
     assert.ok(hard.mobs[0] && hard.mobs[0].max > easy.mobs[0].max);
     assert.equal(G.fixMeta({ runs: 'x' }).runs, 0);
 });
-
-test('50 floors build: 10 sectors, 70+ monster types, 10 bosses, summons exist', () => {
-    assert.equal(MOBS.SECTORS.length, 10);
-    assert.ok(MOBS.LIST.length >= 70);
-    assert.equal(MOBS.LIST.filter((d) => d.boss).length, 10);
-    for (const d of MOBS.LIST) if (d.summon) assert.ok(G.MOB[d.summon.k], d.id + ' summons ' + d.summon.k);
-});

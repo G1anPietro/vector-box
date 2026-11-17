@@ -1,0 +1,45 @@
+diff --git a/public/js/rogue/game.js b/public/js/rogue/game.js
+index 16423d2..a20a8d9 100644
+--- a/public/js/rogue/game.js
++++ b/public/js/rogue/game.js
+@@ -21,7 +21,7 @@
+     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+     const SECTOR = byId(MOBS.SECTORS), MEDAL = byId(META.MEDALS), TRAP = byId(MOBS.TRAPS);
+     const sectorOf = (depth) => MOBS.SECTORS[Math.min(MOBS.SECTORS.length - 1, Math.floor((depth - 1) / MOBS.PER_SECTOR))];
+-    const bossOf = (depth) => MOBS.LIST.find((d) => d.boss === depth);
++    const bossOf = (depth, seed) => { const l = MOBS.LIST.filter((d) => d.boss === depth); return l[seed ? (seed >>> 0) % l.length : 0]; };   // two bosses may share a floor: the seed picks
+     const cat = (it) => ITEMS.CATS[ITEM[it.k].cat];
+ 
+     /** Adds a message to the log: `key` is a key of text.js, `p` its params (ids, numbers), `c` the colour class. */
+@@ -130,7 +130,7 @@
+         log(s, 'known_now', { item: { k } }, 'info');
+     }
+     function makeItem(r, depth) {
+-        const d = RNG.weighted(r, ITEMS.LIST.filter((e) => (e.from || 1) <= depth));
++        const d = RNG.weighted(r, ITEMS.LIST.filter((e) => (e.from || 1) <= depth && (!e.to || depth <= e.to)));
+         const it = { k: d.id };
+         if (d.cat === 'weapon' || d.cat === 'armor') it.e = RNG.chance(r, 0.15) ? (RNG.chance(r, 0.25) ? 2 : 1) : 0;
+         if (d.cat === 'usb') it.ch = d.ch + RNG.int(r, 3);
+@@ -213,11 +213,13 @@
+             s.shop = { x: c.x, y: c.y, open: 0, stock };
+         }
+         if (others[1] && RNG.chance(r, 0.4)) { const c = put(others[1], T.ALTAR); s.altar = { x: c.x, y: c.y, used: 0 }; }
+-        const boss = bossOf(depth);
++        const boss = bossOf(depth, s.seed);
+         if (boss) { const c = cellIn(last); spawn(s, boss.id, c[0], c[1], true); s.sealed = 1; }
+         if (depth === FLOORS) tiles[idx(m.stairs.x, m.stairs.y)] = T.FLOOR;      // nothing below the last floor
+         const pool = MOBS.LIST.filter((d) => !d.boss && d.floors[0] <= depth && depth <= d.floors[1]);
+         const away = plain.filter((o) => o !== m.rooms[0]);
++        const mini = MOBS.LIST.find((d) => d.mini === depth);       // the mini-boss of the sector sleeps in one of the rooms
++        if (mini) { const c = cellIn(RNG.pick(r, away)); if (c) { spawn(s, mini.id, c[0], c[1], true); log(s, 'mini_here', { mob: mini.id, mobinfo: mini.id }, 'bad'); } }
+         for (let n = 4 + Math.min(6, depth >> 1) + RNG.int(r, 3); n > 0 && pool.length; n--) {
+             const c = cellIn(RNG.pick(r, away));
+             if (c) spawn(s, RNG.weighted(r, pool).id, c[0], c[1], RNG.chance(r, 0.7));
+@@ -310,6 +312,7 @@
+         fx(s, 'kill', m.x, m.y);
+         if (m.loot) s.items.push({ x: m.x, y: m.y, it: { k: '$', n: m.loot } });
+         if (m.stolen) s.items.push({ x: m.x, y: m.y, it: m.stolen });
++        if (d.drop && s.map.tiles[idx(m.x, m.y)] === T.FLOOR) s.items.push({ x: m.x, y: m.y, it: ITEM[d.drop].cat === 'usb' ? { k: d.drop, ch: ITEM[d.drop].ch } : { k: d.drop } });   // a mini-boss always leaves its item
+         if (!m.loot && !m.stolen && s.map.tiles[idx(m.x, m.y)] === T.FLOOR) {
+             if (d.boss || RNG.chance(s.rng, 0.1)) s.items.push({ x: m.x, y: m.y, it: makeItem(s.rng, s.depth + (d.boss ? 4 : 1)) });
+             else if (RNG.chance(s.rng, 0.25)) s.items.push({ x: m.x, y: m.y, it: { k: '$', n: RNG.range(s.rng, 2, 6) + s.depth } });

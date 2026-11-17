@@ -25,11 +25,11 @@
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const HAZ = HZ.BY_ID, SECTOR = byId(MOBS.SECTORS), MEDAL = byId(META.MEDALS), TRAP = byId(MOBS.TRAPS);
     const sectorOf = (depth) => MOBS.SECTORS[Math.min(MOBS.SECTORS.length - 1, Math.floor((depth - 1) / MOBS.PER_SECTOR))];
-    const bossOf = (depth) => MOBS.LIST.find((d) => d.boss === depth);
+    const bossOf = (depth, seed) => { const l = MOBS.LIST.filter((d) => d.boss === depth); return l[seed ? (seed >>> 0) % l.length : 0]; };   // two bosses may share a floor: the seed picks
     /** ELITES (mini-bosses): a monster of mobs.js with `elite: true` (the 3rd floor of the sector its `floors` start in) or `elite: <floor number>`.
      *  One per floor at most: it sleeps in its own room, wears a crown, and drops a guaranteed item (`drop: 'item id'` if the monster names one, else a good random one). */
-    const eliteDepth = (d) => (typeof d.elite === 'number' ? d.elite : d.elite ? Math.floor((d.floors[0] - 1) / MOBS.PER_SECTOR) * MOBS.PER_SECTOR + 3 : 0);
-    const eliteOf = (depth) => MOBS.LIST.find((d) => d.elite && !d.boss && eliteDepth(d) === depth);
+    const eliteDepth = (d) => (d.mini ? d.mini : typeof d.elite === 'number' ? d.elite : d.elite ? Math.floor((d.floors[0] - 1) / MOBS.PER_SECTOR) * MOBS.PER_SECTOR + 3 : 0);
+    const eliteOf = (depth) => MOBS.LIST.find((d) => (d.elite || d.mini) && !d.boss && eliteDepth(d) === depth);   // `mini: floor` (mobs.js) is an elite too
     const cat = (it) => ITEMS.CATS[ITEM[it.k].cat];
 
     /** Adds a message to the log: `key` is a key of text.js, `p` its params (ids, numbers), `c` the colour class. */
@@ -139,7 +139,7 @@
         log(s, 'known_now', { item: { k } }, 'info');
     }
     function makeItem(r, depth) {
-        const d = RNG.weighted(r, ITEMS.LIST.filter((e) => (e.from || 1) <= depth));
+        const d = RNG.weighted(r, ITEMS.LIST.filter((e) => (e.from || 1) <= depth && (!e.to || depth <= e.to)));
         const it = { k: d.id };
         if (d.cat === 'weapon' || d.cat === 'armor') it.e = RNG.chance(r, 0.15) ? (RNG.chance(r, 0.25) ? 2 : 1) : 0;
         if (d.cat === 'usb') it.ch = d.ch + RNG.int(r, 3);
@@ -287,11 +287,11 @@
             s.shop = { x: c.x, y: c.y, open: 0, stock };
         }
         if (others[1] && RNG.chance(r, 0.4)) { const c = put(others[1], T.ALTAR); s.altar = { x: c.x, y: c.y, used: 0 }; }
-        const boss = bossOf(depth);
+        const boss = bossOf(depth, s.seed);
         if (boss) { const c = cellIn(last); spawn(s, boss.id, c[0], c[1], true); s.sealed = 1; }
         if (depth === FLOORS) tiles[idx(m.stairs.x, m.stairs.y)] = T.FLOOR;      // nothing below the last floor
         if (elite) { const er = m.rooms.find((o) => o.elite), c = er && cellIn(er); if (c) { spawn(s, elite.id, c[0], c[1], true).elite = 1; s.elite = elite.id; } }
-        const pool = MOBS.LIST.filter((d) => !d.boss && !d.elite && d.floors[0] <= depth && depth <= d.floors[1]);
+        const pool = MOBS.LIST.filter((d) => !d.boss && !d.elite && !d.mini && d.floors[0] <= depth && depth <= d.floors[1]);
         const away = plain.filter((o) => o !== m.rooms[0]);
         for (let n = 4 + Math.min(6, depth >> 1) + RNG.int(r, 3); n > 0 && pool.length; n--) {
             const c = cellIn(RNG.pick(r, away));
@@ -312,6 +312,7 @@
         if ((depth - 1) % MOBS.PER_SECTOR === 0) log(s, 'sector_intro', { intro: sectorOf(depth).id }, 'info');
         log(s, boss ? 'floor_enter_boss' : 'floor_enter', { depth, sector: sectorOf(depth).id }, 'info');
         if (s.mobs.some((e) => e.elite)) log(s, 'floor_elite', { mob: elite.id }, 'info');
+        if (elite && elite.info) log(s, 'mini_here', { mob: elite.id, mobinfo: elite.id }, 'bad');   // the named mini-boss has a line of its own
         fx(s, 'stairs');
     }
 
