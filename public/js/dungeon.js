@@ -4,7 +4,7 @@
 // rules (log, cause, info card). All three use the language of the moment (VBLang); the `vb-lang` event redraws everything.
 (function () {
     'use strict';
-    const R = self.Rogue, G = R.game, SP = R.sprites, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T, TX = R.text;
+    const R = self.Rogue, G = R.game, SP = R.sprites, TL = R.tiles, MAP = R.map, W = MAP.W, H = MAP.H, T = MAP.T, TX = R.text;
     const lang = () => (self.VBLang && self.VBLang.lang) || 'en';
     const tl = (key, vars) => TX.t(key, vars, lang());
     const tr = (v) => TX.tx(v, lang());
@@ -14,6 +14,7 @@
         for (const k in TX.MSG) { en[k] = TX.MSG[k].en; it[k] = TX.MSG[k].it; }
         self.VBI18N.add('en', en); self.VBI18N.add('it', it);
     }
+    for (const k in TL.SPR) if (!SP[k]) SP[k] = TL.SPR[k];            // the hazard pictures join the sprite table
     const RUN_KEY = 'vb_dg_run', META_KEY = 'vb_dg_meta', OPT_KEY = 'vb_dg_opt';
     const $ = (id) => document.getElementById(id);
     const reduce = !!(self.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -52,7 +53,9 @@
             o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + ms / 1000);
         } catch (e) { /* no audio */ }
     }
-    const SOUND = { hit: [220, 60], kill: [440, 90], hurt: [110, 120, 'sawtooth'], pick: [660, 50], level: [880, 160], stairs: [330, 120] };
+    const SOUND = { hit: [220, 60], kill: [440, 90], hurt: [110, 120, 'sawtooth'], pick: [660, 50], level: [880, 160], stairs: [330, 120], elite: [990, 140] };
+    /** A few blips in a row (death: down, victory: up). */
+    function tune(notes) { notes.forEach((f, i) => setTimeout(() => blip(f, 130, 'triangle'), i * 140)); }
 
     // ── sprites: 8x8 text pictures painted once per colour ──
     const sprCache = {};
@@ -113,21 +116,32 @@
             const i = idx(x, y), seen = s.seen[i];
             if (!seen) continue;
             const t = s.map.tiles[i], [px, py] = cell(x, y), wall = t === T.WALL || t === T.SECRET;
-            ctx.fillStyle = wall ? sec.wall : sec.floor; ctx.fillRect(px, py, ts, ts);
-            if (wall) { ctx.fillStyle = sec.edge; ctx.fillRect(px, py, ts, 2); ctx.fillRect(px, py, 2, ts); }
-            else if ((x + y) % 2 === 0) { ctx.fillStyle = sec.dot; ctx.fillRect(px + (ts >> 1) - 1, py + (ts >> 1) - 1, 2, 2); }
+            TL.drawTile(ctx, sec, wall, px, py, ts, x, y);               // the sector's own floor and wall pattern
             if (t === T.STAIRS) spr('stairs', '#00ff66', x, y);
-            else if (t === T.DOOR) spr('door', '#b98a55', x, y);
+            else if (t === T.DOOR) spr('door', TL.doorColour(sec.id), x, y);
             else if (t === T.ALTAR) spr('altar', '#00e5ff', x, y);
             else if (t === T.SHOP) spr('shop', '#ffb000', x, y);
             else if (t === T.BENCH) spr('bench', '#b98a55', x, y);
         }
+        for (const h of s.haz) {                                          // terrain hazards: always visible once seen
+            if (!s.seen[idx(h.x, h.y)] || h.x < x0 || h.y < y0 || h.x >= x1 || h.y >= y1) continue;
+            const d = G.HAZARD[h.k], [px, py] = cell(h.x, h.y);
+            ctx.fillStyle = d.kind === 'fog' ? 'rgba(184,200,255,.28)' : 'rgba(0,0,0,.25)'; ctx.fillRect(px, py, ts, ts);
+            ctx.strokeStyle = d.col; ctx.globalAlpha = 0.55; ctx.lineWidth = 1; ctx.strokeRect(px + 0.5, py + 0.5, ts - 1, ts - 1); ctx.globalAlpha = 1;
+            if (h.d) { ctx.save(); ctx.translate(px + ts / 2, py + ts / 2); ctx.rotate(Math.atan2(h.d[1], h.d[0])); ctx.drawImage(sprite(d.shape, d.col), -ts / 2, -ts / 2, ts, ts); ctx.restore(); }
+            else { ctx.globalAlpha = d.kind === 'fog' ? 0.85 : 0.95; ctx.drawImage(sprite(d.shape, d.col), px, py, ts, ts); ctx.globalAlpha = 1; }
+        }
         for (const t of s.traps) if (t.found && s.seen[idx(t.x, t.y)]) spr('trap', '#ff5e5e', t.x, t.y);
-        for (const e of s.items) if (s.seen[idx(e.x, e.y)]) { const l = G.itemLook(s, e.it); spr(l.shape, l.col, e.x, e.y); }
+        for (const e of s.items) if (s.seen[idx(e.x, e.y)] && !G.fogAt(s, e.x, e.y)) { const l = G.itemLook(s, e.it); spr(l.shape, l.col, e.x, e.y); }
         for (const m of s.mobs) {
             if (!G.shown(s, m) || m.x < x0 || m.y < y0 || m.x >= x1 || m.y >= y1) continue;
             const d = G.MOB[m.k], boss = !!d.boss;
             spr(R.art.chain(d, 'm'), m.asleep ? shade(d.col, 0.55) : d.col, m.x, m.y);
+            if (m.elite) {                                          // an elite wears a crown and a gold frame
+                const [px, py] = cell(m.x, m.y);
+                ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
+                ctx.drawImage(sprite('crown', '#ffd84a'), px + ts * 0.2, py - ts * 0.18, ts * 0.6, ts * 0.6);
+            }
             if (m.hp < m.max || boss) {
                 const [px, py] = cell(m.x, m.y);
                 ctx.fillStyle = '#000'; ctx.fillRect(px + 2, py + ts - 5, ts - 4, 4);
@@ -135,6 +149,7 @@
             }
         }
         spr(R.art.chain(G.CLASS[s.cls], 'h'), G.CLASS[s.cls].col, s.p.x, s.p.y);
+        if (s.sleeping) { const [px, py] = cell(s.p.x, s.p.y); ctx.fillStyle = '#bfe8ff'; ctx.font = 'bold ' + Math.round(ts * 0.42) + 'px monospace'; ctx.fillText('Zzz', px + ts * 0.45, py + ts * 0.3); }
         // what you remember but cannot see now is dimmed
         ctx.fillStyle = 'rgba(0,0,0,.55)';
         for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
@@ -165,8 +180,8 @@
         $('dg-hptxt').textContent = tl('hp', { hp: p.hp, max: p.maxHp });
         $('dg-fd').style.width = (100 * p.food / G.MAX_FOOD) + '%';
         $('dg-fdtxt').textContent = tl(p.food < 150 ? 'food_low' : 'food');
-        const ST = { poison: 'st_poison', haste: 'st_haste', conf: 'st_conf', invis: 'st_invis', regen: 'st_regen', weak: 'st_weak', stun: 'st_stun', ping: 'st_ping' };
-        const status = Object.keys(p.st).map((k) => (ST[k] ? tl(ST[k]) : k)).join(', ');
+        const ST = { burn: 'st_burn', sleep: 'st_sleep', poison: 'st_poison', haste: 'st_haste', conf: 'st_conf', invis: 'st_invis', regen: 'st_regen', weak: 'st_weak', stun: 'st_stun', ping: 'st_ping' };
+        const status = (s.sleeping ? [tl('st_sleep')] : []).concat(Object.keys(p.st).map((k) => (ST[k] ? tl(ST[k]) : k))).join(', ');
         const info = $('dg-info');
         info.textContent = '';
         const add = (t, b) => { const e = document.createElement(b ? 'b' : 'span'); e.textContent = t; info.appendChild(e); };
@@ -178,7 +193,7 @@
         sk.classList.toggle('ready', p.cd <= 0);
         const lg = $('dg-log');
         lg.textContent = '';
-        for (const l of s.log.slice(-4)) { const d = document.createElement('div'); d.textContent = G.logText(l, lang()); if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
+        for (const l of s.log.slice(-3)) { const d = document.createElement('div'); d.textContent = G.logText(l, lang()); if (l.c) d.className = 'c-' + l.c; lg.appendChild(d); }
     }
     function render() { draw(); hud(); slots(); }
     R.art.animate(() => { if (s) draw(); }); // idle animation: two frames, 2 fps
@@ -297,6 +312,7 @@
     function benchModal() {
         const body = openModal(tl('bench_title'), 'bench', benchModal);
         btn(tl('bench_rest'), () => { act({ t: 'rest' }); }, body, 'dg-choice');
+        btn(tl('bench_craft'), () => craftModal(), body, 'dg-choice');
         el('h2', tl('bench_recycle'), '', body);
         if (!s.p.inv.length) el('p', tl('bag_empty_long'), '', body);
         s.p.inv.forEach((it, i) => {
@@ -306,25 +322,77 @@
             btn(tl('bench_do'), () => act({ t: 'recycle', i }), r);
         });
     }
+    // ── crafting: pick 2 or 3 things from the bag (a stack can be picked once per unit), Combine; the recipe book lists what you know ──
+    let craftSel = [];
+    const fitsM = (m, k) => (m.startsWith('cat:') ? G.ITEM[k].cat === m.slice(4) : m === k);
+    function craftModal(msgs) {
+        if (!s.bench || !s.bench.open) return;
+        const body = openModal(tl('craft_title'), 'craft', () => craftModal()), p = s.p;
+        craftSel = craftSel.filter((i) => p.inv[i]);
+        el('p', tl('craft_hint'), '', body);
+        const slotsEl = el('div', '', 'dg-cslots', body);
+        for (let j = 0; j < 3; j++) {
+            const b = el('div', '', 'dg-cslot', slotsEl), it = p.inv[craftSel[j]];
+            if (it) { const l = G.itemLook(s, it); icon(b, l.shape, l.col, 28); el('span', G.itemName(s, Object.assign({}, it, { n: 1 }), lang()), '', b); }
+            else el('span', tl('craft_empty_slot'), 'dim', b);
+        }
+        const row = el('div', '', 'dg-row', body);
+        const go = btn(tl('craft_do'), () => {
+            const was = s.log.length;
+            act({ t: 'craft', i: craftSel.slice() }); craftSel = [];
+            craftModal(s.log.slice(was).map((l) => ({ text: G.logText(l, lang()), cls: l.c })));
+        }, row, 'dg-big');
+        go.disabled = craftSel.length < 2;
+        btn(tl('craft_clear'), () => { craftSel = []; craftModal(); }, row);
+        btn(tl('craft_back'), benchModal, row);
+        for (const m of msgs || []) el('p', m.text, m.cls ? 'c-' + m.cls : '', body);
+        el('h2', tl('craft_bag'), '', body);
+        if (!p.inv.length) el('p', tl('bag_empty_long'), '', body);
+        p.inv.forEach((it, i) => {
+            const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it), have = it.n || 1, used = craftSel.filter((x) => x === i).length;
+            icon(r, l.shape, l.col, 32);
+            const tt = el('div', '', 't', r); el('span', G.itemName(s, it, lang()) + (used ? '  [' + used + ']' : ''), used ? 'c-good' : '', tt); el('small', G.itemInfo(s, it, lang()), '', tt);
+            const add = btn(tl('craft_add'), () => { craftSel.push(i); craftModal(); }, r); add.disabled = used >= have || craftSel.length >= 3;
+        });
+        const known = G.RECIPES.filter((r) => s.recipes[r.id]);
+        el('h2', tl('craft_book', { n: known.length, all: G.RECIPES.length }), '', body);
+        if (!known.length) el('p', tl('craft_book_empty'), '', body);
+        const nameOf = (m) => (m.startsWith('cat:') ? tr(R.items.CATS[m.slice(4)].name) : G.itemText({ k: m }, lang()));
+        for (const r of known) {
+            const rr = el('div', '', 'dg-item', body), tt = el('div', '', 't', rr);
+            const out = r.out.fn ? tl(['craft_fn', r.out.fn].join('_')) : r.out.give.map((g) => G.itemText({ k: g.k || g, n: g.n }, lang())).join(', ');
+            el('span', tr(r.name), '', tt); el('small', r.in.map(nameOf).join(' + ') + ' → ' + out, '', tt);
+            const sel = []; let ok = true;
+            for (const m of r.in) { const i = p.inv.findIndex((it, j) => fitsM(m, it.k) && sel.filter((x) => x === j).length < (it.n || 1)); if (i < 0) { ok = false; break; } sel.push(i); }
+            const use = btn(tl('craft_use'), () => { craftSel = sel; craftModal(); }, rr); use.disabled = !ok;
+        }
+    }
     function logModal() {
         const body = openModal(tl('log_title'), 'log', logModal), box = el('div', '', 'dg-logfull', body);
         for (const l of s.log) el('div', G.logText(l, lang()), l.c ? 'c-' + l.c : '', box);
     }
     function endModal() {
+        const prevBest = meta.best;
         meta = G.recordRun(meta, s, new Date().toISOString().slice(0, 10)); saveMeta(); store.del(RUN_KEY);
-        const won = s.status === 'won', body = openModal(tl(won ? 'end_won' : 'end_lost'), 'end', endModal);
+        const won = s.status === 'won', body = openModal(tl(won ? 'end_won' : 'end_lost'), 'end', endModal), last = meta.history[0];
         $('dg-mclose').hidden = true;
-        el('p', won ? tl('end_won_line') : tl('end_lost_line', { cause: gt(s.cause), depth: s.depth }));
-        el('p', tl('end_stats', { lvl: s.p.lvl, kills: s.kills, turns: s.turn, earned: s.earned }));
-        const last = meta.history[0];
-        if (last) el('p', tl('end_gain', { n: last.crediti }), 'c-info');
-        for (const id of s.medals || []) el('p', tl('end_medal', { medal: tr(G.MEDALS.find((d) => d.id === id).name) }), 'c-good');
-        btn(tl('end_back'), () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; s = null; showTitle(); }, body, 'dg-big');
+        el('p', won ? tl('end_won_line') : tl('end_lost_line', { cause: gt(s.cause), depth: s.depth }), '', body);
+        const grid = el('div', '', 'dg-recap', body);
+        const cell = (label, value) => { const c = el('div', '', '', grid); el('small', label, '', c); el('b', String(value), '', c); };
+        cell(tl('end_class'), tr(G.CLASS[s.cls].name)); cell(tl('end_floor'), tl('end_where', { depth: s.depth, sector: tr(G.sectorOf(s.depth).name) }));
+        cell(tl('end_level'), s.p.lvl); cell(tl('end_kills'), s.kills); cell(tl('end_turns'), s.turn); cell(tl('end_bosses'), s.bosses);
+        cell(tl('end_found'), s.earned); cell(tl('end_reward'), last ? '+' + last.crediti : 0);
+        if (s.depth > prevBest && !won) el('p', tl('end_best'), 'c-good', body);
+        for (const id of s.medals || []) el('p', tl('end_medal', { medal: tr(G.MEDALS.find((d) => d.id === id).name) }), 'c-good', body);
+        el('p', tl('end_seed') + ' ' + (s.seed >>> 0).toString(16).toUpperCase(), 'dg-seed', body);
+        const done = () => { $('dg-mclose').hidden = false; $('dg-modal').hidden = true; modalKind = ''; };
+        btn(tl('end_next'), () => { done(); selected = R.classes.CLASSES.find((c) => c.id === s.cls) || selected; startRun((Math.random() * 4294967296) >>> 0); }, body, 'dg-big');
+        btn(tl('end_back'), () => { done(); s = null; showTitle(); }, body, 'dg-choice');
     }
     // ── the archive: upgrade tree, medals, bestiary, history ──
     function archiveModal(tab) {
         tab = tab || 'tree';
-        const body = openModal(tl('arch_title', { n: meta.crediti }), 'archive', () => archiveModal(tab)), bar = el('div', '', 'dg-row', body);
+        const body = openModal(tl('arch_title', { n: meta.crediti }), 'archive', () => archiveModal(tab)), bar = el('div', '', 'dg-row dg-tabs', body);
         for (const [id, label] of [['tree', tl('arch_tree')], ['medals', tl('arch_medals')], ['dex', tl('arch_dex')], ['hist', tl('arch_hist')]]) {
             const b = btn(label, () => archiveModal(id), bar); b.setAttribute('aria-pressed', String(id === tab));
         }
@@ -384,19 +452,27 @@
     }
     function helpModal() {
         const body = openModal(tl('help'), 'help', helpModal);
-        for (const k of ['help_1', 'help_2', 'help_3', 'help_4', 'help_5', 'help_6', 'help_7']) el('p', tl(k), '', body);
+        for (const k of ['help_1', 'help_10', 'help_2', 'help_3', 'help_4', 'help_5', 'help_6', 'help_11', 'help_8', 'help_9', 'help_7']) el('p', tl(k), '', body);
     }
 
     // ── playing ──
     function persist() { if (s && s.status === 'play') store.set(RUN_KEY, G.save(s)); }
     function afterTurn() {
         if (s.fx.some((f) => f.t === 'hit' || f.t === 'miss' || f.t === 'kill')) { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) { /* no haptics */ } }
-        for (const f of s.fx) { const b = SOUND[f.t]; if (b) blip(b[0], b[1], b[2]); if (f.t === 'hurt' && !reduce) { const st = $('dg-stage'); st.classList.add('hurt'); setTimeout(() => st.classList.remove('hurt'), 160); } }
+        for (const f of s.fx) {
+            const b = SOUND[f.t]; if (b) blip(b[0], b[1], b[2]);
+            if (f.t === 'hurt' && !reduce) {                  // a red glow; a big hit (a fifth of your life or more) also shakes and flashes the map
+                const st = $('dg-stage'), big = f.n >= Math.max(5, s.p.maxHp / 5);
+                st.classList.add('hurt'); setTimeout(() => st.classList.remove('hurt'), 160);
+                if (big) { st.classList.remove('shake', 'flash'); void st.offsetWidth; st.classList.add('shake', 'flash'); setTimeout(() => st.classList.remove('shake', 'flash'), 320); }
+            }
+        }
+        if (s.status === 'dead') tune([330, 262, 196, 131]); else if (s.status === 'won') tune([523, 659, 784, 1047]);
         persist(); render();
         if (s.status !== 'play') { stopTravel(); endAim(); endModal(); }
         else if (s.p.pending && modalKind !== 'level') levelModal();
         else if (s.shop && s.shop.open) shopModal();
-        else if (s.bench && s.bench.open) benchModal();
+        else if (s.bench && s.bench.open && modalKind !== 'craft') benchModal();
     }
     function act(a) {
         if (!s || s.status !== 'play') return false;
@@ -421,10 +497,10 @@
             if (t.n > 1 && seen()) return stopTravel();
             const v = next();
             if (!v) { stopTravel(); if (o.fin) o.fin(); return; }
-            act({ t: 'move', dx: v[0], dy: v[1] });
+            act(o.sleep ? { t: 'sleep' } : { t: 'move', dx: v[0], dy: v[1] });
             if (s.p.hp < t.hp || act.lastBad || s.depth !== t.depth) return stopTravel();
             if (seen()) return stopTravel();
-            t.timer = setTimeout(step, reduce ? 0 : 55);
+            t.timer = setTimeout(step, reduce ? 0 : o.sleep ? 25 : 55);
         };
         step();
     }
@@ -436,7 +512,7 @@
         startTravel(() => here() ? null : G.travelNext(s, tx, ty), 80, { target: () => [tx, ty], fin: () => { if (here() && fin) fin(); } });
     }
     function attackMob(id) {
-        const mob = () => s.mobs.find((m) => m.id === id), adj = (m) => Math.abs(m.x - s.p.x) + Math.abs(m.y - s.p.y) === 1;
+        const mob = () => s.mobs.find((m) => m.id === id), adj = (m) => G.touching(s, m);
         const hit = () => { const m = mob(); if (m && adj(m)) act({ t: 'move', dx: m.x - s.p.x, dy: m.y - s.p.y }); };
         const m0 = mob();
         if (!m0) return;
@@ -457,6 +533,11 @@
         if (!s.seen[idx(st.x, st.y)]) { return note('stairs_unseen', null, 'info'); }
         startTravel(() => (s.p.x === st.x && s.p.y === st.y) ? null : G.travelNext(s, st.x, st.y), 120);
     }
+    /** Sleeps turn by turn (each one saved) until the rules wake the hero; a tap anywhere stops it, like any walk. */
+    function sleep() {
+        let first = true;
+        startTravel(() => { if (first) { first = false; return [0, 0]; } return s.sleeping ? [0, 0] : null; }, G.SLEEP_CAP + 2, { sleep: true });
+    }
     function useFirst(test, key) {
         const i = s.p.inv.findIndex(test);
         if (i < 0) return note(key, null, 'info');
@@ -469,6 +550,7 @@
         endAim();
         if (name === 'wait') act({ t: 'wait' });
         else if (name === 'search') act({ t: 'search' });
+        else if (name === 'sleep') sleep();
         else if (name === 'bag') bagModal();
         else if (name === 'skill') act({ t: 'active' });
         else if (name === 'explore') explore();
@@ -580,6 +662,14 @@
         for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => clearTimeout(timer));
         b.addEventListener('click', () => { if (held) { held = false; return; } useSlot(j); });
     });
+    // Wait: tap waits one turn, a long press sleeps
+    document.querySelectorAll('[data-a="wait"]').forEach((b) => {
+        let timer = 0, held = false;
+        b.addEventListener('contextmenu', (e) => e.preventDefault());
+        b.addEventListener('pointerdown', () => { held = false; clearTimeout(timer); timer = setTimeout(() => { held = true; command('sleep'); }, LONG_MS); });
+        for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => clearTimeout(timer));
+        b.addEventListener('click', (e) => { if (held) { held = false; e.stopImmediatePropagation(); } }, true);
+    });
     addEventListener('keydown', (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (!$('dg-cover').hidden) { $('dg-cover').hidden = true; return; }
@@ -587,9 +677,13 @@
         if (k === 'b' || k === 'B') { stopTravel(); $('dg-cover').hidden = false; return; }
         if (k === 'Escape') { if (aim) endAim(); else if (!$('dg-modal').hidden && modalKind !== 'level' && modalKind !== 'end') closeModal(); else stopTravel(); return; }
         if (!s || s.status !== 'play' || !$('dg-modal').hidden) return;
-        const dirs = { ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] };
+        const np = { Numpad7: [-1, -1], Numpad8: [0, -1], Numpad9: [1, -1], Numpad4: [-1, 0], Numpad6: [1, 0], Numpad1: [-1, 1], Numpad2: [0, 1], Numpad3: [1, 1] };
+        const dirs = { y: [-1, -1], Y: [-1, -1], q: [-1, -1], Q: [-1, -1], u: [1, -1], U: [1, -1], v: [-1, 1], V: [-1, 1], n: [1, 1], N: [1, 1], ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] };
         if (dirs[k]) { e.preventDefault(); step(dirs[k][0], dirs[k][1]); }
+        else if (np[e.code]) { e.preventDefault(); step(np[e.code][0], np[e.code][1]); }
+        else if (e.code === 'Numpad5') { e.preventDefault(); command('wait'); }
         else if (k === ' ' || k === '.') { e.preventDefault(); command('wait'); }
+        else if (k === 'z' || k === 'Z') command('sleep');
         else if (k === 'i' || k === 'I') command('bag');
         else if (k === 'c' || k === 'C') command('search');
         else if (k >= '1' && k <= '4') useSlot(Number(k) - 1);

@@ -8,6 +8,7 @@ Test: `tests/dungeon.test.js` e `tests/dungeon-touch.test.js`. Nessuna rete: tut
 - `map.js` piani (stanze e corridoi, porte segrete), campo visivo, percorsi. Un piano dipende solo da (seme, piano).
 - `mobs.js` settori e mostri (dati). `items.js` oggetti (dati). `classes.js` classi e abilità (dati). `meta.js` albero dei potenziamenti e medaglie (dati). `sprites.js` vecchi disegni 8x8 (restano come ripiego), `sprites-art*.js` disegni 16x16 (vedi sotto).
 - `game.js` le regole: `newGame`, `act`, `save/load`, profilo (`recordRun`, `buyUpgrade`, `checkMedals`).
+- `hazards.js` i pericoli del terreno (uno per settore). `sprites-tiles.js` l'aspetto dei piani (un set di tessere per settore) e i disegni dei pericoli. `recipes.js` le ricette del banco di lavoro e gli oggetti creati. `text-systems.js` le frasi di questi sistemi (si fonde dentro `MSG` di `text.js`).
 - `text.js` tutte le frasi che non stanno nelle tabelle, in inglese e italiano (chiave -> `{en, it}`).
 - Ogni file di dati ha in cima un commento che spiega come aggiungere un elemento.
 
@@ -24,6 +25,25 @@ Due modi, scelti dal Menu (`Comandi: Tocco / Croce direzionale`, salvato in `vb_
 **Tastiera**: frecce o WASD, spazio aspetta, C cerca, 1-4 slot, I zaino, E esplora, F abilità, > scale, B nascondi.
 Il significato dei tocchi sta in `intentForTap(s, x, y, 'tap'|'double'|'long', aim)` e `slotIntent` in `game.js` (funzioni pure, testate in `tests/dungeon-touch.test.js`); `dungeon.js` si limita a eseguire l'intento.
 Azioni nuove delle regole: `search` (raggio 3, certa a 1 casella, meno sicura più lontano; un turno) e `throw {i,x,y}` (oggetti di categoria `throw`: dardi, CD, taglierino; portata 6, colpisce il primo mostro sulla linea, il 60% si può recuperare).
+
+## Movimento in 8 direzioni
+Eroe e mostri si muovono e colpiscono anche in diagonale. Regola dell'angolo (`MAP.diagOk`): una diagonale è permessa solo se le due caselle ortogonali accanto sono libere (niente muro, niente mobili) e né la casella di partenza né quella d'arrivo è una porta (le porte si passano dritte). I mobili (negozio, panchina, terminale) si usano solo di lato. Tutti i percorsi (tocca per camminare, Esplora, inseguimento dei mostri) usano `flood`/`downhill` con 8 vicini e la stessa regola, e a parità scelgono il passo dritto. Il campo visivo non cambia. `G.touching(s, e)` dice se un mostro è colpibile. Croce direzionale 3x3 (centro = aspetta); tastiera: Y U V N (e Q) per le diagonali, tastierino numerico 1-9 (il B è il tasto "nascondi").
+
+## Dormi
+Azione `sleep` (pulsante Dormi, pressione lunga su Aspetta, tasto Z): un turno di sonno alla volta, la pagina li ripete finché `s.sleeping > 0` (ogni turno è salvato e un tocco interrompe). Si cura il doppio più in fretta, la fame va a ritmo normale, i mostri ti notano da 2 caselle più lontano. Rifiutato con un nemico in vista, con fame (< 150) o a vita piena. Si sveglia da solo per: mostro in vista ("X compare!"), ferita, fame, vita piena, 100 turni.
+
+## Pericoli del terreno
+Ogni settore ha il suo pericolo (`hazards.js`): Scantinato pozza velenosa, Aula Server ghiaccio (scivoli di una casella), Cablaggi cavo scoperto (scossa), Rete flusso di pacchetti (ti spinge; controcorrente no), Archivio scaffale che crolla (una volta), Cloud nebbia (nasconde mostri e oggetti finché non sei accanto), Firewall fiamme (danno e bruciatura), Kernel lag (perdi il turno), Mainframe calore (perdi fame e ricarica dell'abilità), Root un misto. Sono a chiazze di 2-4 caselle, 1-4 chiazze per piano (di più andando avanti nel settore), dal seme (`placeHazards` in `game.js`, stesso seme = stessi pericoli), mai sull'inizio, sulle scale o su oggetti/mostri/trappole, e **mai tagliano il piano**: ogni casella raggiungibile senza pericoli lo resta (controllato casella per casella e dai test su 300 semi per settore). Si vedono sempre, la scheda (pressione lunga) li spiega, il cammino automatico li aggira (`knownPass`; solo se non c'è altra via ci passa) e Esplora non li usa mai come meta. Il danno cresce poco: +1 ogni 8 piani e +1 per livello di accesso (`damageRange`).
+- **Aggiungere un pericolo**: un oggetto in `LIST` di `hazards.js` (id, sector, kind, name, info, col, shape, dmg/turns/food), il disegno in `SPR` di `sprites-tiles.js`; i testi dei messaggi `haz_<kind>` in `text-systems.js`. Un tipo nuovo: una funzione in `HAZARD_FX` di `game.js` (riceve stato, casella, definizione, passo).
+- **Aspetto di un settore**: la sua voce in `SETS` di `sprites-tiles.js` (due pavimenti e un muro 8x8, due colori d'accento).
+
+## Banco di lavoro (crafting)
+Alla panchina della Sala Server: "Banco di lavoro", si scelgono 2 o 3 oggetti dallo zaino (una pila conta un'unità per tocco) e si preme Unisci. Se corrispondono a una ricetta (in qualsiasi ordine) vengono consumati e arriva il risultato; altrimenti non succede nulla e non si perde niente. Non costa turni. Le ricette scoperte stanno nel ricettario (sul banco) e si conservano tra le partite (`meta.recipes`); l'oggetto Ricettario (`c_ricettario`, raro dal piano 2) le rivela tutte.
+- **Aggiungere una ricetta**: un oggetto in `RECIPES` di `recipes.js`: `id`, `name {en,it}`, `in` (2 o 3 id oggetto o `'cat:usb'`), `out` (`{ give: [id o {k, n}] }` oppure `{ fn: 'nome' }` con la funzione in `CRAFT_FX` di `game.js`). Gli ingressi non devono ripetersi tra ricette (i test lo controllano) e gli oggetti nuovi vanno in `ITEMS` dello stesso file (`from: 99` = solo creabili).
+
+## Élite (mini-boss) e comportamenti nuovi
+Un mostro di `mobs.js` con `elite: true` (3° piano del settore in cui iniziano i suoi `floors`) o `elite: <numero piano>` compare una volta per piano, addormentato in una stanza tutta sua (`MAP.generate(seed, depth, { elite: true })` segna `room.elite`; il resto del piano non cambia), con corona e cornice oro; alla morte lascia sempre un oggetto (`drop: 'id'` nel mostro, altrimenti uno buono a caso) e dà il messaggio di vittoria. Le élite non escono come mostri normali.
+Un flag nuovo su un mostro diventa comportamento con una funzione in `G.MOB_HOOKS.turn|hit|death` sotto il nome del flag (vedi il commento in `game.js`): nessun'altra modifica al motore.
 
 ## Lingue (EN predefinita, IT)
 Le regole (`game.js`) non scrivono mai frasi: `log(s, 'chiave', {parametri}, colore)` salva un messaggio `{m:{k,p}}` e la pagina lo traduce con `G.text(msg, lang)` / `G.logText(voce, lang)`. Nei parametri gli id (mob, item, skill, cls, active, trap, sector, intro, verb, desc) diventano nomi nella lingua scelta. Così una partita salvata si legge in entrambe le lingue e il cambio lingua (EN | IT nel Menu, evento `vb-lang`) funziona a partita in corso. Le partite salvate prima con testo semplice (`{t:'…'}`) si mostrano com'erano.
@@ -55,4 +75,4 @@ Fuori dalla partita: Archivio (albero dei potenziamenti comprati con i crediti, 
 
 ## Stato e idee future
 Fatto: motore, 10 settori con 74 tipi di nemico e 10 boss, 54 oggetti, 8 classi, hub, negozi, potenziamenti, 33 medaglie, bestiario, accesso, sfida del giorno.
-Da fare: 80+ nemici e 200+ oggetti, 12 boss (mini-boss a metà settore), crafting vero (ora c'è il riciclo), pericoli di terreno per settore (acqua, lava, buio), altri disegni per i mostri, bilanciamento con partite vere.
+Da fare: 80+ nemici e 200+ oggetti, 12 boss e le élite vere (il motore c'è, mancano le definizioni), altri disegni per i mostri, bilanciamento con partite vere.
