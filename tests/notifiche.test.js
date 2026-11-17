@@ -121,7 +121,7 @@ test('test push: encrypted for the device and signed with VAPID', async () => {
     assert.equal(Buffer.from(pub, 'base64url').length, 65);
     checkVapid(pushed[0].headers, pub, `http://127.0.0.1:${pushServer.address().port}`);
     const msg = decrypt(dev, pushed[0].body);
-    assert.equal(msg.title, 'Notifiche attive ✓');
+    assert.equal(msg.title, 'Notifications on ✓', 'English by default (the test request has no language: see tr())');
     assert.equal(msg.url, '/pages/appunti.php');
     mario.dev = dev;
 });
