@@ -9,10 +9,13 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
         require('./text-systems.js');                                  // merges its sentences into text.js's MSG
-        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'), require('./text.js'), require('./hazards.js'));
-    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta, R.text, R.hazards); }
-})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META, TX, HZ) {
+        module.exports = factory(require('./rng.js'), require('./map.js'), require('./mobs.js'), require('./items.js'), require('./classes.js'), require('./meta.js'), require('./text.js'), require('./hazards.js'), require('./recipes.js'));
+    } else { const R = root.Rogue; R.game = factory(R.rng, R.map, R.mobs, R.items, R.classes, R.meta, R.text, R.hazards, R.recipes); }
+})(typeof self !== 'undefined' ? self : this, function (RNG, MAP, MOBS, ITEMS, CLS, META, TX, HZ, RC) {
     'use strict';
+    // crafting adds its own category and items to the item tables (see recipes.js)
+    for (const k in RC.CATS) if (!ITEMS.CATS[k]) ITEMS.CATS[k] = RC.CATS[k];
+    for (const it of RC.ITEMS) if (!ITEMS.LIST.some((e) => e.id === it.id)) ITEMS.LIST.push(it);
     const VERSION = 2, W = MAP.W, H = MAP.H, T = MAP.T, DIRS = MAP.DIRS;
     const FLOORS = MOBS.SECTORS.length * MOBS.PER_SECTOR;
     const SLEEP_CAP = 100, MOB_CAP = 40, INV_CAP = 24, MAX_FOOD = 1200, SIGHT = 8, THROW_RANGE = 6, SEARCH_RADIUS = 3;
@@ -23,6 +26,10 @@
     const HAZ = HZ.BY_ID, SECTOR = byId(MOBS.SECTORS), MEDAL = byId(META.MEDALS), TRAP = byId(MOBS.TRAPS);
     const sectorOf = (depth) => MOBS.SECTORS[Math.min(MOBS.SECTORS.length - 1, Math.floor((depth - 1) / MOBS.PER_SECTOR))];
     const bossOf = (depth) => MOBS.LIST.find((d) => d.boss === depth);
+    /** ELITES (mini-bosses): a monster of mobs.js with `elite: true` (the 3rd floor of the sector its `floors` start in) or `elite: <floor number>`.
+     *  One per floor at most: it sleeps in its own room, wears a crown, and drops a guaranteed item (`drop: 'item id'` if the monster names one, else a good random one). */
+    const eliteDepth = (d) => (typeof d.elite === 'number' ? d.elite : d.elite ? Math.floor((d.floors[0] - 1) / MOBS.PER_SECTOR) * MOBS.PER_SECTOR + 3 : 0);
+    const eliteOf = (depth) => MOBS.LIST.find((d) => d.elite && !d.boss && eliteDepth(d) === depth);
     const cat = (it) => ITEMS.CATS[ITEM[it.k].cat];
 
     /** Adds a message to the log: `key` is a key of text.js, `p` its params (ids, numbers), `c` the colour class. */
@@ -106,7 +113,7 @@
     const safe = (table, pick) => (v, lang) => (table[v] ? TX.tx(pick(table[v]), lang) : String(v));
     const RESOLVE = {
         mob: safe(MOB, (d) => d.name), item: (v, lang) => itemText(v, lang), skill: safe(SKILL, (d) => d.name), cls: safe(CLASS, (d) => d.name),
-        active: safe(CLASS, (d) => d.active.name), haz: safe(HAZ, (d) => d.name), hazinfo: safe(HAZ, (d) => d.info), trap: safe(TRAP, (d) => d.name), sector: safe(SECTOR, (d) => d.name), intro: safe(SECTOR, (d) => d.intro),
+        active: safe(CLASS, (d) => d.active.name), haz: safe(HAZ, (d) => d.name), recipe: safe(byId(RC.RECIPES), (d) => d.name), hazinfo: safe(HAZ, (d) => d.info), trap: safe(TRAP, (d) => d.name), sector: safe(SECTOR, (d) => d.name), intro: safe(SECTOR, (d) => d.intro),
         verb: safe(MOB, (d) => (d.ranged ? d.ranged.verb : '')), desc: safe(ITEM, (d) => d.info || ''), medal: safe(MEDAL, (d) => d.name), mobinfo: safe(MOB, (d) => d.info || ''),
         cause: (v, lang) => text(v, lang),
     };
@@ -256,13 +263,13 @@
 
     function newFloor(s) {
         const depth = s.depth, r = RNG.make(RNG.mix(s.seed, depth * 7919 + 17));
-        const m = MAP.generate(s.seed, depth), tiles = m.tiles;
+        const elite = eliteOf(depth), m = MAP.generate(s.seed, depth, elite ? { elite: true } : undefined), tiles = m.tiles;
         s.map = { w: W, h: H, tiles, stairs: m.stairs };
         s.seen = new Array(W * H).fill(0);
         s.mobs = []; s.items = []; s.traps = []; s.haz = []; s.shop = null; s.bench = null; s.hub = 0; s.altar = null; s.sealed = 0;
         s.p.x = m.start.x; s.p.y = m.start.y;
         const plain = m.rooms.filter((o) => !o.vault), last = m.rooms.find((o) => o.last);
-        const others = RNG.shuffle(r, plain.filter((o) => o !== m.rooms[0] && !o.last));
+        const others = RNG.shuffle(r, plain.filter((o) => o !== m.rooms[0] && !o.last && !o.elite));
         const taken = new Set([idx(m.start.x, m.start.y), idx(m.stairs.x, m.stairs.y)]);
         const cellIn = (o) => {
             for (let i = 0; i < 40; i++) {
@@ -282,7 +289,8 @@
         const boss = bossOf(depth);
         if (boss) { const c = cellIn(last); spawn(s, boss.id, c[0], c[1], true); s.sealed = 1; }
         if (depth === FLOORS) tiles[idx(m.stairs.x, m.stairs.y)] = T.FLOOR;      // nothing below the last floor
-        const pool = MOBS.LIST.filter((d) => !d.boss && d.floors[0] <= depth && depth <= d.floors[1]);
+        if (elite) { const er = m.rooms.find((o) => o.elite), c = er && cellIn(er); if (c) { spawn(s, elite.id, c[0], c[1], true).elite = 1; s.elite = elite.id; } }
+        const pool = MOBS.LIST.filter((d) => !d.boss && !d.elite && d.floors[0] <= depth && depth <= d.floors[1]);
         const away = plain.filter((o) => o !== m.rooms[0]);
         for (let n = 4 + Math.min(6, depth >> 1) + RNG.int(r, 3); n > 0 && pool.length; n--) {
             const c = cellIn(RNG.pick(r, away));
@@ -302,6 +310,7 @@
         updateFov(s);
         if ((depth - 1) % MOBS.PER_SECTOR === 0) log(s, 'sector_intro', { intro: sectorOf(depth).id }, 'info');
         log(s, boss ? 'floor_enter_boss' : 'floor_enter', { depth, sector: sectorOf(depth).id }, 'info');
+        if (s.mobs.some((e) => e.elite)) log(s, 'floor_elite', { mob: elite.id }, 'info');
         fx(s, 'stairs');
     }
 
@@ -332,6 +341,38 @@
         const gain = Math.max(1, Math.round(ITEM[it.k].price / 2));
         useUp(s, i); s.p.gold += gain;
         log(s, 'recycled', { item: { k: it.k }, gain }, 'good');
+    }
+
+    // ── crafting at the bench (recipes.js) ──
+    const fits = (m, k) => (m.startsWith('cat:') ? ITEM[k].cat === m.slice(4) : m === k);
+    /** Do the matchers `ms` accept the item ids `ks` in some order? */
+    function matches(ms, ks) {
+        const used = [], go = (i) => i === ms.length || ks.some((k, j) => !used[j] && fits(ms[i], k) && (used[j] = true, go(i + 1) || (used[j] = false)));
+        return ms.length === ks.length && go(0);
+    }
+    /** The recipe (or undefined) for a list of item ids. */
+    const recipeFor = (ks) => RC.RECIPES.find((r) => matches(r.in, ks));
+    const CRAFT_FX = {
+        recharge(s, used) { const u = used.find((it) => ITEM[it.k].cat === 'usb'); u.ch = Math.max(u.ch, ITEM[u.k].ch) + 2; return [u]; },
+    };
+    /** Combines the bag items at the indexes `picks` (2 or 3; a stack index may repeat, once per unit). Takes no turn. */
+    function craft(s, picks) {
+        const p = s.p, inv = p.inv;
+        if (!Array.isArray(picks) || picks.length < 2 || picks.length > 3 || picks.some((i) => !inv[i])) return;
+        const count = {};
+        for (const i of picks) count[i] = (count[i] || 0) + 1;
+        if (Object.keys(count).some((i) => count[i] > (inv[i].n || 1))) return;
+        const r = recipeFor(picks.map((i) => inv[i].k));
+        if (!r) { log(s, 'craft_none'); return; }
+        const used = picks.map((i) => Object.assign({}, inv[i], { n: 1 }));
+        for (const i of Object.keys(count).map(Number).sort((a, b) => b - a)) { if (inv[i].n > count[i]) inv[i].n -= count[i]; else inv.splice(i, 1); }
+        let out;
+        if (r.out.fn) out = CRAFT_FX[r.out.fn](s, used);
+        else out = r.out.give.map((g) => { const k = g.k || g, d = ITEM[k], it = { k }; if (ITEMS.CATS[d.cat].stack) it.n = g.n || 1; if (d.cat === 'usb') it.ch = d.ch; if (d.cat === 'weapon' || d.cat === 'armor') it.e = 0; return it; });
+        for (const it of out) { s.known[it.k] = 1; if (!addInv(s, it)) s.items.push({ x: p.x, y: p.y, it }); }
+        log(s, 'craft_ok', { item: itemRef(s, out[0]), recipe: r.id }, 'good');
+        if (!s.recipes[r.id]) { s.recipes[r.id] = 1; log(s, 'craft_new', { recipe: r.id }, 'info'); }
+        fx(s, 'pick');
     }
 
     // ── fighting ────────────────────────────────────────────────────────────
@@ -366,7 +407,7 @@
     function hurtPlayer(s, dmg, cause) {
         const p = s.p;
         p.hp -= dmg; s.lastHurt = s.turn;
-        fx(s, 'hurt', p.x, p.y);
+        s.fx.push({ t: 'hurt', x: p.x, y: p.y, n: dmg });
         if (p.hp <= 0) { p.hp = 0; s.status = 'dead'; s.cause = cause; log(s, 'defeated', { cause }, 'bad'); }
     }
     function killMob(s, m) {
@@ -378,9 +419,12 @@
         if (m.loot) s.items.push({ x: m.x, y: m.y, it: { k: '$', n: m.loot } });
         if (m.stolen) s.items.push({ x: m.x, y: m.y, it: m.stolen });
         if (!m.loot && !m.stolen && s.map.tiles[idx(m.x, m.y)] === T.FLOOR) {
-            if (d.boss || RNG.chance(s.rng, 0.1)) s.items.push({ x: m.x, y: m.y, it: makeItem(s.rng, s.depth + (d.boss ? 4 : 1)) });
+            if (m.elite && d.drop && ITEM[d.drop]) s.items.push({ x: m.x, y: m.y, it: { k: d.drop, n: 1 } });
+            else if (d.boss || m.elite || RNG.chance(s.rng, 0.1)) s.items.push({ x: m.x, y: m.y, it: makeItem(s.rng, s.depth + (d.boss || m.elite ? 4 : 1)) });
             else if (RNG.chance(s.rng, 0.25)) s.items.push({ x: m.x, y: m.y, it: { k: '$', n: RNG.range(s.rng, 2, 6) + s.depth } });
         }
+        if (m.elite) { s.elites = (s.elites || 0) + 1; log(s, 'elite_slain', { mob: m.k }, 'good'); fx(s, 'elite', m.x, m.y); }
+        for (const f in d) if (MOB_HOOKS.death[f] && d[f]) MOB_HOOKS.death[f](s, m, d);
         if (d.explode && Math.abs(m.x - p.x) + Math.abs(m.y - p.y) <= 2) {
             log(s, 'mob_explodes', { mob: m.k }, 'bad');
             hurtPlayer(s, RNG.range(s.rng, d.explode[0], d.explode[1]), mobCause(m.k));
@@ -438,8 +482,14 @@
         if (d.stun && RNG.chance(s.rng, 0.3)) p.st.stun = 2;           // 2: the status loses a turn at the end of this one, so 1 would never skip an action
         if (d.confuse && RNG.chance(s.rng, 0.3)) p.st.conf = 5;
         if (d.leech) m.hp = Math.min(m.max, m.hp + n);
+        for (const f in d) if (MOB_HOOKS.hit[f] && d[f]) MOB_HOOKS.hit[f](s, m, d, n);
     }
 
+    /** BEHAVIOUR HOOKS: a new flag on a monster (mobs.js) becomes behaviour by registering a function here under the flag's name, no other change in the engine.
+     *   MOB_HOOKS.turn.flag(s, m, d, ctx) -> true when it used up the monster's turn (ctx: { dist, adj, sees, step(dx, dy) -> moved? })
+     *   MOB_HOOKS.hit.flag(s, m, d, dmg)  after its hit landed        MOB_HOOKS.death.flag(s, m, d)  when it dies
+     *  `d` is the monster's definition, `m` the instance on the floor. Example: MOB_HOOKS.death.bomb = (s, m) => hurtPlayer(s, 3, mobCause(m.k)). */
+    const MOB_HOOKS = { turn: {}, hit: {}, death: {} };
     function mobStep(s, m, dx, dy, occ) {
         const x = m.x + dx, y = m.y + dy, d = MOB[m.k];
         if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1 || occ.has(idx(x, y)) || (x === s.p.x && y === s.p.y)) return false;
@@ -471,6 +521,7 @@
             if (!adj) return;                                              // cornered: it fights
         }
         if (sees) m.hunt = 1;
+        if (m.hunt) for (const f in d) if (MOB_HOOKS.turn[f] && d[f] && MOB_HOOKS.turn[f](s, m, d, { dist, adj, sees, step: (dx, dy) => mobStep(s, m, dx, dy, occ) })) return;
         if (!m.hunt) { if (d.erratic || RNG.chance(s.rng, 0.2)) wander(); return; }
         if ((p.st.invis && !adj) || (d.erratic && RNG.chance(s.rng, d.erratic))) { wander(); return; }
         if (d.summon && sees && s.turn % d.summon.every === 0 && s.mobs.length < MOB_CAP) {
@@ -548,6 +599,7 @@
             log(s, 'fx_summon', null, 'bad');
         },
         sleep(s, pw) { for (const m of seenMobs(s)) if (!MOB[m.k].boss) m.asleep = pw + 1; log(s, 'fx_sleep', null, 'good'); },
+        recipes(s) { for (const r of RC.RECIPES) s.recipes[r.id] = 1; log(s, 'book_read', null, 'good'); },
         recharge(s, pw) { for (const it of s.p.inv) if (ITEM[it.k].cat === 'usb') it.ch += pw; log(s, 'fx_recharge', null, 'good'); },
         ping(s, pw) { s.p.st.ping = pw; log(s, 'fx_ping', null, 'info'); },
         grep(s) {
@@ -656,6 +708,7 @@
             return true;
         }
         if (d.cat === 'throw') { log(s, 'throw_hint'); return false; }
+        if (d.cat === 'craft' && !d.effect) { log(s, 'craft_item_hint'); return false; }
         if (d.cat === 'food') { p.food = Math.min(MAX_FOOD, p.food + d.food); log(s, 'eat', { item: { k: it.k } }, 'good'); useUp(s, i); return true; }
         let target = null;
         if (d.cat === 'usb') {
@@ -664,7 +717,7 @@
             if (!target) { log(s, 'no_enemy'); return false; }
             it.ch--;
         } else useUp(s, i);
-        log(s, d.cat === 'drink' ? 'use_drink' : d.cat === 'script' ? 'use_script' : 'use_usb', { item: { k: it.k } });
+        log(s, d.cat === 'drink' ? 'use_drink' : d.cat === 'usb' ? 'use_usb' : 'use_script', { item: { k: it.k } });
         identify(s, it.k);
         EFFECTS[d.effect](s, d.power, target);
         return true;
@@ -809,7 +862,7 @@
             return false;
         }
         if (s.bench && s.bench.open) {
-            if (a.t === 'rest') rest(s); else if (a.t === 'recycle') recycle(s, a.i); else s.bench.open = 0;
+            if (a.t === 'rest') rest(s); else if (a.t === 'recycle') recycle(s, a.i); else if (a.t === 'craft') craft(s, a.i); else s.bench.open = 0;
             return false;
         }
         if (a.t !== 'sleep') s.sleeping = 0;
@@ -895,6 +948,7 @@
             if (d.ranged) lines.push(msg('card_mob_ranged'));
             if (d.speed > 1) lines.push(msg('card_mob_fast'));
             if (d.boss) lines.push(msg('card_mob_boss'));
+            if (m.elite) lines.push(msg('card_mob_elite'));
             return { title: msg('m_mob', { mob: m.k }), lines };
         }
         if (!s.seen[i]) return { title: msg('card_unseen'), lines: [msg('card_unseen_info')] };
@@ -966,7 +1020,7 @@
         const s = {
             v: VERSION, seed: seed >>> 0, cls: c.id, rng: RNG.make(RNG.mix(seed, 4242)), depth: 1, turn: 0, status: 'play', cause: '',
             tier: Math.min(opts.tier || 0, meta.ng || 0), daily: opts.daily || '', met: {}, dex: {}, hub: 0, bench: null,
-            log: [], fx: [], known: {}, looks: {}, nid: 1, kills: 0, bosses: 0, earned: 0,
+            log: [], fx: [], known: {}, looks: {}, nid: 1, kills: 0, bosses: 0, earned: 0, elites: 0, recipes: Object.assign({}, meta.recipes),
             p: { x: 0, y: 0, hp: c.hp, maxHp: c.hp, lvl: 1, xp: 0, gold: 0, food: 900, cd: 0, weapon: null, armor: null, plugin: null,
                  inv: [], st: {}, mods: {}, skills: {}, pending: 0, choices: null },
         };
@@ -1001,12 +1055,12 @@
     function load(text) {
         try {
             const s = JSON.parse(text);
-            if (s) { s.sleeping = 0; s.haz = s.haz || []; }
+            if (s) { s.sleeping = 0; s.haz = s.haz || []; s.recipes = s.recipes || {}; }
             if (!s || s.v !== VERSION || !s.p || !s.map || s.map.tiles.length !== W * H || !CLASS[s.cls]) return null;
             return s;
         } catch (e) { return null; }
     }
-    const newMeta = () => ({ v: 2, best: 0, wins: 0, bosses: 0, runs: 0, crediti: 0, total: 0, kills: 0, turns: 0, ng: 0, daily: 0, maxLvl: 0, up: {}, medals: [], codex: {}, dailyBest: {}, history: [] });
+    const newMeta = () => ({ v: 2, best: 0, wins: 0, bosses: 0, runs: 0, crediti: 0, total: 0, kills: 0, turns: 0, ng: 0, daily: 0, maxLvl: 0, up: {}, medals: [], codex: {}, dailyBest: {}, history: [], recipes: {} });
     /** Fills in what an older or damaged profile lacks. */
     function fixMeta(m) { const n = newMeta(); for (const k in n) if (m[k] === undefined || typeof m[k] !== typeof n[k]) m[k] = n[k]; return m; }
     const counters = (meta) => Object.assign({}, meta, { codex: Object.keys(meta.codex || {}).length });
@@ -1035,6 +1089,7 @@
         meta.best = Math.max(meta.best, s.depth);
         meta.runs++; meta.bosses += s.bosses; meta.crediti += gain; meta.total += gain + s.earned;
         meta.kills += s.kills; meta.turns += s.turn; meta.maxLvl = Math.max(meta.maxLvl, s.p.lvl);
+        Object.assign(meta.recipes, s.recipes);
         for (const k in s.met) { const e = meta.codex[k] = meta.codex[k] || { seen: 0, kills: 0 }; e.seen++; }
         for (const k in s.dex) { const e = meta.codex[k] = meta.codex[k] || { seen: 0, kills: 0 }; e.kills += s.dex[k]; }
         if (s.status === 'won') { meta.wins++; meta.ng = Math.max(meta.ng, (s.tier || 0) + 1); }
@@ -1046,6 +1101,6 @@
     }
 
     return { VERSION, FLOORS, INV_CAP, MAX_FOOD, MOB, ITEM, CLASS, SKILL, EFFECTS, TARGETED, newGame, act, save, load, stats, hitChance, rollDamage, xpNeed,
-        text, logText, log, itemRef, itemText, itemName, itemInfo, itemLook, MSG: TX.MSG, known, price, canTake, shown, threats, nearest, touching, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, newFloor, HAZARD_FX, HAZARD: HAZ, hazAt, fogAt, sleepRun, SLEEP_CAP, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
+        text, logText, log, itemRef, itemText, itemName, itemInfo, itemLook, MSG: TX.MSG, known, price, canTake, shown, threats, nearest, touching, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, newFloor, HAZARD_FX, HAZARD: HAZ, hazAt, fogAt, sleepRun, SLEEP_CAP, MOB_HOOKS, RECIPES: RC.RECIPES, recipeFor, eliteOf, eliteDepth, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
         newMeta, fixMeta, unlocked, recordRun, updateFov, buyUpgrade, upCost, level, checkMedals, counters, UPGRADES: META.UPGRADES, MEDALS: META.MEDALS, enterHub };
 });

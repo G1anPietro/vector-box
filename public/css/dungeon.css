@@ -165,6 +165,16 @@ body.fs .dg-top { padding-top: 0; }
 .dg-lang span { flex: 0 0 auto; margin-right: 4px; }
 .dg-lang button { flex: 0 0 auto; min-width: 56px; }
 
+/* crafting at the bench */
+.dg-cslots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0; }
+.dg-cslot { border: 1px dashed var(--line); border-radius: 6px; min-height: 66px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; font-size: .72rem; line-height: 1.2; min-width: 0; overflow-wrap: anywhere; }
+.dg-cslot canvas { width: 28px; height: 28px; image-rendering: pixelated; }
+.dg-cslot .dim { color: var(--muted); }
+/* screen shake and flash on a big hit (not with reduced motion) */
+@keyframes dgshake { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-4px, 2px); } 40% { transform: translate(4px, -2px); } 60% { transform: translate(-3px, -1px); } 80% { transform: translate(3px, 1px); } }
+@keyframes dgflash { from { opacity: 1; } to { opacity: 0; } }
+.dg-stage.shake { animation: dgshake .3s; }
+.dg-stage.flash::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: rgba(255, 40, 40, .38); animation: dgflash .32s forwards; }
 /* QA fixes: archive tabs on one row, recap grid of the end screen, the log shows whole lines only */
 .dg-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .dg-tabs button { padding: 4px 2px; font-size: .74rem; min-width: 0; overflow-wrap: anywhere; }

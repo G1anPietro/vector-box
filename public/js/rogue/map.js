@@ -64,7 +64,7 @@
         return best;
     }
 
-    function build(r) {
+    function build(r, opts) {
         const m = { w: W, h: H, tiles: new Array(W * H).fill(T.WALL), rooms: [] };
         const set = (x, y, t) => { m.tiles[y * W + x] = t; };
         const get = (x, y) => m.tiles[y * W + x];
@@ -114,6 +114,8 @@
         let far = m.rooms[1];
         for (const o of m.rooms) if (!o.vault && o !== m.rooms[0] && dist[centre(o).y * W + centre(o).x] > dist[centre(far).y * W + centre(far).x]) far = o;
         far.last = true;
+        // a floor with an elite: one more room is flagged (drawn after everything else, so the layout is the same as without it)
+        if (opts && opts.elite) { const cand = m.rooms.filter((o) => !o.vault && o !== m.rooms[0] && !o.last); if (cand.length) RNG.pick(r, cand).elite = true; }
         m.stairs = centre(far);
         set(m.stairs.x, m.stairs.y, T.STAIRS);
         return m;
@@ -129,9 +131,10 @@
         return true;
     }
 
-    function generate(seed, depth) {
+    /** `opts.elite`: flag one room (room.elite) for a mini-boss. */
+    function generate(seed, depth, opts) {
         for (let attempt = 0; attempt < 200; attempt++) {
-            const m = build(RNG.make(RNG.mix(seed, depth * 1000 + attempt)));
+            const m = build(RNG.make(RNG.mix(seed, depth * 1000 + attempt)), opts);
             if (m && valid(m)) return m;
         }
         throw new Error('no floor for seed ' + seed + ' depth ' + depth);

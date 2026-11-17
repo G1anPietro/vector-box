@@ -53,7 +53,9 @@
             o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + ms / 1000);
         } catch (e) { /* no audio */ }
     }
-    const SOUND = { hit: [220, 60], kill: [440, 90], hurt: [110, 120, 'sawtooth'], pick: [660, 50], level: [880, 160], stairs: [330, 120] };
+    const SOUND = { hit: [220, 60], kill: [440, 90], hurt: [110, 120, 'sawtooth'], pick: [660, 50], level: [880, 160], stairs: [330, 120], elite: [990, 140] };
+    /** A few blips in a row (death: down, victory: up). */
+    function tune(notes) { notes.forEach((f, i) => setTimeout(() => blip(f, 130, 'triangle'), i * 140)); }
 
     // ── sprites: 8x8 text pictures painted once per colour ──
     const sprCache = {};
@@ -134,6 +136,11 @@
             if (!G.shown(s, m) || m.x < x0 || m.y < y0 || m.x >= x1 || m.y >= y1) continue;
             const d = G.MOB[m.k], boss = !!d.boss;
             spr(d.shape, m.asleep ? shade(d.col, 0.55) : d.col, m.x, m.y);
+            if (m.elite) {                                          // an elite wears a crown and a gold frame
+                const [px, py] = cell(m.x, m.y);
+                ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
+                ctx.drawImage(sprite('crown', '#ffd84a'), px + ts * 0.2, py - ts * 0.18, ts * 0.6, ts * 0.6);
+            }
             if (m.hp < m.max || boss) {
                 const [px, py] = cell(m.x, m.y);
                 ctx.fillStyle = '#000'; ctx.fillRect(px + 2, py + ts - 5, ts - 4, 4);
@@ -303,6 +310,7 @@
     function benchModal() {
         const body = openModal(tl('bench_title'), 'bench', benchModal);
         btn(tl('bench_rest'), () => { act({ t: 'rest' }); }, body, 'dg-choice');
+        btn(tl('bench_craft'), () => craftModal(), body, 'dg-choice');
         el('h2', tl('bench_recycle'), '', body);
         if (!s.p.inv.length) el('p', tl('bag_empty_long'), '', body);
         s.p.inv.forEach((it, i) => {
@@ -311,6 +319,51 @@
             const tt = el('div', '', 't', r); el('span', G.itemName(s, it, lang()), '', tt); el('small', tl('bench_gain', { n: Math.max(1, Math.round(G.ITEM[it.k].price / 2)) }), '', tt);
             btn(tl('bench_do'), () => act({ t: 'recycle', i }), r);
         });
+    }
+    // ── crafting: pick 2 or 3 things from the bag (a stack can be picked once per unit), Combine; the recipe book lists what you know ──
+    let craftSel = [];
+    const fitsM = (m, k) => (m.startsWith('cat:') ? G.ITEM[k].cat === m.slice(4) : m === k);
+    function craftModal(msgs) {
+        if (!s.bench || !s.bench.open) return;
+        const body = openModal(tl('craft_title'), 'craft', () => craftModal()), p = s.p;
+        craftSel = craftSel.filter((i) => p.inv[i]);
+        el('p', tl('craft_hint'), '', body);
+        const slotsEl = el('div', '', 'dg-cslots', body);
+        for (let j = 0; j < 3; j++) {
+            const b = el('div', '', 'dg-cslot', slotsEl), it = p.inv[craftSel[j]];
+            if (it) { const l = G.itemLook(s, it); icon(b, l.shape, l.col, 28); el('span', G.itemName(s, Object.assign({}, it, { n: 1 }), lang()), '', b); }
+            else el('span', tl('craft_empty_slot'), 'dim', b);
+        }
+        const row = el('div', '', 'dg-row', body);
+        const go = btn(tl('craft_do'), () => {
+            const was = s.log.length;
+            act({ t: 'craft', i: craftSel.slice() }); craftSel = [];
+            craftModal(s.log.slice(was).map((l) => ({ text: G.logText(l, lang()), cls: l.c })));
+        }, row, 'dg-big');
+        go.disabled = craftSel.length < 2;
+        btn(tl('craft_clear'), () => { craftSel = []; craftModal(); }, row);
+        btn(tl('craft_back'), benchModal, row);
+        for (const m of msgs || []) el('p', m.text, m.cls ? 'c-' + m.cls : '', body);
+        el('h2', tl('craft_bag'), '', body);
+        if (!p.inv.length) el('p', tl('bag_empty_long'), '', body);
+        p.inv.forEach((it, i) => {
+            const r = el('div', '', 'dg-item', body), l = G.itemLook(s, it), have = it.n || 1, used = craftSel.filter((x) => x === i).length;
+            icon(r, l.shape, l.col, 32);
+            const tt = el('div', '', 't', r); el('span', G.itemName(s, it, lang()) + (used ? '  [' + used + ']' : ''), used ? 'c-good' : '', tt); el('small', G.itemInfo(s, it, lang()), '', tt);
+            const add = btn(tl('craft_add'), () => { craftSel.push(i); craftModal(); }, r); add.disabled = used >= have || craftSel.length >= 3;
+        });
+        const known = G.RECIPES.filter((r) => s.recipes[r.id]);
+        el('h2', tl('craft_book', { n: known.length, all: G.RECIPES.length }), '', body);
+        if (!known.length) el('p', tl('craft_book_empty'), '', body);
+        const nameOf = (m) => (m.startsWith('cat:') ? tr(R.items.CATS[m.slice(4)].name) : G.itemText({ k: m }, lang()));
+        for (const r of known) {
+            const rr = el('div', '', 'dg-item', body), tt = el('div', '', 't', rr);
+            const out = r.out.fn ? tl(['craft_fn', r.out.fn].join('_')) : r.out.give.map((g) => G.itemText({ k: g.k || g, n: g.n }, lang())).join(', ');
+            el('span', tr(r.name), '', tt); el('small', r.in.map(nameOf).join(' + ') + ' → ' + out, '', tt);
+            const sel = []; let ok = true;
+            for (const m of r.in) { const i = p.inv.findIndex((it, j) => fitsM(m, it.k) && sel.filter((x) => x === j).length < (it.n || 1)); if (i < 0) { ok = false; break; } sel.push(i); }
+            const use = btn(tl('craft_use'), () => { craftSel = sel; craftModal(); }, rr); use.disabled = !ok;
+        }
     }
     function logModal() {
         const body = openModal(tl('log_title'), 'log', logModal), box = el('div', '', 'dg-logfull', body);
@@ -404,12 +457,20 @@
     function persist() { if (s && s.status === 'play') store.set(RUN_KEY, G.save(s)); }
     function afterTurn() {
         if (s.fx.some((f) => f.t === 'hit' || f.t === 'miss' || f.t === 'kill')) { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) { /* no haptics */ } }
-        for (const f of s.fx) { const b = SOUND[f.t]; if (b) blip(b[0], b[1], b[2]); if (f.t === 'hurt' && !reduce) { const st = $('dg-stage'); st.classList.add('hurt'); setTimeout(() => st.classList.remove('hurt'), 160); } }
+        for (const f of s.fx) {
+            const b = SOUND[f.t]; if (b) blip(b[0], b[1], b[2]);
+            if (f.t === 'hurt' && !reduce) {                  // a red glow; a big hit (a fifth of your life or more) also shakes and flashes the map
+                const st = $('dg-stage'), big = f.n >= Math.max(5, s.p.maxHp / 5);
+                st.classList.add('hurt'); setTimeout(() => st.classList.remove('hurt'), 160);
+                if (big) { st.classList.remove('shake', 'flash'); void st.offsetWidth; st.classList.add('shake', 'flash'); setTimeout(() => st.classList.remove('shake', 'flash'), 320); }
+            }
+        }
+        if (s.status === 'dead') tune([330, 262, 196, 131]); else if (s.status === 'won') tune([523, 659, 784, 1047]);
         persist(); render();
         if (s.status !== 'play') { stopTravel(); endAim(); endModal(); }
         else if (s.p.pending && modalKind !== 'level') levelModal();
         else if (s.shop && s.shop.open) shopModal();
-        else if (s.bench && s.bench.open) benchModal();
+        else if (s.bench && s.bench.open && modalKind !== 'craft') benchModal();
     }
     function act(a) {
         if (!s || s.status !== 'play') return false;
