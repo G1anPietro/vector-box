@@ -727,6 +727,7 @@ label:has(> .dp-native) { position: relative; }
 .test-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .test-head .what { min-width: 0; flex: 1; }
 .test-ready { align-self: center; text-align: right; }
+@media (max-width: 520px) { .test-head { flex-wrap: wrap; } .test-ready { flex: 1 1 100%; order: 3; text-align: left; align-self: auto; } }   /* longer English labels: the hint goes on its own line */
 .kebab-list .accent-item { color: var(--accent); font-weight: 700; }
 .doc-row { gap: 8px; flex-wrap: nowrap; }
 .doc-row-text { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -845,6 +846,8 @@ html.lefty .inline-pair, html.lefty .join-row { flex-direction: row-reverse; }
 /* The bar at the top of every notes page: home on one side, the same four buttons on the other */
 .app-top { flex-wrap: wrap; gap: 8px; }
 .app-nav { display: flex; align-items: center; gap: 8px; }
+.app-lang { margin-left: auto; }   /* the EN | IT switch (js/i18n.js): right after the page name, small */
+.app-lang button { min-width: 34px; min-height: 30px; padding: 2px 6px; }
 .top-btn.current, .bell.current { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
 .top-btn.primary.current { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.35); }
 .page-tools { padding: 0 16px; max-width: 900px; margin: 0 auto; }
@@ -970,6 +973,7 @@ html.lefty .cal-view { flex-direction: row-reverse; }
 html.lefty .mc-head { flex-direction: row-reverse; }
 html.lefty .bb-miss li { flex-direction: row-reverse; }
 html.lefty .fc-q { flex-direction: row-reverse; }
+html.lefty .app-lang { margin-left: 0; margin-right: auto; }
 html.lefty .schema-dl-menu button { flex-direction: row-reverse; }
 html.lefty .demo-banner { flex-direction: row-reverse; }
 /* LEFTY:END */

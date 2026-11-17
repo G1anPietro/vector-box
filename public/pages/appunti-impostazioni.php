@@ -9,19 +9,23 @@ initSession();       // a visitor with no account may open this page (example cl
 $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 $v = filemtime(__DIR__ . '/../js/appunti-impostazioni.js') . '-' . filemtime(__DIR__ . '/../js/appunti-common.js') . '-' . filemtime(__DIR__ . '/../css/appunti.css') . '-' . filemtime(__DIR__ . '/../js/dropzone.js') . '-' . filemtime(__DIR__ . '/../js/appunti-upload.js') . '-' . filemtime(__DIR__ . '/../css/dropzone.css');
 $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers csrf.js too (the files are cached for a year)
+$v .= '-' . filemtime(__DIR__ . '/../js/i18n.js') . '-' . filemtime(__DIR__ . '/../js/i18n/appunti-en.js') . '-' . filemtime(__DIR__ . '/../js/i18n/appunti-it.js');   // the translations are inside the cache buster too
 ?>
 <!DOCTYPE html>
-<html lang="it">
+<html lang="<?= pageLang() ?>" data-lang-server>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#14161b">
     <meta name="robots" content="noindex">
-    <title>Impostazioni — Appunti di classe</title>
+    <title><?= tr(['en' => 'Settings — Class notes', 'it' => 'Impostazioni — Appunti di classe']) ?></title>
     <link rel="stylesheet" href="../css/appunti.css?v=<?= $e($v) ?>">
     <link rel="stylesheet" href="../css/dropzone.css?v=<?= $e($v) ?>">
     <link rel="manifest" href="../assets/appunti/manifest.json?v=1">
     <link rel="icon" href="../assets/appunti/icon.svg?v=1" type="image/svg+xml">
+    <script src="../js/i18n.js?v=<?= $e($v) ?>"></script>
+    <script src="../js/i18n/appunti-en.js?v=<?= $e($v) ?>"></script>
+    <script src="../js/i18n/appunti-it.js?v=<?= $e($v) ?>"></script>
     <script src="../js/csrf.js?v=<?= $e($v) ?>"></script>
     <script src="../js/appunti-common.js?v=<?= $e($v) ?>" defer></script>
     <script src="../js/dropzone.js?v=<?= $e($v) ?>" defer></script>
@@ -31,7 +35,7 @@ $v .= '-' . filemtime(__DIR__ . '/../js/csrf.js');   // the cache buster covers 
 <body>
     <?php appuntiTop('impostazioni'); ?>
     <main class="wrap settings-page">
-        <h1>Impostazioni</h1>
+        <h1><?= tr(['en' => 'Settings', 'it' => 'Impostazioni']) ?></h1>
         <p id="status" class="status" role="status" aria-live="polite"></p>
         <div id="settings-root"></div>
     </main>
