@@ -4,6 +4,7 @@
 //   const a = Rogue.bot.decide(s, memo);               // s = the game state (the object Rogue.game works on); a = ONE action for Rogue.game.act(s, a), or null when the run is over
 //   Rogue.game.act(s, a);
 // memo.style = 'normal' (default, a typical competent player) or 'careful' (a skilled one). Same state + same memo = same action (no randomness).
+// After every decide() memo.why = { key, params } says WHY (a message key of text-bot.js, e.g. 'bot_drink_heal', + plain params): it is only written, never read by the bot, so it cannot change a decision.
 // A decision costs about a millisecond. The bot only uses the rules the player has (the same actions, no peeking at hidden things except what the engine shows the UI).
 //
 // COME PENSA (italiano): ogni turno guarda in questo ordine e fa la PRIMA cosa che si applica.
@@ -43,15 +44,17 @@
 
         function decide(s, memo) {
             if (s.status !== 'play') return null;
+            memo.why = null;                                                        // memo.why = { key, params }: WHY the action returned below (for the "Why?" panel; it never feeds back into a decision)
             for (const k of ['done', 'skip', 'ignore', 'chase']) if (!memo[k]) memo[k] = {};
             if (memo.waits === undefined) memo.waits = 0;
             if (!memo.last) memo.last = { turn: -1, key: '', rep: 0 };
             let a = null;
             for (let k = 0; k < 6 && !a; k++) a = think(s, memo);
-            if (!a) a = { t: 'search' };
+            if (!a) { a = { t: 'search' }; memo.why = { key: 'bot_search', params: {} }; }
             const key = JSON.stringify(a);                                          // the same action refused again and again in the same turn: do something else
             memo.last = memo.last.turn === s.turn && memo.last.key === key ? { turn: s.turn, key, rep: memo.last.rep + 1 } : { turn: s.turn, key, rep: 0 };
-            return memo.last.rep >= 2 ? { t: 'wait' } : a;
+            if (memo.last.rep >= 2) { memo.why = { key: 'bot_wait', params: { why: 'stuck' } }; return { t: 'wait' }; }
+            return a;
         }
 
         function think(s, memo) {
@@ -60,6 +63,8 @@
             const healIdx = () => findInv((d, e) => knownIt(e) && d.effect === 'heal' && (d.cat === 'drink' || d.cat === 'script'));
             const healCount = () => p.inv.filter((e) => knownIt(e) && ITEM[e.k].effect === 'heal').reduce((x, e) => x + (e.n || 1), 0);
             const foodCount = () => p.inv.filter((e) => ITEM[e.k].cat === 'food').reduce((x, e) => x + (e.n || 1), 0);
+            const Y = (key, params, a) => { memo.why = { key, params: params || {} }; return a; };      // note the reason, return the action
+            const nm = (e) => (e && knownIt(e) ? e.k : '');                                          // item name for the reason: only when the bot knows what it is
             const use = (i) => ({ t: 'use', i });
             const dmgOf = (m) => { const d = MOB[m.k]; return ((d.atk[0] + d.atk[1]) / 2) * (d.speed || 1) * 0.8; };
             const walkTo = (tx, ty) => { const v = G.travelNext(s, tx, ty); return v ? { t: 'move', dx: v[0], dy: v[1] } : null; };
@@ -68,23 +73,24 @@
             function manage() {                       // gear and bag
                 const w = p.weapon && ITEM[p.weapon.k], ar = p.armor && ITEM[p.armor.k];
                 const bw = findInv((d, e) => d.cat === 'weapon' && knownIt(e) && weaponScore(d, e.e) > (w ? weaponScore(w, p.weapon.e) : 0) + 0.2);
-                if (bw >= 0) return use(bw);
+                if (bw >= 0) return Y('bot_gear', { item: nm(p.inv[bw]) }, use(bw));
                 const ba = findInv((d, e) => d.cat === 'armor' && knownIt(e) && armorScore(d, e.e) > (ar ? armorScore(ar, p.armor.e) : 0) + 0.2);
-                if (ba >= 0) return use(ba);
+                if (ba >= 0) return Y('bot_gear', { item: nm(p.inv[ba]) }, use(ba));
                 const pl = p.plugin && ITEM[p.plugin.k];
                 const bp = findInv((d, e) => d.cat === 'plugin' && (!knownIt(e) || modScore(d.mod) > (pl ? modScore(pl.mod) : -1) + 0.2));
-                return bp >= 0 ? use(bp) : null;
+                return bp >= 0 ? Y('bot_gear', { item: nm(p.inv[bp]) }, use(bp)) : null;
             }
             /** Things to try when nothing is in view: food, unknown potions (when hurt, so a heal is not wasted), unknown scripts, enchantments. */
             function safeUse() {
-                if (p.food < 250 && foodCount()) return use(findInv((d) => d.cat === 'food'));
+                if (p.food < 250 && foodCount()) return Y('bot_eat', {}, use(findInv((d) => d.cat === 'food')));
                 const hurt = p.hp <= p.maxHp * 0.75, ok = p.hp > p.maxHp * 0.5;
                 const i = findInv((d, e) => ok && ((d.cat === 'drink' && !knownIt(e) && hurt) || (d.cat === 'script' && !knownIt(e)) ||
                     (knownIt(e) && ['enchW', 'enchA', 'strength', 'life', 'xp', 'identify', 'recipes'].includes(d.effect)) ||
                     (knownIt(e) && ['map', 'grep'].includes(d.effect) && !done['f' + s.depth])));
                 if (i < 0) return null;
                 if (['map', 'grep'].includes(ITEM[p.inv[i].k].effect)) done['f' + s.depth] = 1;
-                return use(i);
+                const e = p.inv[i], d = ITEM[e.k];
+                return Y(d.cat === 'drink' && !knownIt(e) ? 'bot_drink_unknown' : knownIt(e) ? 'bot_use_item' : 'bot_try_item', { item: nm(e) }, use(i));
             }
             /** Class skill rule (per effect). `thr` = awake enemies in view. */
             function useSkill(thr, near) {
@@ -102,30 +108,30 @@
                     case 'freeze': go = hard || low; break;
                     default: go = low;
                 }
-                return go ? { t: 'active' } : null;
+                return go ? Y('bot_ability', { low: low ? 1 : 0 }, { t: 'active' }) : null;
             }
             function tryItems(thr, near) {             // scripts, USB sticks and thrown things against real danger
                 const hard = careful && thr.some((m) => m.hp >= 12 || MOB[m.k].boss || m.elite), low = p.hp < p.maxHp * 0.5;
                 const incoming = thr.filter((m) => cheb(m, p) <= 2).reduce((x, m) => x + dmgOf(m), 0);
                 if (hard || low) {
                     const u = findInv((d, e) => d.cat === 'usb' && e.ch > 0 && (!knownIt(e) || ['bolt', 'drain', 'freeze', 'slow', 'fire'].includes(d.effect) || (low && ['sleep', 'fear', 'banish'].includes(d.effect))));
-                    if (u >= 0 && cheb(near, p) <= 5) return use(u);
+                    if (u >= 0 && cheb(near, p) <= 5) return Y('bot_use_item', { item: nm(p.inv[u]) }, use(u));
                 }
                 if (low && incoming > 0) {
                     const sc = findInv((d, e) => d.cat === 'script' && knownIt(e) && ['fear', 'sleep', 'fire', 'invis'].includes(d.effect));
-                    if (sc >= 0) return use(sc);
+                    if (sc >= 0) return Y('bot_use_item', { item: nm(p.inv[sc]) }, use(sc));
                 } else if (careful && (thr.length >= 3 || (hard && incoming > p.hp * 0.15))) {
                     const sc = findInv((d, e) => d.cat === 'script' && knownIt(e) && ['fire', 'sleep'].includes(d.effect));
-                    if (sc >= 0) return use(sc);
+                    if (sc >= 0) return Y('bot_use_item', { item: nm(p.inv[sc]) }, use(sc));
                 }
                 if (p.hp < p.maxHp * 0.3 && incoming > 0) {
                     const tp = findInv((d, e) => d.cat === 'script' && knownIt(e) && d.effect === 'teleport');
-                    if (tp >= 0) return use(tp);
+                    if (tp >= 0) return Y('bot_flee', { how: 'teleport' }, use(tp));
                 }
                 const d2 = cheb(near, p);
                 if (d2 >= 1 && d2 <= G.THROW_RANGE && (hard || low) && MAP.los(s.map, p.x, p.y, near.x, near.y)) {
                     const t = findInv((d) => d.cat === 'throw');
-                    if (t >= 0) return { t: 'throw', i: t, x: near.x, y: near.y };
+                    if (t >= 0) return Y('bot_throw', { item: nm(p.inv[t]), mob: near.k }, { t: 'throw', i: t, x: near.x, y: near.y });
                 }
                 return null;
             }
@@ -144,8 +150,8 @@
             }
             /** Walk next to a piece of furniture (straight, never diagonal) and step into it. */
             function useFurniture(f) {
-                for (const [dx, dy] of MAP.DIRS) if (p.x + dx === f.x && p.y + dy === f.y) return { t: 'move', dx, dy };
-                for (const [dx, dy] of MAP.DIRS) { const x = f.x - dx, y = f.y - dy; if (MAP.walkable(s.map.tiles[idx(x, y)]) && s.seen[idx(x, y)] && !G.hazAt(s, x, y)) { const m = walkTo(x, y); if (m) return m; } }
+                for (const [dx, dy] of MAP.DIRS) if (p.x + dx === f.x && p.y + dy === f.y) return Y('bot_place', { what: s.bench === f ? 'bench' : s.shop === f ? 'shop' : 'altar' }, { t: 'move', dx, dy });
+                for (const [dx, dy] of MAP.DIRS) { const x = f.x - dx, y = f.y - dy; if (MAP.walkable(s.map.tiles[idx(x, y)]) && s.seen[idx(x, y)] && !G.hazAt(s, x, y)) { const m = walkTo(x, y); if (m) return Y('bot_place', { what: s.bench === f ? 'bench' : s.shop === f ? 'shop' : 'altar' }, m); } }
                 return null;
             }
             function shopping() {
@@ -163,21 +169,21 @@
                     else if (d.cat === 'script' && ['heal', 'enchA', 'enchW'].includes(d.effect)) v = 30;
                     if (v > bv) { bv = v; best = i; }
                 });
-                return best >= 0 ? { t: 'buy', i: best } : null;
+                return best >= 0 ? Y('bot_shop', { item: s.shop.stock[best].k, price: G.price(s, s.shop.stock[best]) }, { t: 'buy', i: best }) : null;
             }
             function benchUse() {
-                if (p.hp < p.maxHp || p.cd > 0 || p.st.poison) return { t: 'rest' };
+                if (p.hp < p.maxHp || p.cd > 0 || p.st.poison) return Y('bot_bench_rest', {}, { t: 'rest' });
                 const w = p.weapon && weaponScore(ITEM[p.weapon.k], p.weapon.e), ar = p.armor && armorScore(ITEM[p.armor.k], p.armor.e);
                 const junk = findInv((d, e) => (d.cat === 'weapon' && (!w || weaponScore(d, e.e) <= w)) || (d.cat === 'armor' && (!ar || armorScore(d, e.e) <= ar)) ||
                     (knownIt(e) && ['poison', 'confuse', 'summon'].includes(d.effect)));
-                return junk >= 0 ? { t: 'recycle', i: junk } : null;
+                return junk >= 0 ? Y('bot_recycle', { item: nm(p.inv[junk]) }, { t: 'recycle', i: junk }) : null;
             }
 
             const here = s.map.tiles[idx(p.x, p.y)];
             // 1. skill choice, shop and bench windows
-            if (p.pending) { const sc = (id) => (CLASS_SKILLS[id] || SKILL_W[id] || 1) - (p.skills[id] || 0) * 0.5; return { t: 'skill', id: p.choices.slice().sort((x, y) => sc(y) - sc(x))[0] }; }
-            if (s.shop && s.shop.open) { const b = shopping(); if (b) return b; done['s' + s.depth] = 1; return { t: 'leave' }; }
-            if (s.bench && s.bench.open) { const b = benchUse(); if (b) return b; done['b' + s.depth] = 1; return { t: 'leave' }; }
+            if (p.pending) { const sc = (id) => (CLASS_SKILLS[id] || SKILL_W[id] || 1) - (p.skills[id] || 0) * 0.5; const id = p.choices.slice().sort((x, y) => sc(y) - sc(x))[0]; return Y('bot_skill', { skill: id }, { t: 'skill', id }); }
+            if (s.shop && s.shop.open) { const b = shopping(); if (b) return b; done['s' + s.depth] = 1; return Y('bot_leave', { what: 'shop' }, { t: 'leave' }); }
+            if (s.bench && s.bench.open) { const b = benchUse(); if (b) return b; done['b' + s.depth] = 1; return Y('bot_leave', { what: 'bench' }, { t: 'leave' }); }
             const thr = G.threats(s).filter((m) => !m.loot && !m.stolen && !(ignore[m.id] > s.turn && !G.touching(s, m)));
             const awake = thr.filter((m) => !m.asleep && !m.frozen && !(MOB[m.k].still && !MOB[m.k].ranged && cheb(m, p) > 1));
             const near = awake.slice().sort((a, b) => cheb(a, p) - cheb(b, p))[0];
@@ -185,15 +191,15 @@
             const incoming = awake.filter((m) => cheb(m, p) <= 2 || MOB[m.k].ranged).reduce((x, m) => x + dmgOf(m), 0);
             if (p.hp < p.maxHp * 0.35 && (near || p.st.poison)) {
                 const i = healIdx();
-                if (i >= 0) return use(i);
+                if (i >= 0) return Y('bot_drink_heal', { item: p.inv[i].k }, use(i));
                 const u = findInv((d, e) => d.cat === 'drink' && !knownIt(e));
-                if (u >= 0 && p.hp < p.maxHp * 0.25) return use(u);
+                if (u >= 0 && p.hp < p.maxHp * 0.25) return Y('bot_drink_unknown', { item: '' }, use(u));
             }
             if (near && p.hp < p.maxHp * 0.5) { const k = useSkill(awake, near); if (k) return k; }
             if (careful && near && p.hp < p.maxHp * 0.35 && !s.sealed && incoming > 0) {                      // the stairs as an escape hatch
                 const d = MAP.flood(s.map, [idx(p.x, p.y)], (i, t) => MAP.walkable(t), true)[idx(s.map.stairs.x, s.map.stairs.y)];
-                if (here === T.STAIRS) return { t: 'descend' };
-                if (d > 0 && d * incoming * 0.6 < p.hp && s.seen[idx(s.map.stairs.x, s.map.stairs.y)]) { const m = walkTo(s.map.stairs.x, s.map.stairs.y); if (m) return m; }
+                if (here === T.STAIRS) return Y('bot_flee', { how: 'stairs' }, { t: 'descend' });
+                if (d > 0 && d * incoming * 0.6 < p.hp && s.seen[idx(s.map.stairs.x, s.map.stairs.y)]) { const m = walkTo(s.map.stairs.x, s.map.stairs.y); if (m) return Y('bot_flee', { how: 'stairs' }, m); }
             }
             // 3. a fight
             if (!near) memo.waits = 0;
@@ -201,23 +207,23 @@
                 const k = useSkill(awake, near) || tryItems(awake, near);
                 if (k) return k;
                 const adj = awake.filter((m) => G.touching(s, m));
-                if (adj.length) { memo.waits = 0; const m = adj.sort((a, b) => a.hp - b.hp)[0]; return { t: 'move', dx: m.x - p.x, dy: m.y - p.y }; }
+                if (adj.length) { memo.waits = 0; const m = adj.sort((a, b) => a.hp - b.hp)[0]; return Y('bot_fight', { mob: m.k }, { t: 'move', dx: m.x - p.x, dy: m.y - p.y }); }
                 const rng = awake.some((m) => MOB[m.k].ranged && cheb(m, p) <= MOB[m.k].ranged.range);
-                if (careful && !rng && awake.length >= 2) { const v = chokeStep(awake); if (v) return step(v); }
+                if (careful && !rng && awake.length >= 2) { const v = chokeStep(awake); if (v) return Y('bot_choke', {}, step(v)); }
                 const fast = awake.some((m) => (MOB[m.k].speed || 1) > 1);
-                if (!rng && !fast && cheb(near, p) <= 4 && !MOB[near.k].erratic && memo.waits++ < 3) return { t: 'wait' };       // let it come: we hit first
+                if (!rng && !fast && cheb(near, p) <= 4 && !MOB[near.k].erratic && memo.waits++ < 3) return Y('bot_wait', { why: 'enemy', mob: near.k }, { t: 'wait' });       // let it come: we hit first
                 chase[near.id] = (chase[near.id] || 0) + 1;                                  // chasing something it keeps losing sight of: give up after a while
                 if (chase[near.id] > 40) { ignore[near.id] = s.turn + 400; chase[near.id] = 0; return undefined; }
                 const m = walkTo(near.x, near.y);
-                if (m) return m;
+                if (m) return Y('bot_chase', { mob: near.k }, m);
                 ignore[near.id] = s.turn + 60; return undefined;
             }
             // 4. calm: bag, rest, eat
             let k = manage() || safeUse();
-            if (k) return k;
+            if (k) return k;                                                                 // (manage and safeUse note their own reason)
             const bossHere = s.sealed && s.mobs.some((m) => MOB[m.k].boss);
             const restBelow = careful ? (bossHere ? 0.97 : s.mobs.some((m) => m.elite) ? 0.9 : 0.7) : (bossHere ? 0.75 : 0.5);
-            if (!s.hub && p.food >= 150 && G.threats(s).length === 0 && p.hp < p.maxHp && (s.sleeping > 0 || p.hp < p.maxHp * restBelow)) return { t: 'sleep' };   // once asleep, sleep on until the engine wakes us
+            if (!s.hub && p.food >= 150 && G.threats(s).length === 0 && p.hp < p.maxHp && (s.sleeping > 0 || p.hp < p.maxHp * restBelow)) return Y('bot_rest', { boss: bossHere ? 1 : 0 }, { t: 'sleep' });   // once asleep, sleep on until the engine wakes us
             // 5. places: hub bench and shop, floor shop, altar
             if (s.bench && !done['b' + s.depth] && (p.hp < p.maxHp || p.inv.length > 12 || p.cd)) { k = useFurniture(s.bench); if (k) return k; }
             if (s.shop && !done['s' + s.depth] && p.gold >= 20) { k = useFurniture(s.shop); if (k) return k; }
@@ -231,15 +237,16 @@
             if (hunt && p.hp >= p.maxHp * (careful ? 0.7 : 0.5)) {
                 const m = s.mobs.find((e) => e.id === hunt.id);
                 const mv = G.touching(s, m) ? { t: 'move', dx: m.x - p.x, dy: m.y - p.y } : walkTo(m.x, m.y);
-                if (mv) return mv;
+                if (mv) return Y('bot_stab', { mob: m.k }, mv);
                 skip[m.id] = 1; memo.hunt = null;
             }
-            if (here === T.STAIRS && !s.sealed && (!s.hub || done['b' + s.depth])) return { t: 'descend' };
+            if (here === T.STAIRS && !s.sealed && (!s.hub || done['b' + s.depth])) return Y('bot_stairs', { how: 'descend' }, { t: 'descend' });
             const stairsOnly = (p.food < 300 && !foodCount()) || p.food < 120;               // out of food: stop exploring, go down (new floors have food)
-            let v = (stairsOnly && !s.sealed && G.travelNext(s, s.map.stairs.x, s.map.stairs.y)) || G.exploreNext(s);
-            if (!v && s.sealed) { const b = s.mobs.find((m) => MOB[m.k].boss); v = b && G.travelNext(s, b.x, b.y); }   // boss floor: the boss sleeps in the last room; walk to it
-            if (!v) v = G.travelNext(s, s.map.stairs.x, s.map.stairs.y);
-            return v ? step(v) : { t: 'search' };
+            let v = stairsOnly && !s.sealed && G.travelNext(s, s.map.stairs.x, s.map.stairs.y), why = 'bot_stairs';
+            if (!v) { v = G.exploreNext(s); why = 'bot_explore'; }
+            if (!v && s.sealed) { const b = s.mobs.find((m) => MOB[m.k].boss); v = b && G.travelNext(s, b.x, b.y); why = 'bot_boss'; }   // boss floor: the boss sleeps in the last room; walk to it
+            if (!v) { v = G.travelNext(s, s.map.stairs.x, s.map.stairs.y); why = 'bot_stairs'; }
+            return v ? Y(why, why === 'bot_stairs' ? { how: stairsOnly ? 'food' : 'walk' } : {}, step(v)) : Y('bot_search', {}, { t: 'search' });
         }
         return { decide };
     }

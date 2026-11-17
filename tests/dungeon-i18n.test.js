@@ -10,6 +10,7 @@ const dir = path.join(__dirname, '..', 'public', 'js', 'rogue');
 const MOBS = require(path.join(dir, 'mobs.js')), ITEMS = require(path.join(dir, 'items.js')), CLS = require(path.join(dir, 'classes.js')),
     META = require(path.join(dir, 'meta.js')), TX = require(path.join(dir, 'text.js')), G = require(path.join(dir, 'game.js'));
 
+require(path.join(dir, 'text-bot.js'));    // the watch-the-bot texts join text.js's MSG, like in the page
 const ph = (t) => (String(t).match(/\{\w+\}/g) || []).sort().join(',');
 const words = (t) => String(t).trim().split(/\s+/).length;
 /** Every { en, it } text of the data tables, with a label. `same` = may be identical in both languages (proper names, commands). */
