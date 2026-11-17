@@ -66,6 +66,7 @@
         { id: 'm_dex20', name: { en: 'Collector', it: 'Collezionista' }, info: { en: 'Meet 20 types of enemy.', it: 'Incontra 20 tipi di nemico.' }, need: { codex: 20 } },
         { id: 'm_dex50', name: { en: 'Entomologist', it: 'Entomologo' }, info: { en: 'Meet 50 types of enemy.', it: 'Incontra 50 tipi di nemico.' }, need: { codex: 50 } },
         { id: 'm_dex70', name: { en: 'Bestiary Almost Full', it: 'Bestiario quasi pieno' }, info: { en: 'Meet 70 types of enemy.', it: 'Incontra 70 tipi di nemico.' }, need: { codex: 70 } },
+        { id: 'm_dex90', name: { en: 'Taxonomist', it: 'Tassonomista' }, info: { en: 'Meet 90 types of enemy.', it: 'Incontra 90 tipi di nemico.' }, need: { codex: 90 } },
         { id: 'm_lvl20', name: { en: 'Bookworm', it: 'Secchione' }, info: { en: 'Reach level 20 in one run.', it: 'Arriva al livello 20 in una partita.' }, need: { maxLvl: 20 } },
         { id: 'm_lvl40', name: { en: 'Top of the Class', it: 'Primo della classe' }, info: { en: 'Reach level 40 in one run.', it: 'Arriva al livello 40 in una partita.' }, need: { maxLvl: 40 } },
     ];
