@@ -62,7 +62,7 @@ $updated = '2026-11-17';
             <li>Restare collegati dipende da un cookie che il JavaScript della pagina non può leggere (<code>HttpOnly</code>),
             che non viaggia nelle richieste fatte di nascosto da altri siti (<code>SameSite=Lax</code>) e, in HTTPS, solo su connessioni cifrate (<code>Secure</code>). Dura 7 giorni.</li>
             <li>Il codice della sessione cambia a ogni accesso, e un codice inventato da qualcun altro viene rifiutato.</li>
-            <li>A ogni richiesta il sito ricontrolla nel database che l'account esista ancora e se è amministratore: un account
+            <li>A ogni azione che richiede l'accesso il sito ricontrolla nel database che l'account esista ancora e se è amministratore: un account
             cancellato esce subito anche dagli altri dispositivi, e un permesso tolto smette di valere subito.</li>
         </ul>
 
@@ -162,7 +162,7 @@ $updated = '2026-11-17';
             <li>Staying logged in relies on a cookie that the page's JavaScript cannot read (<code>HttpOnly</code>), that is not sent
             with requests made by other sites behind your back (<code>SameSite=Lax</code>) and, on HTTPS, only over encrypted connections (<code>Secure</code>). It lasts 7 days.</li>
             <li>The session code changes at every login, and a code invented by someone else is refused.</li>
-            <li>On every request the site asks the database again whether the account still exists and whether it is an admin: a deleted
+            <li>On every action that needs a login the site asks the database again whether the account still exists and whether it is an admin: a deleted
             account is logged out on its other devices at once, and a removed permission stops working at once.</li>
         </ul>
 
