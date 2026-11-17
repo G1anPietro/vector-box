@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 require_once __DIR__ . '/../api/bots.php';
 require_once __DIR__ . '/../api/geoip.php';
+require_once __DIR__ . '/../api/attacks.php';
 
 initSession();
 if (empty($_SESSION['is_admin'])) {
@@ -306,6 +307,58 @@ function barList(array $items, int $total, callable $h): void {
             </table></div>
             <?php endif; ?>
         </section>
+        <?php $atk = attacksRead(); ?>
+        <h2 class="sect-title" id="attacchi"><?= tt('Attacks on the server', 'Attacchi al server') ?></h2>
+        <?php if (!$atk): ?>
+            <p class="empty"><?= tt('Not collected yet: the collector (bin/attacks-collect.php) has not run.', 'Non ancora raccolti: il raccoglitore (bin/attacks-collect.php) non è ancora partito.') ?></p>
+        <?php else: $A = $atk['ssh']; $W = $atk['web']; $B = $atk['bans']; ?>
+        <section class="tiles">
+            <div class="tile"><span class="big"><?= (int)$A['total'] ?></span><span><?= tt('SSH attempts in 7 days', 'tentativi SSH in 7 giorni') ?></span></div>
+            <div class="tile"><span class="big"><?= (int)$A['logins'] ?></span><span><?= tt('tried a user name (password login is off)', 'hanno provato un nome utente (il login con password è spento)') ?></span></div>
+            <div class="tile"><span class="big"><?= (int)$W['total'] ?></span><span><?= tt('web probes (.env, wp-login…)', 'sondaggi web (.env, wp-login…)') ?></span></div>
+            <div class="tile"><span class="big"><?= (int)$B['total'] ?></span><span><?= tt('addresses banned by fail2ban', 'indirizzi bannati da fail2ban') ?></span></div>
+        </section>
+        <section class="panel-s">
+            <h2><?= tt('Attacks per day', 'Attacchi al giorno') ?></h2>
+            <?php $atkDay = []; foreach ($A['per_day'] as $d => $n) $atkDay[$d] = $n + ($W['per_day'][$d] ?? 0); $atkMax = max(1, max($atkDay)); ?>
+            <div class="cols" role="img" aria-label="<?= tt("SSH attempts and web probes per day, maximum $atkMax", "Tentativi SSH e sondaggi web al giorno, massimo $atkMax") ?>">
+                <span class="ymax"><?= $atkMax ?></span>
+                <?php foreach ($atkDay as $d => $n): ?>
+                    <span class="col<?= $d === $today ? ' today' : '' ?>" data-tip="<?= $h($fmtDay($d)) ?>: SSH <?= (int)$A['per_day'][$d] ?> + web <?= (int)($W['per_day'][$d] ?? 0) ?>">
+                        <span class="bar" style="height:<?= $n ? max(2, round(100 * $n / $atkMax)) : 0 ?>%"></span><span class="x"><?= $h($fmtDay($d)) ?></span>
+                    </span>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <div class="grid">
+            <section class="panel-s"><h2><?= tt('User names tried over SSH', 'Nomi utente provati via SSH') ?></h2><?php barList($A['top_keys'], max(1, (int)$A['logins']), $h); ?></section>
+            <section class="panel-s"><h2><?= tt('What the web probes ask for', 'Cosa chiedono i sondaggi web') ?></h2><?php barList($W['top_keys'], max(1, (int)$W['total']), $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Countries (SSH)', 'Paesi (SSH)') ?></h2><?php barList($A['countries'], max(1, (int)$A['total']), $h); ?></section>
+            <section class="panel-s"><h2><?= tt('Countries (web probes)', 'Paesi (sondaggi web)') ?></h2><?php barList($W['countries'], max(1, (int)$W['total']), $h); ?></section>
+        </div>
+        <section class="panel-s">
+            <h2><?= tt('Most active attackers', 'Attaccanti più attivi') ?></h2>
+            <?php $rowsA = []; foreach (['SSH' => $A['top_ips'], 'web' => $W['top_ips']] as $via => $list) foreach ($list as $t) $rowsA[] = $t + ['via' => $via];
+                  usort($rowsA, fn($x, $y) => $y['n'] <=> $x['n']); $rowsA = array_slice($rowsA, 0, 15); ?>
+            <?php if (!$rowsA): ?><p class="empty"><?= tt('Nothing recorded.', 'Niente di registrato.') ?></p><?php else: ?>
+            <div class="scroll"><table class="tbl">
+                <thead><tr><th><?= tt('Via', 'Da') ?></th><th>IP</th><th><?= tt('Country', 'Paese') ?></th><th><?= tt('Attempts', 'Tentativi') ?></th><th><?= tt('Last seen', 'Ultimo') ?></th></tr></thead>
+                <tbody><?php foreach ($rowsA as $t): ?>
+                    <tr class="row-bot"><td><span class="badge-bot"><?= $h($t['via']) ?></span></td><td class="mono"><?= $h($t['ip']) ?></td>
+                        <td><?= $ccKnown((string)($t['cc'] ?? '')) ? '<span class="cc">' . $h($t['cc']) . '</span>' : '–' ?></td><td><?= (int)$t['n'] ?></td><td><?= $h(date('m-d H:i', (int)$t['last'])) ?></td></tr>
+                <?php endforeach; ?></tbody>
+            </table></div><?php endif; ?>
+        </section>
+        <?php if (!empty($B['recent'])): ?>
+        <section class="panel-s">
+            <h2><?= tt('Latest bans (fail2ban)', 'Ultimi ban (fail2ban)') ?></h2>
+            <div class="scroll"><table class="tbl"><tbody><?php foreach ($B['recent'] as $t): ?>
+                <tr><td><?= $h(date('m-d H:i', (int)$t['ts'])) ?></td><td><?= $h($t['jail']) ?></td><td class="mono"><?= $h($t['ip']) ?></td><td><?= $ccKnown((string)($t['cc'] ?? '')) ? $h($t['cc']) : '–' ?></td></tr>
+            <?php endforeach; ?></tbody></table></div>
+        </section>
+        <?php endif; ?>
+        <p class="note"><?= tt('Collected every 10 minutes from the system logs (the web server never reads them), last 7 days, local network addresses left out. Updated: ', 'Raccolti ogni 10 minuti dai log del sistema (il web server non li legge), ultimi 7 giorni, indirizzi della rete locale esclusi. Aggiornato: ') ?><?= $h(date('Y-m-d H:i', (int)$atk['generated_at'])) ?></p>
+        <?php endif; ?>
         <p class="note"><?php if (pageLang() === 'it'): ?>I bot sono contati solo quando la richiesta arriva a PHP (pagine e indirizzi sconosciuti); quello che nginx scarta da solo non si vede qui. Gli scraper noti (SEO, dati) e chi sonda indirizzi come wp-login o .env più di 8 volte in un'ora vengono respinti. Non sono visite: la tabella "Ultime visite" non li include.<?php else: ?>Bots are counted only when the request reaches PHP (pages and unknown addresses); whatever nginx drops by itself does not show here. Known scrapers (SEO, data) and anyone probing addresses such as wp-login or .env more than 8 times in an hour are turned away. They are not visits: the "Latest visits" table does not include them.<?php endif; ?></p>
         <p class="note"><?= tt('A visit counts as new when the same IP with the same browser was not seen for 30 minutes. Robots, server checks and link previews are not counted.', 'Una visita è nuova quando lo stesso IP con lo stesso browser non si vedeva da 30 minuti. Robot, controlli del server e anteprime dei link non sono contati.') ?></p>
     </main>
