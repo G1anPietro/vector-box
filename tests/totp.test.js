@@ -33,7 +33,9 @@ test('only admins can use the settings; every POST needs CSRF', async () => {
 
 let secret, backup;
 test('enrolment: a wrong first code is refused, the right one switches it on and gives 8 backup codes', async () => {
-    const b = (await admin.post('/api/totp.php', { action: 'begin' })).json;
+    assert.equal((await admin.post('/api/totp.php', { action: 'begin' })).status, 403);                       // a stolen cookie cannot enrol: the password is needed
+    assert.equal((await admin.post('/api/totp.php', { action: 'begin', password: 'wrong-password' })).status, 403);
+    const b = (await admin.post('/api/totp.php', { action: 'begin', password: 'password123' })).json;
     assert.match(b.uri, /^otpauth:\/\/totp\/vector-box:tf_admin\?secret=[A-Z2-7]+&issuer=vector-box/);
     secret = b.secret;
     assert.equal((await admin.post('/api/totp.php', { action: 'confirm', code: '000000' })).status, 400);

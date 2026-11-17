@@ -120,7 +120,7 @@ if [ "$MODE" = "--restore-test" ]; then
             }
             if ($missing > 0) { fwrite(STDERR, "$missing book or cover files named in the database are not in the files mirror\n"); exit(1); }
             echo "schema=$v accounts=$people admins=$admins books=$books";
-        ' "$T/site" "$BACKUP_DIR" 2>&1)" || die "restore test: $name did not restore: $out"
+        ' "$T/site" "$BACKUP_DIR" 2>&1)" || { log "restore test detail: $out"; die "restore test: $name did not restore (see the log for the reason)"; }
         log "restore OK: $name ($out)"
         tested=$((tested + 1))
     done

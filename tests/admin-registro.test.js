@@ -63,3 +63,13 @@ test('votes: only on ideas under review, not your own, toggles, and the public l
     await ann.post('/api/news_ideas.php', { action: 'delete', id });                                    // the author deletes: the votes go too
     assert.equal(site.db('SELECT COUNT(*) AS n FROM news_idea_votes')[0].n, 0);
 });
+
+test('a refused action (HTTP 200 with success:false) and a user named by username are handled', async () => {
+    const before = site.db('SELECT COUNT(*) AS n FROM admin_log')[0].n;
+    await admin.post('/api/moderate_book_access.php', { action: 'grant', username: 'nobody_here', scope: 'books' });   // no such user: not an action
+    assert.equal(site.db('SELECT COUNT(*) AS n FROM admin_log')[0].n, before);
+    const ok = await admin.post('/api/moderate_book_access.php', { action: 'grant', username: 'log_bob', scope: 'books' });
+    assert.equal(ok.json.success, true);
+    const row = site.db("SELECT * FROM admin_log WHERE script = 'moderate_book_access' ORDER BY id DESC LIMIT 1")[0];
+    assert.equal(row.target_name, 'log_bob');
+});

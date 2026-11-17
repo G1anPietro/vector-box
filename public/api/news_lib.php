@@ -44,7 +44,7 @@ function newsSave(PDO $db, string $slug, array $f): string {
         $st->execute([':s' => $slug]);
         $cur = $st->fetch(PDO::FETCH_ASSOC) ?: null;
         $st->closeCursor();
-        $text = fn(string $k) => isset($f[$k]) ? mb_substr(trim((string)$f[$k]), 0, 2000) : null;
+        $text = fn(string $k) => isset($f[$k]) ? textCut(trim((string)$f[$k]), 2000) : null;
         $vals = [];
         foreach (['kind', 'status', 'version', 'title_en', 'title_it', 'body_en', 'body_it'] as $k) {
             $v = $text($k);

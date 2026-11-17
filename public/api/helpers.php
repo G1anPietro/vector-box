@@ -131,15 +131,18 @@ function adminLogRequest(int $adminId, string $adminName): void {
     $in = readJsonBody() ?: $_POST;
     $detail = [];
     foreach (['action', 'flag', 'value', 'minutes', 'status', 'id', 'slug', 'room_id', 'audience'] as $k) {
-        if (isset($in[$k]) && is_scalar($in[$k])) $detail[$k] = mb_substr((string)$in[$k], 0, 60);
+        if (isset($in[$k]) && is_scalar($in[$k])) $detail[$k] = textCut((string)$in[$k], 60);
     }
     $target = (int)($in['user_id'] ?? 0);
+    $targetName = isset($in['username']) && is_string($in['username']) ? textCut($in['username'], 64) : '';   // some endpoints name the person, not the id
+    ob_start();   // to see at the end whether the endpoint said success:false (several answer failure with HTTP 200); PHP flushes it by itself afterwards
     $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''), '.php');
-    register_shutdown_function(function () use ($adminId, $adminName, $detail, $target, $script) {
+    register_shutdown_function(function () use ($adminId, $adminName, $detail, $target, $targetName, $script) {
         if (http_response_code() >= 400 || !function_exists('getDbConnection')) return;
+        if (preg_match('/"success"\s*:\s*false/', substr((string)ob_get_contents(), 0, 400))) return;   // refused or did nothing: not an action
         try {
             $db = getDbConnection();
-            $name = '';
+            $name = $targetName;
             if ($target > 0) {
                 $st = $db->prepare('SELECT username FROM accounts WHERE id = :i');
                 $st->execute([':i' => $target]);

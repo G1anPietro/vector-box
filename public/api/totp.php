@@ -1,7 +1,7 @@
 <?php
 // public/api/totp.php — the admin's own two-step login settings (admin only; every POST needs CSRF).
 //   GET                                   -> {enabled, backup_left}
-//   POST {action:'begin'}                 -> a new secret (not active yet): {secret, uri} for the authenticator app
+//   POST {action:'begin', password}       -> a new secret (not active yet): {secret, uri} for the authenticator app
 //   POST {action:'confirm', code}         -> checks the first code, switches it on, returns 8 backup codes (shown once)
 //   POST {action:'backup', password, code}  -> new backup codes (the old ones stop working)
 //   POST {action:'disable', password, code} -> switches it off (password AND a code are required)
@@ -39,6 +39,8 @@ try {
 
     if ($action === 'begin') {
         if (totpEnabled($acc)) jsonFail('ALREADY_ON', 'Two-step login is already on', 409);
+        // a stolen session cookie must not be able to enrol its own phone and lock the owner out
+        if (!password_verify(trim((string)($in['password'] ?? '')), (string)$acc['password_hash'])) jsonFail('BAD_CREDENTIALS', 'Password not right', 403);
         $secret = random_bytes(20);
         $db->prepare("UPDATE accounts SET totp_secret = :s, totp_last_step = 0 WHERE id = :i AND totp_enabled = 0")->execute([':s' => totpEncrypt($secret), ':i' => $me]);
         $b32 = base32Encode($secret);

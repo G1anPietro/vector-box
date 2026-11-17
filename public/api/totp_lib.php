@@ -13,9 +13,11 @@ function totpKey(): string {
     $file = dirname(__DIR__, 2) . '/data/totp.key';
     if (!is_file($file)) {
         $tmp = $file . '.' . bin2hex(random_bytes(4));
+        $old = umask(0077);                         // never readable by others, not even for a moment
         file_put_contents($tmp, bin2hex(random_bytes(32)));
-        chmod($tmp, 0600);
-        @rename($tmp, $file);                       // two requests racing: the first one wins, both then read the same file
+        umask($old);
+        @link($tmp, $file);                         // link() fails if the file exists: two requests racing, the first one wins and both read that file
+        @unlink($tmp);
     }
     return hash('sha256', (string)file_get_contents($file), true);
 }
@@ -85,8 +87,9 @@ function totpNewBackup(): array {
 function totpVerifyLogin(PDO $db, array $acc, string $input): bool {
     $secret = totpDecrypt((string)$acc['totp_secret']);
     if ($secret !== null && ($step = totpCheck($secret, $input, (int)$acc['totp_last_step'])) !== null) {
-        $db->prepare('UPDATE accounts SET totp_last_step = :s WHERE id = :i AND totp_last_step < :s')->execute([':s' => $step, ':i' => (int)$acc['id']]);
-        return true;
+        $upd = $db->prepare('UPDATE accounts SET totp_last_step = :s WHERE id = :i AND totp_last_step < :s');
+        $upd->execute([':s' => $step, ':i' => (int)$acc['id']]);
+        return $upd->rowCount() === 1;                      // two requests with the same code at once: only one wins
     }
     $code = strtolower(preg_replace('/[^a-z0-9]/i', '', $input));
     $list = json_decode((string)$acc['totp_backup'], true) ?: [];

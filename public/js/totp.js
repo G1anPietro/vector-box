@@ -50,8 +50,9 @@
         const body = $('totp-body');
         if (!s.enabled) {
             say(T.off);
-            body.replaceChildren(btn(T.start, async () => {
-                const d = await api({ action: 'begin' });
+            const pw0 = field('totp-pw0', T.pw, 'password', { autocomplete: 'current-password' });
+            body.replaceChildren(pw0, btn(T.start, async () => {
+                const d = await api({ action: 'begin', password: $('totp-pw0').value });
                 if (!d.success) { say(d.status === 429 ? T.wait : T.err); return; }
                 const link = el('a', { href: d.uri, text: T.open, style: 'display:inline-block;margin-top:6px;color:var(--accent-color, #00f3ff);' });
                 const input = field('totp-code', T.code, 'text', { inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '8' });
