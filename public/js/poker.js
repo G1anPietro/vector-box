@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
         leaderboardBox.replaceChildren();
         const title = document.createElement('div');
         title.style.cssText = 'color:#ffc800; font-weight:bold; margin-bottom:4px;';
-        title.textContent = '== TOP PLAYERS // hands won ==';
+        title.textContent = '== ' + VBLang.t('pk_top') + ' ==';
         leaderboardBox.appendChild(title);
 
         const line = (cells, color) => {
@@ -56,11 +56,11 @@ document.addEventListener("DOMContentLoaded", () => {
             leaderboardBox.appendChild(row);
         };
 
-        line(['#', 'PLAYER', 'WON', 'WIN%', 'CR WON'], 'var(--text-muted, #8ab4f8)');
+        line(['#', VBLang.t('pk_player'), VBLang.t('pk_won'), 'WIN%', VBLang.t('pk_crwon')], 'var(--text-muted, #8ab4f8)');
         if (!data.top.length) {
             const empty = document.createElement('div');
             empty.className = 'term-muted';
-            empty.textContent = 'No hands recorded yet. Log in and play to get on the board.';
+            empty.textContent = VBLang.t('pk_nohands');
             leaderboardBox.appendChild(empty);
         }
         data.top.forEach((r) => line([r.rank, r.username, `${r.hands_won}/${r.hands_played}`, `${r.win_rate}%`, r.chips_won]));
@@ -72,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const best = document.createElement('div');
             best.className = 'term-muted';
             best.style.marginTop = '4px';
-            best.textContent = `Your biggest pot: ${data.me.biggest_pot} CR`;
+            best.textContent = VBLang.t('pk_biggest', { n: data.me.biggest_pot });
             leaderboardBox.appendChild(best);
         }
     };
@@ -84,14 +84,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
             leaderboardBox.classList.remove('hidden');
-            leaderboardBox.textContent = 'Loading...';
+            leaderboardBox.textContent = VBLang.t('loading');
             try {
                 const res = await fetch('api/poker_leaderboard.php', { credentials: 'same-origin' });
                 const data = await res.json();
                 if (data.success) renderLeaderboard(data);
-                else leaderboardBox.textContent = '>> Leaderboard unavailable.';
+                else leaderboardBox.textContent = '>> ' + VBLang.t('pk_lb_fail');
             } catch (err) {
-                leaderboardBox.textContent = '>> Leaderboard unavailable.';
+                leaderboardBox.textContent = '>> ' + VBLang.t('pk_lb_fail');
             }
         });
     }
@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (potVal) potVal.textContent = data.table.pot;
                 if (stageIndicator) {
                     const codeDisplay = data.table.room_code ? ` [CODE: ${data.table.room_code}]` : '';
-                    stageIndicator.textContent = `ROOM: #${data.table.id}${codeDisplay} // STAGE: ${data.table.game_stage}`;
+                    stageIndicator.textContent = `${VBLang.t('pk_room')}: #${data.table.id}${codeDisplay} // ${VBLang.t('pk_stage')}: ${data.table.game_stage}`;
                 }
 
                 if (winnerBanner) {
@@ -171,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (data.table.community_cards && data.table.community_cards.length > 0) {
                         data.table.community_cards.forEach(c => communityBox.appendChild(renderCard(c)));
                     } else {
-                        communityBox.innerHTML = '<span style="color:var(--text-muted); font-size:0.75rem;">NO CARDS DEALT</span>';
+                        communityBox.innerHTML = '<span style="color:var(--text-muted); font-size:0.75rem;">' + VBLang.t('pk_nocards') + '</span>';
                     }
                 }
 
@@ -192,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         box.innerHTML = `
                             <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.8rem;">
                                 <span style="color:${isCurrentTurn ? 'var(--accent-color)' : '#fff'};">
-                                    <span class="pk-name"></span> ${p.is_bot ? '[BOT]' : ''} ${p.is_folded ? '<small>(FOLDED)</small>' : ''}
+                                    <span class="pk-name"></span> ${p.is_bot ? '[BOT]' : ''} ${p.is_folded ? '<small>(' + VBLang.t('pk_folded') + ')</small>' : ''}
                                 </span>
                                 <span style="color:#ffaa00;">${Number(p.chips) || 0} CR</span>
                             </div>
@@ -207,7 +207,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         seatsGrid.appendChild(box);
                     });
                 } else {
-                    seatsGrid.innerHTML = '<div style="grid-column: span 2; text-align: center; color: var(--text-muted); padding: 20px;">>> TABLE EMPTY. PRESS "SEAT" TO JOIN.</div>';
+                    seatsGrid.innerHTML = '<div style="grid-column: span 2; text-align: center; color: var(--text-muted); padding: 20px;"></div>';
+                    seatsGrid.firstChild.textContent = '>> ' + VBLang.t('pk_empty');
                 }
             }
         } catch (err) {
@@ -245,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 createCodeInput.value = '';
                 window.switchPokerRoom(data.room_id);
             } else {
-                alert(data.error || 'Failed to create room.');
+                alert(data.error || VBLang.t('pk_create_fail'));
             }
         });
     }

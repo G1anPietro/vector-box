@@ -10,10 +10,10 @@
         e.preventDefault();
         var password = document.getElementById('delete-password').value;
         if (!password) return;
-        if (!window.confirm('Delete your account and your data for good? This cannot be undone.')) return;
+        if (!window.confirm(VBLang.t('ad_confirm'))) return;
         var btn = form.querySelector('button[type="submit"]');
         btn.disabled = true;
-        say('Deleting...');
+        say(VBLang.t('ad_deleting'));
         try {
             var res = await fetch('../api/account_data.php', {
                 method: 'POST',
@@ -23,13 +23,13 @@
             });
             var data = await res.json();
             if (data.success) {
-                say('Done: your account and data were deleted. Goodbye!');
+                say(VBLang.t('ad_done'));
                 setTimeout(function () { window.location.href = '../index.php'; }, 2500);
                 return;
             }
-            say(data.error || 'Could not delete the account.', true);
+            say(data.error || VBLang.t('ad_fail'), true);
         } catch (err) {
-            say('Network error: try again.', true);
+            say(VBLang.t('ad_net'), true);
         }
         btn.disabled = false;
     });

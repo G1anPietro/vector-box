@@ -5,7 +5,7 @@ const baseSystemCommands = [
     "find", "grep", "fortune", "quote", "whoami", "id", "uptime", "history", 
     "syslog", "sudo", "ip", "scan", "nmap", "ping", "traceroute", "status", 
     "decrypt", "ascii", "theme", "matrix", "cmatrix", "nuke", "glitch", "clear",
-    "rice", "fetch", "join", "rooms", "create", "poker", "vault", "tools", "/whois", "whois"
+    "rice", "fetch", "lang", "join", "rooms", "create", "poker", "vault", "tools", "/whois", "whois"
 ];
 
 const COLORS = {
@@ -55,6 +55,7 @@ const COMMAND_DESCRIPTIONS = {
     "clear": "Clear active shell terminal output log.",
     "rice": "Switch or add custom desktop rice styles. Usage: rice <preset> OR rice add <name> <bg_hex> <accent_hex>",
     "fetch": "Display system summary, specs, and desktop rice info banner.",
+    "lang": "Show or set the site language. Usage: lang [it|en]",
     "join": "Switch active public chat channel room feed. Usage: join <room_id>",
     "rooms": "List all active public chat channel rooms.",
     "create": "Create a new public chat channel room. Usage: create <room_id> [room_name]",
@@ -821,6 +822,14 @@ const commandHandlers = {
         ];
         const choice = fortunes[Math.floor(Math.random() * fortunes.length)];
         printGuestLog(`\n  ${choice}\n`, COLORS.CYAN);
+    },
+
+    lang(args, printGuestLog) {
+        const l = (args[0] || '').toLowerCase();
+        if (!l) { printGuestLog(`>> lang: ${VBLang.lang}  (lang ${VBLang.SUPPORTED.join('|')})`, COLORS.CYAN); return; }
+        if (!VBLang.SUPPORTED.includes(l)) { printGuestLog(`>> lang: ${VBLang.t('lang_unknown')} (${VBLang.SUPPORTED.join(', ')})`, COLORS.ERROR); return; }
+        printGuestLog(`>> lang: ${l}`, COLORS.CYAN);
+        VBLang.set(l);    // the page loads again in the new language
     },
 
     id(args, printGuestLog) { commandHandlers.whoami(args, printGuestLog); },

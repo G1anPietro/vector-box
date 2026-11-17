@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 case "bin-dec": output.value = binDecode(val); break;
             }
         } catch (e) {
-            output.value = ">> ERROR: INVALID INPUT FOR SELECTED MODE";
+            output.value = '>> ' + VBLang.t('tool_err');
         }
     }
 

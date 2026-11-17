@@ -35,24 +35,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const render = (data, pingMs) => {
         body.replaceChildren();
-        body.appendChild(row('LINK', pingMs !== null ? `ONLINE // ${pingMs} ms` : 'OFFLINE', pingMs !== null ? '#33ff77' : '#ff3333'));
+        body.appendChild(row(VBLang.t('st_link'), pingMs !== null ? `${VBLang.t('st_online')} // ${pingMs} ms` : VBLang.t('st_offline'), pingMs !== null ? '#33ff77' : '#ff3333'));
         if (!data) return;
 
-        body.appendChild(row('UPTIME', fmtUptime(data.uptime_seconds)));
+        body.appendChild(row(VBLang.t('st_uptime'), fmtUptime(data.uptime_seconds)));
         if (Array.isArray(data.load)) {
             const perCpu = data.cpus ? ` (${data.cpus} cpu)` : '';
             body.appendChild(row('LOAD 1/5/15', `${data.load.join(' / ')}${perCpu}`));
         }
-        body.appendChild(row('MEMORY', bar(data.mem_used_pct)));
+        body.appendChild(row(VBLang.t('st_memory'), bar(data.mem_used_pct)));
 
         if (Array.isArray(data.services) && data.services.length) {
             const hdr = document.createElement('div');
             hdr.className = 'term-muted';
             hdr.style.cssText = 'margin-top:8px; font-size:0.75rem; letter-spacing:1px;';
-            hdr.textContent = '-- SERVICES --';
+            hdr.textContent = '-- ' + VBLang.t('st_services') + ' --';
             body.appendChild(hdr);
             data.services.forEach((s) => {
-                body.appendChild(row(String(s.name), s.up ? `UP // ${s.ms} ms` : 'DOWN', s.up ? '#33ff77' : '#ff3333'));
+                body.appendChild(row(String(s.name), s.up ? `${VBLang.t('st_up')} // ${s.ms} ms` : VBLang.t('st_down'), s.up ? '#33ff77' : '#ff3333'));
             });
         }
 
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const foot = document.createElement('div');
         foot.className = 'term-muted';
         foot.style.cssText = 'margin-top:8px; font-size:0.7rem; opacity:0.7;';
-        foot.textContent = `sampled ${age}s ago`;
+        foot.textContent = VBLang.t('st_sampled', { n: age }); foot.dataset.sampled = '1';
         body.appendChild(foot);
     };
 
@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
             (p.top_blocked || []).forEach((d, i) => box.appendChild(row(i === 0 ? 'TOP BLOCKED' : '', `${d.domain} (${d.count})`)));
         }
         const foot = body.lastElementChild;   // keep "sampled Ns ago" at the bottom
-        body.insertBefore(box, foot && foot.textContent.startsWith('sampled') ? foot : null);
+        body.insertBefore(box, foot && foot.dataset.sampled ? foot : null);
     };
 
     let lastRefresh = 0;

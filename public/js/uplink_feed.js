@@ -43,14 +43,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const renderStatusBar = () => {
         statusBar.style.display = usingHub ? 'block' : 'none';
         if (!usingHub) return;
-        presenceSpan.textContent = `\u25CF ${onlineUsers.length} online`;
+        presenceSpan.textContent = VBLang.t('ch_online', { n: onlineUsers.length });
         presenceSpan.title = onlineUsers.join(', ');
         const now = Date.now();
         const names = [...typers].filter(([, exp]) => exp > now).map(([name]) => name);
         typingSpan.textContent = names.length === 0 ? ''
-            : names.length === 1 ? `${names[0]} is typing\u2026`
-            : names.length <= 3 ? `${names.join(', ')} are typing\u2026`
-            : 'several people are typing\u2026';
+            : names.length === 1 ? VBLang.t('ch_typing1', { u: names[0] })
+            : names.length <= 3 ? VBLang.t('ch_typingn', { u: names.join(', ') })
+            : VBLang.t('ch_typing_many');
     };
     setInterval(() => {
         const now = Date.now();
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const formatDateLabel = (rawDate) => {
         if (!rawDate) return '';
         const today = new Date().toISOString().substring(0, 10);
-        return rawDate === today ? 'Today' : rawDate;
+        return rawDate === today ? VBLang.t('today') : rawDate;
     };
 
     const createDateSeparator = (dateStr) => {
@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.SESSION_STATE.isAdmin && data.id && !isError) {
             const delBtn = document.createElement('button');
             delBtn.textContent = '[X]';
-            delBtn.title = 'Delete transmission';
+            delBtn.title = VBLang.t('ch_delete');
             delBtn.className = 'chat-del-btn';
             delBtn.addEventListener('click', async () => {
                 try {
@@ -660,7 +660,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         appendMessageToUI({
                             created_at: new Date().toISOString().substring(11, 19),
                             username: 'SYSTEM',
-                            message: `>> WARNING: ${data.error || 'Failed to send message.'}`
+                            message: `>> ${VBLang.t('warning')}: ${data.error || VBLang.t('ch_send_fail')}`
                         }, state, true);
                     }
                 } catch (err) {
