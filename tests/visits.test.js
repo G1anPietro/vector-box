@@ -108,10 +108,10 @@ test.describe('visit statistics page', () => {
             assert.equal((await user.get('/pages/stats.php')).status, 403);
             const admin = await makeAdmin(site, 'st_admin');
             const html = (await admin.get('/pages/stats.php?days=7')).text;
-            assert.match(html, /<span class="big">3<\/span><span>visite oggi<\/span>/);
+            assert.match(html, /<span class="big">3<\/span><span>visits today<\/span>/);
             assert.match(html, /\/pages\/giochi\.php<\/span>.*?<span class="value">2 /s);
             assert.match(html, />mario</);
-            assert.match((await admin.get('/index.php')).text, /\/\/ STATISTICHE/);
+            assert.match((await admin.get('/index.php')).text, /\/\/ STATISTICS/);
         } finally { await site.stop(); }
     });
 });

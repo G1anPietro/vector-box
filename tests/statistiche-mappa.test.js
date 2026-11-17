@@ -66,7 +66,7 @@ test.describe('the statistics page', () => {
     test('admin only; the map has the countries, the counts, the table and the bots in red', async () => {
         const guest = await fetch(`${site.base}/pages/stats.php`);
         assert.equal(guest.status, 403);
-        const r = await fetch(`${site.base}/pages/stats.php?days=7`, { headers: { Cookie: admin.cookieHeader() } });
+        const r = await fetch(`${site.base}/pages/stats.php?days=7&lang=it`, { headers: { Cookie: admin.cookieHeader() } });
         assert.equal(r.status, 200);
         const html = await r.text();
         assert.match(html, /<svg class="map"/);

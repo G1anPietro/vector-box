@@ -82,6 +82,7 @@ test.before(async () => {
     mario = new Client(site); await mario.register('nt_mario');
     luigi = new Client(site); await luigi.register('nt_luigi');
     peach = new Client(site); await peach.register('nt_peach');
+    site.db("UPDATE accounts SET lang = 'it' WHERE username LIKE 'nt_%'");   // Italian members get the Italian texts
     classId = (await mario.post('/api/classi.php', { action: 'request', name: '5B-I', school: 'ITIS', adults: true })).json.id;
     await admin.post('/api/classi.php', { action: 'decide', id: classId, approve: true });
     const code = (await mario.get(`/api/classi.php?action=class&id=${classId}`)).json.class.invite_code;

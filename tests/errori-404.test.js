@@ -59,7 +59,7 @@ test.describe('bots', () => {
 
     test('the statistics page counts bots by kind', async () => {
         const admin = await makeAdmin(site, 'bot_admin');
-        const html = (await admin.get('/pages/stats.php?days=7')).text;
+        const html = (await admin.get('/pages/stats.php?days=7&lang=it')).text;
         assert.match(html, /Bot e richieste automatiche/);
         assert.match(html, /Scraper bloccati/);
         assert.match(html, /Scanner di vulnerabilità/);
