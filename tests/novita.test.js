@@ -57,3 +57,39 @@ test('a script with NEWS_TOKEN can write without a session; a wrong token cannot
         assert.ok((await c.get('/api/news.php')).json.items.some(i => i.slug === 'via-token'));
     } finally { s2.stop(); }
 });
+
+test('ideas box: accounts only, CSRF, limits, own list, admin answers, delete by the author', async () => {
+    const guest = await new Client(site).init();
+    assert.equal((await guest.get('/api/news_ideas.php')).status, 401);
+    assert.equal((await guest.post('/api/news_ideas.php', { text: 'a guest idea for the site' })).status, 401);
+    assert.equal((await user.post('/api/news_ideas.php', { text: 'an idea without a token' }, { csrf: false })).status, 403);
+    assert.equal((await user.post('/api/news_ideas.php', { text: 'short' })).status, 400);
+    assert.equal((await user.post('/api/news_ideas.php', { text: 'x'.repeat(501) })).status, 400);
+    const add = await user.post('/api/news_ideas.php', { text: 'A  chess page,​ with daily puzzles <b>please</b>' });
+    assert.equal(add.json.success, true);
+    const other = new Client(site); await other.register('nv_other');
+    assert.equal((await other.get('/api/news_ideas.php')).json.ideas.length, 0);      // nobody else's ideas
+    let mine = (await user.get('/api/news_ideas.php')).json;
+    assert.equal(mine.ideas[0].status, 'new');
+    assert.equal(mine.ideas[0].username, null);
+    assert.ok(!mine.ideas[0].text.includes('​'));
+    const id = mine.ideas[0].id;
+    assert.equal((await user.post('/api/news_ideas.php', { action: 'set', id, status: 'planned' })).status, 403);   // not an admin
+    assert.equal((await admin.post('/api/news_ideas.php', { action: 'set', id, status: 'planned', reply: 'Good one!' })).json.success, true);
+    mine = (await user.get('/api/news_ideas.php')).json;
+    assert.equal(mine.ideas[0].status, 'planned');
+    assert.equal(mine.ideas[0].reply, 'Good one!');
+    const all = (await admin.get('/api/news_ideas.php')).json;
+    assert.equal(all.admin, true);
+    assert.equal(all.ideas[0].username, 'nv_user');
+    await other.post('/api/news_ideas.php', { action: 'delete', id });                // not the author: nothing happens
+    assert.equal((await user.get('/api/news_ideas.php')).json.ideas.length, 1);
+    await user.post('/api/news_ideas.php', { action: 'delete', id });
+    assert.equal((await user.get('/api/news_ideas.php')).json.ideas.length, 0);
+});
+
+test('ideas box: 5 a day per person', async () => {
+    const u = new Client(site); await u.register('nv_spammer');
+    for (let i = 0; i < 5; i++) assert.equal((await u.post('/api/news_ideas.php', { text: 'idea number ' + i + ' for the site' })).json.success, true);
+    assert.equal((await u.post('/api/news_ideas.php', { text: 'idea number six for the site' })).status, 429);
+});

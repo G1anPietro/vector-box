@@ -45,6 +45,7 @@ function accountExport(PDO $db, int $userId): array {
         'note' => 'Everything vector-box keeps about this account. The password is stored only as a one-way hash and is not included.',
         'account' => $acc,
         'chat_messages' => $all('SELECT id, room_id, message, sender_ip, created_at FROM transmissions WHERE (user_id = :i OR username = :n) AND (is_deleted = 0 OR is_deleted IS NULL)', $name),
+        'news_ideas' => $all('SELECT id, text, status, reply, created_at FROM news_ideas WHERE user_id = :i', [':i' => $userId]),
         'guestbook' => $all('SELECT id, message, sender_ip, created_at FROM guestbook WHERE user_id = :i OR username = :n', $name),
         'private_messages' => $all('SELECT m.id, s.username AS "from", r.username AS "to", m.body, m.created_at, m.read_at FROM dm_messages m
                                     LEFT JOIN accounts s ON s.id = m.sender_id LEFT JOIN accounts r ON r.id = m.recipient_id
@@ -96,6 +97,7 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
             $run("DELETE FROM $t WHERE user_id = :i", $u);
         }
         $run('DELETE FROM class_board WHERE user_id = :i', $u);
+        $run('DELETE FROM news_ideas WHERE user_id = :i', $u);
 
         // class material the person made
         if ($deleteMaterials) {

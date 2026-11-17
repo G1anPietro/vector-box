@@ -10,3 +10,14 @@
 @keyframes nv-p { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .nv-pulse { animation: none; } }
 .nv-log { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: .9rem; }
+
+.nv-tabs { display: flex; gap: 8px; margin: 12px 0 4px; flex-wrap: wrap; }
+.nv-tabs button { font: inherit; color: var(--text); background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 999px; padding: 8px 16px; min-height: 44px; cursor: pointer; }
+.nv-tabs button[aria-selected="true"] { background: var(--link); color: #231a08; border-color: var(--link); font-weight: 800; }
+#id-form textarea { display: block; width: 100%; margin: 6px 0; padding: 10px; font: inherit; color: var(--text); background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 8px; resize: vertical; }
+.nv-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.nv-row .cta { margin-top: 0; border: 0; font: inherit; font-weight: 800; cursor: pointer; min-height: 44px; }
+.nv-status { border-radius: 999px; padding: 0 8px; border: 1px solid var(--link); color: var(--link); font-size: .85rem; }
+.nv-admin { display: grid; gap: 6px; margin-top: 8px; }
+.nv-admin select, .nv-admin input { font: inherit; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 6px; padding: 6px 8px; min-height: 40px; width: 100%; }
+.nv-admin button { font: inherit; min-height: 40px; border-radius: 6px; border: 1px solid var(--plank); background: var(--dusk); color: var(--text); cursor: pointer; }

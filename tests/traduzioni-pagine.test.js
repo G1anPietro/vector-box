@@ -52,7 +52,7 @@ test('the terminal has a lang command (commands stay English)', async () => {
 });
 
 test('schema 37: accounts.lang, set at registration from the page language and updated by the user', async () => {
-    assert.equal(site.db('PRAGMA user_version')[0].user_version, 38);
+    assert.equal(site.db('PRAGMA user_version')[0].user_version, 39);
     const it = new Client(site);
     await it.get('/pages/login.php?lang=it');            // sets the vb_lang cookie
     it.cookies.set('vb_lang', 'it');

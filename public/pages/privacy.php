@@ -48,9 +48,9 @@ $updated = '2026-11-16';
             <li><strong>Account</strong> (se lo crei): nome utente, password (salvata solo in forma cifrata e non leggibile, nemmeno da chi gestisce il sito), tema, biografia, data di creazione e i permessi.
                 <em>Scopo:</em> farti entrare e usare il sito. <em>Base:</em> esecuzione del servizio che chiedi (art. 6.1.b GDPR).
                 <em>Quanto:</em> finché non cancelli l’account (puoi farlo da solo dalla pagina Account).</li>
-            <li><strong>Chat, messaggi privati e libro degli ospiti:</strong> il testo che scrivi, il tuo nome utente e, per sicurezza, l’indirizzo IP.
+            <li><strong>Chat, messaggi privati, libro degli ospiti e scatola delle idee:</strong> il testo che scrivi, il tuo nome utente e, per sicurezza, l’indirizzo IP.
                 <em>Base:</em> esecuzione del servizio; l’IP per il legittimo interesse alla sicurezza (art. 6.1.f).
-                <em>Quanto:</em> l’indirizzo IP <?= retentionDays('IP') ?> giorni; i messaggi pubblici e il libro degli ospiti <?= retentionDays('CHAT') ?> giorni; i messaggi privati <?= retentionDays('DM') ?> giorni; poi si cancellano da soli. Se cancelli l’account spariscono subito.</li>
+                <em>Quanto:</em> l’indirizzo IP <?= retentionDays('IP') ?> giorni; i messaggi pubblici, il libro degli ospiti e le idee <?= retentionDays('CHAT') ?> giorni; i messaggi privati <?= retentionDays('DM') ?> giorni; poi si cancellano da soli. Se cancelli l’account spariscono subito.</li>
             <li><strong>Indirizzo IP e registri tecnici:</strong> tentativi di accesso, limiti di velocità, errori del server.
                 <em>Scopo:</em> sicurezza e blocco degli abusi. <em>Base:</em> legittimo interesse (art. 6.1.f).
                 <em>Quanto:</em> i contatori dei limiti circa un giorno; il registro degli errori è piccolo e si sovrascrive da solo.</li>
@@ -130,9 +130,9 @@ $updated = '2026-11-16';
             <li><strong>Account</strong> (if you create one): username, password (stored only as a one-way hash, unreadable even to the site’s owner), theme, bio, creation date and permissions.
                 <em>Purpose:</em> to let you in and use the site. <em>Basis:</em> performing the service you ask for (art. 6.1.b GDPR).
                 <em>How long:</em> until you delete the account (you can do it yourself from the Account page).</li>
-            <li><strong>Chat, private messages and guestbook:</strong> the text you write, your username and, for security, your IP address.
+            <li><strong>Chat, private messages, guestbook and ideas box:</strong> the text you write, your username and, for security, your IP address.
                 <em>Basis:</em> the service; the IP, a legitimate interest in security (art. 6.1.f).
-                <em>How long:</em> the IP address <?= retentionDays('IP') ?> days; public messages and the guestbook <?= retentionDays('CHAT') ?> days; private messages <?= retentionDays('DM') ?> days; then they are deleted automatically. If you delete the account they go at once.</li>
+                <em>How long:</em> the IP address <?= retentionDays('IP') ?> days; public messages, the guestbook and the ideas <?= retentionDays('CHAT') ?> days; private messages <?= retentionDays('DM') ?> days; then they are deleted automatically. If you delete the account they go at once.</li>
             <li><strong>IP address and technical logs:</strong> login attempts, rate limits, server errors.
                 <em>Purpose:</em> security and stopping abuse. <em>Basis:</em> legitimate interest (art. 6.1.f).
                 <em>How long:</em> rate-limit counters about a day; the error log is small and overwrites itself.</li>

@@ -5,6 +5,8 @@ require_once __DIR__ . '/../includes/head.php';
 $lang = pageLang();
 $it = $lang === 'it';
 $other = $it ? 'en' : 'it';
+// the files are cached for a year: the number follows their modification time (csrf.js included)
+$v = filemtime(__DIR__ . '/../js/novita.js') . '-' . filemtime(__DIR__ . '/../css/novita.css') . '-' . filemtime(__DIR__ . '/../js/csrf.js');
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -17,7 +19,7 @@ $other = $it ? 'en' : 'it';
         $it ? 'Cosa c\'è di nuovo su vector-box e a cosa stiamo lavorando in questo momento.' : 'What is new on vector-box and what we are working on right now.',
         '/pages/novita.php', '/assets/og/desktop.jpg') ?>
     <link rel="stylesheet" href="../css/giochi.css?v=4">
-    <link rel="stylesheet" href="../css/novita.css?v=1">
+    <link rel="stylesheet" href="../css/novita.css?v=<?= $v ?>">
 </head>
 <body>
     <header class="top">
@@ -26,13 +28,31 @@ $other = $it ? 'en' : 'it';
     </header>
     <main class="doc">
         <h1><?= $it ? 'Novità' : 'News' ?></h1>
+        <div class="nv-tabs" role="tablist">
+            <button type="button" role="tab" id="tab-news" aria-selected="true" aria-controls="pane-news"><?= $it ? 'Novità' : 'News' ?></button>
+            <button type="button" role="tab" id="tab-ideas" aria-selected="false" aria-controls="pane-ideas"><?= $it ? 'Suggerisci un\'idea' : 'Suggest an idea' ?></button>
+        </div>
+        <div id="pane-news" role="tabpanel" aria-labelledby="tab-news">
         <p class="muted" id="nv-live"><?= $it ? 'Si aggiorna da sola.' : 'Updates by itself.' ?></p>
         <section id="nv-doing" hidden><h2><?= $it ? 'In lavorazione adesso' : 'Working on it now' ?></h2><div class="nv-list"></div></section>
         <section id="nv-planned" hidden><h2><?= $it ? 'Prossimamente' : 'Coming next' ?></h2><div class="nv-list"></div></section>
         <section id="nv-done" hidden><h2><?= $it ? 'Novità' : 'What is new' ?></h2><div class="nv-list"></div></section>
         <p id="nv-empty" class="muted" hidden><?= $it ? 'Ancora niente qui.' : 'Nothing here yet.' ?></p>
+        </div>
+        <div id="pane-ideas" role="tabpanel" aria-labelledby="tab-ideas" hidden>
+            <p class="muted"><?= $it ? 'Hai un\'idea per il sito? Scrivila qui: la leggo e ti rispondo qui sotto.' : 'Got an idea for the site? Write it here: I read it and answer below.' ?></p>
+            <p id="id-login" hidden><a class="cta" href="login.php"><?= $it ? 'Accedi per suggerire un\'idea' : 'Log in to suggest an idea' ?></a></p>
+            <form id="id-form" hidden>
+                <label for="id-text" class="muted"><?= $it ? 'La tua idea (10-500 caratteri)' : 'Your idea (10-500 characters)' ?></label>
+                <textarea id="id-text" maxlength="500" rows="4" required></textarea>
+                <div class="nv-row"><span class="muted" id="id-count">0/500</span><button type="submit" class="cta"><?= $it ? 'Invia' : 'Send' ?></button></div>
+                <p id="id-msg" class="muted" role="status"></p>
+            </form>
+            <div class="nv-list" id="id-list"></div>
+        </div>
         <noscript><p><?= $it ? 'Serve JavaScript per vedere l\'elenco.' : 'JavaScript is needed to see the list.' ?></p></noscript>
     </main>
-    <script src="../js/novita.js?v=2"></script>
+    <script src="../js/csrf.js?v=<?= $v ?>"></script>
+    <script src="../js/novita.js?v=<?= $v ?>"></script>
 </body>
 </html>

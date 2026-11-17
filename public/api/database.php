@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 38;
+const DB_SCHEMA_VERSION = 39;
 
 /**
  * Session bootstrap.
@@ -582,6 +582,19 @@ function migrateV16(PDO $db): void {
 
 /** v37: the language of the person (accounts.lang, 'en' or 'it'): the e-mails and notifications we send follow it, not the admin's. */
 /** v38: the news board (pages/novita.php): what is new, what is being worked on right now, what comes next. Texts in both languages. */
+/** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
+function migrateV39(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS news_ideas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'new',            -- new | considering | planned | done | declined
+        reply TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_ideas_user ON news_ideas(user_id, id)');
+}
+
 function migrateV38(PDO $db): void {
     $db->exec("CREATE TABLE IF NOT EXISTS news_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1062,6 +1075,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 38) {
             migrateV38($db);
+        }
+        if ($current < 39) {
+            migrateV39($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
