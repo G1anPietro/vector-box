@@ -14,10 +14,6 @@ requireAdmin();
 $db = getDbConnection();
 $me = (int)$_SESSION['user_id'];
 
-function auFail(string $code, string $msg, int $status = 400): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);
-}
-
 const AU_FLAGS = ['can_read_books', 'can_upload_books', 'can_view_resume', 'ads_free'];
 
 /** One account row as the panel shows it. */
@@ -38,7 +34,7 @@ function auTarget(PDO $db, int $id): array {
     $st->execute([':id' => $id]);
     $a = $st->fetch();
     $st->closeCursor();
-    if (!$a) auFail('not_found', 'No such user', 404);
+    if (!$a) jsonFail('not_found', 'No such user', 404);
     return $a;
 }
 
@@ -90,25 +86,25 @@ try {
                              'notes' => $n('SELECT COUNT(*) FROM class_items WHERE author_id = :i')],
                 'mail' => $mail->fetchAll()]);
         }
-        auFail('unknown_action', 'Unknown action');
+        jsonFail('unknown_action', 'Unknown action');
     }
 
     requireCsrf();
     $in = readJsonBody();
     $action = (string)($in['action'] ?? '');
-    if (!checkRateLimit('admin_users', 300, 3600, 'user:' . $me)) auFail('slow_down', 'Too many requests', 429);
+    if (!checkRateLimit('admin_users', 300, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many requests', 429);
     $a = auTarget($db, (int)($in['user_id'] ?? 0));
     $id = (int)$a['id'];
 
     if ($action === 'set_flag') {
         $flag = (string)($in['flag'] ?? '');
-        if (!in_array($flag, AU_FLAGS, true)) auFail('bad_flag', 'Unknown setting');
+        if (!in_array($flag, AU_FLAGS, true)) jsonFail('bad_flag', 'Unknown setting');
         $db->prepare("UPDATE accounts SET $flag = :v WHERE id = :id")->execute([':v' => empty($in['value']) ? 0 : 1, ':id' => $id]);
         jsonResponse(['success' => true]);
     }
 
     if (in_array($action, ['ban', 'timeout', 'unban'], true)) {
-        if ((int)$a['is_admin'] === 1 && $action !== 'unban') auFail('is_admin', 'An admin cannot be banned');
+        if ((int)$a['is_admin'] === 1 && $action !== 'unban') jsonFail('is_admin', 'An admin cannot be banned');
         if ($action === 'ban') $db->prepare('UPDATE accounts SET is_banned = 1, banned_until = NULL WHERE id = :id')->execute([':id' => $id]);
         elseif ($action === 'timeout') {
             $mins = max(1, min((int)($in['minutes'] ?? 10), 525600));
@@ -132,18 +128,18 @@ try {
 
     if ($action === 'send_mail') {
         // One direct message from the admin. Only to an address the person confirmed (a link they clicked): never to a guess.
-        if ((string)$a['email'] === '' || !(int)$a['email_verified']) auFail('no_verified_address', 'This person has no confirmed e-mail address');
+        if ((string)$a['email'] === '' || !(int)$a['email_verified']) jsonFail('no_verified_address', 'This person has no confirmed e-mail address');
         $subject = mailLine((string)($in['subject'] ?? ''), 150);
         $body = textCut(str_replace("\r", '', trim((string)($in['body'] ?? ''))), 5000);
-        if ($subject === '' || $body === '') auFail('empty', 'Write a subject and a text');
-        if (!checkRateLimit('admin_direct_mail', 30, 3600, 'user:' . $me)) auFail('slow_down', 'Too many messages, try later', 429);
+        if ($subject === '' || $body === '') jsonFail('empty', 'Write a subject and a text');
+        if (!checkRateLimit('admin_direct_mail', 30, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many messages, try later', 429);
         $text = "Hello {$a['username']},\n\n$body\n\n--\nThis message is from the person who runs vector-box (" . siteUrl() . "), written to you about your account.\nTo stop all e-mail, remove the address in your account settings.\n";
         $qid = mailEnqueue($db, null, $id, (string)$a['email'], $subject, $text, 'direct');
         $r = mailProcessQueue($db, 1, [$qid]);
         jsonResponse(['success' => true, 'queued' => true, 'sent_now' => $r['sent'] === 1, 'driver_off' => $r['off']]);
     }
 
-    auFail('unknown_action', 'Unknown action');
+    jsonFail('unknown_action', 'Unknown action');
 } catch (Throwable $e) {
     failInternal('ADMIN_USERS', $e);
 }

@@ -22,10 +22,6 @@ header('Cache-Control: no-store');
 
 $me = (int)$_SESSION['user_id'];
 
-function dmFail(string $code, string $message, int $status): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $message], $status);
-}
-
 function dmUser(PDO $db, int $id): ?array {
     $st = $db->prepare('SELECT id, username FROM accounts WHERE id = :id');
     $st->execute([':id' => $id]);
@@ -88,7 +84,7 @@ try {
 
         if ($action === 'thread') {
             $other = dmUser($db, (int)($_GET['with'] ?? 0));
-            if (!$other || (int)$other['id'] === $me) dmFail('not_found', 'User not found', 404);
+            if (!$other || (int)$other['id'] === $me) jsonFail('not_found', 'User not found', 404);
             $before = (int)($_GET['before'] ?? 0);
             $st = $db->prepare('SELECT * FROM dm_messages
                                 WHERE ((sender_id = :me AND recipient_id = :o) OR (sender_id = :o AND recipient_id = :me))
@@ -140,27 +136,27 @@ try {
             jsonResponse(['success' => true, 'users' => array_map(fn($u) => ['id' => (int)$u['id'], 'username' => $u['username']], $st->fetchAll())]);
         }
 
-        dmFail('unknown_action', 'Unknown action', 400);
+        jsonFail('unknown_action', 'Unknown action', 400);
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') dmFail('method', 'Method not allowed', 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonFail('method', 'Method not allowed', 405);
     requireCsrf();
     $in = readJsonBody();
     $action = (string)($in['action'] ?? '');
 
     if ($action === 'send') {
         $restriction = accountRestriction($db, $me);
-        if ($restriction) dmFail('restricted', $restriction, 403);
-        if (!checkRateLimit('dm_send', 30, 60, 'user:' . $me)) dmFail('slow_down', 'Too many messages, slow down', 429);
+        if ($restriction) jsonFail('restricted', $restriction, 403);
+        if (!checkRateLimit('dm_send', 30, 60, 'user:' . $me)) jsonFail('slow_down', 'Too many messages, slow down', 429);
 
         $other = dmUser($db, (int)($in['to'] ?? 0));
-        if (!$other || (int)$other['id'] === $me) dmFail('not_found', 'User not found', 404);
-        if (dmBlocked($db, $me, (int)$other['id'])) dmFail('blocked', 'You cannot write to this user', 403);
+        if (!$other || (int)$other['id'] === $me) jsonFail('not_found', 'User not found', 404);
+        if (dmBlocked($db, $me, (int)$other['id'])) jsonFail('blocked', 'You cannot write to this user', 403);
 
         // Keep line breaks, drop other control characters
         $body = trim(preg_replace('/[\x00-\x09\x0B-\x1F\x7F]+/u', ' ', (string)($in['body'] ?? '')) ?? '');
-        if ($body === '') dmFail('empty', 'Message is empty', 400);
-        if (textLength($body) > DM_MAX_LENGTH) dmFail('too_long', 'Message is too long (max ' . DM_MAX_LENGTH . ')', 400);
+        if ($body === '') jsonFail('empty', 'Message is empty', 400);
+        if (textLength($body) > DM_MAX_LENGTH) jsonFail('too_long', 'Message is too long (max ' . DM_MAX_LENGTH . ')', 400);
 
         $db->prepare('INSERT INTO dm_messages (sender_id, recipient_id, body) VALUES (:s, :r, :b)')
            ->execute([':s' => $me, ':r' => $other['id'], ':b' => $body]);
@@ -171,7 +167,7 @@ try {
 
     if ($action === 'block' || $action === 'unblock') {
         $other = dmUser($db, (int)($in['user_id'] ?? 0));
-        if (!$other || (int)$other['id'] === $me) dmFail('not_found', 'User not found', 404);
+        if (!$other || (int)$other['id'] === $me) jsonFail('not_found', 'User not found', 404);
         $sql = $action === 'block'
             ? 'INSERT OR IGNORE INTO dm_blocks (blocker_id, blocked_id) VALUES (:me, :o)'
             : 'DELETE FROM dm_blocks WHERE blocker_id = :me AND blocked_id = :o';
@@ -179,7 +175,7 @@ try {
         jsonResponse(['success' => true, 'blocked' => $action === 'block']);
     }
 
-    dmFail('unknown_action', 'Unknown action', 400);
+    jsonFail('unknown_action', 'Unknown action', 400);
 } catch (Throwable $e) {
     failInternal('DM', $e);
 }

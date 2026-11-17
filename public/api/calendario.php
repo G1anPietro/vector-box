@@ -21,19 +21,15 @@ header('Cache-Control: no-store');
 $me = (int)($_SESSION['user_id'] ?? 0);
 $isAdmin = sessionIsAdmin();
 
-function caFail(string $code, string $msg, int $status = 400): void {
-    jsonResponse(['success' => false, 'code' => $code, 'error' => $msg], $status);
-}
-
 /** An active class the caller belongs to (any class for the admin). Returns [class, my permissions]. */
 function caClass(PDO $db, int $id, int $me, bool $isAdmin): array {
     $class = classLoad($db, $id);
-    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) caFail('not_found', 'Class not found', 404);
+    if (!$class || $class['status'] !== 'active' || (!$isAdmin && !classCanView($db, $id, $me))) jsonFail('not_found', 'Class not found', 404);
     return [$class, classPerms($db, $class, $me, $isAdmin)];
 }
 
 function caNeed(array $perms, string $perm): void {
-    if (!in_array($perm, $perms, true)) caFail('forbidden', 'You do not have the permission to do this', 403);
+    if (!in_array($perm, $perms, true)) jsonFail('forbidden', 'You do not have the permission to do this', 403);
 }
 
 function caText($v, int $max, bool $multiline = false): string {
@@ -46,7 +42,7 @@ function caRow(PDO $db, string $table, int $id): array {
     $st = $db->prepare("SELECT * FROM $table WHERE id = :id");
     $st->execute([':id' => $id]);
     $row = $st->fetch();
-    if (!$row) caFail('not_found', 'Not found', 404);
+    if (!$row) jsonFail('not_found', 'Not found', 404);
     return $row;
 }
 
@@ -64,7 +60,7 @@ try {
         $action = (string)($_GET['action'] ?? '');
         [$class, $perms] = caClass($db, (int)($_GET['class_id'] ?? 0), $me, $isAdmin);
         $classId = (int)$class['id'];
-        if ($action !== 'overview') caFail('unknown_action', 'Unknown action');
+        if ($action !== 'overview') jsonFail('unknown_action', 'Unknown action');
 
         $today = classToday($class);
         $from = (string)($_GET['from'] ?? '');
@@ -104,11 +100,11 @@ try {
             'turn_order' => array_map('intval', json_decode($class['turn_order'] ?? '[]', true) ?: [])]);
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') caFail('method', 'Method not allowed', 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonFail('method', 'Method not allowed', 405);
     requireCsrf();
     $in = readJsonBody();
     $action = (string)($in['action'] ?? '');
-    if (!checkRateLimit('class_calendar', 200, 3600, 'user:' . $me)) caFail('slow_down', 'Too many changes, try later', 429);
+    if (!checkRateLimit('class_calendar', 200, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many changes, try later', 429);
     $now = time();
 
     /* ---------- topics ---------- */
@@ -116,16 +112,16 @@ try {
         [$class, $perms] = caClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         caNeed($perms, 'topics');
         $subjectId = (int)($in['subject_id'] ?? 0);
-        if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) caFail('bad_subject', 'Choose a subject of this class');
+        if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) jsonFail('bad_subject', 'Choose a subject of this class');
         $name = caText($in['name'] ?? '', 80);
-        if ($name === '') caFail('bad_name', 'Give the topic a name');
+        if ($name === '') jsonFail('bad_name', 'Give the topic a name');
         $start = (string)($in['start'] ?? '');
         $end = trim((string)($in['end'] ?? ''));
-        if (!classValidDate($start) || ($end !== '' && (!classValidDate($end) || $end < $start))) caFail('bad_dates', 'The topic must end after it starts');
+        if (!classValidDate($start) || ($end !== '' && (!classValidDate($end) || $end < $start))) jsonFail('bad_dates', 'The topic must end after it starts');
         $id = (int)($in['id'] ?? 0);
         if ($id) {
             $t = caRow($db, 'class_topics', $id);
-            if ((int)$t['class_id'] !== (int)$class['id']) caFail('not_found', 'Not found', 404);
+            if ((int)$t['class_id'] !== (int)$class['id']) jsonFail('not_found', 'Not found', 404);
             $db->prepare("UPDATE class_topics SET subject_id = :s, name = :n, start_date = :a, end_date = :b, status = 'ok', updated_at = :t WHERE id = :id")
                ->execute([':s' => $subjectId, ':n' => $name, ':a' => $start, ':b' => $end !== '' ? $end : null, ':t' => $now, ':id' => $id]);
         } else {
@@ -158,15 +154,15 @@ try {
     if ($action === 'save_homework') {
         [$class, $perms] = caClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         $subjectId = (int)($in['subject_id'] ?? 0);
-        if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) caFail('bad_subject', 'Choose a subject of this class');
+        if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) jsonFail('bad_subject', 'Choose a subject of this class');
         $due = (string)($in['due'] ?? '');
-        if (!classValidDate($due)) caFail('bad_date', 'Date must be YYYY-MM-DD');
+        if (!classValidDate($due)) jsonFail('bad_date', 'Date must be YYYY-MM-DD');
         $body = caText($in['body'] ?? '', 2000, true);
-        if ($body === '') caFail('empty', 'Write what the homework is');
+        if ($body === '') jsonFail('empty', 'Write what the homework is');
         $id = (int)($in['id'] ?? 0);
         if ($id) {
             $h = caRow($db, 'class_homework', $id);
-            if ((int)$h['class_id'] !== (int)$class['id']) caFail('not_found', 'Not found', 404);
+            if ((int)$h['class_id'] !== (int)$class['id']) jsonFail('not_found', 'Not found', 404);
             if ((int)$h['author_id'] !== $me) caNeed($perms, 'homework');
             $db->prepare('UPDATE class_homework SET subject_id = :s, due_date = :d, body = :b, updated_at = :t WHERE id = :id')
                ->execute([':s' => $subjectId, ':d' => $due, ':b' => $body, ':t' => $now, ':id' => $id]);
@@ -192,10 +188,10 @@ try {
         caNeed($perms, 'daysoff');
         $from = (string)($in['from'] ?? '');
         $to = trim((string)($in['to'] ?? '')) ?: $from;
-        if (!classValidDate($from) || !classValidDate($to) || $to < $from) caFail('bad_dates', 'The last day must not be before the first');
-        if ((new DateTimeImmutable($from))->diff(new DateTimeImmutable($to))->days > 120) caFail('bad_dates', 'At most 120 days');
+        if (!classValidDate($from) || !classValidDate($to) || $to < $from) jsonFail('bad_dates', 'The last day must not be before the first');
+        if ((new DateTimeImmutable($from))->diff(new DateTimeImmutable($to))->days > 120) jsonFail('bad_dates', 'At most 120 days');
         $period = (int)($in['period'] ?? 0);
-        if ($period && ($from !== $to || $period > CLASS_MAX_PERIODS)) caFail('bad_period', 'A single hour needs a single day');
+        if ($period && ($from !== $to || $period > CLASS_MAX_PERIODS)) jsonFail('bad_period', 'A single hour needs a single day');
         $db->prepare('INSERT INTO class_days_off (class_id, date_from, date_to, period, reason, author_id, created_at) VALUES (:c, :f, :t, :p, :r, :u, :now)')
            ->execute([':c' => $class['id'], ':f' => $from, ':t' => $to, ':p' => $period ?: null, ':r' => caText($in['reason'] ?? '', 80), ':u' => $me, ':now' => $now]);
         jsonResponse(['success' => true, 'id' => (int)$db->lastInsertId()]);
@@ -229,13 +225,13 @@ try {
         caNeed($perms, 'turns');
         $classId = (int)$class['id'];
         $subjectId = (int)($in['subject_id'] ?? 0);
-        if (!notesSubjectOf($db, $classId, $subjectId)) caFail('bad_subject', 'Choose a subject of this class');
+        if (!notesSubjectOf($db, $classId, $subjectId)) jsonFail('bad_subject', 'Choose a subject of this class');
         $start = (string)($in['start'] ?? '');
-        if (!classValidDate($start)) caFail('bad_date', 'Date must be YYYY-MM-DD');
+        if (!classValidDate($start)) jsonFail('bad_date', 'Date must be YYYY-MM-DD');
         $per = max(1, min(10, (int)($in['per_lesson'] ?? 2)));
         $members = caMemberSet($db, $classId);
         $order = array_values(array_filter(array_map('intval', json_decode($class['turn_order'] ?? '[]', true) ?: []), fn($u) => isset($members[$u])));
-        if (!$order) caFail('no_order', 'Set the order of the turns first');
+        if (!$order) jsonFail('no_order', 'Set the order of the turns first');
         $groups = array_chunk($order, $per);
         $day = new DateTimeImmutable($start);
         $made = []; $plan = [];
@@ -247,7 +243,7 @@ try {
             $plan[] = [$date, json_encode(array_shift($groups))];
             $made[] = $date;
         }
-        if ($groups) caFail('no_lessons', 'Not enough lessons of this subject in the timetable: check the timetable');   // nothing was written yet
+        if ($groups) jsonFail('no_lessons', 'Not enough lessons of this subject in the timetable: check the timetable');   // nothing was written yet
         $db->exec('BEGIN IMMEDIATE');
         try {
             foreach ($plan as [$date, $users]) $ins->execute([':c' => $classId, ':s' => $subjectId, ':d' => $date, ':u' => $users, ':a' => $me, ':t' => $now]);
@@ -268,7 +264,7 @@ try {
             jsonResponse(['success' => true]);
         }
         $date = (string)($in['date'] ?? $t['turn_date']);
-        if (!classValidDate($date)) caFail('bad_date', 'Date must be YYYY-MM-DD');
+        if (!classValidDate($date)) jsonFail('bad_date', 'Date must be YYYY-MM-DD');
         $members = caMemberSet($db, (int)$class['id']);
         $users = array_values(array_unique(array_filter(array_map('intval', (array)($in['user_ids'] ?? [])), fn($u) => isset($members[$u]))));
         $db->prepare('UPDATE class_turns SET turn_date = :d, user_ids = :u, note = :n, notified_at = NULL WHERE id = :id')
@@ -280,9 +276,9 @@ try {
         [$class, $perms] = caClass($db, (int)($in['class_id'] ?? 0), $me, $isAdmin);
         caNeed($perms, 'turns');
         $subjectId = (int)($in['subject_id'] ?? 0);
-        if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) caFail('bad_subject', 'Choose a subject of this class');
+        if (!notesSubjectOf($db, (int)$class['id'], $subjectId)) jsonFail('bad_subject', 'Choose a subject of this class');
         $date = (string)($in['date'] ?? '');
-        if (!classValidDate($date)) caFail('bad_date', 'Date must be YYYY-MM-DD');
+        if (!classValidDate($date)) jsonFail('bad_date', 'Date must be YYYY-MM-DD');
         $members = caMemberSet($db, (int)$class['id']);
         $users = array_values(array_unique(array_filter(array_map('intval', (array)($in['user_ids'] ?? [])), fn($u) => isset($members[$u]))));
         $db->prepare('INSERT INTO class_turns (class_id, subject_id, turn_date, user_ids, note, author_id, created_at) VALUES (:c, :s, :d, :u, :n, :a, :t)')
@@ -298,7 +294,7 @@ try {
         jsonResponse(['success' => true]);
     }
 
-    caFail('unknown_action', 'Unknown action');
+    jsonFail('unknown_action', 'Unknown action');
 } catch (Throwable $e) {
     failInternal('CALENDAR', $e);
 }

@@ -66,6 +66,14 @@ function jsonResponse(array $data, int $status = 200): void {
     exit();
 }
 
+/**
+ * A refusal the page can act on: {success:false, code, error}. `code` is a short stable word the JS switches on
+ * (not_found, forbidden, slow_down...), `error` the English sentence shown as a fallback. Stops the request.
+ */
+function jsonFail(string $code, string $message, int $status = 400): void {
+    jsonResponse(['success' => false, 'code' => $code, 'error' => $message], $status);
+}
+
 /** Log the real error server-side, return a generic message to the client. */
 function failInternal(string $source, Throwable $e, string $publicMessage = 'Internal server error'): void {
     require_once __DIR__ . '/debug_logger.php';

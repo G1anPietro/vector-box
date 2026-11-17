@@ -1,4 +1,5 @@
 <?php
+// public/pages/credits.php — static credits page ("CIAO ZUFFI"). No API calls.
 require_once __DIR__ . '/../includes/head.php';
 ?>
 <!DOCTYPE html>
