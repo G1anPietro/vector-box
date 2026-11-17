@@ -5,7 +5,7 @@
 
 body.m-app {
     --m-head: 52px;
-    --m-tab: 60px;
+    --m-tab: 112px;          /* two rows of tabs: ALL the apps are visible, none hides off to the side */
     --m-safe-top: env(safe-area-inset-top, 0px);
     --m-safe-bottom: env(safe-area-inset-bottom, 0px);
     overflow: hidden;
@@ -36,8 +36,11 @@ body.m-app .cyber-panel.menu-dropdown {
     width: auto;
     min-width: 0;
     max-width: none;
-    max-height: calc(100dvh - var(--m-head) - var(--m-safe-top) - 16px);
+    /* it must end ABOVE the tab bar (that bar used to cover the lower part), and scroll inside when the screen is short */
+    max-height: calc(100dvh - var(--m-head) - var(--m-safe-top) - var(--m-tab) - var(--m-safe-bottom) - 20px);
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 body.m-app .menu-dropdown .menu-item { padding-top: 12px; padding-bottom: 12px; }
 
@@ -105,26 +108,23 @@ body.m-app .cyber-taskbar {
 }
 body.m-app .taskbar-info { display: none; }
 body.m-app .taskbar-apps {
-    display: flex;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
     width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-    scroll-snap-type: x proximity;
+    align-content: center;
+    overflow: hidden;
 }
 body.m-app .taskbar-apps::-webkit-scrollbar { display: none; }
 body.m-app .taskbar-btn {
-    flex: 0 0 auto;
-    min-width: 66px;
+    min-width: 0;                           /* 5 per row share the width: none is cut off on a narrow phone */
     min-height: 44px;
-    padding: 0 12px;
+    padding: 0 clamp(6px, 2vw, 12px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.78rem;
-    letter-spacing: 1px;
-    scroll-snap-align: center;
+    font-size: clamp(0.66rem, 3vw, 0.78rem);
+    letter-spacing: 0.5px;
     /* desktop highlights every open window; here only the app on screen counts */
     background: rgba(12, 14, 20, 0.95) !important;
     color: #ffffff !important;
