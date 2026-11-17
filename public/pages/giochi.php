@@ -99,6 +99,14 @@ $GAMES = [
         'how'  => ['it' => 'con o senza suono', 'en' => 'with or without sound'],
     ],
     [
+        'group' => 'solo', 'look' => 'breach', 'href' => 'parola.html', 'icon' => '../assets/parola/icon.svg',
+        'name' => ['it' => 'Parola del giorno', 'en' => 'Word of the day'],
+        'line' => ['it' => 'Indovina la parola italiana di 5 lettere in 6 tentativi: una nuova ogni giorno, uguale per tutti.',
+                   'en' => 'Guess the 5-letter Italian word in 6 tries: a new one every day, the same for everybody.'],
+        'who'  => ['it' => '1 giocatore', 'en' => '1 player'],
+        'how'  => ['it' => 'serie di vittorie, senza account', 'en' => 'win streaks, no account'],
+    ],
+    [
         'group' => 'solo', 'look' => 'breach', 'href' => 'memory.html', 'icon' => '../assets/memory/icon.svg',
         'name' => ['it' => 'Memory', 'en' => 'Memory'],
         'line' => ['it' => 'Trova tutte le coppie con meno mosse possibile: tre livelli e record personali.',

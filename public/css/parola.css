@@ -1,0 +1,15 @@
+#pa-board { display: grid; gap: 6px; width: min(92vw, 320px); }
+.pa-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.pa-tile { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border: 2px solid var(--line); border-radius: 6px; font: 700 clamp(1.3rem, 8vw, 1.8rem) ui-monospace, monospace; color: var(--ink); }
+.pa-tile.typed { border-color: var(--muted); }
+/* colour AND a mark in the corner, so the state does not depend on colour alone */
+.pa-tile.c, .pa-key.c { background: #1d6b3f; border-color: var(--accent); color: #e8ffe8; }
+.pa-tile.p, .pa-key.p { background: #7a5c00; border: 2px dashed #ffd24a; color: #fff6d6; }
+.pa-tile.a, .pa-key.a { background: #26232f; border-color: #26232f; color: var(--muted); }
+.pa-tile[data-m]::after, .pa-key[data-m]::after { content: attr(data-m); position: absolute; top: 1px; right: 3px; font: 600 0.6rem system-ui, sans-serif; }
+#pa-keys { width: min(100vw - 8px, 480px); margin-top: 14px; display: grid; gap: 6px; }
+.pa-krow { display: flex; gap: 4px; justify-content: center; }
+.pa-key { position: relative; flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0; text-transform: uppercase; font-weight: 700; }
+.pa-key.wide { flex: 1.6 1 0; font-size: 0.75rem; }
+#pa-share { margin-top: 8px; border-color: var(--accent); color: var(--accent); }
+#pa-share[hidden], #pa-new[hidden] { display: none; }
