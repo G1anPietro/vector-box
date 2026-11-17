@@ -10,19 +10,21 @@ const NEWS_STATUS = ['planned', 'doing', 'done'];
 function newsBoard(PDO $db): array {
     $rows = $db->query("SELECT * FROM news_items WHERE is_public = 1
                         ORDER BY CASE status WHEN 'doing' THEN 0 WHEN 'planned' THEN 1 ELSE 2 END, COALESCE(done_at, updated_at) DESC, id DESC LIMIT 80")->fetchAll(PDO::FETCH_ASSOC);
-    $up = $db->prepare('SELECT text_en, text_it, created_at FROM news_updates WHERE item_id = :i ORDER BY id DESC LIMIT 5');
+    // the last 5 notes of every item in ONE query (the page asks every 15 s: one query per item made it slow)
+    $notes = [];
+    foreach ($db->query('SELECT item_id, text_en, text_it, created_at FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY id DESC) AS rn FROM news_updates) WHERE rn <= 5 ORDER BY item_id, rn')->fetchAll(PDO::FETCH_ASSOC) as $u) {
+        $notes[(int)$u['item_id']][] = ['en' => $u['text_en'], 'it' => $u['text_it'], 'at' => (int)$u['created_at']];
+    }
     $out = [];
     $done = 0;
     foreach ($rows as $r) {
         if ($r['status'] === 'done' && ++$done > 40) continue;
-        $up->execute([':i' => $r['id']]);
-        $r['updates'] = $up->fetchAll(PDO::FETCH_ASSOC);
-        $up->closeCursor();
         $out[] = [
             'slug' => $r['slug'], 'kind' => $r['kind'], 'status' => $r['status'], 'progress' => $r['progress'] === null ? null : (int)$r['progress'],
             'title' => ['en' => $r['title_en'], 'it' => $r['title_it']], 'body' => ['en' => $r['body_en'], 'it' => $r['body_it']],
             'version' => $r['version'], 'updated_at' => (int)$r['updated_at'], 'done_at' => $r['done_at'] === null ? null : (int)$r['done_at'],
-            'updates' => array_map(fn($u) => ['en' => $u['text_en'], 'it' => $u['text_it'], 'at' => (int)$u['created_at']], $r['updates']),
+            'updates' => $notes[(int)$r['id']] ?? [],
         ];
     }
     return $out;
