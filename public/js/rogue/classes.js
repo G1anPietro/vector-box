@@ -20,7 +20,7 @@
     'use strict';
     const CLASSES = [
         { id: 'studente', name: 'Studente', col: '#00ff66', hp: 28, hpLvl: 4, mods: { xp: 15 },
-          kit: ['righello', 'felpa', 'd_cura', 'merendina', 'merendina'],
+          kit: ['righello', 'felpa', 'd_cura', 'merendina', 'merendina', 'dardi', 'dardi'],
           active: { name: 'Ripasso', info: 'Recuperi un terzo della vita.', cd: 70, effect: 'heal', power: 35 },
           info: 'Equilibrato e impara in fretta (+15% esperienza).' },
         { id: 'hacker', name: 'Hacker', col: '#00e5ff', hp: 22, hpLvl: 3, mods: { dodge: 2, search: 30, backstab: 1, usb: 25, stealth: 40 },

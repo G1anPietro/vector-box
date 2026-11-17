@@ -1,7 +1,7 @@
 // js/rogue/game.js — the rules of "Il Dungeon del Server". No DOM, no clock, no Math.random: the whole run is one
 // plain object (JSON), so it is saved after every turn and a seed always replays the same way.
 //   const s = newGame(seed, 'studente', meta);  act(s, { t: 'move', dx: 1, dy: 0 });  save(s) / load(text)
-// Actions: move {dx,dy} · wait · use {i} · drop {i} · unequip {slot} · descend · active · skill {id} · buy {i} · rest · recycle {i} · leave
+// Actions: move {dx,dy} · wait · search · throw {i,x,y} · use {i} · drop {i} · unequip {slot} · descend · active · skill {id} · buy {i} · rest · recycle {i} · leave
 // HOW TO ADD AN EFFECT (for a new item, trap or active skill): add a function to EFFECTS below; it receives
 // (state, power, targetMonster). Put its name in TARGETED if it needs an enemy in sight.
 (function (root, factory) {
@@ -12,7 +12,7 @@
     'use strict';
     const VERSION = 2, W = MAP.W, H = MAP.H, T = MAP.T, DIRS = MAP.DIRS;
     const FLOORS = MOBS.SECTORS.length * MOBS.PER_SECTOR;
-    const MOB_CAP = 40, INV_CAP = 24, MAX_FOOD = 1200, SIGHT = 8;
+    const MOB_CAP = 40, INV_CAP = 24, MAX_FOOD = 1200, SIGHT = 8, THROW_RANGE = 6, SEARCH_RADIUS = 3;
     const byId = (list) => Object.fromEntries(list.map((e) => [e.id, e]));
     const MOB = byId(MOBS.LIST), ITEM = byId(ITEMS.LIST), CLASS = byId(CLS.CLASSES), SKILL = byId(CLS.SKILLS);
     const idx = (x, y) => y * W + x;
@@ -92,7 +92,7 @@
         const it = { k: d.id };
         if (d.cat === 'weapon' || d.cat === 'armor') it.e = RNG.chance(r, 0.15) ? (RNG.chance(r, 0.25) ? 2 : 1) : 0;
         if (d.cat === 'usb') it.ch = d.ch + RNG.int(r, 3);
-        if (ITEMS.CATS[d.cat].stack) it.n = 1;
+        if (ITEMS.CATS[d.cat].stack) it.n = d.cat === 'throw' ? 2 + RNG.int(r, 3) : 1;
         return it;
     }
     const canTake = (s, it) => it.k === '$' || (cat(it).stack && s.p.inv.some((o) => o.k === it.k)) || s.p.inv.length < INV_CAP;
@@ -464,13 +464,20 @@
     };
 
     // ── the player's actions ────────────────────────────────────────────────
-    function search(s, chance) {
-        const p = s.p; let found = false;
-        for (let y = p.y - 1; y <= p.y + 1; y++) for (let x = p.x - 1; x <= p.x + 1; x++) {
-            if (s.map.tiles[idx(x, y)] === T.SECRET && RNG.chance(s.rng, chance)) { s.map.tiles[idx(x, y)] = T.DOOR; found = true; log(s, 'Hai trovato una porta segreta!', 'good'); }
+    /** Looks for secret doors and traps around the player. `radius` 1 is the free background search; the real one (Cerca) reaches further, less surely the farther away. */
+    function search(s, chance, radius) {
+        const p = s.p, R = radius || 1; let found = false;
+        const c = (d) => chance * (1 - 0.25 * (d - 1));
+        for (let y = p.y - R; y <= p.y + R; y++) for (let x = p.x - R; x <= p.x + R; x++) {
+            if (x < 0 || y < 0 || x >= W || y >= H) continue;
+            if (s.map.tiles[idx(x, y)] === T.SECRET && RNG.chance(s.rng, c(Math.max(Math.abs(x - p.x), Math.abs(y - p.y))))) { s.map.tiles[idx(x, y)] = T.DOOR; found = true; log(s, 'Hai trovato una porta segreta!', 'good'); }
         }
-        for (const t of s.traps) if (!t.found && Math.abs(t.x - p.x) <= 1 && Math.abs(t.y - p.y) <= 1 && RNG.chance(s.rng, chance)) { t.found = 1; log(s, 'Attento: ' + byTrap[t.k].name + '.', 'info'); }
+        for (const t of s.traps) {
+            const d = Math.max(Math.abs(t.x - p.x), Math.abs(t.y - p.y));
+            if (!t.found && d <= R && RNG.chance(s.rng, c(d))) { t.found = 1; found = true; log(s, 'Attento: ' + byTrap[t.k].name + '.', 'info'); }
+        }
         if (found) updateFov(s);
+        return found;
     }
     const byTrap = byId(MOBS.TRAPS);
     function pickUp(s) {
@@ -532,6 +539,7 @@
             log(s, (d.cat === 'weapon' ? 'Impugni: ' : d.cat === 'armor' ? 'Indossi: ' : 'Installi: ') + itemName(s, it) + '.');
             return true;
         }
+        if (d.cat === 'throw') { log(s, 'Si lancia: tocca la casella dove vuoi colpire.'); return false; }
         if (d.cat === 'food') { p.food = Math.min(MAX_FOOD, p.food + d.food); log(s, 'Mangi: ' + d.name + '.', 'good'); useUp(s, i); return true; }
         let target = null;
         if (d.cat === 'usb') {
@@ -543,6 +551,35 @@
         log(s, (d.cat === 'drink' ? 'Bevi: ' : d.cat === 'script' ? 'Lanci: ' : 'Usi: ') + d.name + '.');
         identify(s, it.k);
         EFFECTS[d.effect](s, d.power, target);
+        return true;
+    }
+    /** Throws a throwable item from the bag at (tx, ty), at most THROW_RANGE away; it hits the first monster on the line. */
+    function throwItem(s, i, tx, ty) {
+        const p = s.p, it = p.inv[i];
+        if (!it || ITEM[it.k].cat !== 'throw') return false;
+        const dx = tx - p.x, dy = ty - p.y, n = Math.max(Math.abs(dx), Math.abs(dy));
+        if (!n || n > THROW_RANGE || tx < 0 || ty < 0 || tx >= W || ty >= H) { log(s, 'Non puoi lanciare lì.'); return false; }
+        let lx = p.x, ly = p.y, hit = null;
+        for (let k = 1; k <= n; k++) {
+            const x = Math.round(p.x + dx * k / n), y = Math.round(p.y + dy * k / n);
+            if (!MAP.walkable(s.map.tiles[idx(x, y)])) break;
+            lx = x; ly = y;
+            hit = mobAt(s, x, y);
+            if (hit) break;
+        }
+        const d = ITEM[it.k], st = stats(s), one = { k: it.k, n: 1 };
+        useUp(s, i);
+        fx(s, 'throw', lx, ly);
+        log(s, 'Lanci: ' + d.name + '.');
+        if (hit) {
+            const md = MOB[hit.k];
+            if (hit.asleep || RNG.chance(s.rng, hitChance(st.acc, md.dodge || 0))) {
+                const dmg = rollDamage(s.rng, d.dmg, st.atk >> 1, md.def, RNG.chance(s.rng, st.crit));
+                log(s, `${d.name} colpisce ${md.name}: ${dmg}.`);
+                hurtMob(s, hit, dmg);
+            } else { log(s, `Manchi ${md.name}.`); hit.asleep = 0; hit.hunt = 1; }
+        }
+        if (RNG.chance(s.rng, 0.6) && s.map.tiles[idx(lx, ly)] === T.FLOOR) s.items.push({ x: lx, y: ly, it: one });
         return true;
     }
     function dropItem(s, i) {
@@ -631,6 +668,8 @@
         if (p.st.stun) { log(s, 'Sei bloccato!', 'bad'); took = true; }
         else if (a.t === 'move') took = move(s, a.dx, a.dy);
         else if (a.t === 'wait') { took = true; search(s, 0.5); }
+        else if (a.t === 'search') { took = true; if (!search(s, 1, SEARCH_RADIUS)) log(s, 'Cerchi in giro: non trovi niente.'); }
+        else if (a.t === 'throw') took = throwItem(s, a.i, a.x, a.y);
         else if (a.t === 'use') took = useItem(s, a.i);
         else if (a.t === 'drop') took = dropItem(s, a.i);
         else if (a.t === 'unequip') took = unequip(s, a.slot);
@@ -672,6 +711,87 @@
             return [best % W - p.x, ((best / W) | 0) - p.y];
         }
         return null;
+    }
+
+    // ── touch: what a tap, a double tap or a long press means (pure: the page only carries it out) ──
+    /** The cells from the player to (tx, ty) over what has been seen (the player's own cell not included); [] when there is no way. */
+    function travelPath(s, tx, ty) {
+        if (!s.seen[idx(tx, ty)]) return [];
+        for (const through of [false, true]) {
+            const dist = MAP.flood(s.map, [idx(tx, ty)], knownPass(s, through)), path = [];
+            if (dist[idx(s.p.x, s.p.y)] < 0) continue;
+            let x = s.p.x, y = s.p.y;
+            while ((x !== tx || y !== ty) && path.length < 400) { const v = MAP.downhill(s.map, dist, x, y); if (!v) break; x += v[0]; y += v[1]; path.push([x, y]); }
+            return path;
+        }
+        return [];
+    }
+    const TILE_NAME = { [T.WALL]: 'Muro', [T.SECRET]: 'Muro', [T.FLOOR]: 'Pavimento', [T.DOOR]: 'Porta', [T.STAIRS]: 'Scale', [T.ALTAR]: 'Vecchio terminale', [T.SHOP]: 'Negozio', [T.BENCH]: 'Panchina' };
+    const TILE_INFO = { [T.FLOOR]: 'Si cammina.', [T.DOOR]: 'Una porta aperta.', [T.WALL]: 'Non si passa.', [T.SECRET]: 'Non si passa.', [T.ALTAR]: 'Un vecchio terminale: toccarlo è un rischio.', [T.SHOP]: 'Qui si comprano cose.', [T.BENCH]: 'Per riposare e riciclare.' };
+    /** The info card of a cell: { title, lines[] } — what a long press shows. Never acts. */
+    function infoAt(s, x, y) {
+        const p = s.p, i = idx(x, y);
+        if (x === p.x && y === p.y) { const st = stats(s); return { title: CLASS[s.cls].name + ' (tu)', lines: [`PS ${p.hp}/${p.maxHp} · Livello ${p.lvl}`, `Attacco ${st.atk} · Difesa ${st.def}`] }; }
+        const m = s.mobs.find((e) => e.x === x && e.y === y && shown(s, e));
+        if (m) {
+            const d = MOB[m.k], lines = [d.info || '', `PS ${m.hp}/${m.max}`, `Colpisce per ${d.atk[0]}-${d.atk[1]}`];
+            if (m.asleep) lines.push('Dorme.');
+            if (d.ranged) lines.push('Attacca da lontano.');
+            if (d.speed > 1) lines.push('Veloce.');
+            if (d.boss) lines.push('Boss: le scale restano bloccate finché non cade.');
+            return { title: d.name, lines: lines.filter(Boolean) };
+        }
+        if (!s.seen[i]) return { title: 'Non esplorato', lines: ['Non hai ancora visto questa casella.'] };
+        const here = s.items.filter((e) => e.x === x && e.y === y);
+        if (here.length) return { title: here.map((e) => itemName(s, e.it)).join(', '), lines: here.map((e) => e.it.k === '$' ? 'Crediti: si raccolgono camminandoci sopra.' : itemInfo(s, e.it)).filter(Boolean) };
+        const trap = s.traps.find((e) => e.x === x && e.y === y && e.found);
+        if (trap) return { title: 'Trappola: ' + byTrap[trap.k].name, lines: ['La conosci: evitala.'] };
+        const t = s.map.tiles[i];
+        return { title: TILE_NAME[t] || 'Casella', lines: [TILE_INFO[t] || '', t === T.STAIRS && s.sealed ? 'Bloccate: c’è ancora il boss.' : ''].filter(Boolean) };
+    }
+    /** A known walkable cell next to (x, y) to stand on to use furniture there: the player's own cell when already next to it; null if none can be reached. */
+    function reachNeighbour(s, x, y) {
+        const p = s.p;
+        if (Math.abs(x - p.x) + Math.abs(y - p.y) === 1) return [p.x, p.y];
+        const dist = MAP.flood(s.map, [idx(p.x, p.y)], knownPass(s, true));
+        let best = null, bd = 1e9;
+        for (const v of DIRS) { const d = dist[idx(x + v[0], y + v[1])]; if (d >= 0 && d < bd) { bd = d; best = [x + v[0], y + v[1]]; } }
+        return best;
+    }
+    /**
+     * What a touch on cell (x, y) means. `kind`: 'tap' | 'double' | 'long'. `aim`: bag index of the item being aimed, or null/undefined.
+     * Returns { type: 'walk'|'attack'|'pickup'|'use'|'rest'|'search'|'info'|'throw'|'cancel'|'none', … }; the page does the walking.
+     */
+    function intentForTap(s, x, y, kind, aim) {
+        const p = s.p;
+        if (x < 0 || y < 0 || x >= W || y >= H) return { type: 'none', reason: 'outside' };
+        const hero = x === p.x && y === p.y;
+        if (kind === 'long') return hero ? { type: 'search' } : Object.assign({ type: 'info' }, infoAt(s, x, y));
+        if (aim !== undefined && aim !== null) {
+            const it = p.inv[aim], d = Math.max(Math.abs(x - p.x), Math.abs(y - p.y));
+            if (!it || ITEM[it.k].cat !== 'throw' || !d || d > THROW_RANGE || !s.vis[idx(x, y)]) return { type: 'cancel' };
+            return { type: 'throw', i: aim, x, y };
+        }
+        const i = idx(x, y), t = s.map.tiles[i];
+        if (hero) return kind === 'double' ? { type: 'search' } : t === T.STAIRS ? { type: 'use', what: 'stairs', x, y } : { type: 'rest' };
+        const m = s.mobs.find((e) => e.x === x && e.y === y && shown(s, e));
+        if (m) return { type: 'attack', id: m.id, x, y, adjacent: Math.abs(x - p.x) + Math.abs(y - p.y) === 1 };
+        if (!s.seen[i]) return { type: 'none', reason: 'unseen' };
+        if (t === T.SHOP || t === T.BENCH || t === T.ALTAR) {
+            const via = reachNeighbour(s, x, y);
+            return via ? { type: 'use', what: t === T.SHOP ? 'shop' : t === T.BENCH ? 'bench' : 'altar', x, y, via } : { type: 'none', reason: 'unreachable' };
+        }
+        if (!MAP.walkable(t)) return { type: 'none', reason: 'blocked' };
+        if (!travelNext(s, x, y)) return { type: 'none', reason: 'unreachable' };
+        if (t === T.STAIRS) return { type: 'use', what: 'stairs', x, y };
+        if (itemsAt(s, x, y).length) return { type: 'pickup', x, y };
+        return { type: 'walk', x, y };
+    }
+    /** What a quickslot holding item kind `k` does: use it, start aiming it, or nothing (not in the bag). */
+    function slotIntent(s, k) {
+        const i = s.p.inv.findIndex((it) => it.k === k);
+        if (i < 0) return { type: 'none' };
+        return ITEM[k].cat === 'throw' ? { type: 'aim', i } : { type: 'use', i };
     }
 
     // ── a new run, saving, the profile ──────────────────────────────────────
@@ -762,6 +882,6 @@
     }
 
     return { VERSION, FLOORS, INV_CAP, MAX_FOOD, MOB, ITEM, CLASS, SKILL, EFFECTS, TARGETED, newGame, act, save, load, stats, hitChance, rollDamage, xpNeed,
-        itemName, itemInfo, itemLook, known, price, canTake, shown, threats, nearest, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext,
+        itemName, itemInfo, itemLook, known, price, canTake, shown, threats, nearest, mobAt, itemsAt, sectorOf, bossOf, travelNext, exploreNext, THROW_RANGE, SEARCH_RADIUS, intentForTap, infoAt, slotIntent, travelPath,
         newMeta, fixMeta, unlocked, recordRun, updateFov, buyUpgrade, upCost, level, checkMedals, counters, UPGRADES: META.UPGRADES, MEDALS: META.MEDALS, enterHub };
 });
