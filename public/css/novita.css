@@ -21,3 +21,6 @@
 .nv-admin { display: grid; gap: 6px; margin-top: 8px; }
 .nv-admin select, .nv-admin input { font: inherit; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 6px; padding: 6px 8px; min-height: 40px; width: 100%; }
 .nv-admin button { font: inherit; min-height: 40px; border-radius: 6px; border: 1px solid var(--plank); background: var(--dusk); color: var(--text); cursor: pointer; }
+
+/* the last card must never end at the very edge of the screen (phone browsers with bars and gesture areas) */
+.doc { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
