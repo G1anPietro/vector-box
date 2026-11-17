@@ -29,6 +29,9 @@
 
         let mode = 'daily', answer = '', guesses = [], cur = '', over = false, msgKey = null, msgVars = null, today = 0;
         let stats = Object.assign(L.EMPTY(), load(STATS_KEY) || {});
+        // a stored value that is damaged or from another version must not break the page
+        if (!Array.isArray(stats.dist) || stats.dist.length !== 6 || stats.dist.some((n) => !Number.isFinite(n))) stats.dist = [0, 0, 0, 0, 0, 0];
+        for (const k of ['played', 'won', 'streak', 'best']) if (!Number.isFinite(stats[k])) stats[k] = 0;
 
         const rows = [];
         for (let r = 0; r < L.TRIES; r++) {
@@ -143,7 +146,7 @@
         $('pa-keys').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) press(b.dataset.k); });
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey || e.altKey) return;
-            if (e.target.closest && e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;   // let a focused button act
+            if (e.target.closest && e.target.closest('button') && !e.target.classList.contains('pa-key') && (e.key === 'Enter' || e.key === ' ')) return;   // let a focused button act
             if (e.key === 'Enter') { e.preventDefault(); press('enter'); }
             else if (e.key === 'Backspace') { e.preventDefault(); press('back'); }
             else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());

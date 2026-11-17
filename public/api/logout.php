@@ -10,6 +10,8 @@ if (strtolower($_SERVER['HTTP_SEC_FETCH_SITE'] ?? 'none') === 'cross-site') {
 }
 
 startWritableSession();
+// the device list on the Account page: this browser is no longer signed in
+try { require_once __DIR__ . '/sessions_lib.php'; getDbConnection()->prepare('DELETE FROM account_sessions WHERE sid_hash = :h')->execute([':h' => sessionSidHash()]); } catch (Throwable $e) { /* retention removes it later */ }
 $_SESSION = [];
 
 if (ini_get('session.use_cookies')) {

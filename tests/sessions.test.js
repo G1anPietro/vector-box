@@ -134,3 +134,12 @@ test('a pre-feature session that first shows up on a READ-ONLY request still bec
     assert.equal(rows('ses_hal').length, 0);
     assert.notEqual((await a.get('/api/check_session.php')).json.username, 'ses_hal');
 });
+
+test('logging out removes the device from the list at once', async () => {
+    await reg('ses_ida');
+    const a = await signIn('ses_ida');
+    const before = rows('ses_ida').length;                    // (the registration session is also there)
+    const r = await a.get('/api/logout.php', { headers: { Accept: 'application/json' } });
+    assert.equal(r.status, 200);
+    assert.equal(rows('ses_ida').length, before - 1);
+});

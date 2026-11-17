@@ -63,3 +63,8 @@ test('timestamps keep the server offset: a ban at 12:00+0100 is 11:00 UTC, so it
     assert.equal(php(`echo json_encode(attacksParseSsh('${ssh}')['ts']);`), utc);
     assert.equal(php(`echo json_encode(attacksParseBan(str_replace('+0100', 'Z', '${ban}'))['ts']);`), utc + 3600);
 });
+
+test('a user name that is not valid UTF-8 never turns the summary file into 0 bytes', () => {
+    const out = php(`$d = attacksBuild(['2026-11-18T10:00:00+0000 h sshd-session[1]: Invalid user a\\xffb from 1.2.3.4 port 5'], [], [], ${NOW}); echo strlen((string)json_encode($d, JSON_INVALID_UTF8_SUBSTITUTE)) > 50 ? 1 : 0;`);
+    assert.equal(out, 1);
+});

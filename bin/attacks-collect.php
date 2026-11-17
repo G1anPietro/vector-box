@@ -22,25 +22,29 @@ $prev = attacksRead();
 $d = attacksBuild($ssh, $web, $ban);
 $d['speed'] = attacksSpeed($web, time());
 $tmp = attacksFile() . '.tmp';
-if (file_put_contents($tmp, json_encode($d), LOCK_EX) === false || !rename($tmp, attacksFile())) { fwrite(STDERR, "cannot write " . attacksFile() . "\n"); exit(1); }
+$json = json_encode($d, JSON_INVALID_UTF8_SUBSTITUTE);   // a user name cut in the middle of a character must not turn the whole file into 0 bytes
+if ($json === false || file_put_contents($tmp, $json, LOCK_EX) === false || !rename($tmp, attacksFile())) { fwrite(STDERR, "cannot write " . attacksFile() . "\n"); exit(1); }
 @chgrp(attacksFile(), 'www-data');   // the web server (group www-data) reads it; the owner's user is a member of that group
 @chmod(attacksFile(), 0660);
-foreach (attacksAlerts($prev, $d) as [$t, $m]) attacksNotify($t, $m);   // after the file is written: a slow phone service never loses the summary
-// Daily digest + disk alert; state in data/digest.state (small JSON, atomic write)
+$push = attacksAlerts($prev, $d);
+// Daily digest + disk alert; state in data/digest.state (small JSON, atomic write). The state is written BEFORE anything is pushed:
+// if it cannot be written, nothing is sent, so a full disk can never turn into a push every 10 minutes.
 $stFile = dirname(attacksFile()) . '/digest.state';
 $st = json_decode((string)@file_get_contents($stFile), true); $st = is_array($st) ? $st : null;
 $now = time(); $today = date('Y-m-d', $now); $dirty = false;
 $disk = attacksDiskPct(dirname(attacksFile()));
 if ($disk < 15 && ($st['disk_alert_date'] ?? '') !== $today) {
-    attacksNotify('Disk space low', "Free space of the data disk: $disk%");
+    $push[] = ['Disk space low', "Free space of the data disk: $disk%"];
     $st['disk_alert_date'] = $today; $dirty = true;
 }
 if (attacksShouldDigest($st, $now)) {
     $errLog = dirname(attacksFile()) . '/system_errors.log';
     // the first digest has nothing to compare with: start counting from now instead of reporting the whole history as new
     [$errs, $off] = isset($st['err_offset']) ? attacksNewErrors($errLog, (int)$st['err_offset']) : [0, (int)@filesize($errLog)];
-    if ($m = attacksDigest($d, $errs, $disk, $now)) attacksNotify($m[0], $m[1]);
+    if ($m = attacksDigest($d, $errs, $disk, $now)) $push[] = $m;
     $st['digest_date'] = $today; $st['err_offset'] = $off; $dirty = true;
 }
-if ($dirty && file_put_contents($stFile . '.tmp', json_encode($st), LOCK_EX) !== false) rename($stFile . '.tmp', $stFile);
+$stateOk = !$dirty || (file_put_contents($stFile . '.tmp', json_encode($st), LOCK_EX) !== false && rename($stFile . '.tmp', $stFile));
+if ($stateOk) foreach ($push as [$t, $m]) attacksNotify($t, $m);   // after the files are written: a slow phone service never loses the summary
+else fwrite(STDERR, "cannot write $stFile: no push sent\n");
 echo "ssh {$d['ssh']['total']}  web {$d['web']['total']}  bans {$d['bans']['total']}\n";
