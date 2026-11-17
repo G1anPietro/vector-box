@@ -21,7 +21,7 @@ $updated = '2026-11-16';
     <meta name="theme-color" content="#16141c">
     <title>Privacy — vector-box</title>
     <?php if ($adsOn && !adsHiddenForViewer()): ?><meta name="vb-ads" content="<?= adsConsentMode() ?>"><script src="../js/cookie_consent.js?v=<?= htmlspecialchars(defined('APP_VERSION') ? APP_VERSION : '1') ?>"></script><?php endif; ?>
-    <link rel="stylesheet" href="../css/giochi.css?v=3">
+    <link rel="stylesheet" href="../css/giochi.css?v=4">
 </head>
 <body>
     <header class="top">

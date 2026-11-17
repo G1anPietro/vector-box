@@ -93,7 +93,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
  * header (one row) / HUD / MAP (flexible) / log / controls. Short phones, browser bars and landscape all just give the map
  * less or more room: js/dungeon.js measures #dg-wrap and fits whole tiles into it. */
 html, body { height: 100%; }
-body { height: 100dvh; min-height: 0; overflow: hidden; padding: env(safe-area-inset-top) calc(6px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(6px + env(safe-area-inset-left)); }
+body { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; padding: env(safe-area-inset-top) calc(6px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(6px + env(safe-area-inset-left)); }
 .dg-top { flex: none; gap: 4px; padding: 2px 0 4px; }
 .dg-top h1 { font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dg-top a, .dg-top button { min-height: 40px; }
@@ -137,3 +137,27 @@ body.fs .dg-top { padding-top: 0; }
 }
 /* big screens: a larger map, and the controls stay under it */
 @media (min-width: 900px) and (min-height: 700px) { #dg-game { max-width: 980px; } .dg-log { height: 4.6em; } }
+
+/* very narrow screens (foldables closed, small old phones): the toolbar wraps to two rows of four so the buttons stay finger-sized */
+@media (max-width: 330px) and (orientation: portrait) {
+    .dg-toolbar { grid-template-columns: repeat(4, 1fr); }
+    .dg-top h1 { display: none; }
+}
+/* extremely short landscape (browser bars eating the screen): everything slimmer, still readable */
+@media (orientation: landscape) and (max-height: 340px) {
+    #dg-game { grid-template-columns: minmax(0, 1fr) clamp(250px, 42vw, 340px); }
+    .dg-log { height: 2.5em; font-size: .7rem; }
+    .dg-infoline { display: none; }
+    .dg-toolbar { grid-template-columns: repeat(7, 1fr); }
+    .dg-toolbar button { min-height: 38px; font-size: .6rem; }
+    #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(5, 1fr); }
+    #dg-game.mode-touch .dg-acts button { min-height: 36px; font-size: .62rem; }
+    .dg-top a, .dg-top button { min-height: 34px; }
+}
+/* browsers without the "inset" shorthand (Safari before 14.1): the same boxes, spelled out */
+.dg-modal, .dg-cover { top: 0; left: 0; right: 0; bottom: 0; }
+.dg-stage.scan::after { top: 0; left: 0; right: 0; bottom: 0; }
+@media (orientation: landscape) and (max-height: 340px) and (max-width: 680px) {
+    .dg-toolbar { grid-template-columns: repeat(4, 1fr); }
+    #dg-game.mode-touch .dg-acts { grid-template-columns: repeat(3, 1fr); }
+}

@@ -150,3 +150,4 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* donation button (Support page) */
 .doc .cta.coffee { background: #f2c66d; color: #231a08; margin-right: 10px; }
 .doc .cta.secondary { background: transparent; color: var(--link); border: 1px solid var(--link); }
+.doc, .doc a, .doc li, .doc p { overflow-wrap: anywhere; }

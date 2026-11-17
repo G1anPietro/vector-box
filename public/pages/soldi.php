@@ -52,7 +52,7 @@ $goal = donateGoal();
     <?= socialMeta($it ? 'Dove vanno i soldi — vector-box' : 'Where the money goes — vector-box',
         $it ? 'Quanto costa tenere acceso vector-box, cosa è arrivato e a cosa servono le donazioni.' : 'What it costs to keep vector-box running, what came in and what donations pay for.',
         '/pages/soldi.php') ?>
-    <link rel="stylesheet" href="../css/giochi.css?v=3">
+    <link rel="stylesheet" href="../css/giochi.css?v=4">
     <link rel="stylesheet" href="../css/dona.css?v=<?= $e(APP_VERSION) ?>">
 </head>
 <body>

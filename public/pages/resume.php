@@ -20,7 +20,7 @@ if (!$canView) {
     $it = $lang === 'it';
     echo '<!DOCTYPE html><html lang="' . $lang . '"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
        . '<meta name="robots" content="noindex"><title>' . ($it ? 'Pagina privata' : 'Private page') . '</title>'
-       . '<link rel="stylesheet" href="../css/giochi.css?v=1"></head><body><main class="doc">'
+       . '<link rel="stylesheet" href="../css/giochi.css?v=4"></head><body><main class="doc">'
        . '<h1>' . ($it ? 'Pagina privata' : 'Private page') . '</h1><p>'
        . ($it ? 'Il curriculum è visibile solo agli account autorizzati. Se ti serve, chiedilo a chi gestisce il sito.'
               : 'The CV is only visible to authorised accounts. If you need it, ask whoever runs the site.')

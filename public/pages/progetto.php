@@ -11,7 +11,7 @@ require_once __DIR__ . '/../includes/head.php';
     <meta name="theme-color" content="#16141c">
     <title>Il progetto vector-box</title>
     <?= socialMeta('Il progetto vector-box', 'Un sito e un server costruiti da zero da uno studente di informatica: architettura, sicurezza, giochi multigiocatore e i problemi veri risolti lungo la strada.', '/pages/progetto.php', '/assets/og/desktop.jpg') ?>
-    <link rel="stylesheet" href="../css/giochi.css?v=3">
+    <link rel="stylesheet" href="../css/giochi.css?v=4">
     <link rel="stylesheet" href="../css/progetto.css?v=1">
 </head>
 <body>

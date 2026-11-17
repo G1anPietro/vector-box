@@ -25,7 +25,7 @@ $updated = '2026-11-17';
         $it ? 'Come vector-box protegge account, password e dati, quali sono i suoi limiti e come segnalare una vulnerabilità.'
             : 'How vector-box protects accounts, passwords and data, what its limits are and how to report a vulnerability.',
         '/pages/sicurezza.php', '/assets/og/desktop.jpg') ?>
-    <link rel="stylesheet" href="../css/giochi.css?v=3">
+    <link rel="stylesheet" href="../css/giochi.css?v=4">
 </head>
 <body>
     <header class="top">

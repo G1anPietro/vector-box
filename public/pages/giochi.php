@@ -189,7 +189,7 @@ function gameBox(array $g, callable $T): void { ?>
         : 'Party games to play with your phone (Who’s the spy?, Lupus, Never have I ever…) and solo games, free in the browser.',
         '/pages/giochi.php') ?>
     <link rel="icon" href="../assets/solitario/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/giochi.css?v=3">
+    <link rel="stylesheet" href="../css/giochi.css?v=4">
     <?= adsScriptTag() ?>
 </head>
 <body class="shelf-page">

@@ -24,7 +24,7 @@ $service = $main ? (preg_match('#ko-fi\.com#', $main) ? 'Ko-fi' : (preg_match('#
     <?= socialMeta($it ? 'Offrimi un caffè — vector-box' : 'Buy me a coffee — vector-box',
         $it ? 'vector-box è gratis e senza account per i giochi: se ti va, aiuta a tenerlo acceso.' : 'vector-box is free, games need no account: if you like, help keep it running.',
         '/pages/dona.php') ?>
-    <link rel="stylesheet" href="../css/giochi.css?v=3">
+    <link rel="stylesheet" href="../css/giochi.css?v=4">
     <link rel="stylesheet" href="../css/dona.css?v=1">
 </head>
 <body>
