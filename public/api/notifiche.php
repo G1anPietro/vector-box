@@ -141,7 +141,7 @@ try {
 
     if ($action === 'test') {
         if (!checkRateLimit('push_test', 5, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many tests, try later', 429);
-        $n = notifyUsers($db, [$me], null, 'prova', 'Notifiche attive ✓', 'Così ti arriveranno i promemoria delle verifiche.', '/pages/appunti.php');
+        $n = notifyUsers($db, [$me], null, 'prova', tr(['en' => 'Notifications on ✓', 'it' => 'Notifiche attive ✓']), tr(['en' => 'This is how the reminders for your tests will reach you.', 'it' => 'Così ti arriveranno i promemoria delle verifiche.']), '/pages/appunti.php');
         jsonResponse(['success' => true, 'delivered' => $n]);
     }
 

@@ -2,13 +2,17 @@
 // (test reminders) and opens the right page when one is tapped. Scope: /pages/.
 'use strict';
 
+// The language of the notification: the browser's (the server writes the text of each notification itself).
+const isItalian = () => /^it/i.test((self.navigator && self.navigator.language) || '');
+const DEFAULT_TITLE = () => (isItalian() ? 'Appunti di classe' : 'Class notes');
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (event) => {
     let data = {};
     try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data ? event.data.text() : '' }; }
-    event.waitUntil(self.registration.showNotification(String(data.title || 'Appunti di classe'), {
+    event.waitUntil(self.registration.showNotification(String(data.title || DEFAULT_TITLE()), {
         body: String(data.body || ''),
         icon: '../assets/appunti/icon-192.png',
         badge: '../assets/appunti/icon-192.png',
