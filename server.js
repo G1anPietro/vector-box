@@ -1,3 +1,5 @@
+// server.js — Node/Express control panel: Minecraft process, Wake-on-LAN, telemetry over SSE, chat hub (/internal/chat/publish, /api/chat/stream).
+// Started by `npm start` (systemd in production), behind nginx. Does NOT execute PHP; PHP pushes chat events to it with notifyChatHub().
 require('dotenv').config();
 const os = require('os');
 const crypto = require('crypto');

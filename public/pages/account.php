@@ -1,4 +1,5 @@
 <?php
+// public/pages/account.php — the account page (password, theme, e-mail address and confirmation, data export/delete). Opened from the desktop menu.
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 require_once __DIR__ . '/../api/mailer.php';

@@ -1,4 +1,5 @@
 <?php
+// public/pages/vault.php — the CIPHER_VAULT puzzle page (js/arg.js). Opened from the desktop; no API calls of its own.
 require_once __DIR__ . '/../includes/head.php';
 ?>
 <!DOCTYPE html>

@@ -1,4 +1,5 @@
 <?php
+// public/pages/login.php — login / registration page: a server-rendered form that handles its own POST (sessions via establishSession()).
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 

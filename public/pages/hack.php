@@ -1,4 +1,5 @@
 <?php
+// public/pages/hack.php — the "hack" mini-game window (js/hack.js). Opened from the desktop menu.
 require_once __DIR__ . '/../includes/head.php';
 ?>
 <!DOCTYPE html>
