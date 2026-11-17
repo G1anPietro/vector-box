@@ -28,7 +28,7 @@ test.describe('search engines and link previews', () => {
     test('static game pages have a description and a preview image that exists', async () => {
         for (const g of ['spia', 'lupus', 'nonhomai', 'solitario']) {
             const html = await (await fetch(`${site.base}/pages/${g}.html`)).text();
-            assert.match(html, /<meta name="description" content="[^"]{40,}">/, g);
+            assert.match(html, /<meta name="description" content="[^"]{40,}"[^>]*>/, g);
             const img = html.match(/og:image" content="https:\/\/[^/]+(\/[^"]+)"/)[1];
             assert.equal((await fetch(site.base + img)).status, 200, img);
         }

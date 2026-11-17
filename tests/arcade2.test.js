@@ -96,7 +96,7 @@ test('the three pages are served, have no inline script, and the lists know them
         const map = await (await fetch(`${site.base}/sitemap.php`)).text();
         for (const g of ['forza4', 'impiccato', 'simon']) {
             const html = await (await fetch(`${site.base}/pages/${g}.html`)).text();
-            assert.match(html, /<meta name="description" content="[^"]{40,}">/, g);
+            assert.match(html, /<meta name="description" content="[^"]{40,}"[^>]*>/, g);
             assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), g + ': no inline scripts');
             for (const f of [`/js/${g}.js`, `/css/${g}.css`, `/assets/${g}/icon.svg`, '/css/arcade.css']) assert.equal((await fetch(site.base + f)).status, 200, f);
             assert.ok(games.includes(`${g}.html`), g + ' in the game list');

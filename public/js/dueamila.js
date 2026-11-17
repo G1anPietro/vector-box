@@ -44,6 +44,13 @@
     const api = { N, slideRow, move, addTile, canMove };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.DueAmila = api;
+    VBI18N.add('it', {
+        title: '2048 — vector-box', desc: '2048 gratis nel browser: scorri o usa le frecce per unire i numeri uguali. Record personale, nessun account.',
+        back: '← Giochi', new: 'Nuova', score: 'Punti', best: 'Record', grid: 'Griglia 4 per 4', arrows: 'Frecce', up: 'Su', left: 'Sinistra', down: 'Giù', right: 'Destra',
+        help: 'Scorri sulla griglia o usa le frecce (o W A S D). Due numeri uguali che si toccano diventano la loro somma: arriva a 2048.',
+        empty: 'vuota', over: 'Nessuna mossa possibile. Nuova partita?', won: 'Hai fatto 2048! Puoi continuare.',
+    });
+    VBI18N.add('en', { empty: 'empty', over: 'No moves left. New game?', won: 'You made 2048! You can keep going.' });
 
     // ------------------------------ the page ------------------------------
     document.addEventListener('DOMContentLoaded', () => {
@@ -58,10 +65,10 @@
         for (let i = 0; i < N * N; i++) { const d = document.createElement('div'); d.className = 't'; grid.append(d); cells.push(d); }
 
         function paint() {
-            board.forEach((v, i) => { cells[i].textContent = v ? String(v) : ''; cells[i].className = 't' + (v ? ' v' + Math.min(v, 4096) : ''); cells[i].setAttribute('aria-label', v ? String(v) : 'vuota'); });
+            board.forEach((v, i) => { cells[i].textContent = v ? String(v) : ''; cells[i].className = 't' + (v ? ' v' + Math.min(v, 4096) : ''); cells[i].setAttribute('aria-label', v ? String(v) : VBLang.t('empty')); });
             $('db-score').textContent = String(score);
             $('db-best').textContent = String(best);
-            $('db-msg').textContent = over ? 'Nessuna mossa possibile. Nuova partita?' : won ? 'Hai fatto 2048! Puoi continuare.' : '';
+            $('db-msg').textContent = over ? VBLang.t('over') : won ? VBLang.t('won') : '';
         }
 
         function restart() { board = addTile(addTile(new Array(N * N).fill(0), Math.random), Math.random); score = 0; won = false; over = false; paint(); }
@@ -93,6 +100,7 @@
         }, { passive: true });
         document.querySelectorAll('[data-dir]').forEach((b) => b.addEventListener('click', () => play(b.dataset.dir)));
         $('db-new').addEventListener('click', restart);
+        window.addEventListener('vb-lang', paint);
         restart();
     });
 })(typeof window !== 'undefined' ? window : globalThis);

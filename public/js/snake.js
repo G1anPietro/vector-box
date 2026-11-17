@@ -47,6 +47,15 @@
     const api = { SIZE, DIRS, newGame, turn, step, placeFood };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Snake = api;
+    VBI18N.add('it', {
+        title: 'Snake — vector-box', desc: 'Snake gratis nel browser: mangia, cresci, non toccare i muri né te stesso. Frecce, scorrimento o tasti sullo schermo. Nessun account.',
+        back: '← Giochi', new: 'Nuova', score: 'Punti', best: 'Record', field: 'Campo di gioco', arrows: 'Frecce', up: 'Su', left: 'Sinistra', down: 'Giù', right: 'Destra',
+        help: 'Frecce, W A S D, scorri sul campo o usa i tasti. Ogni cibo ti fa crescere e andare più veloce. In pausa se cambi scheda.',
+        m_won: 'Hai riempito tutto il campo!', m_over: 'Fine. Premi Nuova per riprovare.', m_start: 'Premi una freccia o scorri per cominciare.', m_pause: 'In pausa: premi una freccia per riprendere.',
+    });
+    VBI18N.add('en', {
+        m_won: 'You filled the whole field!', m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or swipe to start.', m_pause: 'Paused: press an arrow key to resume.',
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         const $ = (id) => document.getElementById(id);
@@ -57,6 +66,9 @@
         let g, timer = null, best = 0, started = false;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
         const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || '#00ff66';
+
+        let msgKey = null;   // the message is kept as a key so it can be redrawn when the language changes
+        const say = (k) => { msgKey = k; $('sn-msg').textContent = k ? VBLang.t(k) : ''; };
 
         function size() {
             const px = Math.min(window.innerWidth - 24, 420);
@@ -81,13 +93,13 @@
             if (g.status !== 'play') {
                 clearTimeout(timer); timer = null;
                 if (g.score > best) { best = g.score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } draw(); }
-                $('sn-msg').textContent = g.status === 'won' ? 'Hai riempito tutto il campo!' : 'Fine. Premi Nuova per riprovare.';
+                say(g.status === 'won' ? 'm_won' : 'm_over');
                 return;
             }
             timer = setTimeout(loop, speed());
         }
-        function begin() { if (!started) { started = true; $('sn-msg').textContent = ''; timer = setTimeout(loop, speed()); } }
-        function restart() { clearTimeout(timer); g = newGame(); started = false; $('sn-msg').textContent = 'Premi una freccia o scorri per cominciare.'; draw(); }
+        function begin() { if (!started) { started = true; say(null); timer = setTimeout(loop, speed()); } }
+        function restart() { clearTimeout(timer); g = newGame(); started = false; say('m_start'); draw(); }
 
         const dirOf = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
         document.addEventListener('keydown', (e) => {
@@ -107,7 +119,8 @@
         document.querySelectorAll('[data-dir]').forEach((b) => b.addEventListener('click', () => { if (g.status === 'play') { turn(g, b.dataset.dir); begin(); } }));
         $('sn-new').addEventListener('click', restart);
         window.addEventListener('resize', size);
-        document.addEventListener('visibilitychange', () => { if (document.hidden && timer) { clearTimeout(timer); timer = null; started = false; $('sn-msg').textContent = 'In pausa: premi una freccia per riprendere.'; } });
-        g = newGame(); size(); $('sn-msg').textContent = 'Premi una freccia o scorri per cominciare.';
+        document.addEventListener('visibilitychange', () => { if (document.hidden && timer) { clearTimeout(timer); timer = null; started = false; say('m_pause'); } });
+        window.addEventListener('vb-lang', () => say(msgKey));
+        g = newGame(); size(); say('m_start');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

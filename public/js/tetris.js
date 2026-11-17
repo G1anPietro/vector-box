@@ -111,6 +111,14 @@
     const api = { W, H, PIECES, TYPES, makeRng, newGame, cellsOf, fits, move, rotate, down, hardDrop, ghostY, lock, speed, rotCells };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Tetris = api;
+    VBI18N.add('it', {
+        title: 'Tetris — vector-box', desc: 'Tetris gratis nel browser: pezzi che cadono, righe da completare, livelli sempre più veloci. Tastiera o tasti sullo schermo, record personale, nessun account.',
+        back: '← Giochi', new: 'Nuova', field: 'Campo di gioco', score: 'Punti', lines: 'Righe', level: 'Livello', best: 'Record', next: 'Pezzo successivo', controls: 'Comandi',
+        left: 'Sinistra', rotate: 'Ruota', right: 'Destra', down: 'Giù', drop: 'Caduta veloce',
+        help: 'Frecce o W A S D: muovi e ruota (Z e X girano nei due sensi), Spazio per far cadere subito il pezzo. Completa le righe per fare punti: ogni 10 righe si sale di livello. In pausa se cambi scheda.',
+        m_over: 'Fine partita. Premi Nuova per riprovare.', m_start: 'Premi una freccia o un tasto per cominciare.', m_pause: 'In pausa: premi un tasto per riprendere.',
+    });
+    VBI18N.add('en', { m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or any key to start.', m_pause: 'Paused: press a key to resume.' });
 
     // ------------------------------ the page ------------------------------
     document.addEventListener('DOMContentLoaded', () => {
@@ -122,6 +130,9 @@
         const KEY = 'vb_tetris_best';
         let g, timer = null, best = 0, running = false, cell = 24;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
+
+        let msgKey = null;   // kept as a key so it is redrawn when the language changes
+        const say = (k) => { msgKey = k; $('tt-msg').textContent = k ? VBLang.t(k) : ''; };
 
         function layout() {
             const dpr = window.devicePixelRatio || 1;
@@ -154,10 +165,10 @@
         function over() {
             running = false; clearTimeout(timer);
             if (g.score > best) { best = g.score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
-            draw(); $('tt-msg').textContent = 'Fine partita. Premi Nuova per riprovare.';
+            draw(); say('m_over');
         }
-        function begin() { if (!running && g.status === 'play') { running = true; $('tt-msg').textContent = ''; timer = setTimeout(tick, speed(g.level)); } }
-        function restart() { clearTimeout(timer); running = false; g = newGame(); $('tt-msg').textContent = 'Premi una freccia o un tasto per cominciare.'; draw(); }
+        function begin() { if (!running && g.status === 'play') { running = true; say(null); timer = setTimeout(tick, speed(g.level)); } }
+        function restart() { clearTimeout(timer); running = false; g = newGame(); say('m_start'); draw(); }
         function act(fn) { if (g.status !== 'play') return; begin(); fn(); draw(); if (g.status === 'over') over(); }
 
         const keys = { ArrowLeft: () => move(g, -1), ArrowRight: () => move(g, 1), ArrowUp: () => rotate(g, 1), ArrowDown: () => down(g, true), ' ': () => hardDrop(g),
@@ -172,7 +183,8 @@
         });
         $('tt-new').addEventListener('click', restart);
         window.addEventListener('resize', layout);
-        document.addEventListener('visibilitychange', () => { if (document.hidden && running) { clearTimeout(timer); running = false; $('tt-msg').textContent = 'In pausa: premi un tasto per riprendere.'; } });
-        g = newGame(); layout(); $('tt-msg').textContent = 'Premi una freccia o un tasto per cominciare.';
+        document.addEventListener('visibilitychange', () => { if (document.hidden && running) { clearTimeout(timer); running = false; say('m_pause'); } });
+        window.addEventListener('vb-lang', () => say(msgKey));
+        g = newGame(); layout(); say('m_start');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

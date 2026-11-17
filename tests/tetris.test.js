@@ -70,7 +70,7 @@ test('the page is served, has no inline script, and the lists know it', async ()
     const site = await startSite();
     try {
         const html = await (await fetch(`${site.base}/pages/tetris.html`)).text();
-        assert.match(html, /<meta name="description" content="[^"]{40,}">/);
+        assert.match(html, /<meta name="description" content="[^"]{40,}"[^>]*>/);
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html));
         for (const f of ['/js/tetris.js', '/css/tetris.css', '/assets/tetris/icon.svg']) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.match(await (await fetch(`${site.base}/pages/giochi.php`)).text(), /tetris\.html/);
