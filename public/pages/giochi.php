@@ -59,6 +59,14 @@ $GAMES = [
         'how'  => ['it' => 'funziona anche offline', 'en' => 'works offline too'],
     ],
     [
+        'group' => 'solo', 'look' => 'breach', 'href' => 'dungeon.html', 'icon' => '../assets/dungeon/icon.svg',
+        'name' => ['it' => 'Il Dungeon del Server', 'en' => 'The Server Dungeon'],
+        'line' => ['it' => 'Roguelike a turni: scendi nel datacentre sotto la scuola tra bug, script e chiavette. Salva da solo a ogni turno.',
+                   'en' => 'Turn-based roguelike: descend into the datacentre under the school past bugs, scripts and USB sticks. Saves itself every turn.'],
+        'who'  => ['it' => '1 giocatore', 'en' => '1 player'],
+        'how'  => ['it' => 'si gioca col pollice o da tastiera', 'en' => 'thumb or keyboard'],
+    ],
+    [
         'group' => 'solo', 'look' => 'breach', 'href' => 'tetris.html', 'icon' => '../assets/tetris/icon.svg',
         'name' => ['it' => 'Tetris', 'en' => 'Tetris'],
         'line' => ['it' => 'I pezzi cadono, tu completi le righe: livelli sempre più veloci, anteprima e caduta veloce.',
