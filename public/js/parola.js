@@ -102,6 +102,7 @@
             guesses.push(cur); cur = '';
             const won = guesses[guesses.length - 1] === answer;
             say(null);
+            window.VBFx && VBFx.play(won ? 'win' : guesses.length >= L.TRIES ? 'lose' : 'good');
             if (won || guesses.length >= L.TRIES) finish(won);
             persist(); paint();
         }
@@ -110,7 +111,7 @@
             if (over) return;
             if (k === 'enter') return submit();
             if (k === 'back') cur = cur.slice(0, -1);
-            else if (/^[a-z]$/.test(k) && cur.length < L.LEN) cur += k;
+            else if (/^[a-z]$/.test(k) && cur.length < L.LEN) { cur += k; window.VBFx && VBFx.play('click'); }
             else return;
             say(null); paint();
         }

@@ -98,11 +98,12 @@
             draw();
         }
         function end() {
+            VBFx.play(g.status === 'won' ? 'win' : 'lose');
             if (g.status === 'won') { stat.w++; stat.streak++; stat.best = Math.max(stat.best, stat.streak); msg = ['m_won']; }
             else { stat.l++; stat.streak = 0; msg = ['m_was', { w: g.word }]; }
             save();
         }
-        function press(L) { const r = guess(g, L); if (r === 'ignored' || r === 'again') return; paint(); if (g.status !== 'play') { end(); paint(); } }
+        function press(L) { const r = guess(g, L); if (r === 'ignored' || r === 'again') return; if (g.status === 'play') VBFx.play(r === 'miss' ? 'bad' : 'good'); paint(); if (g.status !== 'play') { end(); paint(); } }
         function start() {
             wordLang = VBLang.lang === 'en' ? 'en' : 'it';
             const p = pick(category, null, last, wordLang);

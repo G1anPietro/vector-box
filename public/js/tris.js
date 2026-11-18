@@ -85,15 +85,15 @@
             over = true;
             const k = mode === 'two' ? 'two' : 'cpu';
             const s = score[k] = score[k] || { w: 0, d: 0, l: 0 };
-            if (w === 'draw') { s.d++; msg('m_draw'); }
-            else if (mode === 'two') { (w === 'X' ? s.w++ : s.l++); msg('m_win', { p: w }); }
-            else if (w === human) { s.w++; msg('m_won'); }
-            else { s.l++; msg('m_lost'); }
+            if (w === 'draw') { s.d++; msg('m_draw'); VBFx.play('bad'); }
+            else if (mode === 'two') { (w === 'X' ? s.w++ : s.l++); msg('m_win', { p: w }); VBFx.play('win'); }
+            else if (w === human) { s.w++; msg('m_won'); VBFx.play('win'); }
+            else { s.l++; msg('m_lost'); VBFx.play('lose'); }
             save(); paint();
         }
         function play(i) {
             if (over || b[i]) return;
-            b[i] = turn; turn = other(turn); paint(); say();
+            b[i] = turn; turn = other(turn); VBFx.play('click'); paint(); say();
             if (!over && mode !== 'two' && turn !== human) setTimeout(() => { if (over) return; const m = bestMove(b, turn, mode); b[m] = turn; turn = other(turn); paint(); say(); }, 350);
         }
         function start(m, keepMode) {
