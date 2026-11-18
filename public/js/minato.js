@@ -134,7 +134,7 @@
             clearInterval(timer); timer = null; clock.stop();
             if (g.status === 'won') {
                 const s = secs();
-                VS.submit('minato', level, Date.now() - t0, Date.now() - t0);
+                VS.submit('minato', level, clock.elapsed(), clock.elapsed());   // the pausable clock: time spent paused does not count
                 if (!best[level] || s < best[level]) { best[level] = s; saveBest(); }
                 showMsg('won', { s }); VBFx.play('win');
             } else if (g.status === 'lost') {

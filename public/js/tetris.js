@@ -135,10 +135,11 @@
         const $ = (id) => document.getElementById(id);
         const canvas = $('tt-canvas');
         if (!canvas) return;
+        const VS = window.VBScores || { show() {}, submit() {}, begin() {}, reset() {} };   // leaderboard (js/arcade-scores.js)
         const ctx = canvas.getContext('2d'), nctx = $('tt-next').getContext('2d'), hctx = $('tt-hold').getContext('2d');
         const COLORS = ['#14121a', '#4dd0e1', '#f2c66d', '#b388ff', '#9be564', '#ff5e5e', '#4da3ff', '#ffb74d'];
         const KEY = 'vb_tetris_best';
-        let g, timer = null, best = 0, running = false, paused = false, cell = 24;
+        let g, timer = null, best = 0, running = false, paused = false, began = false, cell = 24;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
 
         let msgKey = null;   // kept as a key so it is redrawn when the language changes
@@ -186,15 +187,16 @@
         const fxLines = () => { if (g.lines > seenLines) fx('line'); seenLines = g.lines; };
         function over() {
             fx('lose');
+            if (g.score > 0) VS.submit('tetris', '', g.score);
             running = false; clearTimeout(timer);
             if (g.score > best) { best = g.score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
             draw(); say('m_over');
         }
-        function begin() { if (!running && g.status === 'play') { running = true; say(null); timer = setTimeout(tick, speed(g.level)); } }
+        function begin() { if (!running && g.status === 'play') { running = true; if (!began) { began = true; VS.begin(); } say(null); timer = setTimeout(tick, speed(g.level)); } }
         const paintPause = () => { const b = $('tt-pause'); b.textContent = VBLang.t(paused ? 'resume' : 'pause'); b.setAttribute('aria-pressed', String(paused)); };
         function pause() { if (!running || paused) return; clearTimeout(timer); running = false; paused = true; paintPause(); say('m_pause'); draw(); }
         function resume() { if (!paused) return; paused = false; paintPause(); draw(); begin(); }
-        function restart() { clearTimeout(timer); running = false; paused = false; paintPause(); g = newGame(); seenLines = 0; say('m_start'); draw(); }
+        function restart() { clearTimeout(timer); running = false; began = false; VS.reset(); paused = false; paintPause(); g = newGame(); seenLines = 0; say('m_start'); draw(); }
         function act(fn) { if (g.status !== 'play' || paused) return; begin(); fn(); fxLines(); draw(); if (g.status === 'over') over(); }
 
         const keys = { ArrowLeft: () => move(g, -1), ArrowRight: () => move(g, 1), ArrowUp: () => rotate(g, 1), ArrowDown: () => down(g, true), ' ': () => hardDrop(g),
@@ -238,6 +240,6 @@
         window.addEventListener('resize', layout);
         document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
         window.addEventListener('vb-lang', () => { say(msgKey); paintPause(); draw(); });
-        g = newGame(); layout(); say('m_start');
+        g = newGame(); layout(); say('m_start'); VS.show('tetris', '');
     });
 })(typeof window !== 'undefined' ? window : globalThis);
