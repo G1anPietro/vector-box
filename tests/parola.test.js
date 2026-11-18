@@ -154,3 +154,10 @@ test('mergeDaily: later day wins; same day more guesses; a finished game on a ti
     assert.equal(L.mergeDaily(null, g(5, 1)).day, 5);
     assert.equal(L.mergeDaily(null, null), null);
 });
+
+test('mode, new and share buttons give up the focus after a click (Enter must send the word, not press the button again)', () => {
+    const js = require('fs').readFileSync(path.join(__dirname, '..', 'public', 'js', 'parola.js'), 'utf8');
+    assert.match(js, /start\(b\.dataset\.mode\); b\.blur\(\);/);
+    assert.match(js, /start\('free'\); e\.currentTarget\.blur\(\);/);
+    assert.match(js, /share\(\); e\.currentTarget\.blur\(\);/);
+});

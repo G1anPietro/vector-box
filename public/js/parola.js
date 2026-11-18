@@ -202,9 +202,9 @@
             else if (e.key === 'Backspace') { e.preventDefault(); press('back'); }
             else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());
         });
-        document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => start(b.dataset.mode)));
-        $('pa-new').addEventListener('click', () => start('free'));
-        $('pa-share').addEventListener('click', share);
+        document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { start(b.dataset.mode); b.blur(); }));   // a focused button would be pressed again by the Enter that sends a word
+        $('pa-new').addEventListener('click', (e) => { start('free'); e.currentTarget.blur(); });
+        $('pa-share').addEventListener('click', (e) => { share(); e.currentTarget.blur(); });
         window.addEventListener('vb-lang', () => { keys.enter.textContent = T('enter'); paint(); });
         start('daily');
         pull();
