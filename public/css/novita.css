@@ -19,6 +19,7 @@
 .nv-row .cta { margin-top: 0; border: 0; font: inherit; font-weight: 800; cursor: pointer; min-height: 44px; }
 .nv-status { border-radius: 999px; padding: 0 8px; border: 1px solid var(--link); color: var(--link); font-size: .85rem; }
 .nv-admin { display: grid; gap: 6px; margin-top: 8px; }
+.nv-admin[hidden] { display: none; }
 .nv-admin select, .nv-admin input { font: inherit; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 6px; padding: 6px 8px; min-height: 40px; width: 100%; }
 .nv-admin button { font: inherit; min-height: 40px; border-radius: 6px; border: 1px solid var(--plank); background: var(--dusk); color: var(--text); cursor: pointer; }
 

@@ -86,6 +86,7 @@
         if (i.reply) c.append(el('p', '', '→ ' + i.reply));
         if (i.votes) m.append(el('span', '', i.votes + ' ' + L.votes));
         const box = el('div', 'nv-admin');
+        let late = null;
         if (admin) {
             const sel = el('select');
             Object.entries(L.st).forEach(([k, v]) => { const o = el('option', '', v); o.value = k; if (k === i.status) o.selected = true; sel.append(o); });
@@ -105,12 +106,13 @@
                 form.append(el('p', 'muted', '\u26A0 ' + L.warn), te, ti, go, no);
                 bb.addEventListener('click', () => { form.hidden = !form.hidden; });
                 box.append(bb);
-                c.append(form);
+                late = form;
             }
         }
         const dl = el('button', '', L.del); dl.type = 'button';
         dl.addEventListener('click', async () => { const d = await api({ action: 'delete', id: i.id }); if (d.success) loadIdeas(); });
         box.append(dl);
+        if (late) box.append(late);
         c.append(box);
         return c;
     }
