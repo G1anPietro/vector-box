@@ -68,6 +68,7 @@ function accountExport(PDO $db, int $userId): array {
         'review_cards' => $all('SELECT doc_id, q_index, box, due_date, question FROM review_cards WHERE user_id = :i', $u),
         'scores' => $all('SELECT kind, points, ref, created_at FROM score_events WHERE user_id = :i', $u),
         'share_links' => $all('SELECT kind, title, expires_at, views, revoked, created_at FROM share_links WHERE user_id = :i', $u),
+        'parola_stats' => $all('SELECT stats, daily, updated_at FROM parola_stats WHERE user_id = :i', $u),
         'signed_in_devices' => $all('SELECT label, country, created_at, last_seen FROM account_sessions WHERE user_id = :i', $u),
         'donations' => $all('SELECT amount_cents, currency, donated_at, display_name, is_public FROM donors WHERE account_id = :i', $u),
     ];
@@ -100,6 +101,7 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
             $run("DELETE FROM $t WHERE user_id = :i", $u);
         }
         $run('DELETE FROM account_sessions WHERE user_id = :i', $u);
+        $run('DELETE FROM parola_stats WHERE user_id = :i', $u);
         $run('DELETE FROM class_board WHERE user_id = :i', $u);
         $run('DELETE FROM news_idea_votes WHERE user_id = :i OR idea_id IN (SELECT id FROM news_ideas WHERE user_id = :i)', $u);
         $run('DELETE FROM news_ideas WHERE user_id = :i', $u);
