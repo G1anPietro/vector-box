@@ -16,3 +16,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ar-msg { min-height: 1.5em; margin-top: 10px; font-weight: 600; text-align: center; }
 .ar-help { max-width: 420px; color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-top: 12px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+/* pause (VBFx.bindPause): the board is hidden while paused; the header buttons sit together; the sound switch is a small square */
+.ar-paused { visibility: hidden; }
+.ar-top { flex-wrap: wrap; }   /* a very narrow screen puts the buttons on a second line instead of scrolling */
+.ar-hbtns { display: flex; gap: 6px; align-items: center; }
+.ar-hbtns button { padding: 8px 10px; }
+#fx-toggle button { min-width: 40px; padding: 8px 10px; }
