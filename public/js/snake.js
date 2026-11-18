@@ -62,6 +62,7 @@
         const canvas = $('sn-canvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        const VS = window.VBScores || { show() {}, submit() {}, begin() {}, reset() {} };   // leaderboard (js/arcade-scores.js)
         const KEY = 'vb_snake_best';
         let g, timer = null, best = 0, started = false;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
@@ -93,13 +94,14 @@
             if (g.status !== 'play') {
                 clearTimeout(timer); timer = null;
                 if (g.score > best) { best = g.score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } draw(); }
+                if (g.score > 0) VS.submit('snake', '', g.score);
                 say(g.status === 'won' ? 'm_won' : 'm_over');
                 return;
             }
             timer = setTimeout(loop, speed());
         }
-        function begin() { if (!started) { started = true; say(null); timer = setTimeout(loop, speed()); } }
-        function restart() { clearTimeout(timer); g = newGame(); started = false; say('m_start'); draw(); }
+        function begin() { if (!started) { started = true; VS.begin(); say(null); timer = setTimeout(loop, speed()); } }
+        function restart() { clearTimeout(timer); VS.reset(); g = newGame(); started = false; say('m_start'); draw(); }
 
         const dirOf = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
         document.addEventListener('keydown', (e) => {
@@ -121,6 +123,6 @@
         window.addEventListener('resize', size);
         document.addEventListener('visibilitychange', () => { if (document.hidden && timer) { clearTimeout(timer); timer = null; started = false; say('m_pause'); } });
         window.addEventListener('vb-lang', () => say(msgKey));
-        g = newGame(); size(); say('m_start');
+        g = newGame(); size(); say('m_start'); VS.show('snake', '');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

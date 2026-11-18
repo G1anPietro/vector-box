@@ -1,0 +1,16 @@
+/* the Top 10 panel of js/arcade-scores.js (game pages and pages/classifiche.php) */
+#vb-top, .vbs-slot { width: 100%; max-width: 420px; margin: 14px auto 0; }
+.vbs { background: #1f1c29; border: 1px solid #3a3550; border-radius: 10px; padding: 10px 12px; color: #e8e6f0; font: 0.9rem/1.4 system-ui, sans-serif; text-align: left; }
+.vbs h2 { margin: 0 0 6px; font-size: 1rem; color: #00ff66; }
+.vbs ol { list-style: none; counter-reset: r; margin: 0; padding: 0; }
+.vbs li { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-top: 1px solid #2c2839; }
+.vbs li::before { counter-increment: r; content: counter(r) "."; width: 1.6em; color: #a9a5ba; }
+.vbs-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vbs li b { font-family: ui-monospace, monospace; }
+.vbs time { color: #a9a5ba; font-size: 0.75rem; }
+.vbs-note { margin: 6px 0 0; color: #a9a5ba; }
+.vbs-note a { color: #00ff66; }
+.vbs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; margin-top: 12px; }
+.vbs-slot { max-width: none; margin: 0; }
+.vbs-cell h3 { font-size: 1rem; margin-bottom: 6px; color: var(--muted); }
+.vbs h2 { border: 0; padding: 0; font-family: system-ui, sans-serif; font-weight: 700; } .vbs h2::before, .vbs h2::after { display: none; }
