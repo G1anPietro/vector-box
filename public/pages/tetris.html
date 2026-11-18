@@ -18,10 +18,11 @@
     <link rel="icon" href="../assets/tetris/icon.svg?v=1" type="image/svg+xml">
     <link rel="stylesheet" href="../css/arcade.css?v=1540020779">
     <link rel="stylesheet" href="../css/tetris.css?v=1768822555">
-    <script src="../js/tetris.js?v=1484955883" defer></script>
+    <script src="../js/arcade-fx.js?v=1058792597" defer></script>
+    <script src="../js/tetris.js?v=1965478306" defer></script>
 </head>
 <body>
-    <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1>Tetris</h1><span class="tt-hbtns"><button type="button" id="tt-pause" data-i18n="pause" aria-pressed="false">Pause</button><button type="button" id="tt-new" data-i18n="new">New</button></span></header>
+    <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1>Tetris</h1><span class="tt-hbtns"><span id="fx-toggle"></span><button type="button" id="tt-pause" data-i18n="pause" aria-pressed="false">Pause</button><button type="button" id="tt-new" data-i18n="new">New</button></span></header>
     <div class="tt-wrap">
         <canvas id="tt-canvas" width="240" height="480" aria-label="Playing field" data-i18n-attr="aria-label:field"></canvas>
         <div class="tt-side">

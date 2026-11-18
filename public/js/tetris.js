@@ -177,11 +177,15 @@
             $('tt-score').textContent = String(g.score); $('tt-lines').textContent = String(g.lines); $('tt-level').textContent = String(g.level); $('tt-best').textContent = String(best);
         }
         function tick() {
-            down(g, false); draw();
+            down(g, false); fxLines(); draw();
             if (g.status === 'over') return over();
             timer = setTimeout(tick, speed(g.level));
         }
+        const fx = (n) => { if (window.VBFx) VBFx.play(n); };   // sounds and vibration: off unless the player switched them on
+        let seenLines = 0;
+        const fxLines = () => { if (g.lines > seenLines) fx('line'); seenLines = g.lines; };
         function over() {
+            fx('lose');
             running = false; clearTimeout(timer);
             if (g.score > best) { best = g.score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
             draw(); say('m_over');
@@ -190,8 +194,8 @@
         const paintPause = () => { const b = $('tt-pause'); b.textContent = VBLang.t(paused ? 'resume' : 'pause'); b.setAttribute('aria-pressed', String(paused)); };
         function pause() { if (!running || paused) return; clearTimeout(timer); running = false; paused = true; paintPause(); say('m_pause'); draw(); }
         function resume() { if (!paused) return; paused = false; paintPause(); draw(); begin(); }
-        function restart() { clearTimeout(timer); running = false; paused = false; paintPause(); g = newGame(); say('m_start'); draw(); }
-        function act(fn) { if (g.status !== 'play' || paused) return; begin(); fn(); draw(); if (g.status === 'over') over(); }
+        function restart() { clearTimeout(timer); running = false; paused = false; paintPause(); g = newGame(); seenLines = 0; say('m_start'); draw(); }
+        function act(fn) { if (g.status !== 'play' || paused) return; begin(); fn(); fxLines(); draw(); if (g.status === 'over') over(); }
 
         const keys = { ArrowLeft: () => move(g, -1), ArrowRight: () => move(g, 1), ArrowUp: () => rotate(g, 1), ArrowDown: () => down(g, true), ' ': () => hardDrop(g),
                        a: () => move(g, -1), d: () => move(g, 1), w: () => rotate(g, 1), s: () => down(g, true), z: () => rotate(g, -1), c: () => hold(g), C: () => hold(g), Shift: () => hold(g), x: () => rotate(g, 1) };

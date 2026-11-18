@@ -104,7 +104,7 @@ test('pausable clock: no time lost or gained across pause/resume; idle and done 
 });
 
 const PAUSE = { snake: 'sn-pause', memory: 'ar-pause', simon: 'sm-pause', minato: 'mn-pause' };
-const SOUND = ['snake', 'memory', 'simon', 'minato', 'dueamila', 'tris', 'forza4', 'impiccato', 'parola'];
+const SOUND = ['snake', 'memory', 'simon', 'minato', 'dueamila', 'tris', 'forza4', 'impiccato', 'parola', 'tetris'];
 
 test('pause: each timed game has the button, uses bindPause (P key, hidden tab) and mentions P in both help texts', () => {
     const fx = read('js/arcade-fx.js');
@@ -127,7 +127,7 @@ test('pause: each timed game has the button, uses bindPause (P key, hidden tab) 
     assert.match(read('css/minato.css'), /\.ar-paused \{ visibility: hidden/);
 });
 
-test('sound: every wired page loads arcade-fx.js with a stamp, has the toggle span and no inline script; Tetris is untouched', () => {
+test('sound: every wired page loads arcade-fx.js with a stamp, has the toggle span and no inline script', () => {
     for (const g of SOUND) {
         const html = read('pages/' + g + '.html'), js = read('js/' + g + '.js');
         assert.match(html, /<script src="\.\.\/js\/arcade-fx\.js\?v=1\d{9}" defer><\/script>/, g);
@@ -136,7 +136,6 @@ test('sound: every wired page loads arcade-fx.js with a stamp, has the toggle sp
         assert.match(js, /VBFx\.play\(/, g + ': plays');
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), g + ': no inline scripts');
     }
-    assert.ok(!/VBFx/.test(read('js/tetris.js')) && !/arcade-fx/.test(read('pages/tetris.html')));
     // parola: the smallest wiring, every call guarded
     const pa = read('js/parola.js');
     for (const line of pa.split('\n').filter((l) => /VBFx/.test(l))) assert.match(line, /window\.VBFx && VBFx\.play/);
