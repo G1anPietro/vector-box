@@ -23,3 +23,5 @@ h1 { font-size: 1.2rem; margin: 0; }
 .mn-help { max-width: 520px; color: #a9a5ba; font-size: 0.85rem; line-height: 1.5; margin-top: 14px; text-align: center; }
 @media (max-width: 480px) { :root { --cell: 26px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.ar-paused { visibility: hidden; }
+#fx-toggle button { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 40px; min-height: 40px; cursor: pointer; font: inherit; }

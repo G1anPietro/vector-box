@@ -31,11 +31,11 @@
         title: 'Simon — vector-box', desc: 'Simon gratis nel browser: guarda la sequenza di luci e suoni e ripetila, ogni turno una più lunga. Record personale, nessun account.',
         back: '← Giochi', go: 'Via', sequence: 'Sequenza', best: 'Record', sound: 'Suono', board: 'Quattro pulsanti colorati',
         pad_green: 'Verde (tasto 1)', pad_red: 'Rosso (tasto 2)', pad_yellow: 'Giallo (tasto 3)', pad_blue: 'Blu (tasto 4)',
-        help: 'Guarda la sequenza di luci e ripetila. Ogni turno se ne aggiunge una. Sul computer puoi usare i tasti 1, 2, 3 e 4.',
-        m_press: 'Premi Via per cominciare.', m_watch: 'Guarda…', m_you: 'Tocca a te', m_lost: 'Sbagliato! Sequenza di {n}. Premi Via per riprovare.', m_ok: 'Bene!', m_pause: 'In pausa. Premi Via per ricominciare.',
+        help: 'Guarda la sequenza di luci e ripetila. Ogni turno se ne aggiunge una. Sul computer puoi usare i tasti 1, 2, 3 e 4, e P per la pausa.',
+        m_press: 'Premi Via per cominciare.', m_watch: 'Guarda…', m_you: 'Tocca a te', m_lost: 'Sbagliato! Sequenza di {n}. Premi Via per riprovare.', m_ok: 'Bene!', m_pause: 'In pausa: premi P o Riprendi per continuare.',
     });
     VBI18N.add('en', {
-        m_press: 'Press Go to start.', m_watch: 'Watch…', m_you: 'Your turn', m_lost: 'Wrong! Sequence of {n}. Press Go to try again.', m_ok: 'Good!', m_pause: 'Paused. Press Go to start again.',
+        m_press: 'Press Go to start.', m_watch: 'Watch…', m_you: 'Your turn', m_lost: 'Wrong! Sequence of {n}. Press Go to try again.', m_ok: 'Good!', m_pause: 'Paused: press P or Resume to continue.',
     });
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -43,21 +43,10 @@
         const pads = [...document.querySelectorAll('.pad')];
         if (!pads.length) return;
         const KEY = 'vb_simon_best';
-        let g = newGame(), best = 0, sound = true, busy = false, timers = [], ctx = null;
+        let g = newGame(), best = 0, busy = false, timers = [], pz, resumeAs = null;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
-        const FREQ = [329.6, 261.6, 392, 523.3];
-
-        function beep(i, ms) {
-            if (!sound) return;
-            try {
-                ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-                const o = ctx.createOscillator(), v = ctx.createGain();
-                o.frequency.value = FREQ[i]; o.type = 'sine'; v.gain.value = 0.15;
-                o.connect(v); v.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + ms / 1000);
-            } catch (e) { /* no audio: the lights are enough */ }
-        }
         function light(i, ms) {
-            pads[i].classList.add('on'); beep(i, ms);
+            pads[i].classList.add('on'); VBFx.play('pad' + i, ms);
             timers.push(setTimeout(() => pads[i].classList.remove('on'), ms));
         }
         let msg = ['m_press'];   // kept as a key (+ values) so it is redrawn when the language changes
@@ -70,21 +59,23 @@
             timers.push(setTimeout(() => { busy = false; say('m_you'); }, 500 + g.seq.length * gap));
         }
         function round() { nextRound(g); paint(); show(); }
-        function start() { timers.forEach(clearTimeout); timers = []; pads.forEach((p) => p.classList.remove('on')); g = newGame(); paint(); round(); }
+        function start() { timers.forEach(clearTimeout); timers = []; pz.reset(); pads.forEach((p) => p.classList.remove('on')); g = newGame(); paint(); round(); }
         pads.forEach((p, i) => p.addEventListener('click', () => {
-            if (busy || g.status !== 'input') return;
+            if (pz.paused || busy || g.status !== 'input') return;
             light(i, 180);
             const r = press(g, i);
             if (r === 'lost') {
                 if (g.seq.length - 1 > best) { best = g.seq.length - 1; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
                 g.score = g.seq.length - 1; paint();
-                say('m_lost', { n: g.seq.length - 1 });
+                VBFx.play('lose'); say('m_lost', { n: g.seq.length - 1 });
             } else if (r === 'round') { paint(); busy = true; say('m_ok'); timers.push(setTimeout(round, 700)); }
         }));
-        document.addEventListener('keydown', (e) => { const i = { '1': 0, '2': 1, '3': 2, '4': 3 }[e.key]; if (i !== undefined) pads[i].click(); });
+        document.addEventListener('keydown', (e) => { if (e.ctrlKey || e.metaKey || e.altKey) return; const i = { '1': 0, '2': 1, '3': 2, '4': 3 }[e.key]; if (i !== undefined) pads[i].click(); });
         $('sm-start').addEventListener('click', start);
-        $('sm-sound').addEventListener('click', (e) => { sound = !sound; e.currentTarget.setAttribute('aria-pressed', String(sound)); });
-        document.addEventListener('visibilitychange', () => { if (document.hidden) { timers.forEach(clearTimeout); timers = []; busy = false; if (g.status === 'input') say('m_pause'); g.status = 'idle'; } });
+        // pause: while the sequence is shown (or the next round is pending) it is cut short and restarted on resume; waiting for the player just waits
+        pz = VBFx.bindPause({ button: $('sm-pause'), cover: $('sm-board'), can: () => busy || g.status === 'input',
+            onPause: () => { timers.forEach(clearTimeout); timers = []; pads.forEach((p) => p.classList.remove('on')); resumeAs = busy ? (g.status === 'input' ? show : round) : null; busy = false; say('m_pause'); },
+            onResume: () => { if (resumeAs) resumeAs(); else say('m_you'); resumeAs = null; } });
         window.addEventListener('vb-lang', () => say(msg[0], msg[1]));
         say('m_press'); paint();
     });

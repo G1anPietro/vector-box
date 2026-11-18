@@ -16,12 +16,13 @@
     <meta name="twitter:card" content="summary">
     <script src="../js/i18n.js?v=1789951323"></script>
     <link rel="icon" href="../assets/snake/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/arcade.css?v=1934911579">
+    <link rel="stylesheet" href="../css/arcade.css?v=1540020779">
     <link rel="stylesheet" href="../css/snake.css?v=1514522393">
-    <script src="../js/snake.js?v=1803376642" defer></script>
+    <script src="../js/arcade-fx.js?v=1058792597" defer></script>
+    <script src="../js/snake.js?v=1245726700" defer></script>
 </head>
 <body>
-    <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1>Snake</h1><button type="button" id="sn-new" data-i18n="new">New</button></header>
+    <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1>Snake</h1><span class="ar-hbtns"><span id="fx-toggle"></span><button type="button" id="sn-pause" data-i18n="pause" aria-pressed="false">Pause</button><button type="button" id="sn-new" data-i18n="new">New</button></span></header>
     <div class="ar-bar">
         <div class="ar-box"><small data-i18n="score">Score</small><strong id="sn-score">0</strong></div>
         <div class="ar-box"><small data-i18n="best">Best</small><strong id="sn-best">0</strong></div>
@@ -32,7 +33,7 @@
         <span></span><button type="button" data-dir="up" aria-label="Up" data-i18n-attr="aria-label:up">▲</button><span></span>
         <button type="button" data-dir="left" aria-label="Left" data-i18n-attr="aria-label:left">◀</button><button type="button" data-dir="down" aria-label="Down" data-i18n-attr="aria-label:down">▼</button><button type="button" data-dir="right" aria-label="Right" data-i18n-attr="aria-label:right">▶</button>
     </div>
-    <p class="ar-help" data-i18n="help">Arrow keys, W A S D, swipe on the field or use the buttons. Every bit of food makes you grow and go faster. The game pauses if you switch tab.</p>
+    <p class="ar-help" data-i18n="help">Arrow keys, W A S D, swipe on the field or use the buttons, P pauses. Every bit of food makes you grow and go faster. The game pauses if you switch tab.</p>
     <div id="vb-lang" style="text-align:center;margin:10px 0"></div>
 </body>
 </html>

@@ -81,7 +81,7 @@
         title: 'Campo minato — vector-box', desc: 'Campo minato gratis nel browser: tre livelli, bandierine, tocco lungo sul telefono, tastiera e record personali. Nessun account.',
         back: '← Giochi', h1: 'Campo minato', best: 'Record', level: 'Livello', easy: 'Facile', medium: 'Medio', hard: 'Difficile',
         mines_left: 'Mine rimaste', new_game: 'Nuova partita', seconds: 'Secondi', flag: '⚑ Bandierina', field: 'Campo',
-        help: 'Clic per aprire, clic destro o tocco lungo per la bandierina (o il tasto qui sopra). Su un numero con le bandierine giuste, un clic apre tutti i vicini. Tastiera: frecce, Spazio, F. Il primo clic è sempre sicuro.',
+        help: 'Clic per aprire, clic destro o tocco lungo per la bandierina (o il tasto qui sopra). Su un numero con le bandierine giuste, un clic apre tutti i vicini. Tastiera: frecce, Spazio, F, P per la pausa. Il primo clic è sempre sicuro.',
         c_mine: 'mina', c_near: '{n} mine vicine', c_empty: 'vuota', c_flag: 'bandiera', c_covered: 'coperta',
         won: 'Hai vinto in {s} secondi!', lost: 'Boom. Riprova con la faccina.',
     });
@@ -96,10 +96,11 @@
         const board = $('mn-board');
         if (!board) return;
         const KEY = 'vb_minato_best';
-        let level = 'easy', g = null, cells = [], flagMode = false, t0 = 0, timer = null, cursor = 0;
+        let level = 'easy', g = null, cells = [], flagMode = false, timer = null, cursor = 0, pz;
+        const clock = VBFx.clock();
         const best = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
         const saveBest = () => { try { localStorage.setItem(KEY, JSON.stringify(best)); } catch (e) { /* private mode */ } };
-        const secs = () => (t0 ? Math.min(999, Math.floor((Date.now() - t0) / 1000)) : 0);
+        const secs = () => Math.min(999, Math.floor(clock.elapsed() / 1000));
 
         function paintHead() {
             $('mn-mines').textContent = String(Math.max(-99, g.mines - g.flags)).padStart(3, '0');
@@ -129,33 +130,33 @@
         function showMsg(key, vars) { msg = key ? [key, vars] : null; $('mn-msg').textContent = key ? VBLang.t(key, vars) : ''; }
 
         function finish() {
-            clearInterval(timer); timer = null;
+            clearInterval(timer); timer = null; clock.stop();
             if (g.status === 'won') {
                 const s = secs();
                 if (!best[level] || s < best[level]) { best[level] = s; saveBest(); }
-                showMsg('won', { s });
+                showMsg('won', { s }); VBFx.play('win');
             } else if (g.status === 'lost') {
-                showMsg('lost');
+                showMsg('lost'); VBFx.play('boom');
             }
         }
 
         function after() {
-            if (g.status === 'play' && !timer) { t0 = Date.now(); timer = setInterval(paintHead, 500); }
+            if (g.status === 'play' && clock.state === 'idle') { clock.start(); timer = setInterval(paintHead, 500); }
             paintAll();
             if (g.status === 'won' || g.status === 'lost') finish();
         }
 
         function act(i, secondary) {
-            if (g.status === 'won' || g.status === 'lost') return;
-            if (secondary || flagMode) toggleFlag(g, i);
+            if (g.status === 'won' || g.status === 'lost' || pz.paused) return;
+            if (secondary || flagMode) { if (toggleFlag(g, i)) VBFx.play('click'); }
             else if (g.open[i]) chord(g, i);
-            else reveal(g, i);
+            else if (reveal(g, i).length && g.status === 'play') VBFx.play('click');
             after();
         }
 
         function start(lv) {
             level = lv in LEVELS ? lv : 'easy';
-            clearInterval(timer); timer = null; t0 = 0; cursor = 0;
+            clearInterval(timer); timer = null; clock.reset(); cursor = 0; if (pz) pz.reset();
             g = newGame(level);
             board.style.setProperty('--cols', String(g.w));
             board.replaceChildren();
@@ -175,7 +176,7 @@
         board.addEventListener('contextmenu', (e) => { e.preventDefault(); const c = e.target.closest('button'); if (c) act(+c.dataset.i, true); });
         board.addEventListener('pointerdown', (e) => {
             const c = e.target.closest('button'); if (!c || e.pointerType === 'mouse') return;
-            press = { c, long: false, timer: setTimeout(() => { press.long = true; act(+c.dataset.i, true); if (navigator.vibrate) navigator.vibrate(20); }, 420) };
+            press = { c, long: false, timer: setTimeout(() => { press.long = true; act(+c.dataset.i, true); }, 420) };
         });
         const endPress = () => { if (press) clearTimeout(press.timer); };
         board.addEventListener('pointerup', endPress); board.addEventListener('pointercancel', endPress); board.addEventListener('pointerleave', endPress);
@@ -200,6 +201,9 @@
         $('mn-flag').addEventListener('click', () => { flagMode = !flagMode; paintHead(); });
         document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => start(b.dataset.level)));
         window.addEventListener('vb-lang', () => { paintAll(); showMsg(msg && msg[0], msg && msg[1]); });
+        pz = VBFx.bindPause({ button: $('mn-pause'), cover: board, can: () => clock.state === 'run',
+            onPause: () => { clock.pause(); clearInterval(timer); timer = null; paintHead(); },
+            onResume: () => { clock.resume(); timer = setInterval(paintHead, 500); paintHead(); } });
         start('easy');
     });
 })(typeof window !== 'undefined' ? window : globalThis);
