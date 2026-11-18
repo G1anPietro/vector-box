@@ -17,8 +17,8 @@
     <script src="../js/i18n.js?v=1789951323"></script>
     <link rel="icon" href="../assets/tetris/icon.svg?v=1" type="image/svg+xml">
     <link rel="stylesheet" href="../css/arcade.css?v=1934911579">
-    <link rel="stylesheet" href="../css/tetris.css?v=1045773274">
-    <script src="../js/tetris.js?v=1895623521" defer></script>
+    <link rel="stylesheet" href="../css/tetris.css?v=1768822555">
+    <script src="../js/tetris.js?v=1484955883" defer></script>
 </head>
 <body>
     <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1>Tetris</h1><span class="tt-hbtns"><button type="button" id="tt-pause" data-i18n="pause" aria-pressed="false">Pause</button><button type="button" id="tt-new" data-i18n="new">New</button></span></header>
@@ -29,6 +29,7 @@
             <div class="ar-box tt-small"><small data-i18n="lines">Lines</small><strong id="tt-lines">0</strong></div>
             <div class="ar-box tt-small"><small data-i18n="level">Level</small><strong id="tt-level">1</strong></div>
             <div class="ar-box tt-small"><small data-i18n="best">Best</small><strong id="tt-best">0</strong></div>
+            <div class="tt-mini"><small data-i18n="hold">Hold</small><canvas id="tt-hold" width="80" height="60" aria-label="Hold piece" data-i18n-attr="aria-label:hold"></canvas></div>
             <canvas id="tt-next" width="80" height="60" aria-label="Next piece" data-i18n-attr="aria-label:next"></canvas>
         </div>
     </div>
@@ -41,10 +42,12 @@
         </div>
         <div class="tt-do">
             <button type="button" data-act="rotate" aria-label="Rotate" data-i18n-attr="aria-label:rotate">⟳</button>
+            <button type="button" data-act="hold" aria-label="Hold (C or Shift)" data-i18n-attr="aria-label:holdtip" data-i18n="hold">Hold</button>
             <button type="button" data-act="drop" aria-label="Hard drop" data-i18n-attr="aria-label:drop">⤓</button>
         </div>
     </div>
-    <p class="ar-help" data-i18n="help">Arrow keys or W A S D: move and rotate (Z and X turn both ways), Space drops the piece at once, P pauses. Complete lines to score: every 10 lines you go up a level. The game pauses if you switch tab.</p>
+    <p class="ar-help" data-i18n="gestures">On the field: tap to rotate, drag sideways to move, drag down to soft drop, flick down to hard drop.</p>
+    <p class="ar-help" data-i18n="help">Arrow keys or W A S D: move and rotate (Z and X turn both ways), Space drops the piece at once, C or Shift holds the piece (once per piece), P pauses. Complete lines to score: every 10 lines you go up a level. The game pauses if you switch tab.</p>
     <div id="vb-lang" style="text-align:center;margin:10px 0"></div>
 </body>
 </html>

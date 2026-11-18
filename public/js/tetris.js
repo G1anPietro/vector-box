@@ -35,15 +35,15 @@
     const cellsOf = (p) => rotCells(PIECES[p.type].cells, PIECES[p.type].size, p.rot).map(([x, y]) => [p.x + x, p.y + y]);
     const fits = (board, p) => cellsOf(p).every(([x, y]) => x >= 0 && x < W && y < H && (y < 0 || !board[y][x]));
 
-    function spawn(g) {
-        const type = g.next || draw(g);
-        g.next = draw(g);
+    function spawn(g, forced) {
+        const type = forced || g.next || draw(g);
+        if (!forced) g.next = draw(g);
         g.cur = { type, rot: 0, x: Math.floor((W - PIECES[type].size) / 2), y: type === 'I' ? -1 : 0 };
         if (!fits(g.board, g.cur)) { g.status = 'over'; }
     }
 
     function newGame(rng) {
-        const g = { board: Array.from({ length: H }, () => new Array(W).fill(0)), rng: rng || Math.random, bag: [], next: null, cur: null, score: 0, lines: 0, level: 1, status: 'play' };
+        const g = { board: Array.from({ length: H }, () => new Array(W).fill(0)), rng: rng || Math.random, bag: [], next: null, cur: null, hold: null, canHold: true, score: 0, lines: 0, level: 1, status: 'play' };
         spawn(g);
         return g;
     }
@@ -81,6 +81,7 @@
         g.lines += n;
         g.score += LINE_POINTS[n] * g.level;
         g.level = 1 + Math.floor(g.lines / 10);
+        g.canHold = true;
         spawn(g);
         return n;
     }
@@ -92,6 +93,15 @@
         if (fits(g.board, p)) { g.cur = p; if (soft) g.score += 1; return 'moved'; }
         lock(g);
         return 'locked';
+    }
+
+    /** Swaps the falling piece with the held one (the first time: takes the next piece). Only one hold per piece drop. */
+    function hold(g) {
+        if (g.status !== 'play' || !g.canHold) return false;
+        const old = g.cur.type;
+        if (g.hold) spawn(g, g.hold); else spawn(g);
+        g.hold = old; g.canHold = false;
+        return true;
     }
 
     const ghostY = (g) => { let p = { ...g.cur }; while (fits(g.board, { ...p, y: p.y + 1 })) p.y++; return p.y; };
@@ -108,24 +118,24 @@
     /** Milliseconds per gravity step at a level. */
     const speed = (level) => Math.max(90, 800 - (level - 1) * 70);
 
-    const api = { W, H, PIECES, TYPES, makeRng, newGame, cellsOf, fits, move, rotate, down, hardDrop, ghostY, lock, speed, rotCells };
+    const api = { W, H, PIECES, TYPES, makeRng, newGame, cellsOf, fits, move, rotate, down, hold, hardDrop, ghostY, lock, speed, rotCells };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Tetris = api;
     VBI18N.add('it', {
         title: 'Tetris — vector-box', desc: 'Tetris gratis nel browser: pezzi che cadono, righe da completare, livelli sempre più veloci. Tastiera o tasti sullo schermo, record personale, nessun account.',
-        back: '← Giochi', new: 'Nuova', field: 'Campo di gioco', score: 'Punti', lines: 'Righe', level: 'Livello', best: 'Record', next: 'Pezzo successivo', controls: 'Comandi',
+        back: '← Giochi', new: 'Nuova', field: 'Campo di gioco', score: 'Punti', lines: 'Righe', level: 'Livello', best: 'Record', next: 'Pezzo successivo', hold: 'Riserva', holdtip: 'Riserva (C o Maiusc)', controls: 'Comandi',
         left: 'Sinistra', rotate: 'Ruota', right: 'Destra', down: 'Giù', drop: 'Caduta veloce',
-        help: 'Frecce o W A S D: muovi e ruota (Z e X girano nei due sensi), Spazio per far cadere subito il pezzo, P per la pausa. Completa le righe per fare punti: ogni 10 righe si sale di livello. In pausa se cambi scheda.',
-        m_over: 'Fine partita. Premi Nuova per riprovare.', m_start: 'Premi una freccia o un tasto per cominciare.', m_pause: 'In pausa: premi P o il pulsante Riprendi per continuare.', pause: 'Pausa', resume: 'Riprendi', paused: 'PAUSA',
+        help: 'Frecce o W A S D: muovi e ruota (Z e X girano nei due sensi), Spazio per far cadere subito il pezzo, C o Maiusc per mettere il pezzo in riserva (una volta per pezzo), P per la pausa. Completa le righe per fare punti: ogni 10 righe si sale di livello. In pausa se cambi scheda.',
+        m_over: 'Fine partita. Premi Nuova per riprovare.', m_start: 'Premi una freccia o un tasto per cominciare.', m_pause: 'In pausa: premi P o il pulsante Riprendi per continuare.', gestures: 'Sul campo: tocca per ruotare, trascina di lato per muovere, trascina in basso per scendere, scorri in basso veloce per la caduta.', pause: 'Pausa', resume: 'Riprendi', paused: 'PAUSA',
     });
-    VBI18N.add('en', { m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or any key to start.', m_pause: 'Paused: press P or the Resume button to continue.', pause: 'Pause', resume: 'Resume', paused: 'PAUSED' });
+    VBI18N.add('en', { hold: 'Hold', holdtip: 'Hold (C or Shift)', gestures: 'On the field: tap to rotate, drag sideways to move, drag down to soft drop, flick down to hard drop.', m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or any key to start.', m_pause: 'Paused: press P or the Resume button to continue.', pause: 'Pause', resume: 'Resume', paused: 'PAUSED' });
 
     // ------------------------------ the page ------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         const $ = (id) => document.getElementById(id);
         const canvas = $('tt-canvas');
         if (!canvas) return;
-        const ctx = canvas.getContext('2d'), nctx = $('tt-next').getContext('2d');
+        const ctx = canvas.getContext('2d'), nctx = $('tt-next').getContext('2d'), hctx = $('tt-hold').getContext('2d');
         const COLORS = ['#14121a', '#4dd0e1', '#f2c66d', '#b388ff', '#9be564', '#ff5e5e', '#4da3ff', '#ffb74d'];
         const KEY = 'vb_tetris_best';
         let g, timer = null, best = 0, running = false, paused = false, cell = 24;
@@ -142,6 +152,14 @@
             draw();
         }
         const square = (c, x, y, color, alpha) => { c.globalAlpha = alpha || 1; c.fillStyle = color; c.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2); c.globalAlpha = 1; };
+        function mini(c, type, dim) {
+            c.fillStyle = COLORS[0]; c.fillRect(0, 0, 80, 60);
+            if (!type) return;
+            const pc = PIECES[type];
+            c.globalAlpha = dim ? 0.4 : 1;
+            for (const [x, y] of pc.cells) { c.fillStyle = COLORS[pc.color]; c.fillRect(10 + x * 14, 8 + y * 14, 12, 12); }
+            c.globalAlpha = 1;
+        }
         function draw() {
             ctx.fillStyle = COLORS[0]; ctx.fillRect(0, 0, cell * W, cell * H);
             for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g.board[y][x]) square(ctx, x, y, COLORS[g.board[y][x]]);
@@ -155,11 +173,7 @@
                 ctx.fillStyle = '#ece6dc'; ctx.font = 'bold ' + Math.round(cell * 0.9) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(VBLang.t('paused'), cell * W / 2, cell * H / 2);
             }
-            nctx.fillStyle = COLORS[0]; nctx.fillRect(0, 0, 80, 60);
-            if (g.next) {
-                const pc = PIECES[g.next];
-                for (const [x, y] of pc.cells) { nctx.fillStyle = COLORS[pc.color]; nctx.fillRect(10 + x * 14, 8 + y * 14, 12, 12); }
-            }
+            mini(nctx, g.next); mini(hctx, g.hold, !g.canHold);
             $('tt-score').textContent = String(g.score); $('tt-lines').textContent = String(g.lines); $('tt-level').textContent = String(g.level); $('tt-best').textContent = String(best);
         }
         function tick() {
@@ -180,7 +194,7 @@
         function act(fn) { if (g.status !== 'play' || paused) return; begin(); fn(); draw(); if (g.status === 'over') over(); }
 
         const keys = { ArrowLeft: () => move(g, -1), ArrowRight: () => move(g, 1), ArrowUp: () => rotate(g, 1), ArrowDown: () => down(g, true), ' ': () => hardDrop(g),
-                       a: () => move(g, -1), d: () => move(g, 1), w: () => rotate(g, 1), s: () => down(g, true), z: () => rotate(g, -1), x: () => rotate(g, 1) };
+                       a: () => move(g, -1), d: () => move(g, 1), w: () => rotate(g, 1), s: () => down(g, true), z: () => rotate(g, -1), c: () => hold(g), C: () => hold(g), Shift: () => hold(g), x: () => rotate(g, 1) };
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!e.repeat) (paused ? resume : pause)(); return; }
@@ -188,12 +202,34 @@
         });
         $('tt-pause').addEventListener('click', (e) => { (paused ? resume : pause)(); e.currentTarget.blur(); });
         document.querySelectorAll('[data-act]').forEach((b) => {
-            const f = { left: () => move(g, -1), right: () => move(g, 1), rotate: () => rotate(g, 1), down: () => down(g, true), drop: () => hardDrop(g) }[b.dataset.act];
+            const f = { left: () => move(g, -1), right: () => move(g, 1), rotate: () => rotate(g, 1), down: () => down(g, true), drop: () => hardDrop(g), hold: () => hold(g) }[b.dataset.act];
             let rep = null;
             const stop = () => { clearInterval(rep); rep = null; };
             b.addEventListener('pointerdown', (e) => { e.preventDefault(); act(f); if (['left', 'right', 'down'].includes(b.dataset.act)) rep = setInterval(() => act(f), 110); });
             ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
         });
+        // touch on the field: tap rotates, a drag moves one column per cell-width, a fast flick down drops
+        let tp = null;
+        canvas.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse' || tp) return;
+            try { canvas.setPointerCapture(e.pointerId); } catch (x) { /* synthetic pointer */ }
+            tp = { id: e.pointerId, x0: e.clientX, y0: e.clientY, ax: e.clientX, ay: e.clientY, t: Date.now(), moved: false };
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            if (!tp || e.pointerId !== tp.id) return;
+            if (Math.abs(e.clientX - tp.x0) > 8 || Math.abs(e.clientY - tp.y0) > 8) tp.moved = true;
+            while (e.clientX - tp.ax >= cell) { tp.ax += cell; act(() => move(g, 1)); }
+            while (tp.ax - e.clientX >= cell) { tp.ax -= cell; act(() => move(g, -1)); }
+            while (e.clientY - tp.ay >= cell && Math.abs(e.clientY - tp.y0) > Math.abs(e.clientX - tp.x0)) { tp.ay += cell; act(() => down(g, true)); }
+        });
+        const endTouch = (e) => {
+            if (!tp || e.pointerId !== tp.id) return;
+            const dy = e.clientY - tp.y0, dx = e.clientX - tp.x0, dt = Date.now() - tp.t, t = tp; tp = null;
+            if (e.type === 'pointercancel') return;
+            if (!t.moved) act(() => rotate(g, 1));
+            else if (dy > cell * 2 && dy > Math.abs(dx) * 2 && dt < 250) act(() => hardDrop(g));
+        };
+        canvas.addEventListener('pointerup', endTouch); canvas.addEventListener('pointercancel', endTouch);
         $('tt-new').addEventListener('click', restart);
         window.addEventListener('resize', layout);
         document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });

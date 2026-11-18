@@ -84,11 +84,54 @@ test('controls: the move buttons sit together (left, down, right), there is a pa
     const move = html.match(/<div class="tt-move">([\s\S]*?)<\/div>/)[1];
     assert.deepEqual([...move.matchAll(/data-act="(\w+)"/g)].map((m) => m[1]), ['left', 'down', 'right']);
     const act = html.match(/<div class="tt-do">([\s\S]*?)<\/div>/)[1];
-    assert.deepEqual([...act.matchAll(/data-act="(\w+)"/g)].map((m) => m[1]), ['rotate', 'drop']);
+    assert.deepEqual([...act.matchAll(/data-act="(\w+)"/g)].map((m) => m[1]), ['rotate', 'hold', 'drop']);
     assert.match(html, /<button type="button" id="tt-pause"/);
     const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'tetris.js'), 'utf8');
     assert.match(js, /e\.key === 'p' \|\| e\.key === 'P'/);
     assert.match(js, /if \(g\.status !== 'play' \|\| paused\) return;/);       // nothing moves while paused
     assert.match(js, /pause: 'Pausa', resume: 'Riprendi'/);                       // both languages have the texts
     assert.match(js, /pause: 'Pause', resume: 'Resume'/);
+});
+
+test('hold: first hold takes the next piece, one hold per drop, works again after the lock, no room ends the game, stays deterministic', () => {
+    const g = T.newGame(T.makeRng(9));
+    const first = g.cur.type, nxt = g.next;
+    assert.equal(g.canHold, true);
+    assert.equal(T.hold(g), true);
+    assert.equal(g.hold, first);
+    assert.equal(g.cur.type, nxt, 'the first hold takes the next piece');
+    assert.equal(g.canHold, false);
+    const cur = g.cur.type, held = g.hold;
+    assert.equal(T.hold(g), false, 'a second hold in the same drop is refused');
+    assert.equal(g.cur.type, cur); assert.equal(g.hold, held);
+    T.hardDrop(g);
+    assert.equal(g.canHold, true, 'after the lock it works again');
+    const c2 = g.cur.type;
+    assert.equal(T.hold(g), true);
+    assert.equal(g.cur.type, first, 'swapped with the held piece');
+    assert.equal(g.hold, c2);
+    assert.equal(g.cur.y <= 0 && g.cur.rot === 0, true, 'it spawns at the top');
+    // a held piece that does not fit ends the game
+    const o = T.newGame(T.makeRng(9));
+    T.hold(o); o.canHold = true;
+    for (let x = 0; x < T.W; x++) for (let y = 0; y < 3; y++) o.board[y][x] = 3;
+    T.hold(o);
+    assert.equal(o.status, 'over');
+    assert.equal(T.hold(o), false, 'nothing after the end');
+    // same seed, same moves: same pieces
+    const run = (s) => { const a = T.newGame(T.makeRng(s)), seq = []; for (let i = 0; i < 6; i++) { T.hold(a); seq.push(a.cur.type, a.hold); T.hardDrop(a); if (a.status !== 'play') break; } return seq; };
+    assert.deepEqual(run(4), run(4));
+});
+
+test('page: Hold box and button, gesture help, in both languages', () => {
+    const fs = require('fs');
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'pages', 'tetris.html'), 'utf8');
+    const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'tetris.js'), 'utf8');
+    assert.match(html, /<canvas id="tt-hold"/);
+    assert.match(html, /<button type="button" data-act="hold"/);
+    assert.match(html, /data-i18n="gestures"/);
+    assert.match(js, /hold: 'Riserva'/); assert.match(js, /hold: 'Hold'/);
+    assert.match(js, /gestures: 'Sul campo/); assert.match(js, /gestures: 'On the field/);
+    assert.match(js, /canvas\.addEventListener\('pointerdown'/);
+    assert.match(js, /Shift: \(\) => hold\(g\)/);
 });

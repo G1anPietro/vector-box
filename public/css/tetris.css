@@ -1,7 +1,7 @@
 .tt-wrap { display: flex; gap: 12px; align-items: flex-start; justify-content: center; }
 #tt-canvas { background: #14121a; border: 1px solid var(--line); border-radius: 6px; touch-action: none; display: block; }
 .tt-side { display: flex; flex-direction: column; gap: 8px; }
-#tt-next { background: #14121a; border: 1px solid var(--line); border-radius: 6px; width: 80px; height: 60px; }
+#tt-next, #tt-hold { background: #14121a; border: 1px solid var(--line); border-radius: 6px; width: 80px; height: 60px; }
 .tt-pad { display: flex; gap: 14px; width: min(94vw, 420px); margin-top: 12px; }
 .tt-move, .tt-do { display: flex; gap: 6px; }
 .tt-move { flex: 3; }
@@ -9,3 +9,9 @@
 .tt-pad button { flex: 1; min-height: 52px; touch-action: manipulation; padding: 0; user-select: none; -webkit-user-select: none; }
 .tt-hbtns { display: flex; gap: 8px; }
 .ar-box.tt-small { min-width: 80px; padding: 4px 8px; }
+.tt-mini small { display: block; font-size: 11px; opacity: .7; }
+.tt-do button[data-act=hold] { font-size: 13px; }
+@media (max-height: 700px) {
+    .tt-side { gap: 4px; }
+    .ar-box.tt-small { padding: 2px 8px; }
+}
