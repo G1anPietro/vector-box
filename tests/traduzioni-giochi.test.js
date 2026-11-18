@@ -42,6 +42,15 @@ for (const g of ARCADE) {
         const html = read(`pages/${g}.html`), js = read(`js/${g}.js`);
         const d = dictionaries(js);
         assert.ok(d.it && d.en, 'both dictionaries registered');
+        // the pause and sound texts are shared: js/arcade-fx.js registers them (it/en) for every page that loads it
+        if (html.includes('js/arcade-fx.js')) {
+            const fx = read('js/arcade-fx.js');
+            for (const l of ['it', 'en']) {
+                const m = fx.match(new RegExp("VBI18N\\.add\\('" + l + "', \\{([^}]*)\\}\\)"));
+                assert.ok(m, 'arcade-fx.js registers its ' + l + ' texts');
+                for (const k of m[1].matchAll(/(\w+):/g)) d[l][k[1]] = true;
+            }
+        }
         const keys = new Set();
         for (const m of html.matchAll(/data-i18n="([^"]+)"/g)) keys.add(m[1]);
         for (const m of html.matchAll(/data-i18n-attr="([^"]+)"/g)) m[1].split(';').forEach((p) => keys.add(p.split(':')[1].trim()));
