@@ -50,11 +50,11 @@
     VBI18N.add('it', {
         title: 'Snake — vector-box', desc: 'Snake gratis nel browser: mangia, cresci, non toccare i muri né te stesso. Frecce, scorrimento o tasti sullo schermo. Nessun account.',
         back: '← Giochi', new: 'Nuova', score: 'Punti', best: 'Record', field: 'Campo di gioco', arrows: 'Frecce', up: 'Su', left: 'Sinistra', down: 'Giù', right: 'Destra',
-        help: 'Frecce, W A S D, scorri sul campo o usa i tasti. Ogni cibo ti fa crescere e andare più veloce. In pausa se cambi scheda.',
-        m_won: 'Hai riempito tutto il campo!', m_over: 'Fine. Premi Nuova per riprovare.', m_start: 'Premi una freccia o scorri per cominciare.', m_pause: 'In pausa: premi una freccia per riprendere.',
+        help: 'Frecce, W A S D, scorri sul campo o usa i tasti, P per la pausa. Ogni cibo ti fa crescere e andare più veloce. In pausa se cambi scheda.',
+        m_won: 'Hai riempito tutto il campo!', m_over: 'Fine. Premi Nuova per riprovare.', m_start: 'Premi una freccia o scorri per cominciare.', m_pause: 'In pausa: premi P o Riprendi per continuare.',
     });
     VBI18N.add('en', {
-        m_won: 'You filled the whole field!', m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or swipe to start.', m_pause: 'Paused: press an arrow key to resume.',
+        m_won: 'You filled the whole field!', m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or swipe to start.', m_pause: 'Paused: press P or Resume to continue.',
     });
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -63,7 +63,7 @@
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const KEY = 'vb_snake_best';
-        let g, timer = null, best = 0, started = false;
+        let g, timer = null, best = 0, started = false, pz;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
         const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || '#00ff66';
 
@@ -88,38 +88,43 @@
         }
         function speed() { return Math.max(60, 150 - g.score * 4); }
         function loop() {
+            const before = g.score;
             step(g);
             draw();
+            if (g.score > before) VBFx.play('good');
             if (g.status !== 'play') {
                 clearTimeout(timer); timer = null;
                 if (g.score > best) { best = g.score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } draw(); }
+                VBFx.play(g.status === 'won' ? 'win' : 'lose');
                 say(g.status === 'won' ? 'm_won' : 'm_over');
                 return;
             }
             timer = setTimeout(loop, speed());
         }
         function begin() { if (!started) { started = true; say(null); timer = setTimeout(loop, speed()); } }
-        function restart() { clearTimeout(timer); g = newGame(); started = false; say('m_start'); draw(); }
+        function restart() { clearTimeout(timer); g = newGame(); started = false; pz.reset(); say('m_start'); draw(); }
 
         const dirOf = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
         document.addEventListener('keydown', (e) => {
             const d = dirOf[e.key];
             if (!d) return;
             e.preventDefault();
-            if (g.status === 'play') { turn(g, d); begin(); }
+            if (g.status === 'play' && !pz.paused) { turn(g, d); begin(); }
         });
         let start = null;
         canvas.addEventListener('touchstart', (e) => { const t = e.touches[0]; start = { x: t.clientX, y: t.clientY }; }, { passive: true });
         canvas.addEventListener('touchend', (e) => {
-            if (!start) return;
+            if (!start || pz.paused) return;
             const t = e.changedTouches[0], dx = t.clientX - start.x, dy = t.clientY - start.y; start = null;
             if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
             turn(g, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')); begin();
         }, { passive: true });
-        document.querySelectorAll('[data-dir]').forEach((b) => b.addEventListener('click', () => { if (g.status === 'play') { turn(g, b.dataset.dir); begin(); } }));
+        document.querySelectorAll('[data-dir]').forEach((b) => b.addEventListener('click', () => { if (g.status === 'play' && !pz.paused) { turn(g, b.dataset.dir); begin(); } }));
         $('sn-new').addEventListener('click', restart);
         window.addEventListener('resize', size);
-        document.addEventListener('visibilitychange', () => { if (document.hidden && timer) { clearTimeout(timer); timer = null; started = false; say('m_pause'); } });
+        pz = VBFx.bindPause({ button: $('sn-pause'), cover: canvas, can: () => !!timer,
+            onPause: () => { clearTimeout(timer); timer = null; say('m_pause'); },
+            onResume: () => { say(null); timer = setTimeout(loop, speed()); } });
         window.addEventListener('vb-lang', () => say(msgKey));
         g = newGame(); size(); say('m_start');
     });

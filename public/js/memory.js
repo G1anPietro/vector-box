@@ -42,7 +42,7 @@
     VBI18N.add('it', {
         title: 'Memory — vector-box', desc: 'Memory gratis nel browser: trova tutte le coppie con meno mosse possibile, tre livelli e record personali. Nessun account.',
         back: '← Giochi', new: 'Nuova', level: 'Livello', easy: 'Facile', medium: 'Medio', hard: 'Difficile', moves: 'Mosse', time: 'Tempo', best: 'Record', cards: 'Carte',
-        help: 'Gira due carte alla volta: se sono uguali restano scoperte. Vince chi trova tutte le coppie con meno mosse.',
+        help: 'Gira due carte alla volta: se sono uguali restano scoperte. Vince chi trova tutte le coppie con meno mosse. P per la pausa.',
         card: 'carta {s}', card_down: 'carta coperta', best_moves: '{n} mosse', won: 'Trovate tutte le coppie in {m} mosse e {s} secondi!',
     });
     VBI18N.add('en', { card: 'card {s}', card_down: 'face-down card', best_moves: '{n} moves', won: 'Found all the pairs in {m} moves and {s} seconds!' });
@@ -52,9 +52,10 @@
         const board = $('ar-board');
         if (!board) return;
         const KEY = 'vb_memory_best';
-        let level = 'easy', g, cells = [], t0 = 0, timer = null, hideTimer = null;
+        let level = 'easy', g, cells = [], timer = null, hideTimer = null, pz;
+        const clock = VBFx.clock();
         const best = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
-        const secs = () => (t0 ? Math.floor((Date.now() - t0) / 1000) : 0);
+        const secs = () => Math.floor(clock.elapsed() / 1000);
 
         let wonSecs = null;   // set when the game is won: the message is rebuilt in paint() so it follows the language
         function paint() {
@@ -72,7 +73,7 @@
 
         function start(lv) {
             level = lv in LEVELS ? lv : 'easy';
-            clearInterval(timer); clearTimeout(hideTimer); timer = null; t0 = 0;
+            clearInterval(timer); clearTimeout(hideTimer); timer = null; clock.reset(); if (pz) pz.reset();
             g = newGame(level);
             board.style.setProperty('--cols', String(g.cols));
             board.replaceChildren();
@@ -84,21 +85,24 @@
 
         board.addEventListener('click', (e) => {
             const c = e.target.closest('button'); if (!c) return;
-            if (!t0) { t0 = Date.now(); timer = setInterval(paint, 1000); }
+            if (pz.paused) return;
+            if (clock.state === 'idle') { clock.start(); timer = setInterval(paint, 1000); }
             const r = flip(g, +c.dataset.i);
             if (r === 'ignored') return;
-            paint();
+            VBFx.play(r === 'match' ? 'good' : 'click'); paint();
             if (r === 'miss') hideTimer = setTimeout(() => { hide(g); paint(); }, 800);
             if (g.status === 'won') {
-                clearInterval(timer);
+                clearInterval(timer); clock.stop(); VBFx.play('win');
                 if (!best[level] || g.moves < best[level]) { best[level] = g.moves; try { localStorage.setItem(KEY, JSON.stringify(best)); } catch (x) { /* private mode */ } }
                 wonSecs = secs(); paint();
-                paint();
             }
         });
         document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => start(b.dataset.level)));
         $('ar-new').addEventListener('click', () => start(level));
         window.addEventListener('vb-lang', paint);
+        pz = VBFx.bindPause({ button: $('ar-pause'), cover: board, can: () => clock.state === 'run',
+            onPause: () => { clock.pause(); clearInterval(timer); clearTimeout(hideTimer); if (g.pending) hide(g); paint(); },
+            onResume: () => { clock.resume(); timer = setInterval(paint, 1000); paint(); } });
         start('easy');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

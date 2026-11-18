@@ -22,3 +22,5 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .db-pad button { min-height: 48px; }
 .db-help { max-width: 380px; color: #a9a5ba; font-size: 0.85rem; line-height: 1.5; margin-top: 12px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.ar-hbtns { display: flex; gap: 8px; align-items: center; }
+#fx-toggle button { min-width: 40px; padding: 8px 10px; }

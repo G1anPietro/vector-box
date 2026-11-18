@@ -77,11 +77,12 @@
             if (over) return;
             const r = move(board, dir);
             if (!r.moved) return;
+            VBFx.play(r.gained ? 'good' : 'click');
             board = addTile(r.board, Math.random);
             score += r.gained;
             if (score > best) { best = score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
-            if (board.includes(2048)) won = true;
-            if (!canMove(board)) over = true;
+            if (board.includes(2048) && !won) { won = true; VBFx.play('win'); }
+            if (!canMove(board)) { over = true; VBFx.play('lose'); }
             paint();
         }
 

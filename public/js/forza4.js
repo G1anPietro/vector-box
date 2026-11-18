@@ -123,20 +123,20 @@
             if (!w) { msg(mode === 'two' ? (turn === 1 ? 'm_red' : 'm_yellow') : (turn === human ? 'm_you' : 'm_think')); return; }
             over = true;
             const k = mode === 'two' ? 'two' : 'cpu', s = score[k] = score[k] || { w: 0, d: 0, l: 0 };
-            if (w === 'draw') { s.d++; msg('m_draw'); }
-            else if (mode === 'two') { (w === 1 ? s.w++ : s.l++); msg(w === 1 ? 'm_wred' : 'm_wyellow'); }
-            else if (w === human) { s.w++; msg('m_won'); }
-            else { s.l++; msg('m_lost'); }
+            if (w === 'draw') { s.d++; msg('m_draw'); VBFx.play('bad'); }
+            else if (mode === 'two') { (w === 1 ? s.w++ : s.l++); msg(w === 1 ? 'm_wred' : 'm_wyellow'); VBFx.play('win'); }
+            else if (w === human) { s.w++; msg('m_won'); VBFx.play('win'); }
+            else { s.l++; msg('m_lost'); VBFx.play('lose'); }
             save(); paint();
         }
         function computerTurn() {
             busy = true;
-            setTimeout(() => { busy = false; if (over) return; drop(b, bestMove(b, turn, mode), turn); turn = other(turn); paint(); say(); }, 450);
+            setTimeout(() => { busy = false; if (over) return; drop(b, bestMove(b, turn, mode), turn); turn = other(turn); VBFx.play('click'); paint(); say(); }, 450);
         }
         function play(c) {
             if (over || busy || b[0][c]) return;
             if (mode !== 'two' && turn !== human) return;
-            drop(b, c, turn); turn = other(turn); paint(); say();
+            drop(b, c, turn); turn = other(turn); VBFx.play('click'); paint(); say();
             if (!over && mode !== 'two') computerTurn();
         }
         function start(m, next) {
