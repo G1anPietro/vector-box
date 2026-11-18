@@ -7,6 +7,7 @@ $base = siteUrl();
 $pages = [
     ['/', 'weekly', '1.0'],
     ['/pages/giochi.php', 'weekly', '0.9'],
+    ['/pages/classifiche.php', 'weekly', '0.5'],
     ['/pages/spia.html', 'monthly', '0.8'],
     ['/pages/lupus.html', 'monthly', '0.8'],
     ['/pages/nonhomai.html', 'monthly', '0.8'],

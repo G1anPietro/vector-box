@@ -68,6 +68,7 @@ function accountExport(PDO $db, int $userId): array {
         'review_cards' => $all('SELECT doc_id, q_index, box, due_date, question FROM review_cards WHERE user_id = :i', $u),
         'scores' => $all('SELECT kind, points, ref, created_at FROM score_events WHERE user_id = :i', $u),
         'share_links' => $all('SELECT kind, title, expires_at, views, revoked, created_at FROM share_links WHERE user_id = :i', $u),
+        'game_scores' => $all('SELECT game, variant, score, created_at FROM game_scores WHERE user_id = :i', $u),
         'signed_in_devices' => $all('SELECT label, country, created_at, last_seen FROM account_sessions WHERE user_id = :i', $u),
         'donations' => $all('SELECT amount_cents, currency, donated_at, display_name, is_public FROM donors WHERE account_id = :i', $u),
     ];
@@ -96,7 +97,7 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
         $run("UPDATE poker_tables SET creator_username = 'deleted' WHERE creator_username = :n", [':n' => $username]);
         $run("UPDATE books SET uploaded_by = 'deleted' WHERE uploaded_by = :n", [':n' => $username]);
         foreach (['reading_progress', 'bookmarks', 'read_progress', 'notifications', 'push_subscriptions', 'review_cards', 'custom_quizzes',
-                  'quiz_answers', 'quiz_seen', 'score_events', 'class_log', 'share_links', 'class_members'] as $t) {
+                  'quiz_answers', 'quiz_seen', 'score_events', 'game_scores', 'class_log', 'share_links', 'class_members'] as $t) {
             $run("DELETE FROM $t WHERE user_id = :i", $u);
         }
         $run('DELETE FROM account_sessions WHERE user_id = :i', $u);

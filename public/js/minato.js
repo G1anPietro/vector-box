@@ -95,6 +95,7 @@
         const $ = (id) => document.getElementById(id);
         const board = $('mn-board');
         if (!board) return;
+        const VS = window.VBScores || { show() {}, submit() {}, begin() {}, reset() {} };   // leaderboard (js/arcade-scores.js)
         const KEY = 'vb_minato_best';
         let level = 'easy', g = null, cells = [], flagMode = false, timer = null, cursor = 0, pz;
         const clock = VBFx.clock();
@@ -133,6 +134,7 @@
             clearInterval(timer); timer = null; clock.stop();
             if (g.status === 'won') {
                 const s = secs();
+                VS.submit('minato', level, Date.now() - t0, Date.now() - t0);
                 if (!best[level] || s < best[level]) { best[level] = s; saveBest(); }
                 showMsg('won', { s }); VBFx.play('win');
             } else if (g.status === 'lost') {
@@ -169,6 +171,7 @@
             document.querySelectorAll('[data-level]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.level === level)));
             showMsg(null);
             paintAll();
+            VS.show('minato', level);
         }
 
         // click, right click, long press (a phone has no right button) and the flag switch

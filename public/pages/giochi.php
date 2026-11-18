@@ -212,6 +212,8 @@ function gameBox(array $g, callable $T): void { ?>
             ? 'Si gioca dal browser, senza scaricare niente e senza account (tranne il poker). Per i giochi da festa basta un telefono in mezzo al tavolo.'
             : 'Play in the browser, nothing to install and no account needed (except poker). For the party games one phone on the table is enough.' ?></p>
 
+        <p class="lead"><a href="classifiche.php"><?= $lang === 'it' ? 'Classifiche dei giochi →' : 'Game leaderboards →' ?></a></p>
+
         <?php $first = true; foreach ($GROUPS as $key => $title): ?>
             <?php if (!$first) echo adsSlot('ADSENSE_SLOT_GAMES', $lang); $first = false; ?>
             <section class="group">

@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 42;
+const DB_SCHEMA_VERSION = 44;
 
 /**
  * Session bootstrap.
@@ -585,6 +585,20 @@ function migrateV16(PDO $db): void {
 /** v38: the news board (pages/novita.php): what is new, what is being worked on right now, what comes next. Texts in both languages. */
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
 /** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
+/** v44: the arcade leaderboards (api/game_scores.php): ONE row per account, game and variant: its best score (or best time). */
+function migrateV44(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS game_scores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        game TEXT NOT NULL,
+        variant TEXT NOT NULL DEFAULT '',
+        score INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE (user_id, game, variant)
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_game_scores_board ON game_scores(game, variant, score DESC)');
+}
+
 /** v42: where you are signed in: one row per signed-in browser (hash of the session id, a label, the country, dates; no IP). */
 function migrateV42(PDO $db): void {
     $db->exec("CREATE TABLE IF NOT EXISTS account_sessions (
@@ -1127,6 +1141,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 42) {
             migrateV42($db);
+        }
+        if ($current < 44) {
+            migrateV44($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

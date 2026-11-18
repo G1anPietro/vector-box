@@ -57,6 +57,7 @@
         const $ = (id) => document.getElementById(id);
         const grid = $('db-grid');
         if (!grid) return;
+        const VS = window.VBScores || { show() {}, submit() {}, begin() {}, reset() {} };   // leaderboard (js/arcade-scores.js)
         const KEY = 'vb_2048_best';
         let board, score, best = 0, won = false, over = false;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
@@ -71,18 +72,19 @@
             $('db-msg').textContent = over ? VBLang.t('over') : won ? VBLang.t('won') : '';
         }
 
-        function restart() { board = addTile(addTile(new Array(N * N).fill(0), Math.random), Math.random); score = 0; won = false; over = false; paint(); }
+        function restart() { VS.reset(); board = addTile(addTile(new Array(N * N).fill(0), Math.random), Math.random); score = 0; won = false; over = false; paint(); }
 
         function play(dir) {
             if (over) return;
             const r = move(board, dir);
             if (!r.moved) return;
+            VS.begin();
             VBFx.play(r.gained ? 'good' : 'click');
             board = addTile(r.board, Math.random);
             score += r.gained;
             if (score > best) { best = score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
             if (board.includes(2048) && !won) { won = true; VBFx.play('win'); }
-            if (!canMove(board)) { over = true; VBFx.play('lose'); }
+            if (!canMove(board)) { over = true; VBFx.play('lose'); VS.submit('dueamila', '', score); }
             paint();
         }
 
@@ -102,6 +104,6 @@
         document.querySelectorAll('[data-dir]').forEach((b) => b.addEventListener('click', () => play(b.dataset.dir)));
         $('db-new').addEventListener('click', restart);
         window.addEventListener('vb-lang', paint);
-        restart();
+        restart(); VS.show('dueamila', '');
     });
 })(typeof window !== 'undefined' ? window : globalThis);
