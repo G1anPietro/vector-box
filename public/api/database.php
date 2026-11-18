@@ -613,6 +613,16 @@ function migrateV42(PDO $db): void {
     $db->exec('CREATE INDEX IF NOT EXISTS idx_account_sessions_user ON account_sessions(user_id)');
 }
 
+/** v43: "Parola del giorno" streak, stats and today's saved game for people with an account (api/parola.php), as JSON texts. */
+function migrateV43(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS parola_stats (
+        user_id INTEGER PRIMARY KEY,
+        stats TEXT NOT NULL DEFAULT '{}',
+        daily TEXT NOT NULL DEFAULT '{}',
+        updated_at INTEGER NOT NULL
+    )");
+}
+
 /** v41: two-step login (TOTP) for admins: the encrypted secret, whether it is on, the last accepted 30-second step, the hashed backup codes. */
 function migrateV41(PDO $db): void {
     addColumnIfMissing($db, 'accounts', 'totp_secret', "TEXT NOT NULL DEFAULT ''");
@@ -1141,6 +1151,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 42) {
             migrateV42($db);
+        }
+        if ($current < 43) {
+            migrateV43($db);
         }
         if ($current < 44) {
             migrateV44($db);

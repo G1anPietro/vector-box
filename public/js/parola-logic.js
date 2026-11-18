@@ -19,9 +19,9 @@
 
     /** 'c' right place, 'p' elsewhere in the word, 'a' absent. A repeated letter is marked 'p' only as many times as it is left in the answer. */
     function score(guess, answer) {
-        const res = new Array(LEN).fill('a'), left = {};
-        for (let i = 0; i < LEN; i++) { if (guess[i] === answer[i]) res[i] = 'c'; else left[answer[i]] = (left[answer[i]] || 0) + 1; }
-        for (let i = 0; i < LEN; i++) if (res[i] === 'a' && left[guess[i]] > 0) { res[i] = 'p'; left[guess[i]]--; }
+        const n = answer.length, res = new Array(n).fill('a'), left = {};   // 5 or 6 letters
+        for (let i = 0; i < n; i++) { if (guess[i] === answer[i]) res[i] = 'c'; else left[answer[i]] = (left[answer[i]] || 0) + 1; }
+        for (let i = 0; i < n; i++) if (res[i] === 'a' && left[guess[i]] > 0) { res[i] = 'p'; left[guess[i]]--; }
         return res;
     }
 
@@ -53,7 +53,28 @@
     /** The streak to show today: it is already lost if yesterday was not played and won. */
     const shownStreak = (s, today) => (s && s.lastWin && (s.last === today || s.last === today - 1) ? s.streak : 0);
 
-    const api = { LEN, TRIES, makeRng, dailyOrder, dayNumber, puzzleNumber, dailyWord, score, keyStates, shareText, addResult, shownStreak, EMPTY };
+    /**
+     * Best of two stats objects (local and server; either may be null): the one with more games played is the base, the streak
+     * comes from whoever played last (equal: the longer), best is the max. A streak is never lost.
+     */
+    function mergeStats(a, b) {
+        if (!a || !b) return Object.assign(EMPTY(), a || b || {});
+        const [x, y] = a.played > b.played || (a.played === b.played && (a.last || 0) >= (b.last || 0)) ? [a, b] : [b, a];   // x = base
+        const o = Object.assign(EMPTY(), x);
+        const h = (y.last || 0) > (x.last || 0) || ((y.last || 0) === (x.last || 0) && y.streak > x.streak) ? y : x;   // streak holder
+        o.streak = h.streak; o.last = h.last; o.lastWin = !!h.lastWin;
+        o.best = Math.min(Math.max(x.best, y.best, o.streak), o.played);
+        return o;
+    }
+    /** The saved daily game to keep: the later day wins; the same day, the one with more guesses (a finished one on a tie). */
+    function mergeDaily(a, b) {
+        if (!a || !b) return a || b || null;
+        if (a.day !== b.day) return a.day > b.day ? a : b;
+        if (a.guesses.length !== b.guesses.length) return a.guesses.length > b.guesses.length ? a : b;
+        return b.over && !a.over ? b : a;
+    }
+
+    const api = { mergeStats, mergeDaily, LEN, TRIES, makeRng, dailyOrder, dayNumber, puzzleNumber, dailyWord, score, keyStates, shareText, addResult, shownStreak, EMPTY };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.ParolaLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

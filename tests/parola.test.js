@@ -99,9 +99,58 @@ test('the page is served, loads its scripts in order, has no inline script, and 
         assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), 'no inline scripts');
         assert.ok(!/\son\w+="/i.test(html), 'no inline handlers');
         const srcs = [...html.matchAll(/<script src="\.\.\/js\/([a-z0-9-]+\.js)/g)].map((m) => m[1]);
-        assert.deepEqual(srcs, ['i18n.js', 'parola-words.js', 'parola-logic.js', 'parola.js']);
-        for (const f of ['/js/parola.js', '/js/parola-logic.js', '/js/parola-words.js', '/css/parola.css', '/assets/parola/icon.svg', '/css/arcade.css']) assert.equal((await fetch(site.base + f)).status, 200, f);
+        assert.deepEqual(srcs, ['i18n.js', 'csrf.js', 'arcade-fx.js', 'parola-words.js', 'parola-words6.js', 'parola-logic.js', 'parola.js']);
+        for (const f of ['/js/parola.js', '/js/parola-logic.js', '/js/parola-words.js', '/js/parola-words6.js', '/css/parola.css', '/assets/parola/icon.svg', '/css/arcade.css']) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.match(await (await fetch(`${site.base}/pages/giochi.php`)).text(), /parola\.html/);
         assert.match(await (await fetch(`${site.base}/sitemap.php`)).text(), /pages\/parola\.html/);
     } finally { await site.stop(); }
+});
+
+const { ANSWERS6, EXTRA6 } = load('parola-words6.js');
+
+test('6-letter lists: 6 letters a-z, lowercase, unique, no overlap, sizes, nothing vulgar', () => {
+    for (const w of [...ANSWERS6, ...EXTRA6]) assert.match(w, /^[a-z]{6}$/, w);
+    assert.equal(new Set(ANSWERS6).size, ANSWERS6.length);
+    assert.equal(new Set(EXTRA6).size, EXTRA6.length);
+    const acc = new Set([...ANSWERS6, ...EXTRA6]);
+    assert.equal(acc.size, ANSWERS6.length + EXTRA6.length, 'lists do not overlap');
+    assert.ok(ANSWERS6.length >= 350 && ANSWERS6.length <= 600, 'answers: ' + ANSWERS6.length);
+    assert.ok(EXTRA6.length >= 700 && EXTRA6.length <= 1500, 'extra: ' + EXTRA6.length);
+    for (const bad of ['frocio', 'cagare', 'vagina', 'idiota']) assert.ok(!acc.has(bad), bad);
+});
+
+test('6-letter daily word is its own sequence, and score works for 6 letters', () => {
+    const d = new Date(2026, 5, 15);
+    assert.ok(ANSWERS6.includes(L.dailyWord(d, ANSWERS6)));
+    assert.equal(L.dailyWord(d, ANSWERS6), L.dailyWord(new Date(2026, 5, 15, 23), ANSWERS6));
+    assert.notEqual(L.dailyWord(new Date(2026, 5, 16), ANSWERS6), L.dailyWord(d, ANSWERS6));
+    assert.equal(L.score('giorno', 'giorno').join(''), 'cccccc');
+    assert.equal(L.score('oooooo', 'giorno').join(''), 'aacaac');
+});
+
+test('mergeStats: more games wins, the streak is never lost, best is the max, same input is stable', () => {
+    const a = L.addResult(L.addResult(null, 10, true, 3), 11, true, 4);   // played 2, streak 2
+    const b = L.addResult(null, 11, false, 6);                              // played 1, streak 0, last 11
+    const m = L.mergeStats(a, b);
+    assert.deepEqual([m.played, m.won, m.streak, m.best], [2, 2, 2, 2]);
+    assert.deepEqual(L.mergeStats(b, a), m, 'order does not matter');
+    // the other side played more games but its streak is dead; the live streak (played last) survives
+    let c = L.addResult(null, 1, true, 2); for (let d = 2; d < 8; d++) c = L.addResult(c, d, d === 4 ? false : true, 3);   // more games, last 7, streak 3
+    const live = L.addResult(L.addResult(L.addResult(null, 5, true, 1), 6, true, 1), 7, true, 1);
+    assert.equal(L.mergeStats(c, live).streak, 3);
+    assert.equal(L.mergeStats(null, a).played, 2);
+    assert.equal(L.mergeStats(a, null).streak, 2);
+    assert.equal(L.mergeStats(null, null).played, 0);
+    // never more best than games
+    const x = L.mergeStats({ ...L.EMPTY(), played: 1, won: 1, streak: 1, best: 1, last: 5, lastWin: true }, { ...L.EMPTY(), played: 1, won: 0, best: 1, last: 5 });
+    assert.ok(x.best <= x.played);
+});
+
+test('mergeDaily: later day wins; same day more guesses; a finished game on a tie', () => {
+    const g = (day, n, over = false) => ({ day, guesses: Array(n).fill('abete'), over });
+    assert.equal(L.mergeDaily(g(5, 3), g(6, 1)).day, 6);
+    assert.equal(L.mergeDaily(g(5, 3), g(5, 4)).guesses.length, 4);
+    assert.equal(L.mergeDaily(g(5, 2), g(5, 2, true)).over, true);
+    assert.equal(L.mergeDaily(null, g(5, 1)).day, 5);
+    assert.equal(L.mergeDaily(null, null), null);
 });

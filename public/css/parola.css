@@ -1,5 +1,5 @@
 #pa-board { display: grid; gap: 6px; width: min(92vw, 320px); }
-.pa-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.pa-row { display: grid; grid-template-columns: repeat(var(--n, 5), 1fr); gap: 6px; }
 .pa-tile { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border: 2px solid var(--line); border-radius: 6px; font: 700 clamp(1.3rem, 8vw, 1.8rem) ui-monospace, monospace; color: var(--ink); }
 .pa-tile.typed { border-color: var(--muted); }
 /* colour AND a mark in the corner, so the state does not depend on colour alone */
@@ -13,3 +13,4 @@
 .pa-key.wide { flex: 1.6 1 0; font-size: 0.75rem; }
 #pa-share { margin-top: 8px; border-color: var(--accent); color: var(--accent); }
 #pa-share[hidden], #pa-new[hidden] { display: none; }
+#pa-guest[hidden] { display: none; }
