@@ -115,10 +115,10 @@
         title: 'Tetris — vector-box', desc: 'Tetris gratis nel browser: pezzi che cadono, righe da completare, livelli sempre più veloci. Tastiera o tasti sullo schermo, record personale, nessun account.',
         back: '← Giochi', new: 'Nuova', field: 'Campo di gioco', score: 'Punti', lines: 'Righe', level: 'Livello', best: 'Record', next: 'Pezzo successivo', controls: 'Comandi',
         left: 'Sinistra', rotate: 'Ruota', right: 'Destra', down: 'Giù', drop: 'Caduta veloce',
-        help: 'Frecce o W A S D: muovi e ruota (Z e X girano nei due sensi), Spazio per far cadere subito il pezzo. Completa le righe per fare punti: ogni 10 righe si sale di livello. In pausa se cambi scheda.',
-        m_over: 'Fine partita. Premi Nuova per riprovare.', m_start: 'Premi una freccia o un tasto per cominciare.', m_pause: 'In pausa: premi un tasto per riprendere.',
+        help: 'Frecce o W A S D: muovi e ruota (Z e X girano nei due sensi), Spazio per far cadere subito il pezzo, P per la pausa. Completa le righe per fare punti: ogni 10 righe si sale di livello. In pausa se cambi scheda.',
+        m_over: 'Fine partita. Premi Nuova per riprovare.', m_start: 'Premi una freccia o un tasto per cominciare.', m_pause: 'In pausa: premi P o il pulsante Riprendi per continuare.', pause: 'Pausa', resume: 'Riprendi', paused: 'PAUSA',
     });
-    VBI18N.add('en', { m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or any key to start.', m_pause: 'Paused: press a key to resume.' });
+    VBI18N.add('en', { m_over: 'Game over. Press New to try again.', m_start: 'Press an arrow key or any key to start.', m_pause: 'Paused: press P or the Resume button to continue.', pause: 'Pause', resume: 'Resume', paused: 'PAUSED' });
 
     // ------------------------------ the page ------------------------------
     document.addEventListener('DOMContentLoaded', () => {
@@ -128,7 +128,7 @@
         const ctx = canvas.getContext('2d'), nctx = $('tt-next').getContext('2d');
         const COLORS = ['#14121a', '#4dd0e1', '#f2c66d', '#b388ff', '#9be564', '#ff5e5e', '#4da3ff', '#ffb74d'];
         const KEY = 'vb_tetris_best';
-        let g, timer = null, best = 0, running = false, cell = 24;
+        let g, timer = null, best = 0, running = false, paused = false, cell = 24;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
 
         let msgKey = null;   // kept as a key so it is redrawn when the language changes
@@ -150,6 +150,11 @@
                 for (const [x, y] of cellsOf({ ...g.cur, y: gy })) if (y >= 0) square(ctx, x, y, col, 0.25);
                 for (const [x, y] of cellsOf(g.cur)) if (y >= 0) square(ctx, x, y, col);
             }
+            if (paused) {   // the board is hidden while paused: no planning a move during a pause
+                ctx.fillStyle = 'rgba(20,18,26,0.92)'; ctx.fillRect(0, 0, cell * W, cell * H);
+                ctx.fillStyle = '#ece6dc'; ctx.font = 'bold ' + Math.round(cell * 0.9) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(VBLang.t('paused'), cell * W / 2, cell * H / 2);
+            }
             nctx.fillStyle = COLORS[0]; nctx.fillRect(0, 0, 80, 60);
             if (g.next) {
                 const pc = PIECES[g.next];
@@ -168,12 +173,20 @@
             draw(); say('m_over');
         }
         function begin() { if (!running && g.status === 'play') { running = true; say(null); timer = setTimeout(tick, speed(g.level)); } }
-        function restart() { clearTimeout(timer); running = false; g = newGame(); say('m_start'); draw(); }
-        function act(fn) { if (g.status !== 'play') return; begin(); fn(); draw(); if (g.status === 'over') over(); }
+        const paintPause = () => { const b = $('tt-pause'); b.textContent = VBLang.t(paused ? 'resume' : 'pause'); b.setAttribute('aria-pressed', String(paused)); };
+        function pause() { if (!running || paused) return; clearTimeout(timer); running = false; paused = true; paintPause(); say('m_pause'); draw(); }
+        function resume() { if (!paused) return; paused = false; paintPause(); draw(); begin(); }
+        function restart() { clearTimeout(timer); running = false; paused = false; paintPause(); g = newGame(); say('m_start'); draw(); }
+        function act(fn) { if (g.status !== 'play' || paused) return; begin(); fn(); draw(); if (g.status === 'over') over(); }
 
         const keys = { ArrowLeft: () => move(g, -1), ArrowRight: () => move(g, 1), ArrowUp: () => rotate(g, 1), ArrowDown: () => down(g, true), ' ': () => hardDrop(g),
                        a: () => move(g, -1), d: () => move(g, 1), w: () => rotate(g, 1), s: () => down(g, true), z: () => rotate(g, -1), x: () => rotate(g, 1) };
-        document.addEventListener('keydown', (e) => { const f = keys[e.key]; if (!f || e.ctrlKey || e.metaKey) return; e.preventDefault(); act(f); });
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!e.repeat) (paused ? resume : pause)(); return; }
+            const f = keys[e.key]; if (!f) return; e.preventDefault(); act(f);
+        });
+        $('tt-pause').addEventListener('click', (e) => { (paused ? resume : pause)(); e.currentTarget.blur(); });
         document.querySelectorAll('[data-act]').forEach((b) => {
             const f = { left: () => move(g, -1), right: () => move(g, 1), rotate: () => rotate(g, 1), down: () => down(g, true), drop: () => hardDrop(g) }[b.dataset.act];
             let rep = null;
@@ -183,8 +196,8 @@
         });
         $('tt-new').addEventListener('click', restart);
         window.addEventListener('resize', layout);
-        document.addEventListener('visibilitychange', () => { if (document.hidden && running) { clearTimeout(timer); running = false; say('m_pause'); } });
-        window.addEventListener('vb-lang', () => say(msgKey));
+        document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+        window.addEventListener('vb-lang', () => { say(msgKey); paintPause(); draw(); });
         g = newGame(); layout(); say('m_start');
     });
 })(typeof window !== 'undefined' ? window : globalThis);

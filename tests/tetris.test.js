@@ -77,3 +77,18 @@ test('the page is served, has no inline script, and the lists know it', async ()
         assert.match(await (await fetch(`${site.base}/sitemap.php`)).text(), /pages\/tetris\.html/);
     } finally { await site.stop(); }
 });
+
+test('controls: the move buttons sit together (left, down, right), there is a pause button, and P pauses', () => {
+    const fs = require('fs'), path = require('path');
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'pages', 'tetris.html'), 'utf8');
+    const move = html.match(/<div class="tt-move">([\s\S]*?)<\/div>/)[1];
+    assert.deepEqual([...move.matchAll(/data-act="(\w+)"/g)].map((m) => m[1]), ['left', 'down', 'right']);
+    const act = html.match(/<div class="tt-do">([\s\S]*?)<\/div>/)[1];
+    assert.deepEqual([...act.matchAll(/data-act="(\w+)"/g)].map((m) => m[1]), ['rotate', 'drop']);
+    assert.match(html, /<button type="button" id="tt-pause"/);
+    const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'tetris.js'), 'utf8');
+    assert.match(js, /e\.key === 'p' \|\| e\.key === 'P'/);
+    assert.match(js, /if \(g\.status !== 'play' \|\| paused\) return;/);       // nothing moves while paused
+    assert.match(js, /pause: 'Pausa', resume: 'Riprendi'/);                       // both languages have the texts
+    assert.match(js, /pause: 'Pause', resume: 'Resume'/);
+});
