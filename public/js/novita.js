@@ -55,8 +55,8 @@
     }
     // ---- tabs and the ideas box ----
     const L = lang === 'it'
-        ? { st: { new: 'inviata', considering: 'in valutazione', planned: 'in programma', done: 'fatta', declined: 'non per ora' }, sent: 'Idea inviata, grazie!', err: 'Non è stato possibile inviarla.', none: 'Ancora nessuna idea.', votes: 'voti', vote: 'Vota', voted: 'Votata', save: 'Salva', del: 'Elimina', reply: 'Risposta (facoltativa)' }
-        : { st: { new: 'sent', considering: 'under review', planned: 'planned', done: 'done', declined: 'not for now' }, sent: 'Idea sent, thank you!', err: 'It could not be sent.', none: 'No ideas yet.', votes: 'votes', vote: 'Vote', voted: 'Voted', save: 'Save', del: 'Delete', reply: 'Answer (optional)' };
+        ? { st: { new: 'inviata', considering: 'in valutazione', planned: 'in programma', done: 'fatta', declined: 'non per ora' }, sent: 'Idea inviata, grazie!', err: 'Non è stato possibile inviarla.', none: 'Ancora nessuna idea.', votes: 'voti', vote: 'Vota', voted: 'Votata', save: 'Salva', del: 'Elimina', reply: 'Risposta (facoltativa)', board: 'Metti in bacheca', onBoard: 'In bacheca', warn: 'Il testo sarà pubblico, senza l\u2019autore.', tEn: 'Titolo (EN)', tIt: 'Titolo (IT)', cancel: 'Annulla' }
+        : { st: { new: 'sent', considering: 'under review', planned: 'planned', done: 'done', declined: 'not for now' }, sent: 'Idea sent, thank you!', err: 'It could not be sent.', none: 'No ideas yet.', votes: 'votes', vote: 'Vote', voted: 'Voted', save: 'Save', del: 'Delete', reply: 'Answer (optional)', board: 'Put on the board', onBoard: 'On the board', warn: 'The text will be public, without the author.', tEn: 'Title (EN)', tIt: 'Title (IT)', cancel: 'Cancel' };
     const tabNews = document.getElementById('tab-news'), tabIdeas = document.getElementById('tab-ideas');
     const paneNews = document.getElementById('pane-news'), paneIdeas = document.getElementById('pane-ideas');
     function show(ideas) {
@@ -86,6 +86,7 @@
         if (i.reply) c.append(el('p', '', '→ ' + i.reply));
         if (i.votes) m.append(el('span', '', i.votes + ' ' + L.votes));
         const box = el('div', 'nv-admin');
+        let late = null;
         if (admin) {
             const sel = el('select');
             Object.entries(L.st).forEach(([k, v]) => { const o = el('option', '', v); o.value = k; if (k === i.status) o.selected = true; sel.append(o); });
@@ -93,10 +94,25 @@
             const sv = el('button', '', L.save); sv.type = 'button';
             sv.addEventListener('click', async () => { const d = await api({ action: 'set', id: i.id, status: sel.value, reply: rep.value }); if (d.success) loadIdeas(); });
             box.append(sel, rep, sv);
+            if (['considering', 'planned', 'done'].includes(i.status)) {
+                if (i.on_board) m.append(el('span', 'nv-status', '\u2713 ' + L.onBoard));
+                const bb = el('button', '', L.board); bb.type = 'button';
+                const form = el('div', 'nv-admin'); form.hidden = true;
+                const te = el('input'), ti = el('input'); te.maxLength = ti.maxLength = 80; te.placeholder = L.tEn; ti.placeholder = L.tIt;
+                te.value = ti.value = Array.from(i.text).slice(0, 60).join('');
+                const go = el('button', '', L.board), no = el('button', '', L.cancel); go.type = no.type = 'button';
+                go.addEventListener('click', async () => { const d = await api({ action: 'to_board', id: i.id, title_en: te.value, title_it: ti.value }); if (d.success) loadIdeas(); });
+                no.addEventListener('click', () => { form.hidden = true; });
+                form.append(el('p', 'muted', '\u26A0 ' + L.warn), te, ti, go, no);
+                bb.addEventListener('click', () => { form.hidden = !form.hidden; });
+                box.append(bb);
+                late = form;
+            }
         }
         const dl = el('button', '', L.del); dl.type = 'button';
         dl.addEventListener('click', async () => { const d = await api({ action: 'delete', id: i.id }); if (d.success) loadIdeas(); });
         box.append(dl);
+        if (late) box.append(late);
         c.append(box);
         return c;
     }

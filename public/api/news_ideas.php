@@ -5,9 +5,11 @@
 //   POST {action:'vote', id}            -> toggles your vote on a public idea (not your own; 60 a hour)
 //   POST {text}                         -> add an idea (account required, CSRF, 5 per day, max 20 waiting)
 //   POST {action:'set', id, status, reply?}   admin only: status new|considering|planned|done|declined, optional short answer
+//   POST {action:'to_board', id, title_en?, title_it?}   admin only: puts the idea on the public board as item "idea-<id>" (text only, never the author); idempotent
 //   POST {action:'delete', id}          -> the author deletes their own idea (an admin any)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/rate_limiter.php';
+require_once __DIR__ . '/news_lib.php';
 
 initSession();
 header('Content-Type: application/json');
@@ -16,6 +18,16 @@ $db = getDbConnection();
 $me = (int)$_SESSION['user_id'];
 $isAdmin = !empty($_SESSION['is_admin']);
 const IDEA_STATUS = ['new', 'considering', 'planned', 'done', 'declined'];
+
+// board item of an idea: planned/considering -> planned, done -> done; anything else leaves the board (hidden)
+function ideaBoardSync(PDO $db, int $id, string $status): void {
+    $f = $status === 'done' ? ['status' => 'done'] : (in_array($status, ['considering', 'planned'], true) ? ['status' => 'planned'] : ['is_public' => false]);
+    $st = $db->prepare("SELECT 1 FROM news_items WHERE slug = :s AND is_public = 1");
+    $st->execute([':s' => "idea-$id"]);
+    $on = (bool)$st->fetchColumn();
+    $st->closeCursor();
+    if ($on) newsSave($db, "idea-$id", $f);
+}
 
 const IDEA_PUBLIC = "('considering', 'planned', 'done')";   // an idea the admin has looked at is shown to everybody (without the name)
 
@@ -30,7 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // "ideas": your own (an admin: everybody's); "public": the ones under review or later by other people, most voted first
     $st = $db->prepare("SELECT $cols FROM news_ideas i LEFT JOIN accounts a ON a.id = i.user_id" . ($isAdmin ? '' : ' WHERE i.user_id = :u') . ' ORDER BY i.id DESC LIMIT 200');
     $st->execute($isAdmin ? [':me' => $me] : [':me' => $me, ':u' => $me]);
-    $mine = array_map(fn($r) => $row($r, $isAdmin), $st->fetchAll(PDO::FETCH_ASSOC));
+    $onBoard = $isAdmin ? array_flip($db->query("SELECT slug FROM news_items WHERE slug LIKE 'idea-%' AND is_public = 1")->fetchAll(PDO::FETCH_COLUMN)) : [];
+    $mine = array_map(fn($r) => $row($r, $isAdmin) + ($isAdmin ? ['on_board' => isset($onBoard['idea-' . $r['id']])] : []), $st->fetchAll(PDO::FETCH_ASSOC));
     $st = $db->prepare("SELECT $cols FROM news_ideas i LEFT JOIN accounts a ON a.id = i.user_id WHERE i.user_id != :u AND i.status IN " . IDEA_PUBLIC . ' ORDER BY votes DESC, i.id DESC LIMIT 100');
     $st->execute([':me' => $me, ':u' => $me]);
     jsonResponse(['success' => true, 'admin' => $isAdmin, 'ideas' => $mine, 'public' => array_map(fn($r) => $row($r, false), $st->fetchAll(PDO::FETCH_ASSOC))]);
@@ -75,7 +88,26 @@ try {
         if (!in_array($status, IDEA_STATUS, true)) jsonFail('BAD_INPUT', 'status');
         $db->prepare('UPDATE news_ideas SET status = :s, reply = :r WHERE id = :i')
            ->execute([':s' => $status, ':r' => textCut(trim((string)($in['reply'] ?? '')), 300), ':i' => (int)($in['id'] ?? 0)]);
+        ideaBoardSync($db, (int)($in['id'] ?? 0), $status);
         jsonResponse(['success' => true]);
+    }
+    if ($action === 'to_board') {
+        requireAdmin();
+        $id = (int)($in['id'] ?? 0);
+        $st = $db->prepare('SELECT text, status FROM news_ideas WHERE id = :i');
+        $st->execute([':i' => $id]);
+        $idea = $st->fetch(PDO::FETCH_ASSOC);
+        $st->closeCursor();
+        if (!$idea) jsonFail('NOT_FOUND', 'No such idea', 404);
+        if (!in_array($idea['status'], ['considering', 'planned', 'done'], true)) jsonFail('BAD_INPUT', 'status');
+        $auto = textCut($idea['text'], 60);
+        $te = trim((string)($in['title_en'] ?? '')); $ti = trim((string)($in['title_it'] ?? ''));
+        newsSave($db, "idea-$id", [
+            'kind' => 'feature', 'status' => $idea['status'] === 'done' ? 'done' : 'planned', 'is_public' => true,
+            'title_en' => textCut($te !== '' ? $te : $auto, 80), 'title_it' => textCut($ti !== '' ? $ti : $auto, 80),
+            'body_en' => $idea['text'], 'body_it' => $idea['text'],
+        ]);
+        jsonResponse(['success' => true, 'slug' => "idea-$id"]);
     }
     if ($action === 'delete') {
         $own = $isAdmin ? null : $db->prepare('SELECT 1 FROM news_ideas WHERE id = :i AND user_id = :u');
