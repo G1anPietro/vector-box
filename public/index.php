@@ -2,10 +2,6 @@
 // public/index.php — the menu people land on: games, class notes, account, the project and the desktop (desktop.php).
 // nginx sends every unknown path here (try_files fallback): only "/" is the home page, the rest is a 404.
 $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-if (is_string($reqPath) && ($reqPath === '/wiki' || str_starts_with($reqPath, '/wiki/'))) {   // the offline Wikipedia (Kiwix on localhost)
-    require_once __DIR__ . '/includes/wiki-proxy.php';
-    wikiProxy($reqPath);
-}
 if (!in_array($reqPath, ['/', '/index.php', null, false, ''], true)) {
     require_once __DIR__ . '/api/bots.php';
     botBlockIfAbusive();
