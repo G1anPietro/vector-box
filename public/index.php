@@ -58,6 +58,12 @@ $CARDS = [
                    'en' => 'The class notes, shared: search, review and take quizzes.'],
     ],
     [
+        'look' => 'wiki', 'href' => 'pages/wikipedia.php', 'glyph' => 'W',
+        'name' => ['it' => 'Wikipedia offline', 'en' => 'Offline Wikipedia'],
+        'line' => ['it' => 'Una copia di Wikipedia in italiano su questo server: cerca e leggi, senza pubblicità.',
+                   'en' => 'A copy of the Italian Wikipedia on this server: search and read, no ads.'],
+    ],
+    [
         'look' => 'os', 'href' => 'desktop.php', 'glyph' => '>_',
         'name' => ['it' => 'Sistema operativo', 'en' => 'Operating system'],
         'line' => ['it' => 'Il desktop cyberpunk: terminale, chat, poker e finestre da spostare.',

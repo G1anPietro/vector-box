@@ -13,6 +13,7 @@
 .mcard .line { color: var(--muted); font-size: 17px; }
 .mcard.games { border-color: #6b3a3a; } .mcard.games .glyph { color: #ff7a6b; }
 .mcard.notes { border-color: #4a5a3a; } .mcard.notes .glyph { color: #b8d68a; }
+.mcard.wiki { border-color: #55616e; } .mcard.wiki .glyph { color: #dfe6ee; font-family: Georgia, "Times New Roman", serif; }
 .mcard.account { border-color: #3a4f6b; } .mcard.account .glyph { color: #7fb4ff; }
 .mcard.project { border-color: #5a4a70; } .mcard.project .glyph { color: #c9a8ff; }
 .mcard.os { background: #04100a; border-color: #00ff66; font-family: ui-monospace, "Courier New", monospace; box-shadow: 0 7px 0 #022a14, 0 0 22px rgba(0, 255, 102, 0.18); }
