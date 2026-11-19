@@ -33,10 +33,32 @@ test('the Account card follows the login: login page for a guest, account page a
     assert.match(page, /Signed in as menu_user/);
 });
 
-test('nothing for the admin only is on the menu, even for an admin', async () => {
+test('private cards: the book reader only for who may read books, statistics only for the admin; the pages still refuse the rest', async () => {
+    const has = (html, page) => html.includes(`href="pages/${page}.php"`);
+    const guest = (await new Client(site).get('/?lang=en')).text;
+    assert.ok(!has(guest, 'reader') && !has(guest, 'stats') && !has(guest, 'resume'), 'a guest sees neither');
+
+    const user = new Client(site); await user.register('menu_reader');
+    let page = (await user.get('/?lang=en')).text;
+    assert.ok(!has(page, 'reader') && !has(page, 'stats'), 'a plain account sees neither');
+    assert.equal((await user.get('/pages/stats.php')).status, 403);
+
     const admin = await makeAdmin(site, 'menu_admin');
-    const html = (await admin.get('/?lang=en')).text;
-    for (const word of ['STATISTICS', 'VIEW DOSSIER', 'BOOK READER', 'stats.php', 'resume.php', 'reader.php', 'mail.php']) assert.ok(!html.includes(word), word);
+    const home = (await admin.get('/?lang=en')).text;
+    assert.ok(has(home, 'reader') && has(home, 'stats'), 'the admin sees both');
+    assert.match(home, /Book reader/); assert.match(home, /Statistics/); assert.match(home, /Private/);
+    assert.ok(!has(home, 'mail') && !home.includes('STATISTICS'), 'nothing else for the admin is on the menu');
+
+    assert.equal((await admin.post('/api/moderate_book_access.php', { action: 'grant', username: 'menu_reader' })).json.success, true);
+    page = (await user.get('/?lang=en')).text;
+    assert.ok(has(page, 'reader'), 'allowed to read books: the reader card appears');
+    assert.ok(!has(page, 'stats'), 'but never the statistics');
+    assert.notEqual((await user.get('/pages/reader.php')).status, 403);
+    assert.equal((await user.get('/pages/stats.php')).status, 403);
+
+    await admin.post('/api/moderate_book_access.php', { action: 'revoke', username: 'menu_reader' });
+    assert.ok(!has((await user.get('/?lang=en')).text, 'reader'), 'revoked: the card is gone again');
+    assert.equal((await user.get('/pages/reader.php')).status, 403);
 });
 
 test('the desktop moved to /desktop.php with its windows and a HOME link back to the menu; unknown paths are still 404', async () => {

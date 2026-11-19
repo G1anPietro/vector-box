@@ -26,6 +26,7 @@ if (!in_array($reqPath, ['/', '/index.php', null, false, ''], true)) {
 }
 require_once __DIR__ . '/includes/head.php';
 require_once __DIR__ . '/api/database.php';
+require_once __DIR__ . '/includes/home-access.php';
 
 initSession();
 
@@ -34,6 +35,7 @@ $other = $lang === 'it' ? 'en' : 'it';
 $T = fn(array $s) => htmlspecialchars($s[$lang] ?? $s['it']);
 $isLoggedIn = !empty($_SESSION['username']) && !str_starts_with($_SESSION['username'], 'guest_');
 $who = $isLoggedIn ? (string)$_SESSION['username'] : '';
+$access = homeAccess();   // private cards (book reader, statistics) only for those allowed; the pages check again
 
 // To add a card, add an entry here. look: CSS class of the card; glyph: a short symbol shown big.
 $CARDS = [
@@ -50,6 +52,12 @@ $CARDS = [
                    'en' => 'The class notes, shared: search, review and take quizzes.'],
     ],
     [
+        'look' => 'books', 'href' => 'pages/reader.php', 'glyph' => '▤', 'private' => true, 'show' => $access['books'],
+        'name' => ['it' => 'Lettore di libri', 'en' => 'Book reader'],
+        'line' => ['it' => 'La biblioteca privata: leggi i libri e riprendi da dove eri rimasto.',
+                   'en' => 'The private library: read the books and pick up where you left off.'],
+    ],
+    [
         'look' => 'account', 'href' => $isLoggedIn ? 'pages/account.php' : 'pages/login.php', 'glyph' => '◉',
         'name' => ['it' => 'Account', 'en' => 'Account'],
         'line' => $isLoggedIn
@@ -61,6 +69,11 @@ $CARDS = [
         'name' => ['it' => 'Il progetto', 'en' => 'The project'],
         'line' => ['it' => 'Cos\'è vector-box, come è fatto e a che punto siamo.',
                    'en' => 'What vector-box is, how it is built and where we are.'],
+    ],
+    [
+        'look' => 'stats', 'href' => 'pages/stats.php', 'glyph' => '▥', 'private' => true, 'show' => $access['admin'],
+        'name' => ['it' => 'Statistiche', 'en' => 'Statistics'],
+        'line' => ['it' => 'Visite al sito e pagine più viste.', 'en' => 'Site visits and most viewed pages.'],
     ],
     [
         'look' => 'os', 'href' => 'desktop.php', 'glyph' => '>_',
@@ -96,8 +109,9 @@ $title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk
             : 'Games, class notes and a cyberpunk desktop in your browser. Pick where to go.' ?></p>
 
         <nav class="menu-cards" aria-label="<?= $lang === 'it' ? 'Menu principale' : 'Main menu' ?>">
-            <?php foreach ($CARDS as $c): ?>
+            <?php foreach ($CARDS as $c): if (isset($c['show']) && !$c['show']) continue; ?>
                 <a class="mcard <?= $c['look'] ?>" href="<?= htmlspecialchars($c['href']) ?>">
+                    <?php if (!empty($c['private'])): ?><span class="badge"><?= $lang === 'it' ? 'Riservato' : 'Private' ?></span><?php endif; ?>
                     <span class="glyph" aria-hidden="true"><?= $c['glyph'] ?></span>
                     <span class="name"><?= $T($c['name']) ?></span>
                     <span class="line"><?= $T($c['line']) ?></span>

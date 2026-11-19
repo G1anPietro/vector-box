@@ -2,6 +2,7 @@
 // public/desktop.php — the desktop: terminal, chat, poker and the other windows. The menu people land on is index.php.
 require_once __DIR__ . '/includes/head.php';
 require_once __DIR__ . '/api/database.php';
+require_once __DIR__ . '/includes/home-access.php';
 
 initSession();
 
@@ -10,23 +11,10 @@ $activeUsername = $_SESSION['username'] ?? 'GUEST';
 $userId = $_SESSION['user_id'] ?? null;
 $isAdmin = !empty($_SESSION['is_admin']);
 
-// Book Reader Permission Check (Admin automatically granted access)
-$canReadBooks = $isAdmin;
-$canViewResume = $isAdmin;   // the CV is private too: admin, or accounts allowed with /grantcv
-if ($userId && !$isAdmin) {
-    try {
-        $db = getDbConnection();
-        $stmt = $db->prepare("SELECT can_read_books, can_view_resume FROM accounts WHERE id = :id");
-        $stmt->execute([':id' => $userId]);
-        $acc = $stmt->fetch();
-        if ($acc) {
-            $canReadBooks = (int)$acc['can_read_books'] === 1;
-            $canViewResume = (int)($acc['can_view_resume'] ?? 0) === 1;
-        }
-    } catch (Exception $e) {
-        $canReadBooks = false;
-    }
-}
+// Book Reader / dossier permissions (admin automatically granted access)
+$access = homeAccess();
+$canReadBooks = $access['books'];
+$canViewResume = $access['resume'];
 // APP_VERSION, BUILD_DATE and BUILD_HASH come from includes/head.php (version.php in the project root).
 ?>
 <!DOCTYPE html>
