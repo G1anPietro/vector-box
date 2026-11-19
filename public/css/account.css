@@ -1,0 +1,84 @@
+/* public/css/account.css — the account page (pages/account.php). Frame, colours and fonts come from giochi.css (the dusk theme).
+ * One idea: every setting is a card with its own button; the filled button is the main action, outlined ones are secondary, red is for things that cannot be undone. */
+.acc { max-width: 760px; margin: 0 auto; padding: 4px 20px 56px; }
+.acc h1 { font-size: clamp(30px, 7vw, 44px); line-height: 1.05; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.acc h2 { font-size: 22px; margin: 0 0 12px; letter-spacing: 0.01em; }
+.acc h3 { font-size: 18px; margin: 0 0 4px; }
+.acc h3 label { cursor: pointer; }
+.acc a { color: var(--link); }
+
+.card { background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 14px; padding: 18px 18px 16px; margin-bottom: 14px; }
+.card > .hint, .card .hint { color: var(--muted); font-size: 15px; margin: 0 0 12px; }
+.group { padding-top: 22px; scroll-margin-top: 64px; }
+
+/* who you are */
+.who { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+.avatar { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--link); color: var(--dusk); font: 800 30px/1 var(--serif); }
+.who-text { min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { display: inline-block; padding: 1px 10px; border: 1px solid var(--plank); border-radius: 999px; color: var(--muted); font: 700 12px/1.8 system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+.chip.gold { color: var(--link); border-color: #6b5a2e; }
+
+/* messages after saving */
+.notice { margin: 0 0 14px; padding: 12px 16px; border-radius: 12px; border: 1px solid; font-weight: 700; }
+.notice.ok { color: #9dffc4; background: #0d2418; border-color: #1f6b3f; }
+.notice.bad { color: #ffb3a8; background: #2a1210; border-color: #7a2f26; }
+
+/* section chips: stay at the top while you scroll */
+.tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin: 0 0 4px; background: var(--dusk); scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { flex: none; padding: 7px 16px; border: 1px solid var(--plank); border-radius: 999px; text-decoration: none; color: var(--text); font: 700 15px/1.3 system-ui, sans-serif; }
+.tabs a:hover { border-color: var(--link); color: var(--link); }
+
+/* form fields */
+.field { display: block; margin: 12px 0 4px; color: var(--muted); font: 600 14px/1.3 system-ui, sans-serif; }
+.input { display: block; width: 100%; padding: 11px 12px; border: 1px solid var(--plank); border-radius: 10px; background: #14121a; color: var(--text); font: 16px/1.4 system-ui, sans-serif; }
+textarea.input { resize: vertical; min-height: 84px; }
+.input:focus-visible { outline: 3px solid var(--link); outline-offset: 1px; border-color: var(--link); }
+.check { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; color: var(--muted); font: 15px/1.45 system-ui, sans-serif; }
+.check input { flex: none; width: 20px; height: 20px; margin-top: 2px; accent-color: var(--link); }
+.status { margin: 8px 0 0; font: 600 14px/1.4 system-ui, sans-serif; }
+.status.good { color: #9dffc4; } .status.warn { color: #ffd98a; }
+
+/* buttons: filled = main action, outlined = secondary, red = cannot be undone */
+.actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.actions.left { justify-content: flex-start; margin-top: 4px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 18px; border: 1px solid var(--link); border-radius: 10px; background: var(--link); color: var(--dusk) !important; font: 800 16px/1.2 system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; border-color: var(--plank); color: var(--text) !important; font-weight: 700; }
+.btn.ghost:hover { border-color: var(--link); color: var(--link) !important; filter: none; }
+.btn.danger { background: #c0392b; border-color: #c0392b; color: #fff !important; }
+.btn.ghost.danger { background: transparent; border-color: #7a2f26; color: #ff9a8d !important; }
+.btn.ghost.danger:hover { border-color: #ff6b5b; color: #ff6b5b !important; }
+.btn.small { min-height: 36px; padding: 6px 12px; font-size: 14px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+/* the delete-account card: closed until you open it, so nobody presses it by accident */
+details.danger { border-color: #5a2a25; }
+details.danger summary { cursor: pointer; color: #ff9a8d; font: 700 17px/1.4 system-ui, sans-serif; list-style: none; }
+details.danger summary::-webkit-details-marker { display: none; }
+details.danger summary::before { content: "▸ "; }
+details.danger[open] summary::before { content: "▾ "; }
+details.danger form { margin-top: 12px; }
+.links { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* drawn by sessions.js and totp.js */
+.dev { border: 1px solid var(--plank); border-radius: 10px; padding: 10px 12px; margin-top: 8px; overflow-wrap: anywhere; }
+.dev .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.dev .btn { margin-top: 8px; }
+.codes { margin: 8px 0; padding: 12px; background: #14121a; border: 1px solid var(--plank); border-radius: 10px; font: 15px/1.6 ui-monospace, monospace; user-select: text; -webkit-user-select: text; white-space: pre-wrap; word-break: break-all; }
+#totp-body .btn, #sessions-body > .btn { margin-top: 10px; margin-right: 8px; }
+
+.signout { margin-top: 28px; text-align: center; }
+#vb-lang { display: block; }
+#vb-lang.vb-lang button, .vb-lang button { min-height: 42px; min-width: 56px; font-size: 15px; background: #14121a; border-color: var(--plank); }
+.vb-lang button[aria-pressed="true"] { border-color: var(--link); color: var(--link); }
+
+@media (max-width: 520px) {
+    .acc { padding: 4px 14px 48px; }
+    .card { padding: 16px 14px 14px; }
+    .actions .btn { width: 100%; }
+    .who { gap: 12px; } .avatar { width: 54px; height: 54px; font-size: 26px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }

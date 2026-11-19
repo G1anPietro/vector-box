@@ -1,5 +1,5 @@
 <?php
-// public/pages/account.php — the account page (password, theme, e-mail address and confirmation, data export/delete). Opened from the desktop menu.
+// public/pages/account.php — the account page (profile, password, devices, theme, language, e-mail, data export/delete). Opened from the home menu.
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 require_once __DIR__ . '/../api/mailer.php';
@@ -157,125 +157,190 @@ session_write_close();
 <!DOCTYPE html>
 <html lang="<?= pageLang() ?>">
 <head>
-    <?php renderHead(tt('SYSTEM // ACCOUNT_MANAGEMENT', 'SISTEMA // GESTIONE_ACCOUNT'), true); ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#16141c">
+    <meta name="robots" content="noindex">
+    <meta name="vb-lang" content="<?= pageLang() ?>">
+    <title><?= tt('Account — vector-box', 'Account — vector-box') ?></title>
+    <script src="../js/csrf.js?v=<?= APP_VERSION ?>"></script>
+    <script src="../js/i18n.js?v=<?= APP_VERSION ?>"></script>
+    <script src="../js/i18n-ui.js?v=<?= APP_VERSION ?>"></script>
+    <link rel="icon" href="../assets/solitario/icon.svg?v=1" type="image/svg+xml">
+    <link rel="stylesheet" href="../css/giochi.css?v=4">
+    <link rel="stylesheet" href="../css/account.css?v=<?= filemtime(__DIR__ . '/../css/account.css') ?>">
     <script src="../js/account_data.js?v=<?php echo APP_VERSION; ?>" defer></script>
     <script src="../js/sessions.js?v=<?= filemtime(__DIR__ . '/../js/sessions.js') ?>" defer></script>
+    <script src="../js/account-ui.js?v=<?= filemtime(__DIR__ . '/../js/account-ui.js') ?>" defer></script>
     <?php if (!empty($account['is_admin'])): ?><script src="../js/vendor/qrcode.js?v=1.4.4" defer></script><script src="../js/totp.js?v=<?= filemtime(__DIR__ . '/../js/totp.js') ?>" defer></script><?php endif; ?>
 </head>
-<body>
-    <canvas id="canvas"></canvas>
-
-    <header class="cyber-header">
-        <div class="glitch">// VECTOR-BOX // ACCOUNT_PANEL</div>
-        <a href="../index.php" class="nav-btn"><_ <?= tt('BACK_TO_HOME', 'TORNA_ALLA_HOME') ?></a>
+<body class="shelf-page account-page">
+    <header class="top">
+        <a class="home" href="../index.php">vector-box</a>
+        <a class="back" href="../index.php">&larr; <?= tt('Menu', 'Menu') ?></a>
     </header>
 
-    <main class="page-container-centered">
-        <div class="cyber-panel hack-container" style="max-width: 480px; text-align: left;">
-            <h2 class="hack-title" style="text-align: center;">>_ <?= tt('ACCOUNT_SETTINGS', 'IMPOSTAZIONI_ACCOUNT') ?></h2>
-
-            <?php if ($msg): ?>
-                <div style="color: #00ff66; font-weight: bold; margin-bottom: 12px; font-size: 0.85rem;">>> <?php echo htmlspecialchars($msg); ?></div>
-            <?php endif; ?>
-            <?php if ($error): ?>
-                <div style="color: #ff3333; font-weight: bold; margin-bottom: 12px; font-size: 0.85rem;">>> <?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-
-            <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">
-                <p class="term-muted" style="margin: 4px 0;"><?= tt('USER', 'UTENTE') ?>: <span style="color: var(--accent-color); font-weight: bold;"><?php echo htmlspecialchars($username); ?></span></p>
-                <p class="term-muted" style="margin: 4px 0;"><?= tt('ROLE', 'RUOLO') ?>: <span style="color: #ffaa00;"><?php echo !empty($account['is_admin']) ? tt('ADMINISTRATOR', 'AMMINISTRATORE') : tt('STANDARD USER', 'UTENTE NORMALE'); ?></span></p>
-                <?php if (accountIsSupporter($db, (int)$_SESSION['user_id'])): ?>
-                <p class="term-muted" style="margin: 4px 0;"><?= tt('BADGE', 'DISTINTIVO') ?>: <span style="color: #f2c66d; font-weight: bold;">&#9829; <?= tt('SUPPORTER', 'SOSTENITORE') ?></span> <small>(<?= tt('thank you', 'grazie') ?>)</small></p>
-                <?php endif; ?>
+    <main class="acc">
+        <section class="who card" aria-label="<?= tt('Your account', 'Il tuo account') ?>">
+            <span class="avatar" aria-hidden="true"><?= htmlspecialchars(strtoupper(textCut((string)$username, 1))) ?></span>
+            <div class="who-text">
+                <h1><?= htmlspecialchars($username) ?></h1>
+                <p class="chips">
+                    <span class="chip"><?= !empty($account['is_admin']) ? tt('Administrator', 'Amministratore') : tt('Standard user', 'Utente normale') ?></span>
+                    <?php if (accountIsSupporter($db, (int)$_SESSION['user_id'])): ?><span class="chip gold">&#9829; SUPPORTER</span><?php endif; ?>
+                </p>
             </div>
+        </section>
 
-            <!-- Profile Bio Form -->
-            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+        <?php
+        // the result of a save is shown inside the card you used; anything else (a bad form token) goes up here
+        $formAction = $action ?? '';
+        $inCard = in_array($formAction, ['update_profile', 'change_username', 'change_password', 'save_theme', 'save_email'], true);
+        $notice = function (string $for) use ($msg, $error, $formAction): void {
+            if ($formAction !== $for) return;
+            if ($msg) echo '<div class="notice ok" role="status">' . htmlspecialchars($msg) . '</div>';
+            if ($error) echo '<div class="notice bad" role="alert">' . htmlspecialchars($error) . '</div>';
+        };
+        if (!$inCard): ?>
+            <?php if ($msg): ?><div class="notice ok" role="status"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
+            <?php if ($error): ?><div class="notice bad" role="alert"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+        <?php endif; ?>
+
+        <nav class="tabs" aria-label="<?= tt('Sections', 'Sezioni') ?>">
+            <a href="#profile"><?= tt('Profile', 'Profilo') ?></a>
+            <a href="#security"><?= tt('Security', 'Sicurezza') ?></a>
+            <a href="#preferences"><?= tt('Preferences', 'Preferenze') ?></a>
+            <a href="#data"><?= tt('Your data', 'I tuoi dati') ?></a>
+            <?php if (!empty($account['is_admin'])): ?><a href="#admin"><?= tt('Admin', 'Admin') ?></a><?php endif; ?>
+        </nav>
+
+        <!-- PROFILE -->
+        <section id="profile" class="group" aria-labelledby="h-profile">
+            <h2 id="h-profile"><?= tt('Profile', 'Profilo') ?></h2>
+
+            <form method="POST" action="account.php" class="card">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                <span class="settings-title">>_ <?= tt('PUBLIC USER BIO (MAX 250 CHARS)', 'BIO PUBBLICA (MAX 250 CARATTERI)') ?></span>
-                <textarea name="bio" aria-label="<?= tt('Public user bio', 'Bio pubblica') ?>" class="tools-textarea" maxlength="250" placeholder="<?= tt('Enter custom biography...', 'Scrivi la tua bio...') ?>" style="height: 70px; resize: none;"><?php echo htmlspecialchars($account['bio'] ?? ''); ?></textarea>
-                <button type="submit" name="action" value="update_profile" class="nav-btn">>_ <?= tt('SAVE BIO', 'SALVA BIO') ?></button>
+                <h3><label for="bio"><?= tt('Public bio', 'Bio pubblica') ?></label></h3>
+                <p class="hint"><?= tt('Other people can see it. Up to 250 characters.', 'La vedono gli altri. Fino a 250 caratteri.') ?></p>
+                <textarea id="bio" name="bio" class="input" maxlength="250" rows="3" placeholder="<?= tt('Write something about you...', 'Scrivi qualcosa su di te...') ?>"><?php echo htmlspecialchars($account['bio'] ?? ''); ?></textarea>
+                <?php $notice('update_profile'); ?>
+                <div class="actions"><button type="submit" name="action" value="update_profile" class="btn"><?= tt('Save bio', 'Salva la bio') ?></button></div>
             </form>
 
-            <!-- Password Change Form -->
-            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+            <form method="POST" action="account.php" class="card">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                <span class="settings-title">>_ <?= tt('CHANGE PASSWORD', 'CAMBIA PASSWORD') ?></span>
-                <input type="password" name="old_password" placeholder="<?= tt('Current Password', 'Password attuale') ?>" aria-label="<?= tt('Current password', 'Password attuale') ?>" autocomplete="current-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
-                <input type="password" name="new_password" placeholder="<?= tt('New Password', 'Nuova password') ?>" aria-label="<?= tt('New password', 'Nuova password') ?>" autocomplete="new-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
-                <button type="submit" name="action" value="change_password" class="nav-btn">>_ <?= tt('UPDATE PASSWORD', 'AGGIORNA PASSWORD') ?></button>
+                <h3><?= tt('Username', 'Nome utente') ?></h3>
+                <p class="hint"><?= tt('Your messages and guestbook entries follow the new name. Your other devices are signed out.', 'I tuoi messaggi e le firme sul muro seguono il nuovo nome. Gli altri tuoi dispositivi vengono scollegati.') ?></p>
+                <label class="field" for="new_username"><?= tt('New username', 'Nuovo nome utente') ?></label>
+                <input id="new_username" type="text" name="new_username" class="input" autocomplete="off" maxlength="32" required>
+                <label class="field" for="rename_password"><?= tt('Current password', 'Password attuale') ?></label>
+                <input id="rename_password" type="password" name="password" class="input" autocomplete="current-password" required>
+                <?php $notice('change_username'); ?>
+                <div class="actions"><button type="submit" name="action" value="change_username" class="btn ghost"><?= tt('Change username', 'Cambia nome utente') ?></button></div>
+            </form>
+        </section>
+
+        <!-- SECURITY -->
+        <section id="security" class="group" aria-labelledby="h-security">
+            <h2 id="h-security"><?= tt('Security', 'Sicurezza') ?></h2>
+
+            <form method="POST" action="account.php" class="card">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <h3><?= tt('Password', 'Password') ?></h3>
+                <p class="hint"><?= tt('At least 8 characters.', 'Almeno 8 caratteri.') ?></p>
+                <input type="text" value="<?= htmlspecialchars($username) ?>" autocomplete="username" hidden aria-hidden="true" tabindex="-1">   <!-- lets password managers file the new password under this username -->
+                <label class="field" for="old_password"><?= tt('Current password', 'Password attuale') ?></label>
+                <input id="old_password" type="password" name="old_password" class="input" autocomplete="current-password" required>
+                <label class="field" for="new_password"><?= tt('New password', 'Nuova password') ?></label>
+                <input id="new_password" type="password" name="new_password" class="input" autocomplete="new-password" required>
+                <?php $notice('change_password'); ?>
+                <div class="actions"><button type="submit" name="action" value="change_password" class="btn"><?= tt('Update password', 'Aggiorna la password') ?></button></div>
             </form>
 
-            <!-- Username Change Form -->
-            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                <span class="settings-title">>_ <?= tt('CHANGE USERNAME', 'CAMBIA NOME UTENTE') ?></span>
-                <input type="text" name="new_username" placeholder="<?= tt('New username', 'Nuovo nome utente') ?>" aria-label="<?= tt('New username', 'Nuovo nome utente') ?>" autocomplete="off" maxlength="32" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
-                <input type="password" name="password" placeholder="<?= tt('Current Password', 'Password attuale') ?>" aria-label="<?= tt('Current password', 'Password attuale') ?>" autocomplete="current-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
-                <button type="submit" name="action" value="change_username" class="nav-btn">>_ <?= tt('CHANGE USERNAME', 'CAMBIA NOME UTENTE') ?></button>
-            </form>
-
-            <!-- Theme Preference Form -->
-            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                <span class="settings-title">>_ <?= tt('DEFAULT SYSTEM THEME', 'TEMA PREDEFINITO') ?></span>
-                <select name="theme" id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 6px; background: #020304;"><?php echo systemThemeOptions($account['theme'] ?? null); ?></select>
-                <button type="submit" name="action" value="save_theme" class="nav-btn">>_ <?= tt('SAVE THEME PREFERENCE', 'SALVA IL TEMA') ?></button>
-            </form>
-
-            <!-- Language: the switch reloads the page and remembers the choice on the account (e-mails and notifications follow it) -->
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                <span class="settings-title">>_ <?= tt('LANGUAGE', 'LINGUA') ?></span>
-                <div id="vb-lang" role="group" aria-label="<?= tt('Language', 'Lingua') ?>"></div>
-            </div>
-
-            <!-- E-mail (optional) -->
-            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                <span class="settings-title">>_ <?= tt('E-MAIL (OPTIONAL)', 'E-MAIL (FACOLTATIVA)') ?></span>
-                <input type="email" name="email" value="<?php echo htmlspecialchars((string)($account['email'] ?? '')); ?>" placeholder="you@example.com" aria-label="<?= tt('E-mail address', 'Indirizzo e-mail') ?>" autocomplete="email" maxlength="254" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;">
-                <?php if (!empty($account['email'])): ?>
-                <p class="term-muted" style="margin: 0; font-size: 0.8rem;"><?php echo !empty($account['email_verified']) ? tt('Address confirmed.', 'Indirizzo confermato.') : tt('Address not confirmed yet (check your inbox; saving again sends the link again).', 'Indirizzo non ancora confermato (controlla la posta; se salvi di nuovo ti mandiamo di nuovo il link).'); ?></p>
-                <?php endif; ?>
-                <label class="term-muted" style="font-size: 0.8rem;"><input type="checkbox" name="email_optin" value="1" <?php echo !empty($account['email_optin']) ? 'checked' : ''; ?>> <?= tt('Send me news about vector-box (rare; one click to stop). Leave it unticked and you get only messages about your account.', 'Mandami le novità di vector-box (rare; basta un clic per smettere). Se lo lasci senza spunta ricevi solo i messaggi sul tuo account.') ?></label>
-                <button type="submit" name="action" value="save_email" class="nav-btn">>_ <?= tt('SAVE E-MAIL', 'SALVA E-MAIL') ?></button>
-            </form>
-
-            <!-- Your data (GDPR): download everything, or delete the account -->
-            <div id="your-data" style="display: flex; flex-direction: column; gap: 8px; margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                <span class="settings-title">>_ <?= tt('YOUR DATA', 'I TUOI DATI') ?></span>
-                <p class="term-muted" style="margin: 0; font-size: 0.8rem;"><?php if (pageLang() === 'it'): ?>Puoi scaricare tutto ciò che vector-box conserva su questo account, oppure eliminare l'account e i suoi dati. I dettagli sono nella <a href="privacy.php" style="color: var(--accent-color);">pagina sulla privacy</a>.<?php else: ?>You can download everything vector-box keeps about this account, or delete the account and its data. See the <a href="privacy.php" style="color: var(--accent-color);">privacy page</a> for the details.<?php endif; ?></p>
-                <a href="../api/account_data.php?action=export" class="nav-btn" style="display: block; text-align: center; text-decoration: none;">>_ <?= tt('DOWNLOAD MY DATA (JSON)', 'SCARICA I MIEI DATI (JSON)') ?></a>
-                <?php if (empty($account['is_admin'])): ?>
-                <form id="delete-account-form" style="display: flex; flex-direction: column; gap: 8px;">
-                    <span class="settings-title" style="color: #ff3333;">>_ <?= tt('DELETE MY ACCOUNT', 'ELIMINA IL MIO ACCOUNT') ?></span>
-                    <p class="term-muted" style="margin: 0; font-size: 0.8rem;"><?= tt('Deletes your account, chat and private messages, progress, bookmarks and class membership. This cannot be undone. A class manager must hand the class over first.', 'Elimina il tuo account, la chat e i messaggi privati, i progressi, i segnalibri e l\'appartenenza alla classe. Non si può annullare. Chi gestisce una classe deve prima passarla a qualcun altro.') ?></p>
-                    <label class="term-muted" style="font-size: 0.8rem;"><input type="checkbox" id="delete-materials" checked> <?= tt('Also delete the class material I uploaded (otherwise it stays in the class, without my name)', 'Elimina anche il materiale di classe che ho caricato (altrimenti resta nella classe, senza il mio nome)') ?></label>
-                    <input type="password" id="delete-password" placeholder="<?= tt('Your password, to confirm', 'La tua password, per confermare') ?>" autocomplete="current-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
-                    <button type="submit" class="nav-btn" style="border-color: #ff3333; color: #ff3333;">>_ <?= tt('DELETE ACCOUNT FOR GOOD', 'ELIMINA L\'ACCOUNT PER SEMPRE') ?></button>
-                    <div id="delete-result" class="term-muted" style="font-size: 0.85rem;" role="status"></div>
-                </form>
-                <?php endif; ?>
-            </div>
-
-            <section id="sessions" style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;" aria-labelledby="sessions-title">
-                <h3 id="sessions-title" style="font-size: 0.9rem;">>_ <?= tt('WHERE YOU ARE SIGNED IN', 'DOVE HAI ESEGUITO L\'ACCESSO') ?></h3>
-                <p class="term-muted" id="sessions-state" style="margin: 6px 0;"></p>
+            <section id="sessions" class="card" aria-labelledby="sessions-title">
+                <h3 id="sessions-title"><?= tt('Where you are signed in', 'Dove hai eseguito l\'accesso') ?></h3>
+                <p class="hint" id="sessions-state"></p>
                 <div id="sessions-body"></div>
             </section>
 
             <?php if (!empty($account['is_admin'])): ?>
-            <section id="totp" style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;" aria-labelledby="totp-title">
-                <h3 id="totp-title" style="font-size: 0.9rem;">>_ <?= tt('TWO-STEP LOGIN', 'ACCESSO IN DUE PASSAGGI') ?></h3>
-                <p class="term-muted" id="totp-state" style="margin: 6px 0;"></p>
+            <section id="totp" class="card" aria-labelledby="totp-title">
+                <h3 id="totp-title"><?= tt('Two-step login', 'Accesso in due passaggi') ?></h3>
+                <p class="hint" id="totp-state"></p>
                 <div id="totp-body"></div>
             </section>
             <?php endif; ?>
+        </section>
 
-            <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                <?php if (!empty($account['is_admin'])): ?><a href="admin_users.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ <?= tt('USERS', 'UTENTI') ?></a><a href="mail.php" class="nav-btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 8px;">>_ <?= tt('MAIL BOX', 'CASELLA E-MAIL') ?></a><?php endif; ?>
-                <a href="../api/logout.php" class="nav-btn" style="display: block; text-align: center; border-color: #ff3333; color: #ff3333; text-decoration: none;">>_ <?= tt('LOGOUT SESSION', 'ESCI DALLA SESSIONE') ?></a>
+        <!-- PREFERENCES -->
+        <section id="preferences" class="group" aria-labelledby="h-preferences">
+            <h2 id="h-preferences"><?= tt('Preferences', 'Preferenze') ?></h2>
+
+            <!-- Language: the switch reloads the page and remembers the choice on the account (e-mails and notifications follow it) -->
+            <div class="card">
+                <h3><?= tt('Language', 'Lingua') ?></h3>
+                <p class="hint"><?= tt('Also used for the e-mails and notifications we send you.', 'La usiamo anche per le e-mail e le notifiche che ti mandiamo.') ?></p>
+                <div id="vb-lang" role="group" aria-label="<?= tt('Language', 'Lingua') ?>"></div>
             </div>
+
+            <form method="POST" action="account.php" class="card">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <h3><label for="rice-selector"><?= tt('Desktop theme', 'Tema del desktop') ?></label></h3>
+                <p class="hint"><?= tt('The colours of the operating-system desktop, on every device you sign in from.', 'I colori del desktop del sistema operativo, su ogni dispositivo da cui accedi.') ?></p>
+                <select name="theme" id="rice-selector" class="input"><?php echo systemThemeOptions($account['theme'] ?? null); ?></select>
+                <?php $notice('save_theme'); ?>
+                <div class="actions"><button type="submit" name="action" value="save_theme" class="btn"><?= tt('Save theme', 'Salva il tema') ?></button></div>
+            </form>
+
+            <form method="POST" action="account.php" class="card">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <h3><label for="email"><?= tt('E-mail (optional)', 'E-mail (facoltativa)') ?></label></h3>
+                <input id="email" type="email" name="email" value="<?php echo htmlspecialchars((string)($account['email'] ?? '')); ?>" placeholder="you@example.com" autocomplete="email" maxlength="254" class="input">
+                <?php if (!empty($account['email'])): ?>
+                <p class="status <?= !empty($account['email_verified']) ? 'good' : 'warn' ?>"><?php echo !empty($account['email_verified']) ? tt('Address confirmed.', 'Indirizzo confermato.') : tt('Address not confirmed yet (check your inbox; saving again sends the link again).', 'Indirizzo non ancora confermato (controlla la posta; se salvi di nuovo ti mandiamo di nuovo il link).'); ?></p>
+                <?php endif; ?>
+                <label class="check"><input type="checkbox" name="email_optin" value="1" <?php echo !empty($account['email_optin']) ? 'checked' : ''; ?>> <span><?= tt('Send me news about vector-box (rare; one click to stop). Leave it unticked and you get only messages about your account.', 'Mandami le novità di vector-box (rare; basta un clic per smettere). Se lo lasci senza spunta ricevi solo i messaggi sul tuo account.') ?></span></label>
+                <?php $notice('save_email'); ?>
+                <div class="actions"><button type="submit" name="action" value="save_email" class="btn"><?= tt('Save e-mail', 'Salva l\'e-mail') ?></button></div>
+            </form>
+        </section>
+
+        <!-- YOUR DATA (GDPR): download everything, or delete the account -->
+        <section id="data" class="group" aria-labelledby="h-data">
+            <h2 id="h-data"><?= tt('Your data', 'I tuoi dati') ?></h2>
+            <div class="card" id="your-data">
+                <p class="hint"><?php if (pageLang() === 'it'): ?>Puoi scaricare tutto ciò che vector-box conserva su questo account, oppure eliminare l'account e i suoi dati. I dettagli sono nella <a href="privacy.php">pagina sulla privacy</a>.<?php else: ?>You can download everything vector-box keeps about this account, or delete the account and its data. See the <a href="privacy.php">privacy page</a> for the details.<?php endif; ?></p>
+                <div class="actions left"><a href="../api/account_data.php?action=export" class="btn ghost"><?= tt('Download my data (JSON)', 'Scarica i miei dati (JSON)') ?></a></div>
+            </div>
+
+            <?php if (empty($account['is_admin'])): ?>
+            <details class="card danger">
+                <summary><?= tt('Delete my account', 'Elimina il mio account') ?></summary>
+                <form id="delete-account-form">
+                    <p class="hint"><?= tt('Deletes your account, chat and private messages, progress, bookmarks and class membership. This cannot be undone. A class manager must hand the class over first.', 'Elimina il tuo account, la chat e i messaggi privati, i progressi, i segnalibri e l\'appartenenza alla classe. Non si può annullare. Chi gestisce una classe deve prima passarla a qualcun altro.') ?></p>
+                    <label class="check"><input type="checkbox" id="delete-materials" checked> <span><?= tt('Also delete the class material I uploaded (otherwise it stays in the class, without my name)', 'Elimina anche il materiale di classe che ho caricato (altrimenti resta nella classe, senza il mio nome)') ?></span></label>
+                    <label class="field" for="delete-password"><?= tt('Your password, to confirm', 'La tua password, per confermare') ?></label>
+                    <input type="password" id="delete-password" class="input" autocomplete="current-password" required>
+                    <div class="actions"><button type="submit" class="btn danger"><?= tt('Delete account for good', 'Elimina l\'account per sempre') ?></button></div>
+                    <div id="delete-result" class="hint" role="status"></div>
+                </form>
+            </details>
+            <?php endif; ?>
+        </section>
+
+        <?php if (!empty($account['is_admin'])): ?>
+        <!-- ADMIN -->
+        <section id="admin" class="group" aria-labelledby="h-admin">
+            <h2 id="h-admin"><?= tt('Administration', 'Amministrazione') ?></h2>
+            <div class="card links">
+                <a href="admin_users.php" class="btn ghost"><?= tt('Users', 'Utenti') ?></a>
+                <a href="mail.php" class="btn ghost"><?= tt('Mail box', 'Casella e-mail') ?></a>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <div class="signout">
+            <a href="../api/logout.php" class="btn ghost danger"><?= tt('Log out of this session', 'Esci dalla sessione') ?></a>
         </div>
     </main>
 </body>

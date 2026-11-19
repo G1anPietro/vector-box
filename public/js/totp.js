@@ -11,8 +11,8 @@
         saveCodes: 'Backup codes: save them NOW somewhere safe, each works once and they are never shown again.', pw: 'Password', newCodes: 'New backup codes', off2: 'Turn off', err: 'That did not work: check the details.', wait: 'Try again in a few minutes.' };
     const $ = (id) => document.getElementById(id);
     const el = (tag, props = {}, ...kids) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(props)) { if (k === 'text') n.textContent = v; else n.setAttribute(k, v); } n.append(...kids); return n; };
-    const field = (id, label, type = 'text', extra = {}) => el('label', { for: id, style: 'display:block;font-size:.75rem;margin-top:6px;' }, label, el('input', Object.assign({ id, type, class: 'terminal-input', style: 'display:block;width:100%;box-sizing:border-box;padding:8px;background:rgba(0,0,0,.85);color:#fff;border:1px solid var(--border-color);' }, extra)));
-    const btn = (text, fn) => { const b = el('button', { type: 'button', class: 'nav-btn', style: 'margin-top:8px;padding:8px;', text }); b.addEventListener('click', fn); return b; };
+    const field = (id, label, type = 'text', extra = {}) => el('label', { for: id, class: 'field' }, label, el('input', Object.assign({ id, type, class: 'input' }, extra)));
+    const btn = (text, fn, cls = 'btn ghost') => { const b = el('button', { type: 'button', class: cls, text }); b.addEventListener('click', fn); return b; };
     async function api(body) {
         const r = await fetch('../api/totp.php', body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
         const j = await r.json().catch(() => ({ success: false }));
@@ -36,13 +36,13 @@
             const svg = new DOMParser().parseFromString(q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }), 'image/svg+xml').documentElement;
             svg.setAttribute('style', 'display:block;width:200px;height:200px;');
             svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'QR');
-            return el('div', {}, el('p', { class: 'term-muted', text: T.qr }), el('div', { style: 'background:#fff;padding:8px;display:inline-block;' }, document.importNode(svg, true)));
+            return el('div', {}, el('p', { class: 'hint', text: T.qr }), el('div', { style: 'background:#fff;padding:8px;display:inline-block;' }, document.importNode(svg, true)));
         } catch (e) { return el('span'); }
     }
     const say = (msg) => { $('totp-state').textContent = msg; };
     function showCodes(codes) {
-        const pre = el('pre', { style: 'user-select:text;-webkit-user-select:text;margin:6px 0;white-space:pre-wrap;', text: codes.join('\n') });
-        $('totp-body').replaceChildren(el('p', { class: 'term-muted', text: T.saveCodes }), pre, btn(T.copyKey.replace(/chiave|key/, it ? 'i codici' : 'the codes'), (e) => copy(codes.join('\n'), e.target)), btn('OK', render));
+        const pre = el('pre', { class: 'codes', text: codes.join('\n') });
+        $('totp-body').replaceChildren(el('p', { class: 'hint', text: T.saveCodes }), pre, btn(T.copyKey.replace(/chiave|key/, it ? 'i codici' : 'the codes'), (e) => copy(codes.join('\n'), e.target)), btn('OK', render, 'btn'));
     }
     async function render() {
         const s = await api();
@@ -54,16 +54,16 @@
             body.replaceChildren(pw0, btn(T.start, async () => {
                 const d = await api({ action: 'begin', password: $('totp-pw0').value });
                 if (!d.success) { say(d.status === 429 ? T.wait : T.err); return; }
-                const link = el('a', { href: d.uri, text: T.open, style: 'display:inline-block;margin-top:6px;color:var(--accent-color, #00f3ff);' });
+                const link = el('a', { href: d.uri, text: T.open, class: 'btn ghost' });
                 const input = field('totp-code', T.code, 'text', { inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '8' });
-                const keyLine = el('pre', { style: 'user-select:text;-webkit-user-select:text;margin:6px 0;word-break:break-all;white-space:pre-wrap;', text: d.secret.replace(/(.{4})/g, '$1 ').trim() });
+                const keyLine = el('pre', { class: 'codes', text: d.secret.replace(/(.{4})/g, '$1 ').trim() });
                 const cKey = btn(T.copyKey, () => copy(d.secret, cKey)), cLink = btn(T.copyLink, () => copy(d.uri, cLink));
-                body.replaceChildren(el('p', { class: 'term-muted', text: T.key }), keyLine, cKey, el('br'), link, el('br'), cLink, qrBox(d.uri), input,
+                body.replaceChildren(el('p', { class: 'hint', text: T.key }), keyLine, cKey, el('br'), link, el('br'), cLink, qrBox(d.uri), input,
                     btn(T.confirm, async () => {
                         const c = await api({ action: 'confirm', code: $('totp-code').value });
                         if (c.success) { say(''); showCodes(c.backup_codes); } else say(c.status === 429 ? T.wait : T.err);
-                    }));
-            }));
+                    }, 'btn'));
+            }, 'btn'));
             return;
         }
         say(T.on(s.backup_left));
@@ -72,7 +72,7 @@
         const proof = () => ({ password: $('totp-pw').value, code: $('totp-code2').value });
         body.replaceChildren(pw, cd,
             btn(T.newCodes, async () => { const d = await api(Object.assign({ action: 'backup' }, proof())); if (d.success) { say(''); showCodes(d.backup_codes); } else say(d.status === 429 ? T.wait : T.err); }),
-            btn(T.off2, async () => { const d = await api(Object.assign({ action: 'disable' }, proof())); if (d.success) render(); else say(d.status === 429 ? T.wait : T.err); }));
+            btn(T.off2, async () => { const d = await api(Object.assign({ action: 'disable' }, proof())); if (d.success) render(); else say(d.status === 429 ? T.wait : T.err); }, 'btn ghost danger'));
     }
     render();
 })();

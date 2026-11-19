@@ -7,7 +7,7 @@
     const $ = (id) => document.getElementById(id);
     const fmt = (t) => new Date(t * 1000).toLocaleString(it ? 'it-IT' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
     const el = (tag, props = {}, ...kids) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(props)) { if (k === 'text') n.textContent = v; else n.setAttribute(k, v); } n.append(...kids); return n; };
-    const btn = (text, fn) => { const b = el('button', { type: 'button', class: 'nav-btn', style: 'margin-top:6px;padding:6px 12px;min-height:40px;', text }); b.addEventListener('click', fn); return b; };
+    const btn = (text, fn, cls = 'btn ghost small') => { const b = el('button', { type: 'button', class: cls, text }); b.addEventListener('click', fn); return b; };
     async function api(body) {
         const r = await fetch('../api/sessions.php', body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
         return r.json().catch(() => ({ success: false }));
@@ -17,11 +17,11 @@
         const d = await api();
         if (!d.success) return;
         $('sessions-state').textContent = d.sessions.length ? T.st : T.none;
-        const rows = d.sessions.map((s) => el('div', { style: 'border:1px solid var(--border-color);padding:8px;margin-top:6px;overflow-wrap:anywhere;' },
+        const rows = d.sessions.map((s) => el('div', { class: 'dev' },
             el('div', { text: s.label + (s.country ? ' · ' + s.country : '') + (s.current ? ' · ' + T.here : '') }),
-            el('div', { class: 'term-muted', style: 'font-size:.75rem;', text: T.in + ': ' + fmt(s.created_at) + ' · ' + T.seen + ': ' + fmt(s.last_seen) }),
+            el('div', { class: 'meta', text: T.in + ': ' + fmt(s.created_at) + ' · ' + T.seen + ': ' + fmt(s.last_seen) }),
             s.current ? el('span') : btn(T.out, () => act({ action: 'revoke', id: s.id }))));
-        if (d.sessions.length > 1) rows.push(btn(T.others, () => act({ action: 'revoke_others' })));
+        if (d.sessions.length > 1) rows.push(btn(T.others, () => act({ action: 'revoke_others' }), 'btn ghost small danger'));
         $('sessions-body').replaceChildren(...rows);
     }
     render();

@@ -150,7 +150,7 @@ test.describe('your data: export, erasure, retention', () => {
     test('the account page offers download and deletion (not deletion to admins)', async () => {
         const u = await reg('gd_page');
         const html = (await u.get('/pages/account.php')).text;
-        assert.match(html, /DOWNLOAD MY DATA/);
+        assert.match(html, /download my data/i);
         assert.match(html, /id="delete-account-form"/);
         assert.ok(!/id="delete-account-form"/.test((await admin.get('/pages/account.php')).text));
     });
