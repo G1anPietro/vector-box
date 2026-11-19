@@ -46,16 +46,22 @@ $CARDS = [
                    'en' => 'Party games for your phone and games to play alone, free and with no account.'],
     ],
     [
+        'look' => 'books', 'href' => 'pages/reader.php', 'glyph' => '▤', 'private' => true, 'show' => $access['books'],
+        'name' => ['it' => 'Lettore di libri', 'en' => 'Book reader'],
+        'line' => ['it' => 'La biblioteca privata: leggi i libri e riprendi da dove eri rimasto.',
+                   'en' => 'The private library: read the books and pick up where you left off.'],
+    ],
+    [
         'look' => 'notes', 'href' => 'pages/appunti.php', 'glyph' => '✎',
         'name' => ['it' => 'Appunti di classe', 'en' => 'Class notes'],
         'line' => ['it' => 'Gli appunti della classe, condivisi: cerca, ripassa e fai i quiz.',
                    'en' => 'The class notes, shared: search, review and take quizzes.'],
     ],
     [
-        'look' => 'books', 'href' => 'pages/reader.php', 'glyph' => '▤', 'private' => true, 'show' => $access['books'],
-        'name' => ['it' => 'Lettore di libri', 'en' => 'Book reader'],
-        'line' => ['it' => 'La biblioteca privata: leggi i libri e riprendi da dove eri rimasto.',
-                   'en' => 'The private library: read the books and pick up where you left off.'],
+        'look' => 'os', 'href' => 'desktop.php', 'glyph' => '>_',
+        'name' => ['it' => 'Sistema operativo', 'en' => 'Operating system'],
+        'line' => ['it' => 'Il desktop cyberpunk: terminale, chat, poker e finestre da spostare.',
+                   'en' => 'The cyberpunk desktop: terminal, chat, poker and windows you can move.'],
     ],
     [
         'look' => 'account', 'href' => $isLoggedIn ? 'pages/account.php' : 'pages/login.php', 'glyph' => '◉',
@@ -63,6 +69,12 @@ $CARDS = [
         'line' => $isLoggedIn
             ? ['it' => 'Connesso come ' . $who . ': impostazioni, dispositivi e dati.', 'en' => 'Signed in as ' . $who . ': settings, devices and data.']
             : ['it' => 'Accedi o registrati per salvare le tue cose.', 'en' => 'Sign in or register to keep your things.'],
+    ],
+    [
+        'look' => 'news', 'href' => 'pages/novita.php', 'glyph' => '✦',
+        'name' => ['it' => 'Novità', 'en' => 'News'],
+        'line' => ['it' => 'Cosa c\'è di nuovo, cosa stiamo costruendo e le idee in arrivo.',
+                   'en' => 'What is new, what we are building and the ideas on the way.'],
     ],
     [
         'look' => 'project', 'href' => 'pages/progetto.php', 'glyph' => '◇',
@@ -74,12 +86,6 @@ $CARDS = [
         'look' => 'stats', 'href' => 'pages/stats.php', 'glyph' => '▥', 'private' => true, 'show' => $access['admin'],
         'name' => ['it' => 'Statistiche', 'en' => 'Statistics'],
         'line' => ['it' => 'Visite al sito e pagine più viste.', 'en' => 'Site visits and most viewed pages.'],
-    ],
-    [
-        'look' => 'os', 'href' => 'desktop.php', 'glyph' => '>_',
-        'name' => ['it' => 'Sistema operativo', 'en' => 'Operating system'],
-        'line' => ['it' => 'Il desktop cyberpunk: terminale, chat, poker e finestre da spostare.',
-                   'en' => 'The cyberpunk desktop: terminal, chat, poker and windows you can move.'],
     ],
 ];
 $title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk' : 'vector-box — games, class notes and a cyberpunk desktop';
@@ -118,11 +124,18 @@ $title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk
                 </a>
             <?php endforeach; ?>
         </nav>
+
+        <a class="support" href="pages/ads.php">
+            <span class="heart" aria-hidden="true">&#9829;</span>
+            <span class="txt">
+                <span class="name"><?= $lang === 'it' ? 'Supporta vector-box' : 'Support vector-box' ?></span>
+                <span class="line"><?= $lang === 'it' ? 'È gratis e resta così. Scopri cosa lo tiene acceso e come dargli una mano.' : 'It is free and stays that way. See what keeps it running and how to give it a hand.' ?></span>
+            </span>
+            <span class="go" aria-hidden="true">&rarr;</span>
+        </a>
     </main>
 
     <footer class="foot">
-        <a href="pages/novita.php"><?= $lang === 'it' ? 'Novità' : 'News' ?></a>
-        <a href="pages/ads.php"><?= $lang === 'it' ? 'Supporta vector-box' : 'Support vector-box' ?></a>
         <a href="pages/privacy.php">Privacy</a>
         <a href="pages/sicurezza.php"><?= $lang === 'it' ? 'Sicurezza' : 'Security' ?></a>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>

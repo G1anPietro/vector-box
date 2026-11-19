@@ -25,3 +25,22 @@
 .mcard .badge { position: absolute; top: 14px; right: 14px; padding: 2px 9px; border: 1px solid currentColor; border-radius: 999px; font: 700 12px/1.5 system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .mcard.books { border-color: #6b5a2e; } .mcard.books .glyph { color: #f2c66d; }
 .mcard.stats { border-color: #2e6b6b; } .mcard.stats .glyph { color: #6be0e0; }
+.mcard.news { border-color: #7a3a58; } .mcard.news .glyph { color: #ff8fb8; }
+
+/* "Support vector-box": a wide gold banner under the cards, so it is not lost in the footer */
+.support {
+    display: flex; align-items: center; gap: 18px; margin-top: 26px; padding: 20px 24px;
+    border: 1px solid #8a6f2c; border-radius: 14px; text-decoration: none; color: var(--text);
+    background: linear-gradient(135deg, #3a2d12 0%, #241c10 55%, var(--dusk-2) 100%);
+    box-shadow: 0 7px 0 #0e0c13, 0 0 24px rgba(242, 198, 109, 0.12);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.support:hover { transform: translateY(-3px); box-shadow: 0 10px 0 #0e0c13, 0 0 30px rgba(242, 198, 109, 0.25); }
+.support:active { transform: translateY(2px); }
+.support .heart { flex: none; font-size: 44px; line-height: 1; color: #f2c66d; text-shadow: 0 0 18px rgba(242, 198, 109, 0.5); }
+.support .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.support .name { font-size: 26px; font-weight: 800; color: #f2c66d; line-height: 1.15; }
+.support .line { color: #d8cdb8; font-size: 17px; }
+.support .go { flex: none; font-size: 30px; color: #f2c66d; }
+@media (max-width: 520px) { .support { padding: 16px; gap: 12px; } .support .heart { font-size: 34px; } .support .name { font-size: 22px; } .support .go { display: none; } }
+@media (prefers-reduced-motion: reduce) { .support { transition: none; } }

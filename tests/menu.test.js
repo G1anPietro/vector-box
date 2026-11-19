@@ -8,20 +8,38 @@ let site;
 test.before(async () => { site = await startSite(); });
 test.after(() => site.stop());
 
-test('the home page is the menu: five cards, the OS card goes to desktop.php, no desktop windows on it', async () => {
+test('the home page is the menu: six cards for everyone, the OS card goes to desktop.php, no desktop windows on it', async () => {
     for (const p of ['/', '/index.php']) {
         const r = await new Client(site).get(p + '?lang=en');
         assert.equal(r.status, 200, p);
         assert.match(r.text, /<html lang="en"/);
-        for (const href of ['pages/giochi.php', 'pages/appunti.php', 'pages/login.php', 'pages/progetto.php', 'desktop.php']) {
+        for (const href of ['pages/giochi.php', 'pages/appunti.php', 'pages/login.php', 'pages/novita.php', 'pages/progetto.php', 'desktop.php']) {
             assert.ok(r.text.includes(`href="${href}"`), p + ' links to ' + href);
         }
-        assert.equal((r.text.match(/class="mcard /g) || []).length, 5);
+        assert.equal((r.text.match(/class="mcard /g) || []).length, 6);
         assert.ok(!r.text.includes('win-terminal') && !r.text.includes('id="canvas"'), 'the desktop is not on the menu');
         assert.match(r.text, /Operating system/);
     }
     const it = await new Client(site).get('/?lang=it');
     assert.match(it.text, /<html lang="it"/); assert.match(it.text, /Sistema operativo/); assert.match(it.text, /Appunti di classe/);
+});
+
+test('the cards come in this order: games, book reader*, class notes, desktop, account, news, project, statistics*  (* only for who may see them)', async () => {
+    const order = (html) => [...html.matchAll(/class="mcard [a-z]+" href="([^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual(order((await new Client(site).get('/?lang=en')).text),
+        ['pages/giochi.php', 'pages/appunti.php', 'desktop.php', 'pages/login.php', 'pages/novita.php', 'pages/progetto.php']);
+    const admin = await makeAdmin(site, 'order_admin');
+    assert.deepEqual(order((await admin.get('/?lang=en')).text),
+        ['pages/giochi.php', 'pages/reader.php', 'pages/appunti.php', 'desktop.php', 'pages/account.php', 'pages/novita.php', 'pages/progetto.php', 'pages/stats.php']);
+});
+
+test('"Support vector-box" is a banner under the cards, not a footer link, in both languages', async () => {
+    for (const [lang, text] of [['en', 'Support vector-box'], ['it', 'Supporta vector-box']]) {
+        const html = (await new Client(site).get('/?lang=' + lang)).text;
+        assert.match(html, new RegExp(`<a class="support" href="pages/ads\\.php">[\\s\\S]*?${text}`));
+        assert.equal((html.match(/pages\/ads\.php/g) || []).length, 1, 'one entry only');
+        assert.ok(html.indexOf('class="support"') > html.indexOf('</nav>') && html.indexOf('class="support"') < html.indexOf('<footer'));
+    }
 });
 
 test('the Account card follows the login: login page for a guest, account page and the name for a user', async () => {
