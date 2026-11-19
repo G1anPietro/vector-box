@@ -1,5 +1,5 @@
 <?php
-// public/pages/account.php — the account page (profile, password, devices, theme, language, e-mail, data export/delete). Opened from the home menu.
+// public/pages/account.php — the account page (profile, password, devices, language, e-mail, data export/delete). Opened from the home menu.
 require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 require_once __DIR__ . '/../api/mailer.php';
@@ -108,13 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $msg = tt('Username changed.', 'Nome utente cambiato.');
             }
         }
-    } elseif ($action === 'save_theme') {
-        $selectedTheme = (string)($_POST['theme'] ?? DEFAULT_SYSTEM_THEME);
-        if (!isset(SYSTEM_THEMES[$selectedTheme])) $selectedTheme = DEFAULT_SYSTEM_THEME;
-        $upd = $db->prepare("UPDATE accounts SET theme = :t WHERE id = :id");
-        $upd->execute([':t' => $selectedTheme, ':id' => $account['id']]);
-        $_SESSION['theme'] = $selectedTheme;
-        $msg = tt('Default theme updated.', 'Tema predefinito aggiornato.');
     } elseif ($action === 'save_email') {
         // The address is optional. A new or re-sent address must be confirmed by a link; news only go to confirmed addresses
         // that also said yes (two separate things: the address, and the consent to news).
@@ -195,7 +188,7 @@ session_write_close();
         <?php
         // the result of a save is shown inside the card you used; anything else (a bad form token) goes up here
         $formAction = $action ?? '';
-        $inCard = in_array($formAction, ['update_profile', 'change_username', 'change_password', 'save_theme', 'save_email'], true);
+        $inCard = in_array($formAction, ['update_profile', 'change_username', 'change_password', 'save_email'], true);
         $notice = function (string $for) use ($msg, $error, $formAction): void {
             if ($formAction !== $for) return;
             if ($msg) echo '<div class="notice ok" role="status">' . htmlspecialchars($msg) . '</div>';
@@ -282,15 +275,6 @@ session_write_close();
                 <p class="hint"><?= tt('Also used for the e-mails and notifications we send you.', 'La usiamo anche per le e-mail e le notifiche che ti mandiamo.') ?></p>
                 <div id="vb-lang" role="group" aria-label="<?= tt('Language', 'Lingua') ?>"></div>
             </div>
-
-            <form method="POST" action="account.php" class="card">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-                <h3><label for="rice-selector"><?= tt('Desktop theme', 'Tema del desktop') ?></label></h3>
-                <p class="hint"><?= tt('The colours of the operating-system desktop, on every device you sign in from.', 'I colori del desktop del sistema operativo, su ogni dispositivo da cui accedi.') ?></p>
-                <select name="theme" id="rice-selector" class="input"><?php echo systemThemeOptions($account['theme'] ?? null); ?></select>
-                <?php $notice('save_theme'); ?>
-                <div class="actions"><button type="submit" name="action" value="save_theme" class="btn"><?= tt('Save theme', 'Salva il tema') ?></button></div>
-            </form>
 
             <form method="POST" action="account.php" class="card">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">

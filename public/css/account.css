@@ -1,4 +1,4 @@
-/* public/css/account.css — the account page (pages/account.php). Frame, colours and fonts come from giochi.css (the dusk theme).
+/* public/css/account.css — the account page (pages/account.php) and the sign-in / registration page (pages/login.php). Frame, colours and fonts come from giochi.css (the dusk theme).
  * One idea: every setting is a card with its own button; the filled button is the main action, outlined ones are secondary, red is for things that cannot be undone. */
 .acc { max-width: 760px; margin: 0 auto; padding: 4px 20px 56px; }
 .acc h1 { font-size: clamp(30px, 7vw, 44px); line-height: 1.05; letter-spacing: -0.01em; overflow-wrap: anywhere; }
@@ -82,3 +82,20 @@ details.danger form { margin-top: 12px; }
     .who { gap: 12px; } .avatar { width: 54px; height: 54px; font-size: 26px; }
 }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+/* sign-in and registration (pages/login.php) share this file */
+.auth { max-width: 460px; padding-top: 18px; }
+.auth h1 { font-size: 32px; margin: 4px 0 6px; }
+.auth .card { padding: 22px 22px 20px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 18px; background: #14121a; border: 1px solid var(--plank); border-radius: 12px; }
+.seg a { text-align: center; padding: 9px 8px; border-radius: 9px; text-decoration: none; color: var(--muted); font: 700 15px/1.3 system-ui, sans-serif; }
+.seg a:hover { color: var(--text); }
+.seg a[aria-current="page"] { background: var(--dusk-2); color: var(--text); box-shadow: 0 0 0 1px var(--plank); }
+.btn.wide { width: 100%; }
+.auth .actions { justify-content: stretch; }
+.auth .notice { margin: 14px 0 0; }
+.tip { margin: 4px 0 0; color: var(--muted); font: 13px/1.4 system-ui, sans-serif; }
+.swap { margin: 14px 0 0; text-align: center; color: var(--muted); font: 15px/1.4 system-ui, sans-serif; }
+.input.code { letter-spacing: .2em; font-size: 20px; text-align: center; }
+.auth-lang { margin-top: 16px; text-align: center; }
+.auth-lang .vb-lang { justify-content: center; }

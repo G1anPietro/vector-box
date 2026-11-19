@@ -27,8 +27,9 @@ test('account page: the site theme, four section shortcuts that point at real se
     }
     assert.match(html, /<h1>ui_user<\/h1>/); assert.match(html, /class="avatar"[^>]*>U</);
     // every form keeps its token and its action; the filled button is the main action of its card
-    assert.equal((html.match(/name="csrf_token" value="[0-9a-f]+"/g) || []).length, 5);
-    for (const a of ['update_profile', 'change_username', 'change_password', 'save_theme', 'save_email']) assert.ok(html.includes(`name="action" value="${a}"`), a);
+    assert.equal((html.match(/name="csrf_token" value="[0-9a-f]+"/g) || []).length, 4);
+    assert.ok(!html.includes('rice-selector') && !html.includes('save_theme'), 'no theme choice on the account page');
+    for (const a of ['update_profile', 'change_username', 'change_password', 'save_email']) assert.ok(html.includes(`name="action" value="${a}"`), a);
     assert.ok(/<details class="card danger">\s*<summary>Delete my account<\/summary>\s*<form id="delete-account-form">/.test(html), 'deletion is behind a closed disclosure');
     assert.ok(!html.includes('id="admin"') && !html.includes('id="totp"') && !html.includes('admin_users.php'), 'nothing for the admin');
 });

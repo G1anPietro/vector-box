@@ -78,5 +78,5 @@ test('pages that need the desktop link to it, the others link to the menu', asyn
     for (const p of ['/pages/vault.php', '/pages/hack.php']) assert.ok((await new Client(site).get(p)).text.includes('href="../desktop.php"'), p);
     assert.ok((await new Client(site).get('/pages/sicurezza.php?lang=en')).text.includes('href="../desktop.php">operating system page'));
     const login = (await new Client(site).get('/pages/login.php?lang=en')).text;
-    assert.ok(login.includes('href="../index.php" class="nav-btn"') && login.includes('BACK_TO_HOME'));
+    assert.ok(login.includes('class="back" href="../index.php"'), 'the sign-in page has a way back to the menu');
 });

@@ -59,10 +59,9 @@ test('unknown themes are refused, reader themes never overwrite the desktop them
     assert.equal(g.status, 401);
 });
 
-test('the account settings page offers the same themes', async () => {
+test('the account page has no theme choice any more (the desktop menu is where it is chosen)', async () => {
     const html = await (await fetch(`${site.base}/pages/account.php`, { headers: { Cookie: ana.cookieHeader() } })).text();
-    for (const id of ['monochrome', 'catppuccin', 'solarized', 'rosepine', 'ice']) assert.match(html, new RegExp(`<option value="${id}"`));
-    assert.match(html, /id="rice-selector"/);
+    assert.ok(!/id="rice-selector"|save_theme|<option value="monochrome"/.test(html));
 });
 
 test('the desktop menu: no night mode and no high contrast; matrix switch and theme list; scanlines only on the desktop', async () => {
