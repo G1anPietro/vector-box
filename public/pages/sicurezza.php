@@ -133,7 +133,7 @@ $weekLine = $atk && time() - (int)$atk['generated_at'] < 2 * 86400
 
         <h2 id="segnala">Segnalare una vulnerabilità</h2>
         <p>Se trovi un problema di sicurezza, scrivimi: <?= $mailto ? $mailto . ', oppure usa ' : 'usa ' ?>l'<strong>Uplink</strong> nella
-        <a href="../index.php">pagina principale</a> (arriva solo al gestore; è corto, quindi lascia un modo per risponderti e i dettagli te li chiedo io). In italiano o in inglese.</p>
+        <a href="../desktop.php">pagina del sistema operativo</a> (arriva solo al gestore; è corto, quindi lascia un modo per risponderti e i dettagli te li chiedo io). In italiano o in inglese.</p>
         <ul>
             <li>Dimmi cosa hai trovato, dove, e come si riproduce.</li>
             <li>Per favore <strong>non renderlo pubblico</strong> prima che sia stato corretto: dammi un tempo ragionevole.</li>
@@ -234,7 +234,7 @@ $weekLine = $atk && time() - (int)$atk['generated_at'] < 2 * 86400
 
         <h2 id="segnala">Reporting a vulnerability</h2>
         <p>If you find a security problem, write to me: <?= $mailto ? $mailto . ', or use ' : 'use ' ?>the <strong>Uplink</strong> on the
-        <a href="../index.php">main page</a> (it reaches only the owner; it is short, so leave a way to answer you and I will ask for the details). In Italian or English.</p>
+        <a href="../desktop.php">operating system page</a> (it reaches only the owner; it is short, so leave a way to answer you and I will ask for the details). In Italian or English.</p>
         <ul>
             <li>Tell me what you found, where, and how to reproduce it.</li>
             <li>Please <strong>do not make it public</strong> before it is fixed: give me a reasonable time.</li>

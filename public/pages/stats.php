@@ -152,7 +152,7 @@ function barList(array $items, int $total, callable $h): void {
 <body class="stats-page">
     <header class="cyber-header">
         <div class="glitch">// <?= tt('STATISTICS', 'STATISTICHE') ?></div>
-        <a href="../index.php" class="nav-btn">// <?= tt('RETURN', 'INDIETRO') ?></a>
+        <a href="../desktop.php" class="nav-btn">// <?= tt('RETURN', 'INDIETRO') ?></a>
     </header>
 
     <main class="stats">

@@ -1,5 +1,5 @@
 <?php
-// public/index.php
+// public/index.php — the menu people land on: games, class notes, account, the project and the desktop (desktop.php).
 // nginx sends every unknown path here (try_files fallback): only "/" is the home page, the rest is a 404.
 $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 if (!in_array($reqPath, ['/', '/index.php', null, false, ''], true)) {
@@ -29,390 +29,89 @@ require_once __DIR__ . '/api/database.php';
 
 initSession();
 
+$lang = pageLang();
+$other = $lang === 'it' ? 'en' : 'it';
+$T = fn(array $s) => htmlspecialchars($s[$lang] ?? $s['it']);
 $isLoggedIn = !empty($_SESSION['username']) && !str_starts_with($_SESSION['username'], 'guest_');
-$activeUsername = $_SESSION['username'] ?? 'GUEST';
-$userId = $_SESSION['user_id'] ?? null;
-$isAdmin = !empty($_SESSION['is_admin']);
+$who = $isLoggedIn ? (string)$_SESSION['username'] : '';
 
-// Book Reader Permission Check (Admin automatically granted access)
-$canReadBooks = $isAdmin;
-$canViewResume = $isAdmin;   // the CV is private too: admin, or accounts allowed with /grantcv
-if ($userId && !$isAdmin) {
-    try {
-        $db = getDbConnection();
-        $stmt = $db->prepare("SELECT can_read_books, can_view_resume FROM accounts WHERE id = :id");
-        $stmt->execute([':id' => $userId]);
-        $acc = $stmt->fetch();
-        if ($acc) {
-            $canReadBooks = (int)$acc['can_read_books'] === 1;
-            $canViewResume = (int)($acc['can_view_resume'] ?? 0) === 1;
-        }
-    } catch (Exception $e) {
-        $canReadBooks = false;
-    }
-}
-// APP_VERSION, BUILD_DATE and BUILD_HASH come from includes/head.php (version.php in the project root).
+// To add a card, add an entry here. look: CSS class of the card; glyph: a short symbol shown big.
+$CARDS = [
+    [
+        'look' => 'games', 'href' => 'pages/giochi.php', 'glyph' => '▶',
+        'name' => ['it' => 'Giochi', 'en' => 'Games'],
+        'line' => ['it' => 'Giochi da festa per il telefono e giochi da soli, gratis e senza account.',
+                   'en' => 'Party games for your phone and games to play alone, free and with no account.'],
+    ],
+    [
+        'look' => 'notes', 'href' => 'pages/appunti.php', 'glyph' => '✎',
+        'name' => ['it' => 'Appunti di classe', 'en' => 'Class notes'],
+        'line' => ['it' => 'Gli appunti della classe, condivisi: cerca, ripassa e fai i quiz.',
+                   'en' => 'The class notes, shared: search, review and take quizzes.'],
+    ],
+    [
+        'look' => 'account', 'href' => $isLoggedIn ? 'pages/account.php' : 'pages/login.php', 'glyph' => '◉',
+        'name' => ['it' => 'Account', 'en' => 'Account'],
+        'line' => $isLoggedIn
+            ? ['it' => 'Connesso come ' . $who . ': impostazioni, dispositivi e dati.', 'en' => 'Signed in as ' . $who . ': settings, devices and data.']
+            : ['it' => 'Accedi o registrati per salvare le tue cose.', 'en' => 'Sign in or register to keep your things.'],
+    ],
+    [
+        'look' => 'project', 'href' => 'pages/progetto.php', 'glyph' => '◇',
+        'name' => ['it' => 'Il progetto', 'en' => 'The project'],
+        'line' => ['it' => 'Cos\'è vector-box, come è fatto e a che punto siamo.',
+                   'en' => 'What vector-box is, how it is built and where we are.'],
+    ],
+    [
+        'look' => 'os', 'href' => 'desktop.php', 'glyph' => '>_',
+        'name' => ['it' => 'Sistema operativo', 'en' => 'Operating system'],
+        'line' => ['it' => 'Il desktop cyberpunk: terminale, chat, poker e finestre da spostare.',
+                   'en' => 'The cyberpunk desktop: terminal, chat, poker and windows you can move.'],
+    ],
+];
+$title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk' : 'vector-box — games, class notes and a cyberpunk desktop';
 ?>
 <!DOCTYPE html>
-<html lang="<?= pageLang() ?>">
+<html lang="<?= $lang ?>">
 <head>
-    <?php renderHead("Node // Vector-Box", false); ?>
-    <?= socialMeta('vector-box', tt('A cyberpunk desktop in your browser: terminal, chat, party games for your phone and games to play alone.', 'Un desktop cyberpunk nel browser: terminale, chat, giochi da festa per il telefono e giochi da soli.'), '/', '/assets/og/desktop.jpg') ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#16141c">
+    <title><?= htmlspecialchars($title) ?></title>
+    <?= socialMeta('vector-box', tt('Games, shared class notes and a cyberpunk desktop in your browser: terminal, chat, party games for your phone and games to play alone.', 'Giochi, appunti di classe condivisi e un desktop cyberpunk nel browser: terminale, chat, giochi da festa per il telefono e giochi da soli.'), '/', '/assets/og/desktop.jpg') ?>
+    <link rel="icon" href="assets/solitario/icon.svg?v=1" type="image/svg+xml">
+    <link rel="stylesheet" href="css/giochi.css?v=4">
+    <link rel="stylesheet" href="css/menu.css?v=<?= filemtime(__DIR__ . '/css/menu.css') ?>">
 </head>
-<body class="home">
-    <canvas id="canvas"></canvas>
-
-    <header class="cyber-header">
-        <div class="glitch">// VECTOR-BOX // <?php echo $isLoggedIn ? tt('USER: ', 'UTENTE: ') . htmlspecialchars($activeUsername) : tt('AUTH_REQUIRED', 'ACCESSO_RICHIESTO'); ?></div>
-        <div class="menu-container">
-            <button id="menu-toggle-btn" class="nav-btn" type="button">// MENU</button>
-            
-            <div id="dropdown-menu" class="cyber-panel menu-dropdown hidden">
-                <?php if ($canViewResume): ?>
-                    <a href="pages/resume.php" class="menu-item btn-dossier">// <?= tt('VIEW DOSSIER', 'VEDI DOSSIER') ?></a>
-                <?php endif; ?>
-                <a href="pages/giochi.php" class="menu-item">// <?= tt('GAMES', 'GIOCHI') ?></a>
-                <a href="pages/appunti.php" class="menu-item">// <?= tt('CLASS NOTES', 'APPUNTI DI CLASSE') ?></a>
-                <a href="pages/ads.php" class="menu-item btn-adwall">// <?= tt('SUPPORT', 'SUPPORTA') ?></a>
-                <a href="pages/novita.php" class="menu-item">// <?= tt('NEWS', 'NOVITÀ') ?></a>
-                <a href="pages/progetto.php" class="menu-item">// <?= tt('THE PROJECT', 'IL PROGETTO') ?></a>
-                
-                <?php if ($canReadBooks): ?>
-                    <a href="pages/reader.php" class="menu-item" style="border-color: #00f3ff; color: #00f3ff;">// BOOK READER</a>
-                <?php endif; ?>
-                
-                <?php if ($isAdmin): ?>
-                    <a href="pages/stats.php" class="menu-item">// <?= tt('STATISTICS', 'STATISTICHE') ?></a>
-                <?php endif; ?>
-
-                <?php if ($isLoggedIn): ?>
-                    <a href="pages/account.php" class="menu-item">// <?= tt('ACCOUNT_SETTINGS', 'IMPOSTAZIONI_ACCOUNT') ?></a>
-                    <a href="api/logout.php" class="menu-item" style="border-color: #ff3333; color: #ff3333;">// LOGOUT</a>
-                <?php else: ?>
-                    <a href="pages/login.php" class="menu-item">// <?= tt('LOGIN / REGISTER', 'ACCEDI / REGISTRATI') ?></a>
-                <?php endif; ?>
-                
-                <div class="settings-section">
-                    <span class="settings-title">>_ <?= tt('OPTIONS', 'OPZIONI') ?></span>
-                    
-                    <div class="toggle-row">
-                        <span class="toggle-label"><?= tt('MATRIX BACKGROUND', 'SFONDO MATRIX') ?></span>
-                        <label class="cyber-switch">
-                            <input type="checkbox" id="matrix-toggle" checked>
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row" style="margin-top: 8px;">
-                        <span class="toggle-label"><?= tt('FROSTED GLASS', 'VETRO SFOCATO') ?></span>
-                        <label class="cyber-switch">
-                            <input type="checkbox" id="glass-toggle" checked>
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row" style="margin-top: 8px;">
-                        <span class="toggle-label"><?= tt('SCANLINES', 'LINEE DI SCANSIONE') ?></span>
-                        <label class="cyber-switch">
-                            <input type="checkbox" id="scanline-toggle">
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="cyber-slider-row">
-                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('MATRIX_SPEED', 'VELOCITA_MATRIX') ?></span>
-                        <input type="range" id="matrix-speed-slider" class="cyber-range" min="10" max="70" value="45">
-                    </div>
-
-                    <div class="cyber-slider-row" style="margin-top: 10px;">
-                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('THEME', 'TEMA') ?></span>
-                        <select id="rice-selector" class="nav-btn" style="width: 100%; text-align: left; padding: 4px 8px; font-size: 0.8rem; background: #020304;"><?php echo systemThemeOptions(savedAccountTheme()); ?></select>
-                    </div>
-
-                    <div class="cyber-slider-row" style="margin-top: 10px;">
-                        <span class="toggle-label" style="font-size: 0.75rem; color: var(--text-muted);">LANGUAGE</span>
-                        <div id="vb-lang" role="group" aria-label="Language"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<body class="shelf-page menu-page">
+    <header class="top">
+        <a class="home" href="index.php">vector-box</a>
+        <a class="lang" href="?lang=<?= $other ?>" hreflang="<?= $other ?>"><?= strtoupper($other) ?></a>
     </header>
 
-    <main class="desktop-viewport">
-        <!-- 1. SHELL TERMINAL -->
-        <div id="win-terminal" class="cyber-panel draggable-window" style="top: 90px; left: 40px; width: 580px; height: 380px;">
-            <div class="window-header">
-                <span>>_ TERMINAL</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="terminal-box auth-terminal" id="guest-term-box">
-                <div id="guest-term-log">
-                    <p class="term-accent">>_ <?= tt('public_node initialized...', 'public_node avviato...') ?></p>
-                    <p class="term-muted">>_ <?= tt('establishing secure handshake...', 'handshake sicuro in corso...') ?></p>
-                    <p class="term-white">>_ <?= tt('connection stable. Type \'help\' for commands.', 'connessione stabile. Scrivi \'help\' per i comandi.') ?></p>
-                </div>
-                <div class="terminal-input-line clean-input-line">
-                    <span class="prompt-symbol"><?php echo htmlspecialchars($activeUsername); ?>@vector-box:~$</span>
-                    <input type="text" id="guest-cmd-input" class="terminal-input" autocomplete="off" name="terminal_command_input">
-                </div>
-            </div>
-        </div>
+    <main class="wrap">
+        <h1>vector-box</h1>
+        <p class="lead"><?= $lang === 'it'
+            ? 'Giochi, appunti di classe e un desktop cyberpunk nel browser. Scegli dove andare.'
+            : 'Games, class notes and a cyberpunk desktop in your browser. Pick where to go.' ?></p>
 
-        <!-- 2. CHAT FEED -->
-        <div id="win-chatfeed" class="cyber-panel draggable-window" style="top: 90px; left: 640px; width: 480px; height: 380px;">
-            <div class="window-header">
-                <span>>_ CHAT_FEED</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div id="chat-room-tabs" class="chat-tab-bar"></div>
-            <div class="terminal-box auth-terminal" id="feed-term-box">
-                <div id="uplink-chat-log"></div>
-                <div class="terminal-input-line clean-input-line">
-                    <span class="prompt-symbol" id="chat-prompt-label">#general:$</span>
-                    <input type="text" id="chat-feed-input" class="terminal-input" placeholder="<?= tt('Type message to feed...', 'Scrivi un messaggio...') ?>" autocomplete="off">
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. PUBLIC UPLINK TRANSMISSION -->
-        <div id="win-msgbox" class="cyber-panel draggable-window public-panel uplink-panel" style="top: 490px; left: 40px; width: 580px; height: 260px;">
-            <div class="window-header">
-                <span>>_ PUBLIC_UPLINK_TERMINAL</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="window-content-inner">
-                <p class="uplink-desc"><?= tt('Leave an encrypted transmission for the system administrator.', 'Lascia una trasmissione cifrata per l\'amministratore del sistema.') ?></p>
-                <textarea id="public-msg-input" class="uplink-textarea" placeholder="<?= tt('Enter transmission data...', 'Scrivi il messaggio...') ?>"></textarea>
-                <button id="public-send-btn" type="button" class="uplink-btn">>_ <?= tt('TRANSMIT MESSAGE', 'INVIA MESSAGGIO') ?></button>
-                <div id="public-msg-status" class="uplink-status"></div>
-            </div>
-        </div>
-
-        <!-- 4. CYBERPUNK POKER MINIGAME CONTAINER -->
-        <div id="win-poker" class="cyber-panel draggable-window hidden" style="top: 140px; left: 240px; width: 660px; height: 500px;">
-            <div class="window-header">
-                <span>>_ CYBER_POKER // NEON_HOLDEM</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="window-content-inner" style="padding: 10px; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 30px);">
-                <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; flex-wrap: wrap;">
-                    <div style="display: flex; gap: 4px; flex: 1; min-width: 220px;">
-                        <input type="text" id="poker-join-input" placeholder="<?= tt('Room/Code (e.g. general)', 'Stanza/Codice (es. general)') ?>" style="flex: 1; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 8px; font-family: monospace; font-size: 0.75rem; outline: none;">
-                        <button id="poker-btn-join-room" type="button" class="nav-btn" style="padding: 4px 8px; font-size: 0.75rem;"><?= tt('SWITCH', 'CAMBIA') ?></button>
-                    </div>
-
-                    <div style="display: flex; gap: 4px; flex: 1; min-width: 280px;">
-                        <input type="text" id="poker-create-name" placeholder="<?= tt('New Table', 'Nuovo tavolo') ?>" style="width: 80px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
-                        <input type="text" id="poker-create-code" placeholder="<?= tt('Code', 'Codice') ?>" style="width: 60px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px 6px; font-family: monospace; font-size: 0.75rem; outline: none;">
-                        <select id="poker-create-bots" class="nav-btn" style="padding: 2px 4px; font-size: 0.75rem; background: #000;">
-                            <option value="1"><?= tt('1 Bot', '1 Bot') ?></option>
-                            <option value="2">2 Bots</option>
-                            <option value="3">3 Bots</option>
-                        </select>
-                        <button id="poker-btn-create-room" type="button" class="nav-btn" style="border-color: #00ff66; color: #00ff66; padding: 4px 8px; font-size: 0.75rem;">+ <?= tt('CREATE', 'CREA') ?></button>
-                        <button id="poker-btn-leaderboard" type="button" class="nav-btn" title="<?= tt('Leaderboard', 'Classifica') ?>" style="border-color: #ffc800; color: #ffc800; padding: 4px 8px; font-size: 0.75rem;">TOP</button>
-                    </div>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0;">
-                    <div style="display: flex; flex-direction: column;">
-                        <span class="term-accent" style="font-weight: bold; font-size: 0.9rem;"><?= tt('POT', 'PIATTO') ?>: <span id="poker-pot-val">0</span> CR</span>
-                        <span id="poker-stage-indicator" style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('STAGE: LOBBY', 'FASE: LOBBY') ?></span>
-                    </div>
-                    <div id="poker-community-cards" style="display: flex; gap: 6px;"></div>
-                </div>
-
-                <div id="poker-leaderboard" class="hidden" style="border: 1px solid #ffc800; padding: 6px 8px; margin: 6px 0; font-family: monospace; font-size: 0.78rem; max-height: 220px; overflow-y: auto;"></div>
-                <div id="poker-seats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0; flex: 1; align-content: start;"></div>
-
-                <div id="poker-winner-banner" class="hidden" style="background: rgba(0, 255, 102, 0.15); border: 1px solid var(--accent-color); padding: 6px; text-align: center; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px;"></div>
-
-                <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-color); padding-top: 6px;">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span style="font-size: 0.75rem; color: var(--text-muted);"><?= tt('BET', 'PUNTATA') ?>:</span>
-                        <input type="number" id="poker-bet-input" value="40" min="10" step="10" style="width: 70px; background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); color: #fff; padding: 4px; font-family: monospace; font-size: 0.85rem; outline: none;">
-                        <button id="poker-btn-raise" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 4px 8px; font-size: 0.75rem;"><?= tt('RAISE / BET', 'RILANCIA / PUNTA') ?></button>
-                    </div>
-
-                    <div style="display: flex; gap: 6px;">
-                        <button id="poker-btn-join" type="button" class="nav-btn" style="flex: 1; padding: 6px; font-size: 0.75rem;"><?= tt('SEAT', 'SIEDITI') ?></button>
-                        <button id="poker-btn-leave" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;"><?= tt('LEAVE', 'ESCI') ?></button>
-                        <button id="poker-btn-deal" type="button" class="nav-btn" style="flex: 1; border-color: #ffaa00; color: #ffaa00; padding: 6px; font-size: 0.75rem;"><?= tt('DEAL', 'DAI CARTE') ?></button>
-                        <button id="poker-btn-fold" type="button" class="nav-btn" style="flex: 1; border-color: #ff3333; color: #ff3333; padding: 6px; font-size: 0.75rem;"><?= tt('FOLD', 'PASSA') ?></button>
-                        <button id="poker-btn-call" type="button" class="nav-btn" style="flex: 1; border-color: #00f3ff; color: #00f3ff; padding: 6px; font-size: 0.75rem;"><?= tt('CALL/CHECK', 'VEDI/CHECK') ?></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 5. DEVELOPER / SECURITY TOOLBOX WORKBENCH -->
-        <div id="win-tools" class="cyber-panel draggable-window hidden" style="top: 150px; left: 180px; width: 520px; height: 360px;">
-            <div class="window-header">
-                <span>>_ TOOLBOX // ENCODER_CONVERTER</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="window-content-inner">
-                <div class="tools-container">
-                    <select id="tool-mode" class="tools-select">
-                        <option value="b64-enc">Base64 Encode</option>
-                        <option value="b64-dec">Base64 Decode</option>
-                        <option value="url-enc">URL Encode</option>
-                        <option value="url-dec">URL Decode</option>
-                        <option value="hex-enc">Hex Encode</option>
-                        <option value="sha256">SHA-256 Hash</option>
-                        <option value="banner">ASCII Banner</option>
-                        <option value="rot13">ROT13</option>
-                        <option value="rot47">ROT47</option>
-                        <option value="caesar">Caesar Shift (+key)</option>
-                        <option value="caesar-dec">Caesar Unshift (-key)</option>
-                        <option value="morse-enc">Morse Encode</option>
-                        <option value="morse-dec">Morse Decode</option>
-                        <option value="bin-enc">Binary Encode</option>
-                        <option value="bin-dec">Binary Decode</option>
-                    </select>
-                    <input type="number" id="tool-key" class="tools-select" min="1" max="25" value="3" title="<?= tt('Caesar key', 'Chiave di Cesare') ?>" style="display: none;">
-                    <textarea id="tool-input" class="tools-textarea" placeholder="<?= tt('Input raw string...', 'Testo da convertire...') ?>"></textarea>
-                    <textarea id="tool-output" class="tools-textarea" placeholder="<?= tt('Converted result...', 'Risultato...') ?>" readonly></textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6. ARG CIPHER VAULT WINDOW -->
-        <div id="win-vault" class="cyber-panel draggable-window hidden" style="top: 200px; left: 320px; width: 520px; height: 320px;">
-            <div class="window-header">
-                <span>>_ SYSTEM // CIPHER_VAULT</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="window-content-inner">
-                <div class="vault-container" style="gap: 10px;">
-                    <p class="term-muted" style="margin: 0; font-size: 0.8rem;"><?= tt('ENTER DISCOVERED PASSPHRASE KEY:', 'INSERISCI LA CHIAVE SCOPERTA:') ?></p>
-                    <div class="terminal-input-line">
-                        <span class="prompt-symbol"><?= tt('KEY', 'CHIAVE') ?>:</span>
-                        <input type="text" id="vault-key-input" class="terminal-input" placeholder="<?= tt('Enter key...', 'Inserisci la chiave...') ?>" autocomplete="off">
-                    </div>
-                    <button id="vault-unlock-btn" class="nav-btn hack-reset-btn" style="max-width: 100%;">>_ <?= tt('SUBMIT KEY', 'INVIA CHIAVE') ?></button>
-                    <div id="vault-output" class="vault-output-box" style="min-height: 80px;"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 7. PUBLIC SYSTEM STATUS WINDOW -->
-        <div id="win-status" class="cyber-panel draggable-window hidden" style="top: 120px; left: 760px; width: 360px; height: 300px;">
-            <div class="window-header">
-                <span>>_ SYSTEM // STATUS</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="window-content-inner" style="padding: 10px; overflow-y: auto;">
-                <div id="status-body"><span class="term-muted"><?= tt('Polling node...', 'Interrogo il nodo...') ?></span></div>
-            </div>
-        </div>
-
-        <!-- 8. GUESTBOOK / GRAFFITI WALL WINDOW -->
-        <div id="win-guestbook" class="cyber-panel draggable-window hidden" style="top: 160px; left: 280px; width: 520px; height: 380px;">
-            <div class="window-header">
-                <span>>_ GRAFFITI_WALL // GUESTBOOK</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="window-content-inner" style="padding: 8px; display: flex; flex-direction: column; gap: 6px; height: calc(100% - 30px); box-sizing: border-box;">
-                <div id="guestbook-ticker" style="overflow: hidden; white-space: nowrap; border: 1px solid var(--border-color); padding: 3px 0; font-size: 0.78rem; color: var(--accent-color, #00f3ff); min-height: 1.2em;"></div>
-                <div id="guestbook-list" style="flex: 1; overflow-y: auto; padding-right: 4px;"></div>
-                <div class="terminal-input-line clean-input-line">
-                    <span class="prompt-symbol">TAG:$</span>
-                    <input type="text" id="guestbook-input" class="terminal-input" maxlength="200" placeholder="<?= tt('Leave your mark (max 200 chars)...', 'Lascia il tuo segno (max 200 caratteri)...') ?>" autocomplete="off">
-                    <button id="guestbook-sign-btn" class="nav-btn" style="padding: 2px 10px;"><?= tt('SIGN', 'FIRMA') ?></button>
-                </div>
-                <div id="guestbook-status" style="font-size: 0.75rem; min-height: 1em;"></div>
-            </div>
-        </div>
-        <?php if ($isLoggedIn): ?>
-        <!-- 9. PRIVATE MESSAGES (registered users only) -->
-        <div id="win-dm" class="cyber-panel draggable-window hidden" style="top: 130px; left: 340px; width: 660px; height: 440px;">
-            <div class="window-header">
-                <span>>_ PRIVATE_MSG // DIRECT</span>
-                <div class="win-controls">
-                    <button class="win-btn win-btn-min" title="<?= tt('Minimize', 'Riduci') ?>">_</button>
-                    <button class="win-btn win-btn-max" title="<?= tt('Maximize', 'Ingrandisci') ?>">□</button>
-                    <button class="win-btn win-btn-close" title="<?= tt('Close', 'Chiudi') ?>">X</button>
-                </div>
-            </div>
-            <div class="window-content-inner dm-layout">
-                <aside class="dm-side">
-                    <input type="text" id="dm-search" class="dm-input" placeholder="<?= tt('Find a user...', 'Cerca un utente...') ?>" autocomplete="off" maxlength="32">
-                    <div id="dm-search-results" class="dm-results"></div>
-                    <div id="dm-convs" class="dm-convs"></div>
-                </aside>
-                <section class="dm-main">
-                    <div class="dm-head">
-                        <button id="dm-back" class="nav-btn dm-back" title="<?= tt('Back', 'Indietro') ?>">&lt;</button>
-                        <span id="dm-with" class="term-muted"><?= tt('Select a conversation', 'Scegli una conversazione') ?></span>
-                        <button id="dm-block" class="nav-btn dm-block hidden"><?= tt('BLOCK', 'BLOCCA') ?></button>
-                    </div>
-                    <div id="dm-thread" class="dm-thread"></div>
-                    <div id="dm-note" class="dm-note"></div>
-                    <form id="dm-form" class="dm-form hidden">
-                        <textarea id="dm-text" class="dm-input" rows="2" maxlength="1000" placeholder="<?= tt('Write a message (Enter to send, Shift+Enter for a new line)', 'Scrivi un messaggio (Invio per inviare, Maiusc+Invio per andare a capo)') ?>"></textarea>
-                        <button type="submit" class="nav-btn"><?= tt('SEND', 'INVIA') ?></button>
-                    </form>
-                </section>
-            </div>
-        </div>
-        <?php endif; ?>
+        <nav class="menu-cards" aria-label="<?= $lang === 'it' ? 'Menu principale' : 'Main menu' ?>">
+            <?php foreach ($CARDS as $c): ?>
+                <a class="mcard <?= $c['look'] ?>" href="<?= htmlspecialchars($c['href']) ?>">
+                    <span class="glyph" aria-hidden="true"><?= $c['glyph'] ?></span>
+                    <span class="name"><?= $T($c['name']) ?></span>
+                    <span class="line"><?= $T($c['line']) ?></span>
+                </a>
+            <?php endforeach; ?>
+        </nav>
     </main>
 
-    <!-- CONSOLIDATED APPLICATION TASKBAR & FOOTER -->
-    <div class="cyber-taskbar" id="cyber-taskbar">
-        <div class="taskbar-apps">
-            <button class="taskbar-btn active" id="tb-win-terminal">>_ TERMINAL</button>
-            <button class="taskbar-btn active" id="tb-win-chatfeed">>_ CHAT_FEED</button>
-            <button class="taskbar-btn active" id="tb-win-msgbox">>_ UPLINK</button>
-            <button class="taskbar-btn" id="tb-win-poker">>_ POKER</button>
-            <button class="taskbar-btn" id="tb-win-tools">>_ TOOLS</button>
-            <button class="taskbar-btn" id="tb-win-vault">>_ VAULT</button>
-            <button class="taskbar-btn" id="tb-win-status">>_ STATUS</button>
-            <button class="taskbar-btn" id="tb-win-guestbook">>_ WALL</button>
-            <?php if ($isLoggedIn): ?>
-                <button class="taskbar-btn" id="tb-win-dm">>_ DM</button>
-            <?php endif; ?>
-            <?php if ($canReadBooks): ?>
-                <a href="pages/reader.php" class="taskbar-btn" style="text-decoration: none; border-color: #00f3ff; color: #00f3ff; display: inline-flex; align-items: center;">>_ <?= tt('READER', 'LETTORE') ?></a>
-            <?php endif; ?>
-        </div>
-        <div class="taskbar-info">
-            <span class="term-muted"><?= tt('BUILD', 'VERSIONE') ?> // <?php echo APP_VERSION; ?>-<?php echo BUILD_HASH; ?> (<?php echo BUILD_DATE; ?>)</span>
-            <a href="pages/credits.php" class="credits-link">ciao zuffi</a>
-        </div>
-    </div>
+    <footer class="foot">
+        <a href="pages/novita.php"><?= $lang === 'it' ? 'Novità' : 'News' ?></a>
+        <a href="pages/ads.php"><?= $lang === 'it' ? 'Supporta vector-box' : 'Support vector-box' ?></a>
+        <a href="pages/privacy.php">Privacy</a>
+        <a href="pages/sicurezza.php"><?= $lang === 'it' ? 'Sicurezza' : 'Security' ?></a>
+        <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>
+    </footer>
 </body>
 </html>

@@ -111,7 +111,7 @@ test.describe('visit statistics page', () => {
             assert.match(html, /<span class="big">3<\/span><span>visits today<\/span>/);
             assert.match(html, /\/pages\/giochi\.php<\/span>.*?<span class="value">2 /s);
             assert.match(html, />mario</);
-            assert.match((await admin.get('/index.php')).text, /\/\/ STATISTICS/);
+            assert.match((await admin.get('/desktop.php')).text, /\/\/ STATISTICS/);
         } finally { await site.stop(); }
     });
 });

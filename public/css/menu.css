@@ -1,0 +1,23 @@
+/* public/css/menu.css — the menu on the home page (index.php): five big cards. Frame and fonts come from giochi.css. */
+.menu-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 30px; }
+.mcard {
+    display: flex; flex-direction: column; gap: 8px; min-height: 170px; padding: 22px;
+    border: 1px solid var(--plank); border-radius: 14px; text-decoration: none; color: var(--text);
+    background: var(--dusk-2); box-shadow: 0 7px 0 #0e0c13, 0 12px 22px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mcard:hover { transform: translateY(-3px); box-shadow: 0 10px 0 #0e0c13, 0 16px 26px rgba(0, 0, 0, 0.4); }
+.mcard:active { transform: translateY(2px); box-shadow: 0 4px 0 #0e0c13, 0 6px 12px rgba(0, 0, 0, 0.3); }
+.mcard .glyph { font: 800 40px/1 ui-monospace, monospace; }
+.mcard .name { font-size: 28px; font-weight: 800; line-height: 1.1; }
+.mcard .line { color: var(--muted); font-size: 17px; }
+.mcard.games { border-color: #6b3a3a; } .mcard.games .glyph { color: #ff7a6b; }
+.mcard.notes { border-color: #4a5a3a; } .mcard.notes .glyph { color: #b8d68a; }
+.mcard.account { border-color: #3a4f6b; } .mcard.account .glyph { color: #7fb4ff; }
+.mcard.project { border-color: #5a4a70; } .mcard.project .glyph { color: #c9a8ff; }
+.mcard.os { background: #04100a; border-color: #00ff66; font-family: ui-monospace, "Courier New", monospace; box-shadow: 0 7px 0 #022a14, 0 0 22px rgba(0, 255, 102, 0.18); }
+.mcard.os .glyph, .mcard.os .name { color: #00ff66; }
+.mcard.os .name { font-size: 24px; }
+.mcard.os .line { color: #86d9a6; }
+.mcard.os:hover { box-shadow: 0 10px 0 #022a14, 0 0 30px rgba(0, 255, 102, 0.3); }
+@media (prefers-reduced-motion: reduce) { .mcard { transition: none; } }

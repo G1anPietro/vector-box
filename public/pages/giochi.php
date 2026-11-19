@@ -43,7 +43,7 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa', 'en' => 'one phone each'],
     ],
     [
-        'group' => 'friends', 'look' => 'poker', 'href' => '../index.php', 'icon' => '♠',
+        'group' => 'friends', 'look' => 'poker', 'href' => '../desktop.php', 'icon' => '♠',
         'name' => ['it' => 'Poker', 'en' => 'Poker'],
         'line' => ['it' => 'Texas Hold’em a fiches finte, nella finestra POKER del desktop.',
                    'en' => 'Texas Hold’em with play chips, in the POKER window of the desktop.'],

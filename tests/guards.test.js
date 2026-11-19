@@ -51,7 +51,7 @@ test.describe('private CV page', () => {
         const user = new Client(site);
         await user.register('cv_friend');
         assert.equal((await user.get('/pages/resume.php')).status, 403);
-        assert.doesNotMatch((await user.get('/index.php')).text, /VIEW DOSSIER/);
+        assert.doesNotMatch((await user.get('/desktop.php')).text, /VIEW DOSSIER/);
 
         const admin = await makeAdmin(site, 'cv_admin');
         assert.equal((await admin.get('/pages/resume.php')).status, 200);
@@ -61,7 +61,7 @@ test.describe('private CV page', () => {
         const page = await user.get('/pages/resume.php');
         assert.equal(page.status, 200);
         assert.match(page.text, /Khavruniak/);
-        assert.match((await user.get('/index.php')).text, /VIEW DOSSIER/);
+        assert.match((await user.get('/desktop.php')).text, /VIEW DOSSIER/);
         // the library permission is separate
         assert.equal((await user.get('/pages/reader.php')).status, 403);
 

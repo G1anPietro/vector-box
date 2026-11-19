@@ -167,7 +167,7 @@ session_write_close();
 
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // ACCOUNT_PANEL</div>
-        <a href="../index.php" class="nav-btn"><_ <?= tt('BACK_TO_DESKTOP', 'TORNA_AL_DESKTOP') ?></a>
+        <a href="../index.php" class="nav-btn"><_ <?= tt('BACK_TO_HOME', 'TORNA_ALLA_HOME') ?></a>
     </header>
 
     <main class="page-container-centered">

@@ -12,8 +12,8 @@ test.before(async () => {
 });
 test.after(async () => { await site.stop(); });
 
-const PAGES = ['/index.php', '/pages/login.php', '/pages/hack.php', '/pages/vault.php', '/pages/credits.php', '/pages/ads.php', '/pages/soldi.php', '/pages/dona.php'];
-const ADMIN_PAGES = ['/index.php', '/pages/account.php', '/pages/stats.php', '/pages/mail.php', '/pages/admin_users.php'];
+const PAGES = ['/index.php', '/desktop.php', '/pages/login.php', '/pages/hack.php', '/pages/vault.php', '/pages/credits.php', '/pages/ads.php', '/pages/soldi.php', '/pages/dona.php'];
+const ADMIN_PAGES = ['/index.php', '/desktop.php', '/pages/account.php', '/pages/stats.php', '/pages/mail.php', '/pages/admin_users.php'];
 
 test('public pages: English page reads English, Italian page reads Italian', async () => {
     for (const p of PAGES) {
@@ -34,12 +34,12 @@ test('admin pages and the home page of a logged-in admin follow the language', a
             assert.ok(!check(visibleText(r.text)), `${p} ?lang=${lang} still reads ${name}`);
         }
     }
-    assert.match((await admin.get('/index.php?lang=en')).text, />\/\/ STATISTICS</);
-    assert.match((await admin.get('/index.php?lang=it')).text, />\/\/ STATISTICHE</);
+    assert.match((await admin.get('/desktop.php?lang=en')).text, />\/\/ STATISTICS</);
+    assert.match((await admin.get('/desktop.php?lang=it')).text, />\/\/ STATISTICHE</);
 });
 
 test('every PHP page loads i18n.js before any deferred script and the home menu has the EN | IT switch', async () => {
-    const html = (await new Client(site).get('/index.php?lang=en')).text;
+    const html = (await new Client(site).get('/desktop.php?lang=en')).text;
     assert.match(html, /<meta name="vb-lang" content="en">/);
     assert.ok(html.indexOf('js/i18n.js') > 0 && html.indexOf('js/i18n.js') < html.indexOf('js/menu.js'));
     assert.match(html, /id="vb-lang"/);

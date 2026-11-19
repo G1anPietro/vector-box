@@ -34,17 +34,17 @@ test('the JavaScript list and the PHP list have the same themes, and each has ev
 
 test('a new account starts with the monochrome theme; the choice is saved on the account and shows in the page', async () => {
     assert.equal(themeOf('tm_ana'), 'monochrome');
-    let html = await (await fetch(`${site.base}/index.php`, { headers: { Cookie: ana.cookieHeader() } })).text();
+    let html = await (await fetch(`${site.base}/desktop.php`, { headers: { Cookie: ana.cookieHeader() } })).text();
     assert.match(html, /<meta name="vb-theme" content="monochrome">/);
     const r = await save(ana, 'tokyonight');
     assert.equal(r.json.success, true);
     assert.equal(themeOf('tm_ana'), 'tokyonight');
-    html = await (await fetch(`${site.base}/index.php`, { headers: { Cookie: ana.cookieHeader() } })).text();
+    html = await (await fetch(`${site.base}/desktop.php`, { headers: { Cookie: ana.cookieHeader() } })).text();
     assert.match(html, /<meta name="vb-theme" content="tokyonight">/);
     assert.match(html, /<option value="tokyonight" selected>/);
     // another device = another session of the same account: it gets the same theme
     const other = new Client(site); await other.login('tm_ana', 'password123');
-    html = await (await fetch(`${site.base}/index.php`, { headers: { Cookie: other.cookieHeader() } })).text();
+    html = await (await fetch(`${site.base}/desktop.php`, { headers: { Cookie: other.cookieHeader() } })).text();
     assert.match(html, /<meta name="vb-theme" content="tokyonight">/);
 });
 
@@ -66,7 +66,7 @@ test('the account settings page offers the same themes', async () => {
 });
 
 test('the desktop menu: no night mode and no high contrast; matrix switch and theme list; scanlines only on the desktop', async () => {
-    const html = await (await fetch(`${site.base}/index.php`)).text();
+    const html = await (await fetch(`${site.base}/desktop.php`)).text();
     assert.doesNotMatch(html, /MODE: NIGHT|theme-toggle|contrast-toggle|HIGH CONTRAST/);
     assert.match(html, /id="matrix-toggle"/);
     assert.match(html, /id="glass-toggle"/);

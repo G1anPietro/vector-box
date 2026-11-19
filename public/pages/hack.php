@@ -12,7 +12,7 @@ require_once __DIR__ . '/../includes/head.php';
 
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // DEC_BREACH_PROTOCOL</div>
-        <a href="../index.php" class="nav-btn"><_ <?= tt('BACK_TO_TERMINAL', 'TORNA_AL_TERMINALE') ?></a>
+        <a href="../desktop.php" class="nav-btn"><_ <?= tt('BACK_TO_TERMINAL', 'TORNA_AL_TERMINALE') ?></a>
     </header>
 
     <main class="page-container-centered">

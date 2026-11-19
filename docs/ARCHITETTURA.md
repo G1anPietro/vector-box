@@ -13,7 +13,8 @@ Con `--fast` controlla solo la sintassi, in pochi secondi.
 
 ```
 public/                 l'unica cartella servita da nginx
-  index.php             il desktop (finestre, terminale, chat)
+  index.php             il menu della home (giochi, appunti, account, progetto, desktop) e la pagina 404
+  desktop.php           il desktop (finestre, terminale, chat)
   sitemap.php           elenco delle pagine pubbliche per i motori di ricerca
   pages/                una pagina per file: *.php passano da PHP, *.html sono giochi statici
   api/                  endpoint JSON (un file = un indirizzo) e librerie (*_lib.php, helpers.php, database.php)

@@ -361,7 +361,7 @@ test('Whisper on the server transcribes recordings of any size, Gemini does not 
 });
 
 test('the desktop menu links the notes page', async () => {
-    const html = await (await fetch(`${site.base}/index.php`)).text();
+    const html = await (await fetch(`${site.base}/desktop.php`)).text();
     assert.match(html, /href="pages\/appunti\.php"[^>]*>\/\/ CLASS NOTES</);
 });
 
