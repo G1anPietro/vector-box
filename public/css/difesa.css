@@ -1,0 +1,7 @@
+#df-canvas { background: #14121a; border: 1px solid var(--line); border-radius: 10px; touch-action: manipulation; display: block; max-width: 100%; }
+.df-tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; max-width: 600px; }
+.df-tools button[data-tower] { min-width: 92px; }
+.df-tools button[data-tower]:disabled { opacity: .45; cursor: not-allowed; }
+#df-go { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+#df-go:disabled { opacity: .45; }
+.df-tools[hidden] { display: none; }
