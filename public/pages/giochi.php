@@ -131,6 +131,14 @@ $GAMES = [
         'how'  => ['it' => 'frecce o scorrimento', 'en' => 'arrow keys or swipe'],
     ],
     [
+        'group' => 'solo', 'look' => 'breach', 'href' => 'vita.html', 'icon' => '../assets/vita/icon.svg',
+        'name' => ['it' => 'Gioco della vita', 'en' => 'Game of Life'],
+        'line' => ['it' => 'Disegna le cellule e guardale nascere e morire secondo le regole di Conway. Con alianti, pulsar e un cannone.',
+                   'en' => 'Draw cells and watch them be born and die by Conway\'s rules. With gliders, a pulsar and a glider gun.'],
+        'who'  => ['it' => '1 giocatore', 'en' => '1 player'],
+        'how'  => ['it' => 'senza fretta, senza account', 'en' => 'no rush, no account'],
+    ],
+    [
         'group' => 'solo', 'look' => 'breach', 'href' => 'dueamila.html', 'icon' => '../assets/dueamila/icon.svg',
         'name' => ['it' => '2048', 'en' => '2048'],
         'line' => ['it' => 'Scorri per unire i numeri uguali e arriva a 2048. Frecce, tasti W A S D o dito sulla griglia.',

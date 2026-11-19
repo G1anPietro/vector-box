@@ -1,0 +1,4 @@
+#vi-canvas { background: #14121a; border: 1px solid var(--line); border-radius: 10px; touch-action: none; display: block; max-width: 100%; }
+.vi-ctrl { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 12px; max-width: 480px; }
+.vi-ctrl label { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.85rem; }
+.vi-ctrl select { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; min-height: 40px; }
