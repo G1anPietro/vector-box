@@ -8,7 +8,8 @@ require_once __DIR__ . '/../includes/head.php';
 $lang = pageLang();
 $it = $lang === 'it';
 $other = $it ? 'en' : 'it';
-$ZIM = 'wikipedia_it_all_maxi_2026-08';   // kiwix-serve names a book after its file (without .zim): /wiki/content/<name>/<article>; change it with the file
+$full = false;   // false: the small provisional copy (only the introduction of the most read articles); true once the full file (30 GB, with images) is served
+$ZIM = $full ? 'wikipedia_it_all_maxi_2026-08' : 'wikipedia_it_top_mini_2026-10';   // kiwix-serve names a book after its file (without .zim): /wiki/content/<name>/<article>
 $v = (string)@filemtime(__DIR__ . '/../css/wikipedia.css');
 ?>
 <!DOCTYPE html>
@@ -33,7 +34,14 @@ $v = (string)@filemtime(__DIR__ . '/../css/wikipedia.css');
 
     <main class="doc">
         <h1><?= $it ? 'Wikipedia offline' : 'Offline Wikipedia' ?></h1>
-        <p class="muted"><?= $it ? 'Edizione di agosto 2026, in italiano, con le immagini.' : 'August 2026 edition, in Italian, with images.' ?></p>
+        <p class="muted"><?= $full
+            ? ($it ? 'Edizione di agosto 2026, in italiano, con le immagini.' : 'August 2026 edition, in Italian, with images.')
+            : ($it ? 'Versione provvisoria di ottobre 2026, in italiano.' : 'Provisional October 2026 version, in Italian.') ?></p>
+<?php if (!$full): ?>
+        <p class="notice-prov"><?= $it
+            ? 'Per ora c\'è solo una copia piccola: per ogni articolo trovi l\'introduzione, senza immagini, e solo per gli articoli più letti. La versione completa, con tutti gli articoli e le immagini, è in arrivo.'
+            : 'For now this is a small copy: each article has only its introduction, without images, and only the most read articles are included. The full version, with every article and the images, is on its way.' ?></p>
+<?php endif; ?>
         <p><?= $it
             ? 'Questa è una copia di Wikipedia in italiano che vive su questo server: niente pubblicità, niente tracciamento e nessun account. Gli articoli sono quelli della data indicata, quindi non vedi le modifiche più recenti.'
             : 'This is a copy of the Italian Wikipedia that lives on this server: no ads, no tracking and no account. The articles are those of the date shown, so you do not see the latest edits.' ?></p>
