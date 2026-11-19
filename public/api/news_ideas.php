@@ -105,7 +105,8 @@ try {
         newsSave($db, "idea-$id", [
             'kind' => 'feature', 'status' => $idea['status'] === 'done' ? 'done' : 'planned', 'is_public' => true,
             'title_en' => textCut($te !== '' ? $te : $auto, 80), 'title_it' => textCut($ti !== '' ? $ti : $auto, 80),
-            'body_en' => $idea['text'], 'body_it' => $idea['text'],
+            // a short idea already fills the title: no second copy underneath
+            'body_en' => $auto === $idea['text'] && $te === '' ? '' : $idea['text'], 'body_it' => $auto === $idea['text'] && $ti === '' ? '' : $idea['text'],
         ]);
         jsonResponse(['success' => true, 'slug' => "idea-$id"]);
     }

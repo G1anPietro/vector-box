@@ -5,13 +5,13 @@ require_once __DIR__ . '/../includes/head.php';
 <!DOCTYPE html>
 <html lang="<?= pageLang() ?>">
 <head>
-    <?php renderHead("TERMINAL // HEX_BREACH", true, ['js/hack.js']); ?>
+    <?php renderHead("TERMINAL // DEC_BREACH", true, ['js/hack.js']); ?>
 </head>
 <body>
     <canvas id="canvas"></canvas>
 
     <header class="cyber-header">
-        <div class="glitch">// VECTOR-BOX // HEX_BREACH_PROTOCOL</div>
+        <div class="glitch">// VECTOR-BOX // DEC_BREACH_PROTOCOL</div>
         <a href="../index.php" class="nav-btn"><_ <?= tt('BACK_TO_TERMINAL', 'TORNA_AL_TERMINALE') ?></a>
     </header>
 

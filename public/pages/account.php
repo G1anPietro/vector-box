@@ -69,6 +69,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = tt('Please fill in both password fields.', 'Compila entrambi i campi password.');
         }
+    } elseif ($action === 'change_username') {
+        $new = trim((string)($_POST['new_username'] ?? ''));
+        if ($new === '' || !password_verify((string)($_POST['password'] ?? ''), (string)$account['password_hash'])) {
+            $error = tt('Incorrect current password.', 'La password attuale non è corretta.');
+        } elseif ($nameErr = validateNewUsername($new)) {
+            $error = trMsg($nameErr);
+        } elseif (!checkRateLimit('account_rename', 3, 86400, 'user:' . (int)$account['id'])) {
+            $error = tt('Too many changes, try again tomorrow.', 'Troppi cambi, riprova domani.');
+        } else {
+            $st = $db->prepare('SELECT 1 FROM accounts WHERE LOWER(username) = LOWER(:u) AND id != :id');
+            $st->execute([':u' => $new, ':id' => $account['id']]);
+            $taken = (bool)$st->fetchColumn();
+            $st->closeCursor();
+            if ($taken) {
+                $error = tt('That username is already taken.', 'Questo nome utente è già in uso.');
+            } elseif ($new === $account['username']) {
+                $error = tt('That is already your username.', 'È già il tuo nome utente.');
+            } else {
+                $old = $account['username'];
+                $db->beginTransaction();
+                try {
+                    $db->prepare('UPDATE accounts SET username = :n WHERE id = :id')->execute([':n' => $new, ':id' => $account['id']]);
+                    // the name is also copied into rows of other tables: follow it, so chat, guestbook, poker and uploads stay with their author
+                    foreach (['transmissions' => 'username', 'guestbook' => 'username', 'poker_players' => 'username', 'poker_stats' => 'username',
+                              'poker_tables' => 'creator_username', 'books' => 'uploaded_by'] as $table => $col) {
+                        $db->prepare("UPDATE $table SET $col = :n WHERE $col = :o")->execute([':n' => $new, ':o' => $old]);
+                    }
+                    // other devices still carry the old name in their session: sign them out (this one stays)
+                    $db->prepare('DELETE FROM account_sessions WHERE user_id = :u AND sid_hash != :h')->execute([':u' => $account['id'], ':h' => hash('sha256', session_id())]);
+                    $db->commit();
+                } catch (Throwable $e) {
+                    if ($db->inTransaction()) $db->rollBack();
+                    failInternal('ACCOUNT_RENAME', $e);
+                }
+                $_SESSION['username'] = $new;
+                $account['username'] = $username = $new;
+                $msg = tt('Username changed.', 'Nome utente cambiato.');
+            }
+        }
     } elseif ($action === 'save_theme') {
         $selectedTheme = (string)($_POST['theme'] ?? DEFAULT_SYSTEM_THEME);
         if (!isset(SYSTEM_THEMES[$selectedTheme])) $selectedTheme = DEFAULT_SYSTEM_THEME;
@@ -165,6 +204,15 @@ session_write_close();
                 <input type="password" name="old_password" placeholder="<?= tt('Current Password', 'Password attuale') ?>" aria-label="<?= tt('Current password', 'Password attuale') ?>" autocomplete="current-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
                 <input type="password" name="new_password" placeholder="<?= tt('New Password', 'Nuova password') ?>" aria-label="<?= tt('New password', 'Nuova password') ?>" autocomplete="new-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
                 <button type="submit" name="action" value="change_password" class="nav-btn">>_ <?= tt('UPDATE PASSWORD', 'AGGIORNA PASSWORD') ?></button>
+            </form>
+
+            <!-- Username Change Form -->
+            <form method="POST" action="account.php" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+                <span class="settings-title">>_ <?= tt('CHANGE USERNAME', 'CAMBIA NOME UTENTE') ?></span>
+                <input type="text" name="new_username" placeholder="<?= tt('New username', 'Nuovo nome utente') ?>" aria-label="<?= tt('New username', 'Nuovo nome utente') ?>" autocomplete="off" maxlength="32" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
+                <input type="password" name="password" placeholder="<?= tt('Current Password', 'Password attuale') ?>" aria-label="<?= tt('Current password', 'Password attuale') ?>" autocomplete="current-password" class="terminal-input" style="background: rgba(0,0,0,0.8); border: 1px solid var(--border-color); padding: 8px; color: #fff;" required>
+                <button type="submit" name="action" value="change_username" class="nav-btn">>_ <?= tt('CHANGE USERNAME', 'CAMBIA NOME UTENTE') ?></button>
             </form>
 
             <!-- Theme Preference Form -->

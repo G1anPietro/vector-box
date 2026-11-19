@@ -1,6 +1,6 @@
 // public/js/hack.js
 document.addEventListener("DOMContentLoaded", () => {
-    const hexPool = ["1C", "E9", "55", "BD", "7A", "FF", "C3", "AA"];
+    const hexPool = ["28", "233", "85", "189", "122", "255", "195", "170"];
     let targetSeq = [];
     let currentStep = 0;
     let timeLeft = 15;

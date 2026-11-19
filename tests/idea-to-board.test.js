@@ -70,3 +70,12 @@ test('idempotent, status mapping, sync, removal, no author, GET flag', async () 
     const log = JSON.stringify(site.db("SELECT detail FROM admin_log WHERE action = 'to_board'"));
     assert.ok(log.includes('to_board') && !log.includes('Bright theme'));
 });
+
+test('a short idea fills the title only: no identical second line on the board', async () => {
+    const id = await idea('Add dark mode');
+    await admin.post('/api/news_ideas.php', { action: 'set', id, status: 'planned' });
+    await admin.post('/api/news_ideas.php', { action: 'to_board', id });
+    const it = (await board()).find(i => i.slug === 'idea-' + id);
+    assert.equal(it.title.en, 'Add dark mode');
+    assert.ok(!it.body.en && !it.body.it);
+});
