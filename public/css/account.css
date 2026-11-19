@@ -80,6 +80,12 @@ details.danger form { margin-top: 12px; }
     .card { padding: 16px 14px 14px; }
     .actions .btn { width: 100%; }
     .who { gap: 12px; } .avatar { width: 54px; height: 54px; font-size: 26px; }
+    /* all section shortcuts visible (they wrap instead of scrolling out of sight), and finger-sized targets (44px) */
+    .tabs { flex-wrap: wrap; overflow: visible; gap: 6px; position: static; }   /* two rows when they do not fit, so not pinned (it would take 100px of a phone screen) */
+    .tabs a { padding: 9px 12px; }
+    .btn.small { min-height: 44px; }
+    details.danger summary { padding: 10px 0; }
+    .top a { display: inline-block; padding: 10px 2px; }
 }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 
