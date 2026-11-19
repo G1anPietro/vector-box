@@ -1,8 +1,8 @@
 # vector-box
 
-A cyberpunk desktop in the browser: windows, a terminal and a taskbar. Inside it there are a chat (rooms and private
+A home menu and a cyberpunk desktop in the browser: windows, a terminal and a taskbar. Inside it there are a chat (rooms and private
 messages), a private book reader, shared class notes with AI-written study documents, party games for phones and a shelf
-of solo games. It is self-hosted on a small home server and built by one student.
+of solo games, and an offline copy of the Italian Wikipedia. It is self-hosted on a small home server and built by one student.
 
 PHP + SQLite do the work; a small optional Node.js process delivers the chat in real time.
 
@@ -20,14 +20,16 @@ PHP + SQLite do the work; a small optional Node.js process delivers the chat in 
 
 | | |
 |---|---|
-| **Desktop** | Draggable windows (terminal, chat, poker, tools, vault, status, guestbook wall, private messages, reader); on phones one app at a time with a tab bar. 18 themes saved on the account. |
+| **Home menu** | The front page (`index.php`): one card each for games, class notes, offline Wikipedia, the desktop, account, news and the project, plus the private book reader and statistics only for the accounts allowed to see them. Account and sign-in pages share the site's dusk theme. |
+| **Desktop** | `desktop.php`: draggable windows (terminal, chat, poker, tools, vault, status, guestbook wall, private messages, reader); on phones one app at a time with a tab bar. 18 themes. |
 | **Terminal** | A fake filesystem, network toys, themes, chat commands and admin moderation (`help` lists everything). |
 | **Chat** | Rooms (announcement-only and admin-only ones too), @mentions, who's online, "is typing", real-time through the hub. |
 | **Private messages** | Between registered users, with blocking; no admin access path in the API. |
 | **Library** | EPUB and PDF reader for allowed accounts: covers, reading progress, bookmarks, multi-file upload, an optional "like a book" page turn. |
 | **Class notes** | Shared notes per school class: admin-approved classes, invite codes, roles and permissions, a timetable read from a photo, resumable uploads, full-text search, a board, a calendar with tests, homework and oral-exam turns, reminders (in-site and Web Push), temporary share links, and study documents written by Google Gemini (lesson notes, handouts, summaries, quizzes judged by the server, custom quizzes, spaced review, mind maps). The AI is used only for classes declared to be adults-only. An example class is open to everyone, read-only. |
 | **Party games** | *Who's the spy?*, *Lupus* (werewolf) and *Cucù* (an Italian card game) with multi-phone rooms, *Never have I ever…*, and Texas Hold'em poker with real hand ranking. Five languages for the party games. |
-| **Solo games** | Solitaire (Klondike), Connect Four, Hangman, Simon, Memory, Tic-tac-toe, Snake, 2048, Minesweeper, Tetris, Node Breach, ARG Vault, and a long roguelike campaign, *Il Dungeon del Server* (10 sectors, autosave, touch-first; see docs/ROGUELIKE.md). Static pages, no account needed. |
+| **Solo games** | Solitaire (Klondike), Connect Four, Hangman, Simon, Memory, Tic-tac-toe, Snake, 2048, Minesweeper, Tetris, a word game (*Parola*), Conway's Game of Life, a tower defense (*Difesa del server*), Node Breach, ARG Vault, and a long roguelike campaign, *Il Dungeon del Server* (10 sectors, autosave, touch-first; see docs/ROGUELIKE.md). Static pages, no account needed. |
+| **Offline Wikipedia** | An optional copy of the Italian Wikipedia served by [Kiwix](https://www.kiwix.org) at `/wiki/`, with a front page (`pages/wikipedia.php`) that has a search box and the credit its licence (CC BY-SA 4.0) asks for. No ads, no tracking, nothing stored. See "Offline Wikipedia" below. |
 | **Accounts and privacy** | Optional confirmed e-mail address with separate consent to news, download of all your data, account deletion, automatic data retention, a cookie banner that loads nothing from Google before consent. Public [privacy](public/pages/privacy.php) and [security](public/pages/sicurezza.php) pages. |
 | **Admin** | People panel (search, permissions, ban/timeout, supporter badge), an e-mail box with a queue (off until configured), donors list and a "where the money goes" page, visit and bot statistics. |
 
@@ -78,7 +80,7 @@ npm test                          # needs only PHP and Node on the PATH, no npm 
 node --test tests/chat.test.js    # one file
 ```
 
-About 340 tests (`node:test`). Each suite starts a throwaway copy of the site on a free port with an empty database, so
+About 620 tests (`node:test`). Each suite starts a throwaway copy of the site on a free port with an empty database, so
 the real one is never touched. Before a commit: `npm test`, `php -l` on every PHP file touched and `node --check` on
 every JS file touched. Every new endpoint or page gets a test.
 
@@ -86,13 +88,14 @@ every JS file touched. Every new endpoint or page gets a test.
 
 ```
 public/               the web root (the only folder the web server serves)
-  index.php           the desktop
+  index.php           the home menu (and the 404 / scanner handler)
+  desktop.php         the desktop
   pages/              pages: games, reader, class notes, account, privacy, security, admin panels
   api/                JSON endpoints and shared libraries
     helpers.php         env, client IP, JSON answers, CSRF/login/admin guards, security headers
-    database.php        connection, session start, versioned migrations (schema v35)
+    database.php        connection, session start, versioned migrations (schema v44)
     rate_limiter.php    SQLite-backed rate limits
-  includes/           head.php (headers, version, visit log), ads.php, appunti-top.php
+  includes/           head.php (headers, version, visit log), ads.php, appunti-top.php, home-access.php (who sees the private home cards)
   js/ css/ assets/    scripts, styles, icons, self-hosted fonts
   errors/             static error pages
   .well-known/        security.txt
@@ -120,6 +123,23 @@ data/                 (not in git) database, sessions, uploads, logs
 - The repository is public: no secrets, no personal data, never `.env` or `data/`.
 
 More recipes are in section 10 of the documentation.
+
+## Offline Wikipedia
+
+Optional, and not part of the PHP code: the site only has the front page (`public/pages/wikipedia.php`, which names the
+Kiwix "book" in `$ZIM`; Kiwix calls a book after its file, without `.zim`). The copy itself is a ZIM file from
+[download.kiwix.org](https://download.kiwix.org/zim/wikipedia/) (Italian: `mini` 3 GB intro only, `nopic` 10 GB, `maxi` 30 GB with images)
+served on localhost by the official image, with a URL prefix so its links stay under `/wiki`:
+
+```bash
+docker run -d --name kiwix --restart unless-stopped -p 127.0.0.1:8081:8080 -v /path/to/zim:/data:ro \
+  ghcr.io/kiwix/kiwix-serve:latest --urlRootLocation /wiki wikipedia_it_all_maxi_2026-08.zim
+```
+
+nginx must send `/wiki/` to it with its own `location ^~ /wiki/ { proxy_pass http://127.0.0.1:8081; ... }`, placed **before** the
+static-files rules (otherwise nginx answers 404 to every `.css`, `.js` and image under `/wiki/` itself and the pages show unstyled),
+and it should hide `Set-Cookie` and add `X-Robots-Tag: noindex` (`robots.txt` already disallows `/wiki/`). Check the file's SHA-256
+against the `.sha256` file next to it. The content is Wikipedia's, under CC BY-SA 4.0: keep the credit on the front page.
 
 ## Chat delivery
 
