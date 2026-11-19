@@ -9,7 +9,7 @@
 
 .card { background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 14px; padding: 18px 18px 16px; margin-bottom: 14px; }
 .card > .hint, .card .hint { color: var(--muted); font-size: 15px; margin: 0 0 12px; }
-.group { padding-top: 22px; scroll-margin-top: 64px; }
+.acc .group { margin-top: 14px; padding-top: 8px; scroll-margin-top: 64px; }   /* giochi.css gives .group a 40px top margin: too much between cards */
 
 /* who you are */
 .who { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
