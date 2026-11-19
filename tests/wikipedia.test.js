@@ -17,7 +17,7 @@ test('wikipedia page: search form goes to /wiki/search with the book name, licen
     assert.equal(res.status, 200);
     const html = await res.text();
     assert.match(html, /<form class="wiki-search" action="\/wiki\/search" method="get"/);
-    assert.match(html, /<input type="hidden" name="content" value="wikipedia_it_all_nopic">/);
+    assert.match(html, /<input type="hidden" name="content" value="wikipedia_it_all_maxi_2026-08">/);   // kiwix-serve's book name is the file name without .zim
     assert.match(html, /name="pattern" required/);
     assert.match(html, /href="\/wiki\/"/);
     assert.match(html, /creativecommons\.org\/licenses\/by-sa\/4\.0/);   // CC BY-SA 4.0: the credit is the condition of the licence

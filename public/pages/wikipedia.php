@@ -8,8 +8,7 @@ require_once __DIR__ . '/../includes/head.php';
 $lang = pageLang();
 $it = $lang === 'it';
 $other = $it ? 'en' : 'it';
-$ZIM = 'wikipedia_it_all_nopic';   // the "name" kiwix-serve gives the book: /wiki/content/<name>/A/<article>
-$edition = '2026-11';
+$ZIM = 'wikipedia_it_all_maxi_2026-08';   // kiwix-serve names a book after its file (without .zim): /wiki/content/<name>/<article>; change it with the file
 $v = (string)@filemtime(__DIR__ . '/../css/wikipedia.css');
 ?>
 <!DOCTYPE html>
@@ -34,7 +33,7 @@ $v = (string)@filemtime(__DIR__ . '/../css/wikipedia.css');
 
     <main class="doc">
         <h1><?= $it ? 'Wikipedia offline' : 'Offline Wikipedia' ?></h1>
-        <p class="muted"><?= $it ? 'Edizione di novembre 2026, in italiano, senza immagini.' : 'November 2026 edition, in Italian, without images.' ?></p>
+        <p class="muted"><?= $it ? 'Edizione di agosto 2026, in italiano, con le immagini.' : 'August 2026 edition, in Italian, with images.' ?></p>
         <p><?= $it
             ? 'Questa è una copia di Wikipedia in italiano che vive su questo server: niente pubblicità, niente tracciamento e nessun account. Gli articoli sono quelli della data indicata, quindi non vedi le modifiche più recenti.'
             : 'This is a copy of the Italian Wikipedia that lives on this server: no ads, no tracking and no account. The articles are those of the date shown, so you do not see the latest edits.' ?></p>
