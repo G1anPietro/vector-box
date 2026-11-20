@@ -8,7 +8,7 @@ require_once __DIR__ . '/../includes/head.php';
 $lang = pageLang();
 $it = $lang === 'it';
 $other = $it ? 'en' : 'it';
-$full = false;   // false: the small provisional copy (only the introduction of the most read articles); true once the full file (30 GB, with images) is served
+$full = true;   // false: the small provisional copy (only the introduction of the most read articles); true once the full file (30 GB, with images) is served
 $ZIM = $full ? 'wikipedia_it_all_maxi_2026-08' : 'wikipedia_it_top_mini_2026-10';   // kiwix-serve names a book after its file (without .zim): /wiki/content/<name>/<article>
 $v = (string)@filemtime(__DIR__ . '/../css/wikipedia.css');
 ?>

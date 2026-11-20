@@ -17,13 +17,13 @@ test('wikipedia page: search form goes to /wiki/search with the book name, licen
     assert.equal(res.status, 200);
     const html = await res.text();
     assert.match(html, /<form class="wiki-search" action="\/wiki\/search" method="get"/);
-    assert.match(html, /<input type="hidden" name="content" value="wikipedia_it_top_mini_2026-10">/);   // kiwix-serve's book name is the file name without .zim
+    assert.match(html, /<input type="hidden" name="content" value="wikipedia_it_all_maxi_2026-08">/);   // kiwix-serve's book name is the file name without .zim
     assert.match(html, /name="pattern" required/);
     assert.match(html, /href="\/wiki\/"/);
     assert.match(html, /creativecommons\.org\/licenses\/by-sa\/4\.0/);   // CC BY-SA 4.0: the credit is the condition of the licence
     assert.match(html, /href="https:\/\/it\.wikipedia\.org"/);
     assert.match(html, /not affiliated with the Wikimedia Foundation/);
-    assert.match(html, /Provisional October 2026 version/);
+    assert.match(html, /August 2026 edition, in Italian, with images/);
     assert.match(html, /css\/wikipedia\.css\?v=\d+/);
 });
 
@@ -31,7 +31,7 @@ test('wikipedia page: Italian text and the language switch', async () => {
     const html = (await new Client(site).get('/pages/wikipedia.php?lang=it')).text;
     assert.match(html, /<h1>Wikipedia offline<\/h1>/);
     assert.match(html, /Cerca un articolo/);
-    assert.match(html, /Versione provvisoria/);
+    assert.match(html, /Edizione di agosto 2026/);
     assert.match(html, /hreflang="en">EN</);
     const en = (await new Client(site).get('/pages/wikipedia.php?lang=en')).text;
     assert.match(en, /<h1>Offline Wikipedia<\/h1>/);
