@@ -77,6 +77,7 @@ test('skillcheck: the zone shrinks and the needle speeds up but stay within limi
     assert.ok(S.levelFor(0, 'hard').size < S.levelFor(0).size && S.levelFor(0, 'hard').speed > S.levelFor(0).speed);
     assert.equal(S.tap(100, 90, 30), 'hit'); assert.equal(S.tap(130, 90, 30), 'miss'); assert.equal(S.tap(10, 340, 40), 'hit');
     assert.equal(S.passed(121, 90, 30), true); assert.equal(S.passed(119, 90, 30), false);
+    for (let i = 0; i < 300; i++) { const a = Math.random() * 720, size = S.levelFor(0).size, z = S.zoneAhead(a, size); assert.ok(z >= 0 && z < 360); assert.equal(S.inZone(a, z, size), false, 'never under the needle'); const gap = ((z - a) % 360 + 360) % 360; assert.ok(gap >= 70 && gap <= 360 - size - 70, 'ahead of the needle'); }
     for (let i = 0; i < 200; i++) { const z = S.zoneStart(S.levelFor(0).size); assert.ok(z >= 80 && z + S.levelFor(0).size <= 340); }
 });
 

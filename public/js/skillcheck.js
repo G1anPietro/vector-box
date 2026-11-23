@@ -14,17 +14,19 @@
     function inZone(angle, start, size) { return ((angle - start) % 360 + 360) % 360 <= size; }
     /** Where the next zone starts: never right under the needle at 0°. */
     function zoneStart(size, rng) { return 80 + Math.floor((rng || Math.random)() * (340 - size - 80)); }
+    /** Endless mode: the next zone starts somewhere ahead of the needle (at least 70° away, wrapping past 360°). */
+    function zoneAhead(angle, size, rng) { return ((angle % 360) + 70 + Math.floor((rng || Math.random)() * (360 - size - 140))) % 360; }
     /** One tap: 'hit' or 'miss'. A needle that goes past the zone without a tap is also a miss (see passed). */
     const tap = (angle, start, size) => (inZone(angle, start, size) ? 'hit' : 'miss');
     const passed = (angle, start, size) => angle > start + size;
 
-    const api = { LIVES, DIFF, levelFor, inZone, zoneStart, tap, passed };
+    const api = { LIVES, DIFF, levelFor, inZone, zoneStart, zoneAhead, tap, passed };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.SkillCheck = api;
 
     VBI18N.add('it', {
         title: 'Skill check — vector-box', desc: 'Skill check: la lancetta gira, tocca quando è nella zona verde. Ogni colpo giusto rimpicciolisce la zona e accelera la lancetta. Gratis, senza account.',
-        back: '← Giochi', h1: 'Skill check', new: 'Nuova', help: 'Tocca (o premi spazio) quando la lancetta è nella zona verde. Se tocchi fuori zona o la lasci passare perdi una vita; con tre errori finisce. Ogni colpo giusto rende la zona più piccola e la lancetta più veloce. Nella modalità infinita non finisce mai: un errore azzera solo la serie.',
+        back: '← Giochi', h1: 'Skill check', new: 'Nuova', help: 'Tocca (o premi spazio) quando la lancetta è nella zona verde. Se tocchi fuori zona o la lasci passare perdi una vita; con tre errori finisce. Ogni colpo giusto rende la zona più piccola e la lancetta più veloce. Nella modalità infinita la lancetta gira per sempre e non finisce mai: un errore azzera solo la serie.',
         score: 'Punti', best: 'Record', streak: 'Serie', easy: 'Facile', normal: 'Normale', hard: 'Difficile', lifemode: 'Tre vite', endless: 'Infinita', difficulty: 'Difficoltà', mode: 'Modalità', lives: 'Vite', tap: 'TOCCA', start: 'Inizia', over: 'Finita! Punti: {n}', record: 'Nuovo record!', hit: 'Perfetto', miss: 'Mancato',
     });
     VBI18N.add('en', { score: 'Score', best: 'Best', streak: 'Streak', easy: 'Easy', normal: 'Normal', hard: 'Hard', lifemode: 'Three lives', endless: 'Endless', difficulty: 'Difficulty', mode: 'Mode', lives: 'Lives', tap: 'TAP', start: 'Start', over: 'Game over! Score: {n}', record: 'New record!', hit: 'Nice', miss: 'Missed' });
@@ -44,10 +46,10 @@
 
         function next() {
             const lv = levelFor(score, diff);
-            zone = { start: zoneStart(lv.size), size: lv.size, speed: lv.speed };
-            dial.style.setProperty('--zs', zone.start + 'deg'); dial.style.setProperty('--ze', (zone.start + zone.size) + 'deg');
-            angle = 0; needle.style.transform = 'rotate(0deg)'; last = performance.now();
-            raf = requestAnimationFrame(step);
+            // endless: the needle never stops or goes back, only the zone moves; otherwise every check starts from 0°
+            zone = { start: endless && zone ? zoneAhead(angle, lv.size) : zoneStart(lv.size), size: lv.size, speed: lv.speed };
+            dial.style.setProperty('--zs', zone.start + 'deg'); dial.style.setProperty('--zsz', zone.size + 'deg');
+            if (!endless) { angle = 0; needle.style.transform = 'rotate(0deg)'; last = performance.now(); raf = requestAnimationFrame(step); }
         }
         function finish() {
             running = false; cancelAnimationFrame(raf);
@@ -56,27 +58,28 @@
             go.hidden = false; $('sc-tap').disabled = true; paint();
         }
         function result(r) {
-            cancelAnimationFrame(raf);
+            if (!endless) cancelAnimationFrame(raf);
             if (r === 'hit') { score++; streak++; VBFx.play('win'); say('hit'); } else { if (!endless) lives--; streak = 0; VBFx.play('lose'); say('miss'); }
             if (endless && score > best) { best = score; try { localStorage.setItem(key(), String(best)); } catch (e) { /* private mode */ } }
             paint();
-            if (!endless && lives <= 0) return finish();
+            if (endless) { if (r === 'hit') next(); return; }   // a miss keeps the same zone, the needle goes on
+            if (lives <= 0) return finish();
             setTimeout(() => { if (running) next(); }, 450);
         }
         function step(now) {
             angle += zone.speed * (now - last) / 1000; last = now;
             needle.style.transform = 'rotate(' + (angle % 360) + 'deg)';
-            if (passed(angle, zone.start, zone.size)) return result('miss');
+            if (!endless && passed(angle, zone.start, zone.size)) return result('miss');
             raf = requestAnimationFrame(step);
         }
         const press = () => { if (running && zone) result(tap(angle, zone.start, zone.size)); };
-        function start() { score = 0; streak = 0; lives = LIVES; best = loadBest(); running = true; go.hidden = true; $('sc-tap').disabled = false; say(null); paint(); next(); }
+        function start() { score = 0; streak = 0; lives = LIVES; best = loadBest(); zone = null; cancelAnimationFrame(raf); running = true; go.hidden = true; $('sc-tap').disabled = false; say(null); paint(); angle = 0; last = performance.now(); next(); if (endless) raf = requestAnimationFrame(step); }
 
         $('sc-tap').addEventListener('click', press);
         document.addEventListener('keydown', (e) => { if (e.code === 'Space' && running) { e.preventDefault(); press(); } });
         const pick = (attr, set) => document.querySelectorAll('[data-' + attr + ']').forEach((b) => b.addEventListener('click', () => {
             set(b.dataset[attr]); document.querySelectorAll('[data-' + attr + ']').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-            running = false; cancelAnimationFrame(raf); go.hidden = false; $('sc-tap').disabled = true; say(null); score = 0; streak = 0; lives = LIVES; best = loadBest(); paint();
+            running = false; zone = null; cancelAnimationFrame(raf); go.hidden = false; $('sc-tap').disabled = true; say(null); score = 0; streak = 0; lives = LIVES; best = loadBest(); paint();
         }));
         pick('diff', (v) => { diff = v; }); pick('mode', (v) => { endless = v === 'endless'; });
         go.addEventListener('click', start); $('sc-new').addEventListener('click', start);
