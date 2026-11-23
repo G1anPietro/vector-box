@@ -19,16 +19,18 @@
     <link rel="stylesheet" href="../css/arcade.css?v=1540020779">
     <link rel="stylesheet" href="../css/skillcheck.css?v=1318595136">
     <script src="../js/arcade-fx.js?v=1058792597" defer></script>
-    <script src="../js/skillcheck.js?v=1988630730" defer></script>
+    <script src="../js/skillcheck.js?v=1270609275" defer></script>
 </head>
 <body>
     <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1 data-i18n="h1">Skill check</h1><span class="ar-hbtns"><span id="fx-toggle"></span><button type="button" id="sc-new" data-i18n="new">New</button></span></header>
-    <div class="ar-bar"><div class="ar-box"><small data-i18n="score">Score</small><strong id="sc-score">0</strong></div><div class="ar-box"><small data-i18n="best">Best</small><strong id="sc-best">0</strong></div><div class="ar-box"><small data-i18n="lives">Lives</small><strong id="sc-lives">♥♥♥</strong></div></div>
+    <div class="ar-bar" role="group" aria-label="Difficulty" data-i18n-attr="aria-label:difficulty"><button type="button" data-diff="easy" aria-pressed="false" data-i18n="easy">Easy</button><button type="button" data-diff="normal" aria-pressed="true" data-i18n="normal">Normal</button><button type="button" data-diff="hard" aria-pressed="false" data-i18n="hard">Hard</button></div>
+    <div class="ar-bar" role="group" aria-label="Mode" data-i18n-attr="aria-label:mode"><button type="button" data-mode="lives" aria-pressed="true" data-i18n="lifemode">Three lives</button><button type="button" data-mode="endless" aria-pressed="false" data-i18n="endless">Endless</button></div>
+    <div class="ar-bar"><div class="ar-box"><small data-i18n="score">Score</small><strong id="sc-score">0</strong></div><div class="ar-box"><small data-i18n="best">Best</small><strong id="sc-best">0</strong></div><div class="ar-box"><small id="sc-lives-l" data-i18n="lives">Lives</small><strong id="sc-lives">♥♥♥</strong></div></div>
     <div id="sc-dial" role="img" aria-label="Skill check"><div id="sc-needle"></div></div>
     <button type="button" id="sc-tap" data-i18n="tap">TAP</button>
     <button type="button" id="sc-go" data-i18n="start">Start</button>
     <div id="sc-msg" class="ar-msg" role="status"></div>
-    <p class="ar-help" data-i18n="help">Tap (or press space) when the needle is in the green zone. Tapping outside it, or letting the needle go past, costs a life; after three mistakes it is over. Every hit makes the zone smaller and the needle faster.</p>
+    <p class="ar-help" data-i18n="help">Tap (or press space) when the needle is in the green zone. Tapping outside it, or letting the needle go past, costs a life; after three mistakes it is over. Every hit makes the zone smaller and the needle faster. In the endless mode it never ends: a mistake only resets your streak.</p>
     <div id="vb-lang" style="text-align:center;margin:10px 0"></div>
 </body>
 </html>
