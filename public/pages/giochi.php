@@ -37,8 +37,8 @@ $GAMES = [
     [
         'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
         'name' => ['it' => 'Botola', 'en' => 'Botola'],
-        'line' => ['it' => 'Quiz a eliminazione: sbagli e la botola si apre, a meno di una prova di riflessi.',
-                   'en' => 'Elimination quiz: get it wrong and the trapdoor opens, unless you pass a skill check.'],
+        'line' => ['it' => 'Quiz a eliminazione: sbagli e la botola si apre sotto di te.',
+                   'en' => 'Elimination quiz: get it wrong and the trapdoor opens under you.'],
         'who'  => ['it' => '2–8 giocatori', 'en' => '2–8 players'],
         'how'  => ['it' => 'un telefono da passare', 'en' => 'one phone to pass around'],
     ],
@@ -57,6 +57,14 @@ $GAMES = [
                    'en' => 'Texas Hold’em with play chips, in the POKER window of the desktop.'],
         'who'  => ['it' => 'fino a 4 al tavolo, anche con i bot', 'en' => 'up to 4 at the table, bots included'],
         'how'  => ['it' => 'serve un account', 'en' => 'needs an account'],
+    ],
+    [
+        'group' => 'solo', 'look' => 'skillcheck', 'href' => 'skillcheck.html', 'icon' => '../assets/skillcheck/icon.svg',
+        'name' => ['it' => 'Skill check', 'en' => 'Skill check'],
+        'line' => ['it' => 'La lancetta gira: tocca quando è nella zona verde. Più vai avanti, più è piccola e veloce.',
+                   'en' => 'The needle goes round: tap when it is in the green zone. The further you go, the smaller and faster.'],
+        'who'  => ['it' => '1 giocatore', 'en' => '1 player'],
+        'how'  => ['it' => 'funziona anche offline', 'en' => 'works offline too'],
     ],
     [
         'group' => 'solo', 'look' => 'solitario', 'href' => 'solitario.html', 'icon' => '../assets/solitario/icon.svg',

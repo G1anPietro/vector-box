@@ -1,5 +1,5 @@
-// js/botola.js — Botola: a quiz where you fall. One phone passed around. Wrong answer: the trapdoor opens, and a skill check
-// (a needle goes round, tap when it is in the zone) is your one chance to hang on. Last one standing wins.
+// js/botola.js — Botola: a quiz where you fall. One phone passed around. A wrong answer (or time out) opens the trapdoor: you
+// are out. Last one standing wins.
 // The rules (no DOM) are at the top and can be tested from Node.
 (function (root) {
     'use strict';
@@ -57,11 +57,6 @@
         return { text: lang === 'it' ? qi : qe, options: order.map((k) => pick(opts[k], lang)), right: order.indexOf(0) };
     }
 
-    /** The skill check gets harder every round: a smaller zone, a faster needle (degrees, degrees per second). */
-    function skillFor(round) { return { size: Math.max(24, 80 - 8 * (round - 1)), speed: Math.min(520, 240 + 30 * (round - 1)) }; }
-    /** Is the needle (degrees, 0-360) inside the zone that starts at `start`? */
-    function inZone(angle, start, size) { return ((angle - start) % 360 + 360) % 360 <= size; }
-
     function newGame(names, rng) {
         const players = names.map((n) => String(n).trim()).filter(Boolean).slice(0, 8);
         if (players.length < 2) return null;
@@ -86,31 +81,27 @@
     }
     /** Start the turn: takes the next question. */
     function begin(g) { g.roundSize = g.roundSize || alive(g).length; g.q = g.deck.shift(); if (g.deck.length === 0) g.deck = shuffle(Q.map((_, i) => i)); g.nobody = false; g.phase = 'question'; return g.q; }
-    /** Answer given (right = true/false; time out = false). Wrong: the trapdoor opens. */
-    function answer(g, right) { if (right) { nextTurn(g); return 'safe'; } g.phase = 'trap'; return 'trap'; }
-    /** The skill check: hit = hung on, otherwise the player falls. */
-    function skill(g, hit) {
-        if (hit) { nextTurn(g); return 'hung'; }
+    /** Answer given (right = true/false; time out = false). Wrong: the trapdoor opens and the player is out. */
+    function answer(g, right) {
+        if (right) { nextTurn(g); return 'safe'; }
         g.players[g.turn].out = true; g.fell.push(g.turn); nextTurn(g); return 'fell';
     }
 
-    const api = { Q, ask, skillFor, inZone, newGame, alive, begin, answer, skill, shuffle };
+    const api = { Q, ask, newGame, alive, begin, answer, shuffle };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
     root.Botola = api;
 
     VBI18N.add('it', {
-        title: 'Botola — vector-box', desc: 'Botola, il quiz in cui si cade: un telefono da passare, risposta sbagliata e la botola si apre, a meno di superare una prova di riflessi. Gratis, senza account.',
-        back: '← Giochi', h1: 'Botola', new: 'Nuova', help: 'Un telefono da passare, da 2 a 8 giocatori. Rispondi in 12 secondi: se sbagli o scade il tempo la botola si apre, ma puoi aggrapparti con la prova di riflessi (tocca quando la lancetta è nella zona). Chi cade è fuori; resta in piedi l’ultimo.',
+        title: 'Botola — vector-box', desc: 'Botola, il quiz in cui si cade: un telefono da passare, risposta sbagliata e la botola si apre. Gratis, senza account.',
+        back: '← Giochi', h1: 'Botola', new: 'Nuova', help: 'Un telefono da passare, da 2 a 8 giocatori. Rispondi in 12 secondi: se sbagli o scade il tempo la botola si apre e sei fuori. Resta in piedi l’ultimo.',
         players: 'Giocatori', name: 'Nome', add: 'Aggiungi', start: 'Via!', need: 'Servono almeno 2 giocatori.', remove: 'Togli {n}',
         pass: 'Passa il telefono a', ready: 'Sono pronto', round: 'Giro {n}', left: 'in piedi: {n}', time: '{s} s',
-        right: 'Giusto!', wrong: 'Sbagliato…', timeup: 'Tempo scaduto…', trap: 'La botola si apre! Tocca quando la lancetta è nella zona verde.', tap: 'TOCCA',
-        hung: 'Ti sei aggrappato!', fell: '{p} cade nella botola!', nobody: 'Sarebbero caduti tutti: nessuno cade questo giro.', wins: '{p} vince!', again: 'Rigioca',
+        right: 'Giusto!', wrong: 'Sbagliato… {p} cade nella botola!', timeup: 'Tempo scaduto… {p} cade nella botola!', nobody: 'Sarebbero caduti tutti: nessuno cade questo giro.', wins: '{p} vince!', again: 'Rigioca',
     });
     VBI18N.add('en', {
         pass: 'Pass the phone to', ready: 'I am ready', round: 'Round {n}', left: 'standing: {n}', time: '{s} s',
         players: 'Players', name: 'Name', add: 'Add', start: 'Go!', need: 'At least 2 players are needed.', remove: 'Remove {n}',
-        right: 'Right!', wrong: 'Wrong…', timeup: 'Time is up…', trap: 'The trapdoor opens! Tap when the needle is in the green zone.', tap: 'TAP',
-        hung: 'You hung on!', fell: '{p} falls through the trapdoor!', nobody: 'Everyone would have fallen: nobody falls this round.', wins: '{p} wins!', again: 'Play again',
+        right: 'Right!', wrong: 'Wrong… {p} falls through the trapdoor!', timeup: 'Time is up… {p} falls through the trapdoor!', nobody: 'Everyone would have fallen: nobody falls this round.', wins: '{p} wins!', again: 'Play again',
     });
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -121,10 +112,10 @@
         const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 8) : ['', '']; } catch (e) { return ['', '']; } };
         const saveNames = (n) => { try { localStorage.setItem(KEY, JSON.stringify(n)); } catch (e) { /* private mode */ } };
         let names = load(); if (names.length < 2) names = ['', ''];
-        let g = null, timer = null, raf = null, redraw = null;
+        let g = null, timer = null, redraw = null;
         const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
         const btn = (text, fn, cls) => { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', fn); return b; };
-        const stop = () => { clearInterval(timer); cancelAnimationFrame(raf); };
+        const stop = () => clearInterval(timer);
         function show(...kids) { stop(); app.replaceChildren(...kids); }
         const head = () => el('div', 'bo-head', T('round', { n: g.round }) + ' · ' + T('left', { n: api.alive(g).length }));
 
@@ -152,33 +143,15 @@
             const idx = api.begin(g); const q = api.ask(idx, VBLang.lang);
             const box = el('div', 'bo-opts'); const clock = el('div', 'bo-clock');
             let left = 12, done = false;
-            const pickAns = (i) => { if (done) return; done = true; stop(); const ok = i === q.right; VBFx.play(ok ? 'win' : 'bad'); result(ok ? 'right' : (i === null ? 'timeup' : 'wrong'), api.answer(g, ok)); };
+            const pickAns = (i) => { if (done) return; done = true; stop(); const ok = i === q.right, who = g.players[g.turn].name; VBFx.play(ok ? 'win' : 'lose'); api.answer(g, ok); result(ok ? 'right' : (i === null ? 'timeup' : 'wrong'), who, g.nobody); };
             q.options.forEach((o, i) => box.append(btn(o, () => pickAns(i))));
             const tick = () => { clock.textContent = T('time', { s: left }); if (left-- <= 0) pickAns(null); };
             show(head(), el('div', 'bo-who', g.players[g.turn].name), clock, el('p', 'bo-q', q.text), box);
             tick(); timer = setInterval(tick, 1000);
         }
-        function result(key, outcome) {
+        function result(key, who, nobody) {
             redraw = null;
-            const c = [head(), el('p', 'bo-res', T(key))];
-            if (outcome === 'trap') { c.push(btn(T('ready'), skillCheck, 'bo-go')); show(...c); } else { show(...c, btn('OK', turn, 'bo-go')); }
-        }
-        function skillCheck() {
-            redraw = null;
-            const { size, speed } = api.skillFor(g.round);
-            const start = Math.floor(Math.random() * (360 - size - 90)) + 90;
-            const dial = el('div', 'bo-dial'); dial.style.setProperty('--zs', start + 'deg'); dial.style.setProperty('--ze', (start + size) + 'deg');
-            const needle = el('div', 'bo-needle'); dial.append(needle);
-            let angle = 0, last = performance.now(), done = false;
-            const step = (now) => { angle = (angle + speed * (now - last) / 1000) % 360; last = now; needle.style.transform = 'rotate(' + angle + 'deg)'; if (!done) raf = requestAnimationFrame(step); };
-            const tap = btn(T('tap'), () => {
-                if (done) return; done = true; cancelAnimationFrame(raf);
-                const hit = api.inZone(angle, start, size); VBFx.play(hit ? 'win' : 'lose');
-                const name = g.players[g.turn].name, out = api.skill(g, hit);
-                show(head(), el('p', 'bo-res', out === 'hung' ? T('hung') : (g.nobody ? T('nobody') : T('fell', { p: name }))), btn('OK', turn, 'bo-go'));
-            }, 'bo-tap');
-            show(head(), el('div', 'bo-who', g.players[g.turn].name), el('p', 'bo-res', T('trap')), dial, tap);
-            last = performance.now(); raf = requestAnimationFrame(step);
+            show(head(), el('p', 'bo-res', nobody ? T('nobody') : T(key, { p: who })), btn('OK', turn, 'bo-go'));
         }
         function over() {
             redraw = over;

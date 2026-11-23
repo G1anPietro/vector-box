@@ -17,29 +17,22 @@ test('botola: every question has 4 distinct answers in both languages, the shuff
     }
 });
 
-test('botola: skill zone shrinks and speeds up with the rounds; inZone wraps around 360', () => {
-    assert.ok(B.skillFor(5).size < B.skillFor(1).size && B.skillFor(5).speed > B.skillFor(1).speed);
-    assert.ok(B.skillFor(99).size >= 24 && B.skillFor(99).speed <= 520);
-    assert.equal(B.inZone(100, 90, 30), true); assert.equal(B.inZone(130, 90, 30), false);
-    assert.equal(B.inZone(10, 340, 40), true, 'zone crossing 0°'); assert.equal(B.inZone(80, 340, 40), false);
-});
-
-test('botola: a fall, the last one standing wins; two players need at least two names', () => {
+test('botola: a wrong answer drops the player; the last one standing wins; one name is not enough', () => {
     assert.equal(B.newGame(['Solo', ' ']), null);
     const g = B.newGame(['A', 'B', 'C'], seq(0.5));
     B.begin(g); assert.equal(B.answer(g, true), 'safe');           // A right
-    B.begin(g); assert.equal(B.answer(g, false), 'trap'); assert.equal(B.skill(g, false), 'fell');   // B wrong, falls
+    B.begin(g); assert.equal(B.answer(g, false), 'fell');          // B wrong, falls
     B.begin(g); B.answer(g, true);                                  // C right: round over
     assert.deepEqual(g.players.map((p) => p.out), [false, true, false]); assert.equal(g.round, 2); assert.equal(g.turn, 0);
-    B.begin(g); B.answer(g, false); B.skill(g, true);               // A wrong but hangs on
-    B.begin(g); B.answer(g, false); B.skill(g, false);              // C wrong, falls
+    B.begin(g); B.answer(g, true);
+    B.begin(g); B.answer(g, false);                                 // C wrong, falls
     assert.equal(g.phase, 'over'); assert.equal(g.winner, 0);
 });
 
 test('botola: if everybody would fall in a round, nobody does', () => {
     const g = B.newGame(['A', 'B'], seq(0.5));
-    B.begin(g); B.answer(g, false); B.skill(g, false);
-    B.begin(g); B.answer(g, false); B.skill(g, false);
+    B.begin(g); B.answer(g, false);
+    B.begin(g); B.answer(g, false);
     assert.equal(g.nobody, true); assert.deepEqual(g.players.map((p) => p.out), [false, false]);
     assert.equal(g.phase, 'ready'); assert.equal(g.round, 2);
 });
@@ -52,5 +45,25 @@ test('botola: the page is served, has no inline script, is in the game list and 
         for (const f of ['/js/botola.js', '/css/botola.css', '/assets/botola/icon.svg']) assert.equal((await fetch(site.base + f)).status, 200, f);
         assert.ok((await (await fetch(`${site.base}/pages/giochi.php`)).text()).includes('botola.html'));
         assert.ok((await (await fetch(`${site.base}/sitemap.php`)).text()).includes('pages/botola.html'));
+    } finally { await site.stop(); }
+});
+
+const S = require(path.join(__dirname, '..', 'public', 'js', 'skillcheck.js'));
+test('skillcheck: the zone shrinks and the needle speeds up but stay within limits; wrap-around; a pass is a miss', () => {
+    assert.ok(S.levelFor(10).size < S.levelFor(0).size && S.levelFor(10).speed > S.levelFor(0).speed);
+    assert.ok(S.levelFor(999).size >= 14 && S.levelFor(999).speed <= 440);
+    assert.equal(S.tap(100, 90, 30), 'hit'); assert.equal(S.tap(130, 90, 30), 'miss'); assert.equal(S.tap(10, 340, 40), 'hit');
+    assert.equal(S.passed(121, 90, 30), true); assert.equal(S.passed(119, 90, 30), false);
+    for (let i = 0; i < 200; i++) { const z = S.zoneStart(S.levelFor(0).size); assert.ok(z >= 80 && z + S.levelFor(0).size <= 340); }
+});
+
+test('skillcheck: the page is served, no inline script, in the game list and the sitemap', async () => {
+    const site = await startSite();
+    try {
+        const html = await (await fetch(`${site.base}/pages/skillcheck.html`)).text();
+        assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), 'no inline scripts');
+        for (const f of ['/js/skillcheck.js', '/css/skillcheck.css', '/assets/skillcheck/icon.svg']) assert.equal((await fetch(site.base + f)).status, 200, f);
+        assert.ok((await (await fetch(`${site.base}/pages/giochi.php`)).text()).includes('skillcheck.html'));
+        assert.ok((await (await fetch(`${site.base}/sitemap.php`)).text()).includes('pages/skillcheck.html'));
     } finally { await site.stop(); }
 });
