@@ -35,6 +35,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono in mezzo al tavolo', 'en' => 'one phone in the middle of the table'],
     ],
     [
+        'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
+        'name' => ['it' => 'Botola', 'en' => 'Botola'],
+        'line' => ['it' => 'Quiz a eliminazione: sbagli e la botola si apre, a meno di una prova di riflessi.',
+                   'en' => 'Elimination quiz: get it wrong and the trapdoor opens, unless you pass a skill check.'],
+        'who'  => ['it' => '2–8 giocatori', 'en' => '2–8 players'],
+        'how'  => ['it' => 'un telefono da passare', 'en' => 'one phone to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'cucu', 'href' => 'cucu.html', 'icon' => '../assets/cucu/icon.svg',
         'name' => ['it' => 'Cucù', 'en' => 'Cucù'],
         'line' => ['it' => 'Una carta a testa: tieni o cambia col vicino, il Re blocca. Le vite si ricordano a memoria.',

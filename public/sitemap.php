@@ -18,6 +18,7 @@ $pages = [
     ['/pages/memory.html', 'monthly', '0.7'],
     ['/pages/parola.html', 'monthly', '0.7'],
     ['/pages/tris.html', 'monthly', '0.7'],
+    ['/pages/botola.html', 'monthly', '0.7'],
     ['/pages/snake.html', 'monthly', '0.7'],
     ['/pages/vita.html', 'monthly', '0.7'],
     ['/pages/difesa.html', 'monthly', '0.7'],
