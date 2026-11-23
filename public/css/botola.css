@@ -89,3 +89,11 @@ button.bo-opt:active { transform: translateY(3px); border-bottom-width: 2px; }
 .bo-levels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .bo-result .result-list li.win { color: var(--hazard); font-weight: 800; }
 @media (prefers-reduced-motion: reduce) { .bo-flash { animation: none; } .bo-bar-fill { animation-duration: 0.001s !important; } button.bo-opt:active { transform: none; } }
+
+/* ---------- alone / one phone ---------- */
+.bo-row { display: flex; gap: 8px; margin: 6px 0; }
+.bo-row input { flex: 1; min-height: 46px; padding: 0 12px; border-radius: 8px; border: 2px solid var(--desk-line); background: var(--desk-2); color: var(--chalk); font: inherit; }
+.bo-pass { margin: 6px 0 0; text-align: center; color: var(--faded); }
+.bo-pass-name { margin: 0 0 14px; text-align: center; font: 800 clamp(32px, 10vw, 44px)/1.05 var(--type); color: var(--hazard); overflow-wrap: anywhere; text-transform: uppercase; }
+.bo-credit { max-width: 560px; margin: 26px auto calc(30px + env(safe-area-inset-bottom)); padding: 0 16px; text-align: center; font-size: 13px; line-height: 1.5; color: var(--faded); }
+.bo-credit a { color: var(--hazard); }

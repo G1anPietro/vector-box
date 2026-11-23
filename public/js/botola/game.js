@@ -5,6 +5,7 @@
 window.BotolaGame = (() => {
     'use strict';
     let C = null;
+    let ticker = null;
 
     const G = () => C.state.botola;
     const t = (k, v) => C.t(k, v);
@@ -43,10 +44,9 @@ window.BotolaGame = (() => {
         const left = Math.max(0, (at - Date.now()) / 1000);
         const bar = h('div', { class: 'bo-bar', 'aria-hidden': 'true' }, h('div', { class: 'bo-bar-fill', style: `animation-duration:${total}s;animation-delay:-${Math.max(0, total - left).toFixed(2)}s` }));
         const num = h('span', { class: 'bo-count', 'aria-live': 'off' }, String(Math.ceil(left)));
-        const u = ui();
-        clearInterval(u.ticker);
-        u.ticker = setInterval(() => {
-            if (!num.isConnected) { clearInterval(u.ticker); return; }
+        clearInterval(ticker);
+        ticker = setInterval(() => {
+            if (!num.isConnected) { clearInterval(ticker); return; }
             num.textContent = String(Math.max(0, Math.ceil((at - Date.now()) / 1000)));
         }, 250);
         return h('div', { class: 'bo-clock' }, bar, num);
@@ -200,7 +200,204 @@ window.BotolaGame = (() => {
         ];
     }
 
+
+    // ===================== alone / one phone passed around (no room, nothing stored on the server) =====================
+    // Questions come from api/botola_solo.php (no right answer in them); the answer is checked there too. Best score: this phone only.
+    const API_SOLO = '../api/botola_solo.php';
+    let solo = null;   // null = the lobby / a room; otherwise { kind: 'single' | 'pass', screen, ... }
+    const store = {
+        get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+        set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } },
+    };
+    const render = () => C.scheduleRender(true);   // forced: the solo state is not part of the room render signature
+    const soloStop = () => { if (solo) { clearTimeout(solo.timer); clearInterval(ticker); } };
+    const go = (screen, extra = {}) => { soloStop(); Object.assign(solo, extra, { screen }); render(); };
+    const TIMES = { easy: 20, normal: 15, hard: 10, rising: 15 };
+
+    function startSolo(kind) {
+        solo = { kind, screen: 'setup', level: store.get('vb_botola_level', 'rising'), lives: kind === 'single' ? 3 : 1, names: store.get('vb_botola_pass_names', ['', '']), seen: [], round: 1, busy: false };
+        render();
+    }
+    function leaveSolo() { soloStop(); solo = null; render(); }
+
+    async function fetchQuestion() {
+        solo.busy = true; render();
+        try {
+            const r = await fetch(`${API_SOLO}?action=question&level=${solo.level}&round=${solo.round}&exclude=${solo.seen.slice(-300).join(',')}`, { cache: 'no-store' });
+            const j = await r.json();
+            if (!j.success) throw new Error(j.error || 'x');
+            solo.q = j; solo.seen.push(j.id);
+        } catch (e) { solo.busy = false; C.toast(t('bo_load_error')); go('setup'); return false; }
+        solo.busy = false;
+        return true;
+    }
+    async function checkAnswer(text) {
+        try {
+            const r = await fetch(API_SOLO, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: solo.q.id, lang: lang() === 'it' ? 'it' : 'en', text }) });
+            const j = await r.json();
+            return j.success ? j : null;
+        } catch (e) { return null; }
+    }
+
+    function soloSetup() {
+        const pass = solo.kind === 'pass';
+        const levels = h('div', { class: 'bo-levels', role: 'group', 'aria-label': t('bo_set_level') }, ['easy', 'normal', 'hard', 'rising'].map((k) => h('button', {
+            class: 'btn small' + (solo.level === k ? ' primary' : ' ghost'), 'aria-pressed': String(solo.level === k), onclick: () => { solo.level = k; store.set('vb_botola_level', k); render(); } }, t('bo_level_' + k))));
+        const kids = [h('h2', null, t(pass ? 'bo_pass' : 'bo_solo')), h('p', { class: 'muted small' }, t(pass ? 'bo_pass_d' : 'bo_solo_d')), h('h3', { class: 'set-group' }, t('bo_set_level')), levels];
+        if (pass) {
+            kids.push(h('h3', { class: 'set-group' }, t('bo_players')));
+            solo.names.forEach((n, i) => kids.push(h('div', { class: 'bo-row' },
+                h('input', { value: n, maxlength: '20', placeholder: t('bo_name_n', { n: i + 1 }), 'aria-label': t('bo_name_n', { n: i + 1 }), oninput: (e) => { solo.names[i] = e.target.value; store.set('vb_botola_pass_names', solo.names); } }),
+                solo.names.length > 2 ? h('button', { class: 'btn small ghost', 'aria-label': t('bo_remove'), onclick: () => { solo.names.splice(i, 1); store.set('vb_botola_pass_names', solo.names); render(); } }, '×') : null)));
+            if (solo.names.length < 8) kids.push(h('button', { class: 'btn ghost', onclick: () => { solo.names.push(''); render(); } }, '+ ' + t('bo_add_player')));
+            kids.push(h('div', { class: 'set-row' }, h('div', { class: 'set-text' }, h('span', { class: 'set-title' }, t('bo_set_lives')), h('span', { class: 'set-desc' }, t('bo_set_lives_d'))),
+                h('div', { class: 'stepper' }, h('span', { class: 'step-label' }, t('bo_lives_word')),
+                    h('button', { class: 'step', disabled: solo.lives <= 1, onclick: () => { solo.lives--; render(); }, 'aria-label': '−' }, '−'),
+                    h('span', { class: 'step-val' }, String(solo.lives)),
+                    h('button', { class: 'step', disabled: solo.lives >= 3, onclick: () => { solo.lives++; render(); }, 'aria-label': '+' }, '+'))));
+        } else {
+            kids.push(h('p', { class: 'small muted' }, t('bo_best_n', { n: store.get('vb_botola_best_' + solo.level, 0) })));
+        }
+        kids.push(h('button', { class: 'btn primary big', onclick: beginSolo }, t('bo_start')), h('button', { class: 'btn ghost', onclick: leaveSolo }, t('bo_back')));
+        return C.section(null, kids);
+    }
+
+    async function beginSolo() {
+        if (solo.kind === 'pass') {
+            const names = solo.names.map((n) => n.trim()).filter(Boolean);
+            if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) { C.toast(t('err_name_taken')); return; }
+            if (names.length < 2) { C.toast(t('bo_need_two')); return; }
+            solo.players = names.map((name) => ({ name, lives: solo.lives }));
+        } else solo.players = [{ name: '', lives: 3 }];
+        Object.assign(solo, { round: 1, score: 0, seen: [] });
+        await nextRound();
+    }
+
+    async function nextRound() {
+        if (!(await fetchQuestion())) return;
+        solo.answers = [];
+        solo.who = solo.players.findIndex((p) => p.lives > 0);
+        if (solo.kind === 'pass') go('turn'); else beginQuestion();
+    }
+
+    function beginQuestion() {
+        const q = solo.q;
+        solo.started = Date.now();
+        solo.deadline = solo.started + q.time * 1000;
+        go('question');
+        solo.timer = setTimeout(() => answerSolo(null), q.time * 1000 + 50);
+    }
+
+    async function answerSolo(i) {
+        if (solo.screen !== 'question' || solo.locked) return;
+        solo.locked = true;
+        clearTimeout(solo.timer);
+        const ms = Date.now() - solo.started;
+        const text = i === null ? '' : qOptions(solo.q)[i];
+        if (solo.kind === 'single') {
+            const j = await checkAnswer(text);
+            solo.locked = false;
+            if (!j) { C.toast(t('bo_load_error')); go('setup'); return; }
+            if (j.right) { solo.score++; C.vibrate(25); } else { solo.players[0].lives--; C.vibrate([200, 60, 200]); }
+            const best = store.get('vb_botola_best_' + solo.level, 0);
+            if (solo.score > best) store.set('vb_botola_best_' + solo.level, solo.score);
+            return go('reveal', { reveal: { answer: j.answer, picked: text, right: j.right, timeup: i === null } });
+        }
+        solo.locked = false;
+        solo.answers[solo.who] = { text, ms };
+        const next = solo.players.findIndex((p, k) => k > solo.who && p.lives > 0);
+        if (next >= 0) { solo.who = next; return go('turn'); }
+        const j = await checkAnswer('');   // the round is over: now the right answer may be shown
+        if (!j) { C.toast(t('bo_load_error')); go('setup'); return; }
+        // same rules as the rooms: wrong -> loses a life; all right -> the slowest does; all wrong -> nobody
+        const alive = solo.players.map((p, k) => k).filter((k) => solo.players[k].lives > 0);
+        const ok = alive.filter((k) => solo.answers[k] && solo.answers[k].text === j.answer);
+        let hit = alive.filter((k) => !ok.includes(k)), slowest = null, nobody = false;
+        if (!hit.length && alive.length > 1) { slowest = ok.reduce((a, k) => (solo.answers[k].ms > solo.answers[a].ms ? k : a), ok[0]); hit = [slowest]; }
+        else if (hit.length === alive.length) { nobody = true; hit = []; }
+        const fell = [];
+        hit.forEach((k) => { if (--solo.players[k].lives === 0) fell.push(k); });
+        if (hit.length) C.vibrate([120, 50, 120]);
+        go('reveal', { reveal: { answer: j.answer, hit, fell, slowest, nobody } });
+    }
+
+    function soloOptions(reveal) {
+        const q = solo.q, opts = qOptions(q);
+        if (!reveal) return h('div', { class: 'bo-opts' }, opts.map((o, i) => h('button', { class: `bo-opt o${i}`, onclick: () => answerSolo(i) },
+            h('span', { class: 'bo-shape', 'aria-hidden': 'true' }, SHAPES[i]), h('span', { class: 'bo-opt-text' }, o))));
+        return h('div', { class: 'bo-opts reveal' }, opts.map((o, i) => {
+            const good = o === reveal.answer, picked = reveal.picked === o;
+            return h('div', { class: `bo-opt o${i}` + (good ? ' good' : picked ? ' bad' : ' dim') },
+                h('span', { class: 'bo-shape', 'aria-hidden': 'true' }, good ? '✓' : picked ? '✗' : SHAPES[i]), h('span', { class: 'bo-opt-text' }, o));
+        }));
+    }
+
+    function soloStatus() {
+        const alive = solo.players.filter((p) => p.lives > 0);
+        return h('div', { class: 'bo-top' }, h('span', null, t('bo_level_' + solo.level)),
+            solo.kind === 'single' ? h('span', null, t('bo_score_n', { n: solo.score }) + ' · ' + '♥'.repeat(Math.max(0, solo.players[0].lives))) : h('span', null, t('bo_standing', { n: alive.length })));
+    }
+
+    function soloStage() {
+        if (solo.kind !== 'pass') return null;
+        return h('ul', { class: 'bo-stage' }, solo.players.map((p) => h('li', { class: 'bo-pod' + (p.lives > 0 ? '' : ' fell') },
+            h('span', { class: 'bo-pod-name' }, p.name),
+            h('span', { class: 'bo-pod-state' }, p.lives > 0 ? (solo.lives > 1 ? '♥'.repeat(p.lives) : '') : t('bo_fell_short')))));
+    }
+
+    function soloOver() {
+        const single = solo.kind === 'single';
+        const alive = solo.players.filter((p) => p.lives > 0);
+        const best = store.get('vb_botola_best_' + solo.level, 0);
+        return h('section', { class: 'panel result bo-result' },
+            h('div', { class: 'stamp result-stamp' }, single ? t('bo_game_over') : (alive.length ? t('bo_winner', { p: alive[0].name }) : t('bo_no_winner'))),
+            single ? h('p', { class: 'center' }, t('bo_score_n', { n: solo.score }) + ' · ' + t('bo_best_n', { n: best })) : soloStage(),
+            h('div', { class: 'row2' }, h('button', { class: 'btn ghost', onclick: leaveSolo }, t('bo_back')),
+                h('button', { class: 'btn primary', onclick: () => go('setup') }, t('bo_play_again'))));
+    }
+
+    function soloView() {
+        if (solo.busy) return h('div', { class: 'center muted' }, t('bo_loading'));
+        const s = solo.screen;
+        if (s === 'setup') return soloSetup();
+        if (s === 'over') return soloOver();
+        const q = solo.q;
+        const head = [soloStatus(), soloStage()];
+        if (s === 'turn') {
+            return h('div', { class: 'stack bo' }, ...head, C.section(t('bo_round_n', { n: solo.round }),
+                h('p', { class: 'bo-pass' }, t('bo_pass_to')), h('p', { class: 'bo-pass-name' }, solo.players[solo.who].name),
+                h('button', { class: 'btn primary big', onclick: beginQuestion }, t('bo_ready'))));
+        }
+        if (s === 'question') {
+            const kids = [countdown(solo.deadline, q.time), h('p', { class: 'bo-q' }, qText(q))];
+            if (solo.kind === 'pass') kids.push(h('p', { class: 'bo-who' }, t('bo_answering', { p: solo.players[solo.who].name })));
+            if (!['it', 'en'].includes(lang())) kids.push(h('p', { class: 'bo-langnote' }, t('bo_lang_note')));
+            return h('div', { class: 'stack bo' }, ...head, C.section(t('bo_round_n', { n: solo.round }), kids, soloOptions(null)));
+        }
+        const r = solo.reveal;     // screen === 'reveal'
+        let verdict;
+        if (solo.kind === 'single') verdict = r.right ? t('bo_right') : (r.timeup ? t('bo_timeup') : t('bo_wrong'));
+        else if (r.nobody) verdict = t('bo_rv_nobody');
+        else if (r.slowest !== null) verdict = t('bo_rv_slowest', { p: solo.players[r.slowest].name });
+        else if (r.fell.length) verdict = t('bo_rv_fell', { p: r.fell.map((k) => solo.players[k].name).join(', ') });
+        else verdict = r.hit.length ? t('bo_rv_life', { p: r.hit.map((k) => solo.players[k].name).join(', ') }) : t('bo_right');
+        const done = solo.players.filter((p) => p.lives > 0).length < (solo.kind === 'single' ? 1 : 2);
+        return h('div', { class: 'stack bo' }, ...head, C.section(t('bo_answer_was'), h('p', { class: 'bo-q small' }, qText(q)), soloOptions(r),
+            h('p', { class: 'bo-verdict' + ((solo.kind === 'single' ? !r.right : false) ? ' hit' : '') }, verdict),
+            h('button', { class: 'btn primary big', onclick: () => { if (done) go('over'); else { solo.round++; nextRound(); } } }, done ? t('bo_finish') : t('bo_next'))));
+    }
+
+    /** Lobby extras: the two modes that need no room. */
+    function lobbyExtra() {
+        return [
+            h('div', { class: 'divider' }, h('span', null, t('or'))),
+            h('button', { class: 'btn big', onclick: () => startSolo('single') }, t('bo_solo')),
+            h('button', { class: 'btn big', onclick: () => startSolo('pass') }, t('bo_pass')),
+            h('p', { class: 'muted small center' }, t('bo_modes_note')),
+        ];
+    }
+
     return {
-        init(core) { C = core; return { playView, resultCard, summary, settings }; },
+        init(core) { C = core; return { playView, resultCard, summary, settings, lobbyExtra, soloActive: () => !!solo, soloView }; },
     };
 })();

@@ -219,6 +219,41 @@ test('the admin LIVE view shows the right answer and what everybody chose; a nor
     assert.match(ext.text, /botola/i, 'the admin script knows Botola rooms');
 });
 
+test('Botola alone / one phone: questions without the answer, the check says right or wrong, same pile rules, limits', async () => {
+    const levelOf = { easy: 0, normal: 1, hard: 2 };
+    for (const lv of ['easy', 'normal', 'hard']) {
+        const q = (await (await fetch(`${site.base}/api/botola_solo.php?action=question&level=${lv}`)).json());
+        assert.equal(q.success, true); assert.equal(BANK[q.id][0], levelOf[lv]);
+        assert.equal(q.options.en.length, 4); assert.equal(q.options.it.length, 4); assert.ok(q.time >= 10);
+        assert.ok(!JSON.stringify(q).includes('"right"') && !JSON.stringify(q).includes('"answer"'), 'no right answer in the question');
+    }
+    const rising = await (await fetch(`${site.base}/api/botola_solo.php?action=question&level=rising&round=1`)).json();
+    assert.equal(BANK[rising.id][0], 0, 'rising starts easy');
+    const late = await (await fetch(`${site.base}/api/botola_solo.php?action=question&level=rising&round=9`)).json();
+    assert.equal(BANK[late.id][0], 2);
+    // excluded ids are not drawn again
+    const seen = new Set();
+    for (let i = 0; i < 12; i++) { const j = await (await fetch(`${site.base}/api/botola_solo.php?action=question&level=easy&exclude=${[...seen].join(',')}`)).json(); assert.ok(!seen.has(j.id)); seen.add(j.id); }
+    const c = await new Client(site).init();
+    const id = rising.id, good = BANK[id][2][1], goodEn = BANK[id][1][1];
+    let r = await c.post('/api/botola_solo.php', { id, lang: 'it', text: good });
+    assert.deepEqual([r.json.right, r.json.answer], [true, good]);
+    r = await c.post('/api/botola_solo.php', { id, lang: 'en', text: goodEn }); assert.equal(r.json.right, true);
+    r = await c.post('/api/botola_solo.php', { id, lang: 'it', text: BANK[id][2][2] }); assert.equal(r.json.right, false);
+    r = await c.post('/api/botola_solo.php', { id, lang: 'it', text: '' }); assert.deepEqual([r.json.right, r.json.answer], [false, good], 'time out shows the answer');
+    assert.equal((await c.post('/api/botola_solo.php', { id: 99999, lang: 'it', text: 'x' })).status, 400);
+    assert.equal((await c.post('/api/botola_solo.php', { id: '1', lang: 'it', text: 'x' })).status, 400);
+    const noCsrf = await fetch(`${site.base}/api/botola_solo.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, lang: 'it', text: good }) });
+    assert.notEqual(noCsrf.status, 200, 'no CSRF token, no check');
+    assert.equal((await fetch(`${site.base}/api/botola_solo.php?action=nope`)).status, 400);
+});
+
+test('the Botola page credits Open Trivia DB and the licence, in English HTML', async () => {
+    const html = await (await fetch(`${site.base}/pages/botola.html`)).text();
+    assert.match(html, /<a href="https:\/\/opentdb\.com"[^>]*>Open Trivia DB<\/a>/);
+    assert.match(html, /creativecommons\.org\/licenses\/by-sa\/4\.0/);
+});
+
 test('the Botola and Skill check pages are served, in the game list and the sitemap; no inline script', async () => {
     const games = await (await fetch(`${site.base}/pages/giochi.php`)).text();
     const map = await (await fetch(`${site.base}/sitemap.php`)).text();

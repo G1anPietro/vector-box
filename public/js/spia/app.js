@@ -426,6 +426,7 @@
     function gameTitle() { return M ? t(M.title) : t('title'); }
 
     function mainView() {
+        if (!mode && LG && LG.soloActive && LG.soloActive()) return LG.soloView();   // Botola: alone / one phone, no room
         if (!mode) return lobbyView();
         if (!state) return h('div', { class: 'center muted' }, t('loading'));
         if (M) return state[M.key] && state[M.key].status === 'play' ? LG.playView() : roomView();
@@ -462,7 +463,7 @@
                 h('div', { class: 'divider' }, h('span', null, t('or'))),
                 h('button', { class: 'btn ghost big', onclick: () => enterLocal() }, t('play_offline')),
                 h('p', { class: 'muted small center' }, t('offline_note')),
-            ] : h('p', { class: 'muted small center' }, t(M.note)),
+            ] : [h('p', { class: 'muted small center' }, t(M.note)), LG && LG.lobbyExtra ? LG.lobbyExtra() : null],
             h('div', { class: 'lobby-links' },
                 h('button', { class: 'link', onclick: () => { ui.introStep = 0; openSheet('intro'); } }, t('how_to_play')),
                 h('a', { class: 'link', href: '../index.php' }, t('back_to_site'))));
