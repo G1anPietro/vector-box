@@ -37,10 +37,10 @@ $GAMES = [
     [
         'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
         'name' => ['it' => 'Botola', 'en' => 'Botola'],
-        'line' => ['it' => 'Quiz a eliminazione: sbagli e la botola si apre sotto di te.',
-                   'en' => 'Elimination quiz: get it wrong and the trapdoor opens under you.'],
-        'who'  => ['it' => '2–8 giocatori', 'en' => '2–8 players'],
-        'how'  => ['it' => 'un telefono da passare', 'en' => 'one phone to pass around'],
+        'line' => ['it' => 'Quiz a eliminazione: stessa domanda per tutti, chi sbaglia cade nella botola. Se sono tutti bravi cade il più lento.',
+                   'en' => 'Elimination quiz: same question for everybody, get it wrong and you fall through the trapdoor. If all are right the slowest falls.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa', 'en' => 'one phone each'],
     ],
     [
         'group' => 'friends', 'look' => 'cucu', 'href' => 'cucu.html', 'icon' => '../assets/cucu/icon.svg',

@@ -521,6 +521,14 @@ function spiaRemovePlayer(PDO $db, array $room, ?array $round, int $playerId): v
         $wasSpy = $a && (int)$a['is_spy'] === 1 && $a['out_reason'] === null;
     }
     $db->prepare('UPDATE spia_players SET removed = 1 WHERE id = :id')->execute([':id' => $playerId]);
+    if (($room['game'] ?? 'spia') === 'botola') {
+        $g = botolaLoad($db, (int)$room['id']);
+        if ($g) {
+            botolaPlayerLeft($g, $playerId);
+            botolaSave($db, (int)$room['id'], $g);
+        }
+        return;
+    }
     if (($room['game'] ?? 'spia') === 'cucu') {
         $g = cucuLoad($db, (int)$room['id']);
         if ($g) {
@@ -563,6 +571,7 @@ function spiaDeleteRooms(PDO $db, array $roomIds): void {
     $db->exec("DELETE FROM spia_rounds WHERE room_id IN ($in)");
     $db->exec("DELETE FROM lupus_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM cucu_games WHERE room_id IN ($in)");
+    $db->exec("DELETE FROM botola_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_players WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_devices WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_rooms WHERE id IN ($in)");
@@ -696,6 +705,7 @@ function spiaLiveView(PDO $db): array {
             'game' => $room['game'] ?? 'spia',
             'lupus' => ($room['game'] ?? 'spia') === 'lupus' ? lupusLiveInfo($db, (int)$room['id']) : null,
             'cucu' => ($room['game'] ?? 'spia') === 'cucu' ? cucuLiveInfo($db, (int)$room['id']) : null,
+            'botola' => ($room['game'] ?? 'spia') === 'botola' ? botolaLiveInfo($db, (int)$room['id']) : null,
             'updated_at' => (int)$room['updated_at'],
             'phones' => count($online),
             'phones_online' => count(array_filter($online)),
@@ -728,6 +738,7 @@ function spiaLiveView(PDO $db): array {
 function spiaRoomView(PDO $db, array $room, array $device, bool $adminSession): array {
     if (($room['game'] ?? 'spia') === 'lupus') return lupusView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'cucu') return cucuView($db, $room, $device, $adminSession);
+    if (($room['game'] ?? 'spia') === 'botola') return botolaView($db, $room, $device, $adminSession);
     $view = spiaView($db, $room, $device, $adminSession);
     $view['game'] = 'spia';
     return $view;

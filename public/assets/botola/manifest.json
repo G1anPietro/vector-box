@@ -1,0 +1,18 @@
+{
+  "name": "Botola",
+  "short_name": "Botola",
+  "description": "Quiz a eliminazione per amici: stessa domanda su ogni telefono, chi sbaglia cade nella botola.",
+  "start_url": "../../pages/botola.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#140c2b",
+  "theme_color": "#140c2b",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

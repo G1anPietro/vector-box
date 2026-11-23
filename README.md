@@ -27,7 +27,7 @@ PHP + SQLite do the work; a small optional Node.js process delivers the chat in 
 | **Private messages** | Between registered users, with blocking; no admin access path in the API. |
 | **Library** | EPUB and PDF reader for allowed accounts: covers, reading progress, bookmarks, multi-file upload, an optional "like a book" page turn. |
 | **Class notes** | Shared notes per school class: admin-approved classes, invite codes, roles and permissions, a timetable read from a photo, resumable uploads, full-text search, a board, a calendar with tests, homework and oral-exam turns, reminders (in-site and Web Push), temporary share links, and study documents written by Google Gemini (lesson notes, handouts, summaries, quizzes judged by the server, custom quizzes, spaced review, mind maps). The AI is used only for classes declared to be adults-only. An example class is open to everyone, read-only. |
-| **Party games** | *Who's the spy?*, *Lupus* (werewolf) and *Cucù* (an Italian card game) with multi-phone rooms, *Never have I ever…*, and Texas Hold'em poker with real hand ranking. Five languages for the party games. |
+| **Party games** | *Who's the spy?*, *Lupus* (werewolf) and *Cucù* (an Italian card game) and *Botola* (an elimination quiz, 1,400+ questions from Open Trivia DB, CC BY-SA 4.0, with an admin LIVE view) with multi-phone rooms, *Never have I ever…*, and Texas Hold'em poker with real hand ranking. Five languages for the party games. |
 | **Solo games** | Solitaire (Klondike), Connect Four, Hangman, Simon, Memory, Tic-tac-toe, Snake, 2048, Minesweeper, Tetris, a word game (*Parola*), Conway's Game of Life, a tower defense (*Difesa del server*), Node Breach, ARG Vault, and a long roguelike campaign, *Il Dungeon del Server* (10 sectors, autosave, touch-first; see docs/ROGUELIKE.md). Static pages, no account needed. |
 | **Offline Wikipedia** | An optional copy of the Italian Wikipedia served by [Kiwix](https://www.kiwix.org) at `/wiki/`, with a front page (`pages/wikipedia.php`) that has a search box and the credit its licence (CC BY-SA 4.0) asks for. No ads, no tracking, nothing stored. See "Offline Wikipedia" below. |
 | **Accounts and privacy** | Optional confirmed e-mail address with separate consent to news, download of all your data, account deletion, automatic data retention, a cookie banner that loads nothing from Google before consent. Public [privacy](public/pages/privacy.php) and [security](public/pages/sicurezza.php) pages. |
@@ -80,7 +80,7 @@ npm test                          # needs only PHP and Node on the PATH, no npm 
 node --test tests/chat.test.js    # one file
 ```
 
-About 620 tests (`node:test`). Each suite starts a throwaway copy of the site on a free port with an empty database, so
+About 640 tests (`node:test`). Each suite starts a throwaway copy of the site on a free port with an empty database, so
 the real one is never touched. Before a commit: `npm test`, `php -l` on every PHP file touched and `node --check` on
 every JS file touched. Every new endpoint or page gets a test.
 
@@ -93,7 +93,7 @@ public/               the web root (the only folder the web server serves)
   pages/              pages: games, reader, class notes, account, privacy, security, admin panels
   api/                JSON endpoints and shared libraries
     helpers.php         env, client IP, JSON answers, CSRF/login/admin guards, security headers
-    database.php        connection, session start, versioned migrations (schema v44)
+    database.php        connection, session start, versioned migrations (schema v45)
     rate_limiter.php    SQLite-backed rate limits
   includes/           head.php (headers, version, visit log), ads.php, appunti-top.php, home-access.php (who sees the private home cards)
   js/ css/ assets/    scripts, styles, icons, self-hosted fonts

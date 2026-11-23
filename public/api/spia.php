@@ -3,7 +3,7 @@
 // "Who's the Spy" rooms. A phone is identified by the device token it got on create/join
 // (header X-Spia-Device); no account is needed to play.
 //
-// Rooms host either game: "spia" (Who's the Spy) or "lupus" (werewolf, see lupus_lib.php).
+// Rooms host one of the games: "spia" (Who's the Spy), "lupus" (werewolf, lupus_lib.php), "cucu" (cucu_lib.php) or "botola" (quiz, botola_lib.php).
 // GET  ?action=state                  -> this phone's view of the room (polled every ~2s)
 // POST {action: create|join|leave|kick|host|take|player_add|player_remove|settings|
 //               start|seen|vote_call|vote|vote_close|guess|end|reset_scores, ...}
@@ -12,6 +12,7 @@ require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/spia_lib.php';
 require_once __DIR__ . '/lupus_lib.php';
 require_once __DIR__ . '/cucu_lib.php';
+require_once __DIR__ . '/botola_lib.php';
 
 initSession();
 header('Cache-Control: no-store');
@@ -127,6 +128,14 @@ try {
                 $room = spiaRoom($db, (int)$room['id']);
             }
         }
+        if ($room['game'] === 'botola') {
+            $g = botolaLoad($db, (int)$room['id']);
+            if ($g && botolaTick($g)) {
+                botolaSaveAndAward($db, (int)$room['id'], $g);
+                spiaBump($db, (int)$room['id']);
+                $room = spiaRoom($db, (int)$room['id']);
+            }
+        }
         $view = spiaRoomView($db, $room, $device, $isAdmin);
         $db->exec('COMMIT');
         jsonResponse($view);
@@ -142,11 +151,12 @@ try {
         if (!checkRateLimit('spia_create', 10, 600)) spiaFail('slow_down', 429);
         $db->exec('BEGIN IMMEDIATE');
         spiaPruneRooms($db);
-        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu'], true) ? $in['game'] : 'spia';
+        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola'], true) ? $in['game'] : 'spia';
         $rawSettings = is_array($in['settings'] ?? null) ? $in['settings'] : [];
         $settings = match ($game) {
             'lupus' => lupusSanitizeSettings($rawSettings, []),
             'cucu' => cucuSanitizeSettings($rawSettings, []),
+            'botola' => botolaSanitizeSettings($rawSettings, []),
             default => spiaSanitizeSettings($rawSettings, []),
         };
         $db->prepare('INSERT INTO spia_rooms (code, game, settings, created_at, updated_at) VALUES (:c, :g, :s, :t, :t)')
@@ -196,6 +206,14 @@ try {
     if ($room['game'] === 'cucu') {
         $r = cucuHandle($db, $room, $device, $isHost, $in, $action, $isAdmin);
         if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'not_your_turn'], true) ? 403 : 409);
+        $handled = $r === true;
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
+    if ($room['game'] === 'botola') {
+        $r = botolaHandle($db, $room, $device, $isHost, $in, $action);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
         $handled = $r === true;
         if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
             $fail('unknown_action');
