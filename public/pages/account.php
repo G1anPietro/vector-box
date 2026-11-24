@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 require_once __DIR__ . '/../api/mailer.php';
 require_once __DIR__ . '/../api/rate_limiter.php';
+require_once __DIR__ . '/../api/records_lib.php';
 
 initSession(true);
 
@@ -203,6 +204,7 @@ session_write_close();
             <a href="#profile"><?= tt('Profile', 'Profilo') ?></a>
             <a href="#security"><?= tt('Security', 'Sicurezza') ?></a>
             <a href="#preferences"><?= tt('Preferences', 'Preferenze') ?></a>
+            <a href="#records"><?= tt('Records', 'Record') ?></a>
             <a href="#data"><?= tt('Your data', 'I tuoi dati') ?></a>
             <?php if (!empty($account['is_admin'])): ?><a href="#admin"><?= tt('Admin', 'Admin') ?></a><?php endif; ?>
         </nav>
@@ -287,6 +289,36 @@ session_write_close();
                 <?php $notice('save_email'); ?>
                 <div class="actions"><button type="submit" name="action" value="save_email" class="btn"><?= tt('Save e-mail', 'Salva l\'e-mail') ?></button></div>
             </form>
+        </section>
+
+        <!-- RECORDS: the best results of the solo games, kept on the account (api/records.php, game_scores) -->
+        <section id="records" class="group" aria-labelledby="h-records">
+            <h2 id="h-records"><?= tt('Your records', 'I tuoi record') ?></h2>
+            <?php
+            $it = pageLang() === 'it';
+            $labels = recordLabels();
+            $mine = recordsOfAccount($db, (int)$_SESSION['user_id']);
+            ?>
+            <div class="card" id="your-records">
+                <?php if (!$mine): ?>
+                    <p class="hint"><?= tt('No records yet. Play Skill check, Botola, Memory, Simon or the other solo games while you are signed in: your best results appear here and follow you from phone to phone.', 'Ancora nessun record. Gioca a Skill check, Botola, Memory, Simon o agli altri giochi da soli mentre sei connesso: i tuoi risultati migliori compaiono qui e ti seguono da un telefono all’altro.') ?></p>
+                <?php else: ?>
+                    <p class="hint"><?= tt('Only you see these. They are saved while you are signed in.', 'Li vedi solo tu. Si salvano mentre sei connesso.') ?></p>
+                    <dl class="records">
+                    <?php foreach ($mine as $game => $variants): $L = $labels[$game]; ?>
+                        <div class="rec-game">
+                            <dt><?= htmlspecialchars($it ? $L[0] : $L[1]) ?></dt>
+                            <?php foreach ($variants as $variant => $r):
+                                $vl = $L[4][$variant] ?? [$variant, $variant];
+                                $val = $game === 'minato' ? number_format($r['best'] / 1000, 1, $it ? ',' : '.', '') : (string)$r['best'];
+                            ?>
+                                <dd><span><?= htmlspecialchars($it ? $vl[0] : $vl[1]) ?></span> <b><?= htmlspecialchars($val) ?> <?= htmlspecialchars($it ? $L[2] : $L[3]) ?></b> <time datetime="<?= date('Y-m-d', $r['at']) ?>"><?= date('d/m/Y', $r['at']) ?></time></dd>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    </dl>
+                <?php endif; ?>
+            </div>
         </section>
 
         <!-- YOUR DATA (GDPR): download everything, or delete the account -->

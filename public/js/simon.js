@@ -45,6 +45,7 @@
         const KEY = 'vb_simon_best';
         let g = newGame(), best = 0, busy = false, timers = [], pz, resumeAs = null;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
+        if (window.VBRecords) VBRecords.sync('simon', best > 0 ? { '': best } : {}).then((m) => { if (m && m[''] > best) { best = m['']; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } if (typeof paint === 'function') paint(); } });
         function light(i, ms) {
             pads[i].classList.add('on'); VBFx.play('pad' + i, ms);
             timers.push(setTimeout(() => pads[i].classList.remove('on'), ms));
@@ -65,7 +66,7 @@
             light(i, 180);
             const r = press(g, i);
             if (r === 'lost') {
-                if (g.seq.length - 1 > best) { best = g.seq.length - 1; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
+                if (g.seq.length - 1 > best) { best = g.seq.length - 1; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } if (window.VBRecords && best > 0) VBRecords.submit('simon', '', best); }
                 g.score = g.seq.length - 1; paint();
                 VBFx.play('lose'); say('m_lost', { n: g.seq.length - 1 });
             } else if (r === 'round') { paint(); busy = true; say('m_ok'); timers.push(setTimeout(round, 700)); }

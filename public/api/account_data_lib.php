@@ -55,6 +55,7 @@ function accountExport(PDO $db, int $userId): array {
         'blocked_users' => $all('SELECT a.username, b.created_at FROM dm_blocks b LEFT JOIN accounts a ON a.id = b.blocked_id WHERE b.blocker_id = :i', $u),
         'poker_stats' => $all('SELECT hands_played, hands_won, chips_won, biggest_pot, updated_at FROM poker_stats WHERE user_id = :i', $u),
         'reading_progress' => $all('SELECT b.title, p.cfi_or_page, p.percentage, p.updated_at FROM reading_progress p LEFT JOIN books b ON b.id = p.book_id WHERE p.user_id = :i', $u),
+        'game_records' => $all('SELECT game, variant, best, updated_at FROM personal_records WHERE user_id = :i ORDER BY game, variant', $u),
         'book_highlights_and_notes' => $all('SELECT b.title, h.kind, h.text, h.note, h.color, h.location, h.created_at FROM book_highlights h LEFT JOIN books b ON b.id = h.book_id WHERE h.user_id = :i', $u),
         'book_labels' => $all('SELECT b.title, t.tag FROM book_tags t LEFT JOIN books b ON b.id = t.book_id WHERE t.user_id = :i', $u),
         'reading_log' => $all('SELECT day, seconds, pages FROM reading_log WHERE user_id = :i ORDER BY day', $u),
@@ -100,7 +101,7 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
         $run('DELETE FROM poker_stats WHERE user_id = :i', $u);
         $run("UPDATE poker_tables SET creator_username = 'deleted' WHERE creator_username = :n", [':n' => $username]);
         $run("UPDATE books SET uploaded_by = 'deleted' WHERE uploaded_by = :n", [':n' => $username]);
-        foreach (['reading_progress', 'bookmarks', 'book_highlights', 'book_tags', 'reading_log', 'read_progress', 'notifications', 'push_subscriptions', 'review_cards', 'custom_quizzes',
+        foreach (['reading_progress', 'bookmarks', 'book_highlights', 'book_tags', 'reading_log', 'personal_records', 'read_progress', 'notifications', 'push_subscriptions', 'review_cards', 'custom_quizzes',
                   'quiz_answers', 'quiz_seen', 'score_events', 'game_scores', 'class_log', 'share_links', 'class_members'] as $t) {
             $run("DELETE FROM $t WHERE user_id = :i", $u);
         }

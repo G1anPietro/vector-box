@@ -54,6 +54,12 @@
         const KEY = 'vb_memory_best';
         let level = 'easy', g, cells = [], timer = null, hideTimer = null, pz;
         const clock = VBFx.clock();
+        if (window.VBRecords) VBRecords.sync('memory', Object.fromEntries(Object.entries((() => { try { return JSON.parse(localStorage.getItem('vb_memory_best')) || {}; } catch (e) { return {}; } })()).filter(([, n]) => n > 0))).then((m) => {
+            if (!m) return;
+            for (const [l, n] of Object.entries(m)) if (!best[l] || n < best[l]) best[l] = n;   // fewest moves wins
+            try { localStorage.setItem('vb_memory_best', JSON.stringify(best)); } catch (e) { /* private mode */ }
+            if (typeof paint === 'function') paint();
+        });
         const best = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
         const secs = () => Math.floor(clock.elapsed() / 1000);
 
@@ -93,7 +99,7 @@
             if (r === 'miss') hideTimer = setTimeout(() => { hide(g); paint(); }, 800);
             if (g.status === 'won') {
                 clearInterval(timer); clock.stop(); VBFx.play('win');
-                if (!best[level] || g.moves < best[level]) { best[level] = g.moves; try { localStorage.setItem(KEY, JSON.stringify(best)); } catch (x) { /* private mode */ } }
+                if (!best[level] || g.moves < best[level]) { best[level] = g.moves; try { localStorage.setItem(KEY, JSON.stringify(best)); } catch (x) { /* private mode */ } if (window.VBRecords) VBRecords.submit('memory', level, g.moves); }
                 wonSecs = secs(); paint();
             }
         });

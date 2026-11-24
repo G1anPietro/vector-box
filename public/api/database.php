@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 46;
+const DB_SCHEMA_VERSION = 47;
 
 /**
  * Session bootstrap.
@@ -586,6 +586,18 @@ function migrateV16(PDO $db): void {
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
 /** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
 /** v44: the arcade leaderboards (api/game_scores.php): ONE row per account, game and variant: its best score (or best time). */
+function migrateV47(PDO $db): void {
+    // Personal records of the solo games (private to the account, not a leaderboard): the best result per game and variant
+    $db->exec("CREATE TABLE IF NOT EXISTS personal_records (
+        user_id INTEGER NOT NULL,
+        game TEXT NOT NULL,
+        variant TEXT NOT NULL DEFAULT '',
+        best INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, game, variant)
+    )");
+}
+
 function migrateV46(PDO $db): void {
     // Library: highlights and notes, labels ("shelves") per account, reading time per day, and a file hash to spot duplicates
     $db->exec("CREATE TABLE IF NOT EXISTS book_highlights (
@@ -1203,6 +1215,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 46) {
             migrateV46($db);
+        }
+        if ($current < 47) {
+            migrateV47($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

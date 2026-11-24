@@ -214,7 +214,21 @@ window.BotolaGame = (() => {
     const go = (screen, extra = {}) => { soloStop(); Object.assign(solo, extra, { screen }); render(); };
     const TIMES = { easy: 20, normal: 15, hard: 10, rising: 15 };
 
+    /** At the start of a solo game: merge this phone's bests with the account's (js/records.js, only when logged in). */
+    function syncBotolaRecords() {
+        if (!window.VBRecords) return;
+        const levels = ['easy', 'normal', 'hard', 'rising'], local = {};
+        levels.forEach((l) => { const n = store.get('vb_botola_best_' + l, 0); if (n > 0) local[l] = n; });
+        VBRecords.sync('botola', local).then((m) => {
+            if (!m) return;
+            let changed = false;
+            levels.forEach((l) => { if (m[l] > (local[l] || 0)) { store.set('vb_botola_best_' + l, m[l]); changed = true; } });
+            if (changed && solo) render();
+        });
+    }
+
     function startSolo(kind) {
+        syncBotolaRecords();
         solo = { kind, screen: 'setup', level: store.get('vb_botola_level', 'rising'), lives: kind === 'single' ? 3 : 1, names: store.get('vb_botola_pass_names', ['', '']), seen: [], round: 1, busy: false };
         render();
     }
@@ -300,7 +314,7 @@ window.BotolaGame = (() => {
             if (!j) { C.toast(t('bo_load_error')); go('setup'); return; }
             if (j.right) { solo.score++; C.vibrate(25); } else { solo.players[0].lives--; C.vibrate([200, 60, 200]); }
             const best = store.get('vb_botola_best_' + solo.level, 0);
-            if (solo.score > best) store.set('vb_botola_best_' + solo.level, solo.score);
+            if (solo.score > best) { store.set('vb_botola_best_' + solo.level, solo.score); if (window.VBRecords) VBRecords.submit('botola', solo.level, solo.score); }
             return go('reveal', { reveal: { answer: j.answer, picked: text, right: j.right, timeup: i === null } });
         }
         solo.locked = false;

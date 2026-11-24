@@ -168,6 +168,7 @@
         const ECOLORS = { packet: '#ffd166', worm: '#c77dff', trojan: '#ff5e5e', boss: '#ff2e63' };
         let g = newGame(), build = 'antivirus', sel = -1, hover = null, paused = false, fast = false, best = 0, raf = 0, last = 0, acc = 0, msgKey = null;
         try { best = +localStorage.getItem(KEY) || 0; } catch (e) { /* private mode */ }
+        if (window.VBRecords) VBRecords.sync('difesa', best > 0 ? { '': best } : {}).then((m) => { if (m && m[''] > best) { best = m['']; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } $('df-best').textContent = String(best); } });
 
         const say = (k) => { msgKey = k; $('df-msg').textContent = k ? VBLang.t(k) : ''; };
         const cell = () => canvas.width / W;
@@ -223,7 +224,7 @@
         function stop() { cancelAnimationFrame(raf); raf = 0; }
         function finish() {
             stop();
-            if (g.wave > best) { best = g.wave; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
+            if (g.wave > best) { best = g.wave; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } if (window.VBRecords) VBRecords.submit('difesa', '', best); }
             say(g.status === 'won' ? 'm_won' : 'm_over');
         }
         function go() { if (startWave(g)) { say('m_wave'); sel = -1; run(); draw(); } }

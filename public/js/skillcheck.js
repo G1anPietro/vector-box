@@ -39,6 +39,19 @@
         const key = () => 'vb_skillcheck_best_' + diff + (endless ? '_endless' : '');
         const loadBest = () => { try { return +localStorage.getItem(key()) || 0; } catch (e) { return 0; } };
         let best = loadBest(), streak = 0;
+        // records on the account (js/records.js): send a new one; at load merge the account's bests with this phone's
+        const variants = ['easy', 'normal', 'hard'].flatMap((d) => [d, d + '-endless']);
+        const keyOf = (v) => 'vb_skillcheck_best_' + v.replace('-endless', '_endless');
+        const submitRecord = () => { if (window.VBRecords) VBRecords.submit('skillcheck', diff + (endless ? '-endless' : ''), best); };
+        if (window.VBRecords) {
+            const local = {};
+            variants.forEach((v) => { try { const n = +localStorage.getItem(keyOf(v)) || 0; if (n > 0) local[v] = n; } catch (e) { /* private mode */ } });
+            VBRecords.sync('skillcheck', local).then((m) => {
+                if (!m) return;
+                for (const [v, n] of Object.entries(m)) if (variants.includes(v) && n > (local[v] || 0)) { try { localStorage.setItem(keyOf(v), String(n)); } catch (e) { /* private mode */ } }
+                best = loadBest(); paint();
+            });
+        }
         let score = 0, lives = LIVES, zone = null, angle = 0, last = 0, raf = 0, running = false, lastMsg = null;
         const T = (k) => VBLang.t(k);
         const say = (k, v) => { lastMsg = k ? [k, v] : null; msg.textContent = k ? VBLang.t(k, v) : ''; };
@@ -53,14 +66,14 @@
         }
         function finish() {
             running = false; cancelAnimationFrame(raf);
-            const rec = score > best; if (rec) { best = score; try { localStorage.setItem(KEY, String(best)); } catch (e) { /* private mode */ } }
+            const rec = score > best; if (rec) { best = score; try { localStorage.setItem(key(), String(best)); } catch (e) { /* private mode */ } submitRecord(); }
             say('over', { n: score }); if (rec) msg.textContent += ' ' + VBLang.t('record');
             go.hidden = false; $('sc-tap').disabled = true; paint();
         }
         function result(r) {
             if (!endless) cancelAnimationFrame(raf);
             if (r === 'hit') { score++; streak++; VBFx.play('win'); say('hit'); } else { if (!endless) lives--; streak = 0; VBFx.play('lose'); say('miss'); }
-            if (endless && score > best) { best = score; try { localStorage.setItem(key(), String(best)); } catch (e) { /* private mode */ } }
+            if (endless && score > best) { best = score; try { localStorage.setItem(key(), String(best)); } catch (e) { /* private mode */ } submitRecord(); }
             paint();
             if (endless) { if (r === 'hit') next(); return; }   // a miss keeps the same zone, the needle goes on
             if (lives <= 0) return finish();
