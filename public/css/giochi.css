@@ -194,17 +194,21 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 .cell { position: relative; display: flex; }
 .cell .box { flex: 1; min-width: 0; }
 .cell.hide { display: none; }
-.fav { position: absolute; top: 6px; right: 6px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, 0.45); color: #ffd166; font-size: 22px; line-height: 1; cursor: pointer; }
+.fav { position: absolute; bottom: 8px; right: 8px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, 0.45); color: #ffd166; font-size: 22px; line-height: 1; cursor: pointer; }
 .fav:focus-visible, .chip:focus-visible, .surprise:focus-visible, .tools input:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
 .cell.glow .box { outline: 4px solid var(--link); outline-offset: 3px; }
 .none { margin-top: 30px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .cell.glow .box { transition: none; } }
-.cell .lid { padding-right: 50px; }   /* room for the star */
 
-/* one column on a phone: every box has the same height (fixed room for the name, 4 lines of text and the facts) */
+/* every box has the same size at every width: fixed room for the name (3 lines), the text (5 lines, 4 on a phone) and the facts (3 lines) */
+.boxes { grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); }
+.cell { min-width: 0; }
+.box { min-height: 0; min-width: 0; }
+.lid { height: 88px; min-height: 0; min-width: 0; overflow: hidden; }
+.lid .name { flex: 1; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; line-height: 1.05; }   /* a name that is too wide is shrunk by js/giochi.js, never broken inside a word */
+.line { height: calc(5 * 1.4em); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; flex: none; }
+.facts { height: calc(3 * 1.4em); overflow: hidden; padding-right: 48px; }   /* room for the star at the bottom right */
 @media (max-width: 520px) {
-    .lid { height: 88px; min-height: 0; overflow: hidden; }
-    .lid .name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; line-height: 1.05; }
-    .line { height: calc(4 * 1.4em); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; flex: none; }
-    .facts { height: calc(3 * 1.4em); overflow: hidden; }
+    .boxes { grid-template-columns: minmax(0, 1fr); }
+    .line { height: calc(4 * 1.4em); -webkit-line-clamp: 4; line-clamp: 4; }
 }

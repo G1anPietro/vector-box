@@ -36,6 +36,7 @@
         const wrap = document.createElement('div'); wrap.className = 'boxes';
         for (const id of ids) { const c = byId.get(id).cloneNode(true); c.classList.remove('hide'); wrap.append(c); }
         sec.append(h, wrap); host.append(sec);
+        fitNames();
         paintFavs();
     }
     function paintFavs() {
@@ -87,5 +88,17 @@
         c.classList.add('glow'); setTimeout(() => c.classList.remove('glow'), 2500);
         c.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     });
+    // A long single word in a name (e.g. UNDERCOVER with wide letter spacing) must not run out of its box: shrink that name until it fits.
+    function fitNames() {
+        document.querySelectorAll('.box .name').forEach((n) => {
+            n.style.fontSize = '';
+            let size = parseFloat(getComputedStyle(n).fontSize);
+            const room = n.parentElement.clientHeight;   // the name may use the height of its lid
+            while ((n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > room) && size > 14) { size -= 1; n.style.fontSize = size + 'px'; }
+        });
+    }
+    fitNames();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNames);
+    let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(fitNames, 120); });
     mineShelf(); paintFavs();
 })();
