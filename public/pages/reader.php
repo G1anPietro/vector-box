@@ -42,6 +42,7 @@ if (!$canRead) {
         true, 
         [
             'js/dropzone.js',
+            'js/reader-tools.js',
             'js/reader.js'
         ], 
         true
@@ -97,11 +98,29 @@ if (!$canRead) {
         </section>
 
         <main>
+            <details id="stats-section" class="stats-section">
+                <summary>Le tue letture</summary>
+                <div id="stats-body" class="stats-body" aria-live="polite">Caricamento…</div>
+            </details>
             <section id="continue-section" style="display: none;" class="shelf-section">
                 <h2 class="shelf-title">Continua a leggere</h2>
                 <div id="continue-shelf" class="book-grid continue-row"></div>
             </section>
             <h2 class="shelf-title">La tua libreria</h2>
+            <div class="shelf-tools" id="shelf-tools">
+                <div id="shelf-filters" class="chips" role="group" aria-label="Filtra i libri"></div>
+                <label class="sort-label">Ordina per
+                    <select id="shelf-sort" class="input-text sort-select">
+                        <option value="recent">Aggiunti di recente</option>
+                        <option value="read">Letti di recente</option>
+                        <option value="title">Titolo (A-Z)</option>
+                        <option value="author">Autore (A-Z)</option>
+                        <option value="progress">Più avanti nella lettura</option>
+                    </select>
+                </label>
+                <?php if ($canUpload): ?><button type="button" id="tidy-titles-btn" class="btn small-btn" title="Toglie dai titoli i resti dei siti di download">Sistema i titoli</button><?php endif; ?>
+            </div>
+            <div id="tidy-panel" class="tidy-panel" hidden></div>
             <div id="book-catalog" class="book-grid"></div>
         </main>
     </div>
@@ -116,12 +135,40 @@ if (!$canRead) {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>
                 </button>
                 <div class="pop-wrap">
-                    <button id="bookmarks-toggle-btn" class="btn" title="Segnalibri">Segnalibri</button>
-                    <div id="bookmarks-panel" class="popover" style="display: none;"></div>
-                </div>
-                <div class="pop-wrap">
-                    <button id="settings-btn" class="btn icon-btn aa-btn" title="Testo, pagine e colori" aria-label="Testo, pagine e colori" aria-expanded="false">Aa</button>
-                    <div id="settings-panel" class="popover settings-panel" hidden>
+                    <button id="settings-btn" class="btn menu-open-btn" title="Menu del libro: indice, cerca, note, testo" aria-label="Menu del libro: indice, cerca, note e testo" aria-expanded="false" aria-controls="settings-panel">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <span>Menu</span>
+                    </button>
+                    <div id="settings-panel" class="popover settings-panel menu-panel" hidden>
+                        <div class="menu-tabs" role="tablist" aria-label="Menu del libro">
+                            <button type="button" class="menu-tab-btn" role="tab" data-tab="toc" aria-selected="true">Indice</button>
+                            <button type="button" class="menu-tab-btn" role="tab" data-tab="search" aria-selected="false">Cerca</button>
+                            <button type="button" class="menu-tab-btn" role="tab" data-tab="notes" aria-selected="false">Note</button>
+                            <button type="button" class="menu-tab-btn" role="tab" data-tab="text" aria-selected="false">Testo</button>
+                        </div>
+                        <section id="tab-toc" class="menu-tab" role="tabpanel">
+                            <div id="toc-list" class="toc-list"></div>
+                        </section>
+                        <section id="tab-search" class="menu-tab" role="tabpanel" hidden>
+                            <form id="inbook-search-form" class="inbook-search" role="search">
+                                <input type="search" id="inbook-search-input" class="input-text" placeholder="Cerca nel libro" autocomplete="off" aria-label="Cerca nel libro">
+                                <button type="submit" class="btn btn-primary">Cerca</button>
+                            </form>
+                            <div id="inbook-search-status" class="set-hint" aria-live="polite"></div>
+                            <ol id="inbook-search-results" class="search-results"></ol>
+                        </section>
+                        <section id="tab-notes" class="menu-tab" role="tabpanel" hidden>
+                            <div class="notes-actions">
+                                <button type="button" id="add-note-btn" class="btn small-btn">+ Nota in questa pagina</button>
+                                <a id="export-notes-btn" class="btn small-btn" href="#" download>Esporta note</a>
+                            </div>
+                            <h3 class="menu-h">Segnalibri</h3>
+                            <div id="bookmarks-panel" class="bm-list"></div>
+                            <h3 class="menu-h">Evidenziazioni e note</h3>
+                            <div id="highlights-list" class="hl-list"></div>
+                            <p class="set-hint" id="hl-hint">Per evidenziare, seleziona un pezzo di testo (solo EPUB).</p>
+                        </section>
+                        <section id="tab-text" class="menu-tab" role="tabpanel" hidden>
                         <div class="set-row">
                             <span class="set-label" id="size-label-title">Dimensione del testo</span>
                             <div class="stepper" role="group" aria-labelledby="size-label-title">
@@ -145,6 +192,38 @@ if (!$canRead) {
                                 <button class="theme-btn theme-sepia" data-theme="sepia" title="Seppia"></button>
                                 <button class="theme-btn theme-dark" data-theme="dark" title="Scuro"></button>
                                 <button class="theme-btn theme-black" data-theme="black" title="Nero (OLED)"></button>
+                            </div>
+                        </div>
+                        <div class="set-row epub-only">
+                            <span class="set-label">Carattere</span>
+                            <div class="segmented" role="group" aria-label="Carattere">
+                                <button class="btn" data-font="book">Del libro</button>
+                                <button class="btn" data-font="serif">Serif</button>
+                                <button class="btn" data-font="sans">Sans</button>
+                                <button class="btn" data-font="easy">Facile</button>
+                            </div>
+                        </div>
+                        <div class="set-row epub-only">
+                            <span class="set-label" id="lh-label-title">Interlinea</span>
+                            <div class="stepper" role="group" aria-labelledby="lh-label-title">
+                                <button id="lh-down-btn" class="btn" aria-label="Interlinea più stretta">−</button>
+                                <span id="lh-label" class="zoom-label">1,5</span>
+                                <button id="lh-up-btn" class="btn" aria-label="Interlinea più larga">+</button>
+                            </div>
+                        </div>
+                        <div class="set-row epub-only">
+                            <span class="set-label">Margini</span>
+                            <div class="segmented" role="group" aria-label="Margini">
+                                <button class="btn" data-margin="normal">Normali</button>
+                                <button class="btn" data-margin="wide">Larghi</button>
+                                <button class="btn" data-margin="xwide">Molto larghi</button>
+                            </div>
+                        </div>
+                        <div class="set-row epub-only">
+                            <span class="set-label">Allineamento</span>
+                            <div class="segmented" role="group" aria-label="Allineamento">
+                                <button class="btn" data-justify="left">A sinistra</button>
+                                <button class="btn" data-justify="justify">Giustificato</button>
                             </div>
                         </div>
                         <div class="set-row">
@@ -182,6 +261,7 @@ if (!$canRead) {
                             </ul>
                         </details>
                         <a id="download-book-btn" class="btn small-btn" href="#" download>Scarica il file originale</a>
+                        </section>
                     </div>
                 </div>
             </div>
@@ -208,6 +288,25 @@ if (!$canRead) {
             </div>
             <button id="next-page-btn" class="btn nav-btn" title="Pagina successiva (→)" aria-label="Pagina successiva">&rsaquo;</button>
         </div>
+    </div>
+    <div id="sel-bar" class="sel-bar" role="toolbar" aria-label="Evidenzia il testo selezionato" hidden>
+        <span class="sel-colors">
+            <button type="button" class="sel-color c-yellow" data-color="yellow" aria-label="Evidenzia in giallo"></button>
+            <button type="button" class="sel-color c-green" data-color="green" aria-label="Evidenzia in verde"></button>
+            <button type="button" class="sel-color c-blue" data-color="blue" aria-label="Evidenzia in azzurro"></button>
+            <button type="button" class="sel-color c-pink" data-color="pink" aria-label="Evidenzia in rosa"></button>
+        </span>
+        <button type="button" id="sel-note-btn" class="btn small-btn">+ Nota</button>
+        <button type="button" id="sel-cancel-btn" class="btn small-btn" aria-label="Annulla">✕</button>
+    </div>
+    <div id="tag-dialog" class="tag-dialog" role="dialog" aria-modal="true" aria-labelledby="tag-dialog-title" hidden>
+        <form id="tag-form" class="tag-card">
+            <h3 id="tag-dialog-title">Etichette del libro</h3>
+            <p class="set-hint" id="tag-dialog-book"></p>
+            <input type="text" id="tag-input" class="input-text" placeholder="maturità, da rileggere, informatica" autocomplete="off" maxlength="240" aria-label="Etichette separate da virgole">
+            <div id="tag-suggest" class="chips"></div>
+            <div class="tag-actions"><button type="button" id="tag-cancel" class="btn">Annulla</button><button type="submit" class="btn btn-primary">Salva</button></div>
+        </form>
     </div>
     <div id="reader-toast" class="reader-toast" role="status" aria-live="polite" hidden></div>
 

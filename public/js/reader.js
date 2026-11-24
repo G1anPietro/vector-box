@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const continueSection = document.getElementById('continue-section');
     const continueShelf = document.getElementById('continue-shelf');
     const addBookmarkBtn = document.getElementById('add-bookmark-btn');
-    const bookmarksToggleBtn = document.getElementById('bookmarks-toggle-btn');
     const bookmarksPanel = document.getElementById('bookmarks-panel');
 
     // Reading settings ("Aa" panel): text size / PDF zoom, one or two pages
@@ -128,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     let data = null;
                     try { data = await res.json(); } catch (err) { /* nginx error page, e.g. file too large */ }
                     if (data && data.success) done++;
+                    else if (data && data.error === 'DUPLICATE') failed.push(`${file.name} (già presente: «${data.title}»)`);
                     else failed.push(`${file.name} (${(data && data.error) || (res.status === 413 ? 'file troppo grande' : 'errore ' + res.status)})`);
                 } catch (err) {
                     failed.push(`${file.name} (rete)`);
@@ -157,20 +157,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function closePanels() {
         if (settingsPanel) settingsPanel.hidden = true;
         if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
-        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
         if (backdrop) backdrop.hidden = true;
+        document.dispatchEvent(new CustomEvent('reader:menu', { detail: { open: false } }));
     }
-    function openPanel(which) {
-        const wasOpen = which === 'settings' ? !settingsPanel.hidden : bookmarksPanel.style.display !== 'none';
+    function openPanel() {
+        const wasOpen = !settingsPanel.hidden;
         closePanels();
         if (wasOpen) return;
-        if (which === 'settings') { settingsPanel.hidden = false; settingsBtn.setAttribute('aria-expanded', 'true'); }
-        else bookmarksPanel.style.display = 'block';
+        settingsPanel.hidden = false;
+        settingsBtn.setAttribute('aria-expanded', 'true');
         if (backdrop) backdrop.hidden = false;
+        document.dispatchEvent(new CustomEvent('reader:menu', { detail: { open: true } }));
     }
     if (backdrop) backdrop.addEventListener('click', closePanels);
     if (settingsBtn && settingsPanel) {
-        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); openPanel('settings'); });
+        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); openPanel(); });
         settingsPanel.addEventListener('click', (e) => e.stopPropagation());
     }
 
@@ -331,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 catalogBooks = data.books || [];
                 await loadProgressMap();
+                if (window.VBReaderTools) await window.VBReaderTools.loadTags();
                 renderCatalog(catalogBooks);
                 renderContinueShelf(query ? [] : catalogBooks);
                 if (data.can_upload) makeMissingPdfCovers(catalogBooks);
@@ -495,6 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cover.addEventListener('click', () => openBook(book));
         title.addEventListener('click', () => openBook(book));
+        if (window.VBReaderTools) window.VBReaderTools.decorateCard(card, book, prog);
         return card;
     }
 
@@ -503,6 +506,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const p = document.createElement('p');
             p.style.cssText = 'grid-column: 1/-1; text-align: center; color: var(--text-muted);';
             p.textContent = 'Nessun libro trovato.';
+            catalogContainer.replaceChildren(p);
+            return;
+        }
+        if (window.VBReaderTools) books = window.VBReaderTools.arrange(books, progressMap);
+        if (!books.length) {
+            const p = document.createElement('p');
+            p.style.cssText = 'grid-column: 1/-1; text-align: center; color: var(--text-muted);';
+            p.textContent = 'Nessun libro in questo scaffale.';
             catalogContainer.replaceChildren(p);
             return;
         }
@@ -581,7 +592,6 @@ document.addEventListener('DOMContentLoaded', () => {
         applyTheme(currentTheme);
         currentLocation = null;
         currentPct = 0;
-        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
         loadBookmarks();
 
         const savedProgress = await getSavedProgress(book.id);
@@ -611,7 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
         epubBook = null;
         pdfDoc = null;
         currentBookId = null;
-        if (bookmarksPanel) bookmarksPanel.style.display = 'none';
+        document.dispatchEvent(new CustomEvent('reader:close'));
         // Refresh progress bars / continue shelf after reading (give the debounced save time to land)
         setTimeout(async () => {
             await loadProgressMap();
@@ -662,13 +672,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderBookmarks() {
-        if (bookmarksToggleBtn) bookmarksToggleBtn.textContent = bookmarks.length ? `Segnalibri (${bookmarks.length})` : 'Segnalibri';
         if (!bookmarksPanel) return;
         bookmarksPanel.replaceChildren();
         if (!bookmarks.length) {
             const empty = document.createElement('div');
             empty.style.cssText = 'font-size:0.8rem; color:var(--text-muted); padding:0.3rem;';
-            empty.textContent = 'Nessun segnalibro. Usa "+ Segnalibro" per salvare la posizione attuale.';
+            empty.textContent = 'Nessun segnalibro. Usa l\'icona del segnalibro in alto per salvare la posizione attuale.';
             bookmarksPanel.appendChild(empty);
             return;
         }
@@ -724,10 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (addBookmarkBtn) addBookmarkBtn.addEventListener('click', addBookmark);
-    if (bookmarksToggleBtn && bookmarksPanel) {
-        bookmarksToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); openPanel('bookmarks'); });
-        bookmarksPanel.addEventListener('click', (e) => e.stopPropagation());
-    }
+    if (bookmarksPanel) bookmarksPanel.addEventListener('click', (e) => e.stopPropagation());
 
     const FLIP_MS = 700;
     function paintFlipButtons() { document.querySelectorAll('[data-flip]').forEach((b) => b.classList.toggle('on', b.dataset.flip === flipMode)); }
@@ -857,6 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             await epubRendition.display(savedCfi || undefined);
+            document.dispatchEvent(new CustomEvent('reader:ready'));
 
             epubBook.ready.then(() => {
                 return epubBook.locations.generate(1024);
@@ -889,6 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentPct = percentage;
                 updateProgressLine(percentage);
                 saveProgress(currentBookId, cfi, percentage);
+                document.dispatchEvent(new CustomEvent('reader:page'));
             });
 
         } catch (err) {
@@ -922,6 +930,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pageJumpInput.max = pdfTotalPages;
 
             renderPdfPage(pdfCurrentPage);
+            document.dispatchEvent(new CustomEvent('reader:ready'));
         } catch (err) {
             console.error(err);
         }
@@ -968,6 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPct = percentage;
         updateProgressLine(percentage);
         saveProgress(currentBookId, pageNum.toString(), percentage);
+        document.dispatchEvent(new CustomEvent('reader:page'));
     }
 
     // ---- Text size / zoom, one or two pages ---------------------------------------
@@ -1075,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 color: ${style.color} !important;
                 background-color: transparent !important;
             }
-        `;
+        ` + (window.VBReaderTools ? window.VBReaderTools.extraCss() : '');
     }
 
     async function saveUserTheme(theme) {
@@ -1128,6 +1138,30 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {}
         }, 1500);
     }
+
+    // What the library tools (js/reader-tools.js: index, search, notes, text options, shelves, statistics) may use
+    window.VBReaderCtx = {
+        get bookId() { return currentBookId; },
+        get format() { return currentFormat; },
+        get rendition() { return epubRendition; },
+        get epubBook() { return epubBook; },
+        get pdfDoc() { return pdfDoc; },
+        get pdfPages() { return pdfTotalPages; },
+        get location() { return currentLocation; },
+        get pct() { return currentPct; },
+        get page() { return currentFormat === 'pdf' ? pdfCurrentPage : epubCurrentPage; },
+        get books() { return catalogBooks; },
+        get progress() { return progressMap; },
+        goEpub: (target) => (epubRendition ? epubRendition.display(target) : null),
+        goPdf: (n) => { if (pdfDoc && n >= 1 && n <= pdfTotalPages) renderPdfPage(n); },
+        closeMenu: closePanels,
+        toast,
+        relayout: () => { const here = currentLocation; try { epubRendition.resize(); } catch (e) { /* not ready */ } if (here && epubRendition) epubRendition.display(here); },
+        reapplyTheme: () => applyTheme(currentTheme),
+        refreshCatalog: () => { renderCatalog(catalogBooks); renderContinueShelf(searchInput && searchInput.value.trim() ? [] : catalogBooks); },
+        reloadCatalog: () => loadCatalog(searchInput ? searchInput.value.trim() : ''),
+        openBook,
+    };
 
     function escapeHTML(str) {
         return String(str)

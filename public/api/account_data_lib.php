@@ -4,7 +4,7 @@
 //
 // Erasure rules (kept in step with the privacy page):
 //  - chat, guestbook and private messages written or received by the account are deleted (both sides of a conversation);
-//  - progress, bookmarks, notifications, push subscriptions, quizzes, scores, share links and class membership are deleted;
+//  - progress, bookmarks, highlights and notes, book labels, reading log, notifications, push subscriptions, quizzes, scores, share links and class membership are deleted;
 //  - class material the person made (notes, files, calendar entries, documents): deleted when $deleteMaterials, otherwise it
 //    stays in the class with no author (author_id 0, which the pages show as nobody);
 //  - the library keeps the books (shared content) without the uploader's name;
@@ -55,6 +55,9 @@ function accountExport(PDO $db, int $userId): array {
         'blocked_users' => $all('SELECT a.username, b.created_at FROM dm_blocks b LEFT JOIN accounts a ON a.id = b.blocked_id WHERE b.blocker_id = :i', $u),
         'poker_stats' => $all('SELECT hands_played, hands_won, chips_won, biggest_pot, updated_at FROM poker_stats WHERE user_id = :i', $u),
         'reading_progress' => $all('SELECT b.title, p.cfi_or_page, p.percentage, p.updated_at FROM reading_progress p LEFT JOIN books b ON b.id = p.book_id WHERE p.user_id = :i', $u),
+        'book_highlights_and_notes' => $all('SELECT b.title, h.kind, h.text, h.note, h.color, h.location, h.created_at FROM book_highlights h LEFT JOIN books b ON b.id = h.book_id WHERE h.user_id = :i', $u),
+        'book_labels' => $all('SELECT b.title, t.tag FROM book_tags t LEFT JOIN books b ON b.id = t.book_id WHERE t.user_id = :i', $u),
+        'reading_log' => $all('SELECT day, seconds, pages FROM reading_log WHERE user_id = :i ORDER BY day', $u),
         'bookmarks' => $all('SELECT b.title, k.location, k.label, k.percentage, k.created_at FROM bookmarks k LEFT JOIN books b ON b.id = k.book_id WHERE k.user_id = :i', $u),
         'classes' => $all('SELECT c.name, c.school, m.joined_at, m.display_name, m.perms, m.settings FROM class_members m JOIN school_classes c ON c.id = m.class_id WHERE m.user_id = :i', $u),
         'class_notes' => $all('SELECT i.id, c.name AS class, i.kind, i.lesson_date, i.title, i.body, i.created_at FROM class_items i JOIN school_classes c ON c.id = i.class_id WHERE i.author_id = :i', $u),
@@ -97,7 +100,7 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
         $run('DELETE FROM poker_stats WHERE user_id = :i', $u);
         $run("UPDATE poker_tables SET creator_username = 'deleted' WHERE creator_username = :n", [':n' => $username]);
         $run("UPDATE books SET uploaded_by = 'deleted' WHERE uploaded_by = :n", [':n' => $username]);
-        foreach (['reading_progress', 'bookmarks', 'read_progress', 'notifications', 'push_subscriptions', 'review_cards', 'custom_quizzes',
+        foreach (['reading_progress', 'bookmarks', 'book_highlights', 'book_tags', 'reading_log', 'read_progress', 'notifications', 'push_subscriptions', 'review_cards', 'custom_quizzes',
                   'quiz_answers', 'quiz_seen', 'score_events', 'game_scores', 'class_log', 'share_links', 'class_members'] as $t) {
             $run("DELETE FROM $t WHERE user_id = :i", $u);
         }

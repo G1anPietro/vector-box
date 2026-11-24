@@ -1,0 +1,518 @@
+// public/js/reader-tools.js
+// Extras of the library and the book reader, loaded before js/reader.js (which gives them window.VBReaderCtx):
+//  - the book menu: tabs Indice (table of contents), Cerca (search in the book), Note (bookmarks, highlights, notes), Testo
+//  - text options for EPUBs: font, line spacing, margins, alignment
+//  - highlights on a selection (EPUB) and notes on a page (EPUB and PDF), exported as Markdown
+//  - the library: filter by shelf (labels), sort, "Continue reading" decorations, reading statistics, tidy titles
+// User text (titles, notes, labels) is always put in with textContent.
+(() => {
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    const ctx = () => window.VBReaderCtx;
+    const pref = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
+    const setPref = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* private mode */ } };
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+    const post = async (url, body) => {
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        return r.json().catch(() => ({ success: false }));
+    };
+    const getJson = async (url) => { try { return await (await fetch(url)).json(); } catch (e) { return { success: false }; } };
+    const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+    // ------------------------------------------------------------------ text options (EPUB) ---
+    const FONTS = { book: '', serif: 'Georgia, "Times New Roman", serif', sans: 'system-ui, "Segoe UI", Roboto, Arial, sans-serif', easy: 'Verdana, Tahoma, "DejaVu Sans", sans-serif' };
+    // side margins = padding of the page area (the EPUB layout keeps its own 20px inside it and forces them on the body)
+const MARGINS = { normal: 0, wide: 24, xwide: 48 };
+    const text = (() => {
+        let saved = {};
+        try { saved = JSON.parse(pref('vector_reader_text', '{}')) || {}; } catch (e) { saved = {}; }
+        return {
+            font: FONTS[saved.font] !== undefined ? saved.font : 'book',
+            lh: Math.min(2.2, Math.max(1.2, Number(saved.lh) || 1.5)),
+            margin: MARGINS[saved.margin] !== undefined ? saved.margin : 'normal',
+            justify: saved.justify === 'justify' ? 'justify' : 'left',
+            lhSet: saved.lh !== undefined,       // line spacing is only forced once the reader touched it
+        };
+    })();
+    const saveText = () => setPref('vector_reader_text', JSON.stringify({ font: text.font, lh: text.lhSet ? text.lh : undefined, margin: text.margin, justify: text.justify }));
+
+    /** CSS added to every EPUB page (reader.js appends it to its theme style). Only what the reader changed is forced. */
+    function extraCss() {
+        const rules = [];
+        if (FONTS[text.font]) rules.push(`html, body, p, span, div, li, blockquote { font-family: ${FONTS[text.font]} !important; }`);
+        if (text.lhSet) rules.push(`p, li, blockquote, div { line-height: ${text.lh} !important; }`);
+        if (text.justify === 'justify') rules.push('p, li, blockquote { text-align: justify !important; hyphens: auto; }');
+        return rules.join('\n');
+    }
+
+    function paintText() {
+        document.querySelectorAll('[data-font]').forEach((b) => b.classList.toggle('on', b.dataset.font === text.font));
+        document.querySelectorAll('[data-margin]').forEach((b) => b.classList.toggle('on', b.dataset.margin === text.margin));
+        document.querySelectorAll('[data-justify]').forEach((b) => b.classList.toggle('on', b.dataset.justify === text.justify));
+        const lab = $('lh-label');
+        if (lab) lab.textContent = text.lhSet ? String(text.lh.toFixed(1)).replace('.', ',') : 'Auto';
+        const pdf = ctx() && ctx().format === 'pdf';
+        document.querySelectorAll('.epub-only').forEach((r) => { r.hidden = !!pdf; });
+    }
+    function applyMargins() {
+        const stage = $('epub-stage');
+        if (stage) { const m = MARGINS[text.margin] || 0; stage.style.paddingLeft = stage.style.paddingRight = m + 'px'; stage.style.boxSizing = 'border-box'; }
+    }
+    function applyText() {
+        saveText();
+        paintText();
+        applyMargins();
+        const c = ctx();
+        if (c && c.rendition) {
+            c.reapplyTheme();
+            setTimeout(() => c.relayout(), 80);   // the pages are laid out again
+        }
+    }
+    function bindText() {
+        document.querySelectorAll('[data-font]').forEach((b) => b.addEventListener('click', () => { text.font = b.dataset.font; applyText(); }));
+        document.querySelectorAll('[data-margin]').forEach((b) => b.addEventListener('click', () => { text.margin = b.dataset.margin; applyText(); }));
+        document.querySelectorAll('[data-justify]').forEach((b) => b.addEventListener('click', () => { text.justify = b.dataset.justify; applyText(); }));
+        const step = (d) => { text.lh = Math.round(Math.min(2.2, Math.max(1.2, text.lh + d)) * 10) / 10; text.lhSet = true; applyText(); };
+        if ($('lh-down-btn')) $('lh-down-btn').addEventListener('click', () => step(-0.1));
+        if ($('lh-up-btn')) $('lh-up-btn').addEventListener('click', () => step(0.1));
+        paintText();
+    }
+
+    // ---------------------------------------------------------------------------- menu tabs ---
+    function showTab(name) {
+        setPref('vector_reader_tab', name);
+        document.querySelectorAll('.menu-tab-btn').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+        document.querySelectorAll('.menu-tab').forEach((t) => { t.hidden = t.id !== 'tab-' + name; });
+        if (name === 'search') { const i = $('inbook-search-input'); if (i && matchMedia('(hover: hover)').matches) i.focus(); }
+        if (name === 'notes') loadHighlights();
+    }
+    function bindTabs() {
+        document.querySelectorAll('.menu-tab-btn').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); showTab(b.dataset.tab); }));
+        const last = pref('vector_reader_tab', 'toc');
+        showTab(['toc', 'search', 'notes', 'text'].includes(last) ? last : 'toc');
+        document.addEventListener('reader:menu', (e) => { if (e.detail.open) { paintText(); loadHighlights(); } });
+    }
+
+    // ---------------------------------------------------------------------------------- index ---
+    let tocFor = null;
+    async function buildToc() {
+        const c = ctx(), box = $('toc-list');
+        if (!box) return;
+        box.replaceChildren(el('p', 'set-hint', 'Carico l’indice…'));
+        const items = [];
+        try {
+            if (c.format === 'epub' && c.epubBook) {
+                const nav = await c.epubBook.loaded.navigation;
+                const walk = (list, depth) => (list || []).forEach((t) => { items.push({ label: (t.label || '').trim(), depth, go: () => c.goEpub(t.href) }); walk(t.subitems, depth + 1); });
+                walk(nav.toc, 0);
+            } else if (c.format === 'pdf' && c.pdfDoc) {
+                const outline = await c.pdfDoc.getOutline();
+                const walk = async (list, depth) => {
+                    for (const o of list || []) {
+                        let page = null;
+                        try {
+                            const dest = typeof o.dest === 'string' ? await c.pdfDoc.getDestination(o.dest) : o.dest;
+                            if (dest) page = (await c.pdfDoc.getPageIndex(dest[0])) + 1;
+                        } catch (e) { /* a broken entry */ }
+                        if (page) items.push({ label: (o.title || '').trim(), depth, go: () => c.goPdf(page), page });
+                        await walk(o.items, depth + 1);
+                    }
+                };
+                await walk(outline, 0);
+            }
+        } catch (e) { /* no index */ }
+        tocFor = c.bookId;
+        if (!items.length) { box.replaceChildren(el('p', 'set-hint', 'Questo libro non ha un indice.')); return; }
+        box.replaceChildren(...items.slice(0, 600).map((it) => {
+            const b = el('button', 'toc-item', it.label || '—');
+            b.type = 'button';
+            b.style.paddingLeft = (0.6 + Math.min(it.depth, 4) * 0.9) + 'rem';
+            if (it.page) b.append(el('span', 'toc-page', String(it.page)));
+            b.addEventListener('click', () => { it.go(); c.closeMenu(); });
+            return b;
+        }));
+    }
+
+    // ------------------------------------------------------------------------ search in book ---
+    let searchToken = 0;
+    const pdfText = new Map();   // page -> text, per open book
+    async function searchBook(q) {
+        const c = ctx(), out = $('inbook-search-results'), status = $('inbook-search-status');
+        const my = ++searchToken;
+        out.replaceChildren();
+        q = q.trim();
+        if (q.length < 2) { status.textContent = 'Scrivi almeno 2 lettere.'; return; }
+        status.textContent = 'Cerco…';
+        const results = [];
+        const add = (r) => { results.push(r); if (results.length <= 100) out.append(resultRow(r)); };
+        try {
+            if (c.format === 'epub' && c.epubBook) {
+                const spine = c.epubBook.spine.spineItems;
+                for (let i = 0; i < spine.length && results.length < 100; i++) {
+                    if (my !== searchToken) return;
+                    const item = spine[i];
+                    status.textContent = `Cerco… (${i + 1}/${spine.length})`;
+                    try {
+                        await item.load(c.epubBook.load.bind(c.epubBook));
+                        (item.find(q) || []).slice(0, 20).forEach((m) => add({ excerpt: m.excerpt, go: () => c.goEpub(m.cfi) }));
+                    } finally { item.unload(); }
+                }
+            } else if (c.format === 'pdf' && c.pdfDoc) {
+                const low = q.toLowerCase();
+                for (let p = 1; p <= c.pdfPages && results.length < 100; p++) {
+                    if (my !== searchToken) return;
+                    if (p % 5 === 0) status.textContent = `Cerco… (pagina ${p}/${c.pdfPages})`;
+                    let t = pdfText.get(p);
+                    if (t === undefined) {
+                        const content = await (await c.pdfDoc.getPage(p)).getTextContent();
+                        t = content.items.map((it) => it.str).join(' ').replace(/\s+/g, ' ');
+                        pdfText.set(p, t);
+                    }
+                    let from = 0, at;
+                    while ((at = t.toLowerCase().indexOf(low, from)) !== -1 && results.length < 100) {
+                        add({ excerpt: '…' + t.slice(Math.max(0, at - 40), at + q.length + 60) + '…', page: p, go: () => c.goPdf(p) });
+                        from = at + q.length;
+                        if (from - at > 0 && results.filter((r) => r.page === p).length >= 5) break;
+                    }
+                }
+            }
+        } catch (e) { /* a broken chapter: keep what was found */ }
+        if (my !== searchToken) return;
+        status.textContent = results.length ? `${results.length >= 100 ? 'Più di 100' : results.length} risultati.` : 'Nessun risultato.';
+    }
+    function resultRow(r) {
+        const li = el('li');
+        const b = el('button', 'result-item');
+        b.type = 'button';
+        b.textContent = String(r.excerpt || '').replace(/\s+/g, ' ').trim();
+        if (r.page) b.append(el('span', 'toc-page', 'p. ' + r.page));
+        b.addEventListener('click', () => { r.go(); ctx().closeMenu(); });
+        li.append(b);
+        return li;
+    }
+
+    // -------------------------------------------------------------------- highlights and notes ---
+    let items = [];              // this book's highlights and notes
+    let shown = new Set();       // highlight ids already drawn on the EPUB
+    const COLORS = { yellow: '#ffd23f', green: '#5ad17a', blue: '#5aa9ff', pink: '#ff7fb0' };
+    async function loadHighlights() {
+        const c = ctx();
+        if (!c || !c.bookId) { renderHighlights(); return; }
+        const data = await getJson(`../api/highlights.php?book_id=${encodeURIComponent(c.bookId)}`);
+        if (c.bookId && data.success) { items = data.items; drawHighlights(); }
+        renderHighlights();
+    }
+    function drawHighlights() {
+        const c = ctx();
+        if (!c || !c.rendition || c.format !== 'epub') return;
+        items.filter((h) => h.kind === 'hl' && !shown.has(h.id)).forEach((h) => {
+            try {
+                c.rendition.annotations.highlight(h.location, { id: h.id }, () => { showTab('notes'); if ($('settings-panel').hidden) $('settings-btn').click(); }, 'vr-hl', { fill: COLORS[h.color] || COLORS.yellow, 'fill-opacity': '0.4', 'mix-blend-mode': 'multiply' });
+                shown.add(h.id);
+            } catch (e) { /* a location that does not exist in this layout */ }
+        });
+    }
+    function undraw(h) {
+        const c = ctx();
+        if (c && c.rendition && h.kind === 'hl') { try { c.rendition.annotations.remove(h.location, 'highlight'); } catch (e) { /* gone */ } }
+        shown.delete(h.id);
+    }
+    function renderHighlights() {
+        const box = $('highlights-list'), exp = $('export-notes-btn'), c = ctx();
+        if (!box) return;
+        if (exp) { exp.hidden = !items.length; if (c && c.bookId) exp.href = `../api/highlights.php?book_id=${encodeURIComponent(c.bookId)}&export=1`; }
+        const hint = $('hl-hint'); if (hint) hint.hidden = !(c && c.format === 'epub');
+        if (!items.length) { box.replaceChildren(el('p', 'set-hint', 'Ancora niente. Seleziona un pezzo di testo per evidenziarlo, oppure scrivi una nota.')); return; }
+        box.replaceChildren(...items.map((h) => {
+            const row = el('div', 'hl-item');
+            row.style.borderLeftColor = COLORS[h.color] || COLORS.yellow;
+            if (h.kind === 'hl') row.append(el('blockquote', 'hl-text', h.text));
+            const note = el('div', 'hl-note', h.note || (h.kind === 'note' ? '' : ''));
+            if (h.note) row.append(note);
+            const bar = el('div', 'hl-bar');
+            bar.append(el('span', 'hl-pct', `${Math.round(h.percentage)}%`));
+            const go = el('button', 'btn small-btn', 'Vai'); go.type = 'button';
+            go.addEventListener('click', () => { if (c.format === 'epub') c.goEpub(h.location); else c.goPdf(parseInt(h.location, 10)); c.closeMenu(); });
+            const edit = el('button', 'btn small-btn', h.note ? 'Modifica nota' : 'Aggiungi nota'); edit.type = 'button';
+            edit.addEventListener('click', async () => {
+                const v = prompt('Nota', h.note || '');
+                if (v === null) return;
+                if (h.kind === 'note' && !v.trim()) return;
+                if ((await post('../api/highlights.php', { action: 'update', id: h.id, note: v })).success) { h.note = v.trim(); renderHighlights(); }
+            });
+            const del = el('button', 'btn small-btn', 'Elimina'); del.type = 'button';
+            del.addEventListener('click', async () => {
+                if (!confirm(h.kind === 'hl' ? 'Togliere questa evidenziazione?' : 'Eliminare questa nota?')) return;
+                if ((await post('../api/highlights.php', { action: 'delete', id: h.id })).success) { undraw(h); items = items.filter((x) => x.id !== h.id); renderHighlights(); }
+            });
+            bar.append(go, edit, del);
+            row.append(bar);
+            return row;
+        }));
+    }
+    async function saveHighlight(body) {
+        const c = ctx();
+        const data = await post('../api/highlights.php', { action: 'add', book_id: c.bookId, percentage: c.pct, ...body });
+        if (!data.success) { c.toast(data.error || 'Non sono riuscito a salvare.'); return false; }
+        await loadHighlights();
+        return true;
+    }
+    async function addPageNote() {
+        const c = ctx();
+        if (!c || !c.bookId || !c.location) { c.toast('Aspetta che la pagina sia caricata.'); return; }
+        const note = prompt(`Nota a pagina ${c.page}`, '');
+        if (!note || !note.trim()) return;
+        if (await saveHighlight({ kind: 'note', location: String(c.location), note: note.trim() })) c.toast('Nota salvata.');
+    }
+
+    // selection bar (EPUB): choose a colour to highlight, or add a note to the passage
+    let pendingSel = null;
+    function hideSelBar() { const b = $('sel-bar'); if (b) b.hidden = true; pendingSel = null; }
+    function bindSelection() {
+        const bar = $('sel-bar');
+        if (!bar) return;
+        bar.querySelectorAll('.sel-color').forEach((b) => b.addEventListener('click', async () => {
+            if (!pendingSel) return;
+            const s = pendingSel; hideSelBar();
+            if (await saveHighlight({ kind: 'hl', location: s.cfi, text: s.text, color: b.dataset.color })) ctx().toast('Evidenziato.');
+        }));
+        $('sel-note-btn').addEventListener('click', async () => {
+            if (!pendingSel) return;
+            const s = pendingSel;
+            const note = prompt('Nota su questo passo', '');
+            hideSelBar();
+            if (note === null) return;
+            if (await saveHighlight({ kind: 'hl', location: s.cfi, text: s.text, note: note.trim(), color: 'yellow' })) ctx().toast('Evidenziato con nota.');
+        });
+        $('sel-cancel-btn').addEventListener('click', () => { hideSelBar(); try { ctx().rendition.getContents().forEach((x) => x.window.getSelection().removeAllRanges()); } catch (e) { /* none */ } });
+    }
+    function hookSelection() {
+        const c = ctx();
+        if (!c || !c.rendition || c.format !== 'epub') return;
+        c.rendition.on('selected', (cfiRange, contents) => {
+            const t = String(contents.window.getSelection() || '').trim();
+            if (!t) { hideSelBar(); return; }
+            pendingSel = { cfi: cfiRange, text: t.slice(0, 600) };
+            $('sel-bar').hidden = false;
+        });
+        c.rendition.on('relocated', () => { hideSelBar(); });
+    }
+
+    // ---------------------------------------------------------------------- reading statistics ---
+    let sec = 0, pages = 0, tick = null, lastActive = 0, skipPage = false;
+    function startClock() {
+        stopClock(false);
+        sec = 0; pages = 0; skipPage = true;   // opening the book shows a page: it is not a turn
+        tick = setInterval(() => {
+            const c = ctx();
+            const reading = c && c.bookId && !document.hidden && document.hasFocus() !== false && Date.now() - lastActive < 120000;   // two minutes without touching anything: not reading
+            if (reading) sec++;
+            if (sec >= 60) flush();
+        }, 1000);
+        lastActive = Date.now();
+    }
+    function flush() {
+        if (!sec && !pages) return;
+        const body = { seconds: sec, pages, day: today() };
+        sec = 0; pages = 0;
+        fetch('../api/reading_stats.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: true }).catch(() => { /* offline: this minute is lost */ });
+    }
+    function stopClock(send = true) { clearInterval(tick); tick = null; if (send) flush(); }
+    ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach((t) => document.addEventListener(t, () => { lastActive = Date.now(); }, { passive: true, capture: true }));
+    document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
+    window.addEventListener('pagehide', flush);
+
+    async function renderStats() {
+        const body = $('stats-body');
+        if (!body) return;
+        const d = await getJson(`../api/reading_stats.php?today=${today()}`);
+        if (!d.success) { body.textContent = 'Non riesco a caricare le statistiche.'; return; }
+        const mins = (s) => Math.round(s / 60);
+        const fmt = (s) => (s > 0 && s < 60 ? 'meno di 1 min' : mins(s) + ' min');
+        const goal = Math.max(0, parseInt(pref('vector_reader_goal', '0'), 10) || 0);
+        const week = mins(d.week.seconds);
+        const bars = el('div', 'stat-bars');
+        const byDay = new Map(d.days.map((x) => [x.day, x]));
+        let max = 1;
+        const last7 = [];
+        for (let i = 6; i >= 0; i--) {
+            const dt = new Date(); dt.setDate(dt.getDate() - i);
+            const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+            const x = byDay.get(key) || { seconds: 0, pages: 0 };
+            last7.push([dt, x]); max = Math.max(max, x.seconds);
+        }
+        last7.forEach(([dt, x]) => {
+            const col = el('div', 'stat-col');
+            const bar = el('div', 'stat-bar'); bar.style.height = Math.max(3, Math.round(x.seconds / max * 70)) + 'px';
+            bar.title = `${fmt(x.seconds)}, ${x.pages} pagine`;
+            col.append(el('span', 'stat-min', x.seconds ? (x.seconds < 60 ? '<1' : String(mins(x.seconds))) : ''), bar, el('span', 'stat-day', dt.toLocaleDateString('it-IT', { weekday: 'short' }).slice(0, 2)));
+            bars.append(col);
+        });
+        const facts = el('ul', 'stat-facts');
+        [[fmt(d.week.seconds), 'questa settimana'], [`${d.week.pages}`, 'pagine questa settimana'], [fmt(d.month.seconds), 'negli ultimi 30 giorni'], [`${d.streak}`, d.streak === 1 ? 'giorno di fila' : 'giorni di fila']].forEach(([n, l]) => {
+            const li = el('li'); li.append(el('b', '', n), document.createTextNode(' ' + l)); facts.append(li);
+        });
+        const goalRow = el('div', 'goal-row');
+        const label = el('label', '', 'Obiettivo settimanale (minuti) ');
+        const inp = el('input', 'input-text goal-input'); inp.type = 'number'; inp.min = '0'; inp.max = '5000'; inp.value = goal || ''; inp.placeholder = 'es. 120';
+        inp.addEventListener('change', () => { setPref('vector_reader_goal', Math.max(0, Math.min(5000, parseInt(inp.value, 10) || 0))); renderStats(); });
+        label.append(inp); goalRow.append(label);
+        const parts = [bars, facts, goalRow];
+        if (goal) {
+            const track = el('div', 'goal-track'); const fill = el('div', 'goal-fill'); fill.style.width = Math.min(100, Math.round(week / goal * 100)) + '%'; track.append(fill);
+            parts.push(track, el('p', 'set-hint', week >= goal ? 'Obiettivo raggiunto, bravo!' : `Ti mancano ${goal - week} minuti.`));
+        }
+        body.replaceChildren(...parts);
+    }
+
+    // ------------------------------------------------------------------------- library shelves ---
+    let tagsByBook = {}, allTags = [];
+    let filter = pref('vector_reader_filter', 'all');
+    let sort = pref('vector_reader_sort', 'recent');
+    async function loadTags() {
+        const d = await getJson('../api/book_tags.php');
+        if (d.success) { tagsByBook = d.tags || {}; allTags = d.all || []; }
+        if (filter.startsWith('tag:') && !allTags.includes(filter.slice(4))) filter = 'all';
+        paintFilters();
+    }
+    function paintFilters() {
+        const box = $('shelf-filters');
+        if (!box) return;
+        const defs = [['all', 'Tutti'], ['reading', 'In corso'], ['new', 'Da iniziare'], ['done', 'Finiti'], ...allTags.map((t) => ['tag:' + t, '🏷 ' + t])];
+        box.replaceChildren(...defs.map(([k, label]) => {
+            const b = el('button', 'chip-btn', label); b.type = 'button'; b.setAttribute('aria-pressed', String(filter === k));
+            b.addEventListener('click', () => { filter = k; setPref('vector_reader_filter', k); paintFilters(); ctx().refreshCatalog(); });
+            return b;
+        }));
+    }
+    /** The books to show: filtered by shelf and sorted. `prog` is reader.js's map book_id -> {percentage, updated_at}. */
+    function arrange(books, prog) {
+        const pct = (b) => (prog.get(Number(b.id)) || {}).percentage || 0;
+        const when = (b) => String((prog.get(Number(b.id)) || {}).updated_at || '');
+        let out = books.filter((b) => {
+            const p = pct(b);
+            if (filter === 'reading') return p > 0 && p < 99;
+            if (filter === 'new') return !(p > 0);
+            if (filter === 'done') return p >= 99;
+            if (filter.startsWith('tag:')) return (tagsByBook[b.id] || []).includes(filter.slice(4));
+            return true;
+        });
+        const coll = new Intl.Collator('it', { sensitivity: 'base', numeric: true });
+        out = out.slice();
+        if (sort === 'title') out.sort((a, b) => coll.compare(a.title || '', b.title || ''));
+        else if (sort === 'author') out.sort((a, b) => coll.compare(a.author || '', b.author || '') || coll.compare(a.title || '', b.title || ''));
+        else if (sort === 'progress') out.sort((a, b) => pct(b) - pct(a));
+        else if (sort === 'read') out.sort((a, b) => when(b).localeCompare(when(a)));
+        return out;                // 'recent' = the order of the list (newest upload first)
+    }
+    /** On every card: a clear "finished" / "% read" mark, the date of the last reading and the labels with an edit button. */
+    function decorateCard(card, book, prog) {
+        const cover = card.querySelector('.book-cover');
+        const pct = prog && prog.percentage > 0 ? Math.round(prog.percentage) : 0;
+        if (pct >= 99 && cover) cover.append(el('span', 'ribbon-done', 'Finito ✓'));
+        else if (pct > 0 && cover) cover.append(el('span', 'ribbon-pct', pct + '%'));
+        const info = card.querySelector('.book-info');
+        if (!info) return;
+        if (prog && prog.updated_at && pct > 0 && pct < 99) {
+            const d = new Date(String(prog.updated_at).replace(' ', 'T') + (String(prog.updated_at).includes('Z') ? '' : 'Z'));
+            if (!isNaN(d)) info.append(el('div', 'book-when', 'Letto ' + d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })));
+        }
+        const tags = tagsByBook[book.id] || [];
+        const row = el('div', 'book-tags');
+        tags.forEach((t) => { const c = el('button', 'tag-chip', t); c.type = 'button'; c.addEventListener('click', () => { filter = 'tag:' + t; setPref('vector_reader_filter', filter); paintFilters(); ctx().refreshCatalog(); }); row.append(c); });
+        const add = el('button', 'tag-add', tags.length ? '✎' : '+ etichetta'); add.type = 'button'; add.title = 'Etichette (scaffali) di questo libro'; add.setAttribute('aria-label', 'Modifica le etichette di ' + (book.title || 'questo libro'));
+        add.addEventListener('click', (e) => { e.stopPropagation(); openTagDialog(book); });
+        row.append(add);
+        info.append(row);
+    }
+    function openTagDialog(book) {
+        const dlg = $('tag-dialog'), input = $('tag-input');
+        $('tag-dialog-book').textContent = book.title || '';
+        input.value = (tagsByBook[book.id] || []).join(', ');
+        const sug = $('tag-suggest');
+        sug.replaceChildren(...allTags.map((t) => { const b = el('button', 'chip-btn', t); b.type = 'button'; b.addEventListener('click', () => { const cur = input.value.split(',').map((x) => x.trim()).filter(Boolean); if (!cur.some((x) => x.toLowerCase() === t.toLowerCase())) cur.push(t); input.value = cur.join(', '); }); return b; }));
+        dlg.hidden = false;
+        input.focus();
+        dlg.dataset.book = String(book.id);
+    }
+    function bindTagDialog() {
+        const dlg = $('tag-dialog');
+        if (!dlg) return;
+        const close = () => { dlg.hidden = true; };
+        $('tag-cancel').addEventListener('click', close);
+        dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !dlg.hidden) close(); });
+        $('tag-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = Number(dlg.dataset.book);
+            const d = await post('../api/book_tags.php', { book_id: id, tags: $('tag-input').value });
+            if (!d.success) { ctx().toast('Non sono riuscito a salvare le etichette.'); return; }
+            close();
+            await loadTags();
+            ctx().refreshCatalog();
+        });
+    }
+
+    // ------------------------------------------------------------------------------ tidy titles ---
+    function bindTidy() {
+        const btn = $('tidy-titles-btn'), panel = $('tidy-panel');
+        if (!btn || !panel) return;
+        btn.addEventListener('click', async () => {
+            const d = await post('../api/books.php?action=clean_titles', {});
+            if (!d.success) { ctx().toast('Non riesco a controllare i titoli.'); return; }
+            if (!d.changes.length) { panel.hidden = false; panel.replaceChildren(el('p', '', 'I titoli sono già in ordine.')); setTimeout(() => { panel.hidden = true; }, 3000); return; }
+            const list = el('ul', 'tidy-list');
+            d.changes.forEach((c) => {
+                const li = el('li');
+                li.append(el('s', '', c.title), document.createTextNode(' → '), el('b', '', c.new_title));
+                if (c.new_author !== c.author) li.append(el('span', 'set-hint', ` (autore: ${c.author} → ${c.new_author})`));
+                list.append(li);
+            });
+            const apply = el('button', 'btn btn-primary', `Applica (${d.changes.length})`); apply.type = 'button';
+            const cancel = el('button', 'btn', 'Annulla'); cancel.type = 'button';
+            cancel.addEventListener('click', () => { panel.hidden = true; });
+            apply.addEventListener('click', async () => {
+                const r = await post('../api/books.php?action=clean_titles', { apply: true });
+                panel.hidden = true;
+                if (r.success) { ctx().toast(`${r.changes.length} titoli sistemati.`); ctx().reloadCatalog(); }
+            });
+            const bar = el('div', 'tag-actions'); bar.append(cancel, apply);
+            panel.replaceChildren(el('h3', '', 'Titoli da sistemare'), list, bar);
+            panel.hidden = false;
+        });
+    }
+
+    // ------------------------------------------------------------------------------------- init ---
+    document.addEventListener('DOMContentLoaded', () => {
+        bindTabs();
+        bindText();
+        bindSelection();
+        bindTagDialog();
+        bindTidy();
+        if ($('add-note-btn')) $('add-note-btn').addEventListener('click', addPageNote);
+        if ($('inbook-search-form')) $('inbook-search-form').addEventListener('submit', (e) => { e.preventDefault(); searchBook($('inbook-search-input').value); });
+        const sel = $('shelf-sort');
+        if (sel) { if ([...sel.options].some((o) => o.value === sort)) sel.value = sort; else sort = 'recent'; sel.addEventListener('change', () => { sort = sel.value; setPref('vector_reader_sort', sort); ctx().refreshCatalog(); }); }
+        const stats = $('stats-section');
+        if (stats) stats.addEventListener('toggle', () => { if (stats.open) renderStats(); });
+        paintFilters();
+    });
+
+    document.addEventListener('reader:ready', () => {
+        const c = ctx();
+        items = []; shown = new Set(); pdfText.clear(); tocFor = null;
+        paintText();
+        applyMargins();
+        $('toc-list').replaceChildren();
+        buildToc();
+        $('inbook-search-results').replaceChildren(); $('inbook-search-status').textContent = '';
+        hookSelection();
+        loadHighlights();
+        startClock();
+        if (c && c.format === 'epub') c.reapplyTheme();   // the saved text options reach the first page
+    });
+    document.addEventListener('reader:page', () => { if (skipPage) { skipPage = false; return; } pages++; lastActive = Date.now(); });
+    document.addEventListener('reader:close', () => { stopClock(true); items = []; shown = new Set(); hideSelBar(); if ($('stats-section') && $('stats-section').open) setTimeout(renderStats, 2800); });
+
+    window.VBReaderTools = { extraCss, arrange, decorateCard, loadTags };
+})();

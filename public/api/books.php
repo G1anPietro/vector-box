@@ -3,6 +3,7 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/cover_lib.php';
 require_once __DIR__ . '/epub_meta.php';
+require_once __DIR__ . '/books_lib.php';
 
 initSession();
 header('Content-Type: application/json');
@@ -272,6 +273,31 @@ try {
         exit();
     }
 
+    // Tidy the titles and authors of the books already in the library (uploaders only): without {apply: true} it only lists the changes
+    if ($method === 'POST' && ($_GET['action'] ?? '') === 'clean_titles') {
+        requireCsrf();
+        if (!$canUpload) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'UPLOAD_PERMISSION_DENIED']);
+            exit();
+        }
+        $in = readJsonBody();
+        $changes = [];
+        foreach ($db->query('SELECT id, title, author FROM books ORDER BY id')->fetchAll() as $b) {
+            $nt = bookCleanTitle((string)$b['title'], (string)$b['author']);
+            $na = $b['author'] === 'Unknown' || $b['author'] === null ? $b['author'] : bookCleanAuthor((string)$b['author']);
+            if ($nt !== $b['title'] || $na !== $b['author']) $changes[] = ['id' => (int)$b['id'], 'title' => $b['title'], 'new_title' => $nt, 'author' => $b['author'], 'new_author' => $na];
+        }
+        if (!empty($in['apply'])) {
+            $db->exec('BEGIN IMMEDIATE');
+            $up = $db->prepare('UPDATE books SET title = :t, author = :a WHERE id = :id');
+            foreach ($changes as $c) $up->execute([':t' => textCut($c['new_title'], 200), ':a' => $c['new_author'], ':id' => $c['id']]);
+            $db->exec('COMMIT');
+        }
+        echo json_encode(['success' => true, 'applied' => !empty($in['apply']), 'changes' => $changes]);
+        exit();
+    }
+
     // UPLOAD BOOK
     if ($method === 'POST') {
         requireCsrf();
@@ -310,6 +336,27 @@ try {
         if (!$validMagic) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'INVALID_FILE_CONTENT']);
+            exit();
+        }
+
+        // The same file twice? (hash of the content; old books get their hash the first time they are compared)
+        $sha1 = (string)sha1_file($file['tmp_name']);
+        $dup = $db->prepare("SELECT id, title FROM books WHERE file_sha1 = :s LIMIT 1");
+        $dup->execute([':s' => $sha1]);
+        $same = $dup->fetch();
+        if (!$same) {
+            $cand = $db->prepare("SELECT id, title, file_path FROM books WHERE file_sha1 = '' AND file_size = :fs");
+            $cand->execute([':fs' => (int)filesize($file['tmp_name'])]);
+            foreach ($cand->fetchAll() as $c) {
+                if (!is_file($c['file_path'])) continue;
+                $h = (string)sha1_file($c['file_path']);
+                $db->prepare('UPDATE books SET file_sha1 = :h WHERE id = :id')->execute([':h' => $h, ':id' => $c['id']]);
+                if ($h === $sha1) { $same = $c; break; }
+            }
+        }
+        if ($same) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'error' => 'DUPLICATE', 'book_id' => (int)$same['id'], 'title' => $same['title']]);
             exit();
         }
 
@@ -353,8 +400,23 @@ try {
                 }
             }
 
-            $stmt = $db->prepare("INSERT INTO books (title, author, description, format, file_path, cover_path, file_size, uploaded_by, meta_checked)
-                                  VALUES (:t, :a, '', :f, :fp, :cp, :fs, :ub, 1)");
+            $title = textCut(bookCleanTitle($title, $author), 200);
+            $author = $author === 'Unknown' ? $author : textCut(bookCleanAuthor($author), 120);
+
+            // Same title, author and format as a book already there (another copy of the file)?
+            $key = bookNormKey($title . '|' . $author);
+            foreach ($db->query('SELECT id, title, author, format FROM books')->fetchAll() as $o) {
+                if ($o['format'] === $ext && bookNormKey($o['title'] . '|' . $o['author']) === $key) {
+                    @unlink($targetPath);
+                    if ($coverRelPath !== null) @unlink($coverDir . basename($coverRelPath));
+                    http_response_code(409);
+                    echo json_encode(['success' => false, 'error' => 'DUPLICATE', 'book_id' => (int)$o['id'], 'title' => $o['title']]);
+                    exit();
+                }
+            }
+
+            $stmt = $db->prepare("INSERT INTO books (title, author, description, format, file_path, cover_path, file_size, uploaded_by, meta_checked, file_sha1)
+                                  VALUES (:t, :a, '', :f, :fp, :cp, :fs, :ub, 1, :sh)");
             $stmt->execute([
                 ':t' => $title,
                 ':a' => $author,
@@ -362,7 +424,8 @@ try {
                 ':fp' => $targetPath,
                 ':cp' => $coverRelPath,
                 ':fs' => filesize($targetPath),
-                ':ub' => $username
+                ':ub' => $username,
+                ':sh' => $sha1,
             ]);
 
             echo json_encode(['success' => true, 'book_id' => $db->lastInsertId()]);

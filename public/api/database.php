@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 45;
+const DB_SCHEMA_VERSION = 46;
 
 /**
  * Session bootstrap.
@@ -586,6 +586,37 @@ function migrateV16(PDO $db): void {
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
 /** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
 /** v44: the arcade leaderboards (api/game_scores.php): ONE row per account, game and variant: its best score (or best time). */
+function migrateV46(PDO $db): void {
+    // Library: highlights and notes, labels ("shelves") per account, reading time per day, and a file hash to spot duplicates
+    $db->exec("CREATE TABLE IF NOT EXISTS book_highlights (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        book_id INTEGER NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'hl',
+        location TEXT NOT NULL,
+        text TEXT NOT NULL DEFAULT '',
+        note TEXT NOT NULL DEFAULT '',
+        color TEXT NOT NULL DEFAULT 'yellow',
+        percentage REAL NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_book_highlights ON book_highlights(user_id, book_id)');
+    $db->exec("CREATE TABLE IF NOT EXISTS book_tags (
+        user_id INTEGER NOT NULL,
+        book_id INTEGER NOT NULL,
+        tag TEXT NOT NULL,
+        PRIMARY KEY (user_id, book_id, tag)
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS reading_log (
+        user_id INTEGER NOT NULL,
+        day TEXT NOT NULL,
+        seconds INTEGER NOT NULL DEFAULT 0,
+        pages INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day)
+    )");
+    addColumnIfMissing($db, 'books', 'file_sha1', "TEXT NOT NULL DEFAULT ''");
+}
+
 function migrateV45(PDO $db): void {
     // Botola (quiz on the shared rooms): the whole match state as JSON, like cucu_games
     $db->exec("CREATE TABLE IF NOT EXISTS botola_games (
@@ -1169,6 +1200,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 45) {
             migrateV45($db);
+        }
+        if ($current < 46) {
+            migrateV46($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
