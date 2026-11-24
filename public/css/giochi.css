@@ -112,12 +112,21 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "Would you rather": a box split in two halves, amber and blue */
 .box.preferiresti { --lid: #14161d; --edge: #08090c; --ink: #f4f6fb; background: linear-gradient(135deg, rgba(255, 183, 3, 0.55) 0 50%, rgba(59, 108, 255, 0.6) 50% 100%), var(--lid); }
 .box.preferiresti .name { font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; color: #ffd166; font-size: 24px; }
+/* "Truth or dare": a purple card table with a gold rim and a spinning bottle */
+.box.obbligo { --lid: #2a1247; --edge: #130822; --ink: #fff4d6; background: radial-gradient(circle at 50% 0%, rgba(245, 197, 66, 0.28), rgba(0, 0, 0, 0) 60%), var(--lid); }
+.box.obbligo .name { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-style: italic; color: #f5c542; font-size: 34px; }
 /* "The bomb": industrial black and orange with hazard stripes */
 .box.bomba { --lid: #17130f; --edge: #070605; --ink: #ffe9d2; background: repeating-linear-gradient(135deg, rgba(255, 106, 0, 0.5) 0 14px, rgba(0, 0, 0, 0) 14px 28px), var(--lid); }
 .box.bomba .name { font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #ff8a1f; }
 /* "Undercover": grey-green case file with a red stamp */
 .box.undercover { --lid: #1a231e; --edge: #0a0f0c; --ink: #eef0e6; background: linear-gradient(180deg, #d4352d 0 8px, rgba(0, 0, 0, 0) 8px), var(--lid); }
+/* "Forbidden word": referee black and white stripes with a red card */
+.box.proibita { --lid: #101010; --edge: #040404; --ink: #ffffff; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.22) 0 12px, rgba(0, 0, 0, 0) 12px 24px), linear-gradient(180deg, rgba(212, 18, 31, 0.0) 60%, rgba(212, 18, 31, 0.7) 100%), var(--lid); }
+.box.proibita .name { font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; text-shadow: 2px 2px 0 #d4121f; }
 .box.undercover .name { font-family: "Courier New", Courier, monospace; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #b9d1bd; }
+/* "Mime": a red velvet curtain over a black stage */
+.box.mimo { --lid: #5e0b12; --edge: #1a0306; --ink: #f7ecd4; background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0 10px, rgba(0, 0, 0, 0) 10px 30px), var(--lid); }
+.box.mimo .name { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; color: #f2c14e; }
 /* "Guess what": midnight blue with a yellow lamp, typewriter type */
 .box.indovina { --lid: #0e1a40; --edge: #060c20; --ink: #f4f1e6; background: radial-gradient(circle at 78% 18%, rgba(255, 216, 74, 0.35) 0 14%, rgba(255, 216, 74, 0) 15%), var(--lid); }
 .box.indovina .name { font-family: "Courier New", Courier, monospace; font-weight: 800; letter-spacing: 0.02em; color: #ffd84a; }

@@ -43,11 +43,27 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'obbligo', 'href' => 'obbligo.html', 'icon' => '../assets/obbligo/icon.svg',
+        'name' => ['it' => 'Obbligo o verità', 'en' => 'Truth or dare'],
+        'line' => ['it' => 'Una carta, una bottiglia che gira: scegli verità o obbligo, gli altri votano se vale. Domande e sfide leggere, piccanti spente.',
+                   'en' => 'A card, a spinning bottle: pick truth or dare, the others vote whether it counts. Light questions and dares, spicy ones off.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'undercover', 'href' => 'undercover.html', 'icon' => '../assets/undercover/icon.svg',
         'name' => ['it' => 'Undercover', 'en' => 'Undercover'],
         'line' => ['it' => 'Una parola segreta a testa, ma una è diversa: un indizio a voce, un voto, e si scopre l’infiltrato. Attenti a Mr. White.',
                    'en' => 'A secret word each, but one is different: a spoken clue, a vote, and the infiltrator is found. Beware of Mr. White.'],
         'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
+        'group' => 'friends', 'look' => 'mimo', 'href' => 'mimo.html', 'icon' => '../assets/mimo/icon.svg',
+        'name' => ['it' => 'Mimo', 'en' => 'Mime'],
+        'line' => ['it' => 'Due squadre, un mimo alla volta: fai indovinare la parola solo con i gesti, prima che finisca il tempo.',
+                   'en' => 'Two teams, one mime at a time: make your team guess the word with gestures only, before the time runs out.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
@@ -57,6 +73,14 @@ $GAMES = [
                    'en' => 'A hidden fuse and a category: say an answer and pass the bomb. Whoever holds it when it blows loses a life.'],
         'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
+        'group' => 'friends', 'look' => 'proibita', 'href' => 'proibita.html', 'icon' => '../assets/proibita/icon.svg',
+        'name' => ['it' => 'Parola proibita', 'en' => 'Forbidden word'],
+        'line' => ['it' => 'Fai indovinare la parola alla tua squadra senza dire le cinque vietate: il guardiano avversario preme BUZZ.',
+                   'en' => 'Make your team guess the word without saying the five forbidden ones: the opposing guardian hits BUZZ.'],
+        'who'  => ['it' => '2–20 giocatori, due squadre', 'en' => '2–20 players, two teams'],
+        'how'  => ['it' => 'un telefono a testa (da 4), o uno da passare', 'en' => 'one phone each (from 4), or one to pass around'],
     ],
     [
         'group' => 'friends', 'look' => 'preferiresti', 'href' => 'preferiresti.html', 'icon' => '../assets/preferiresti/icon.svg',
