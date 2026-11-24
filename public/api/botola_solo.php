@@ -26,13 +26,14 @@ try {
         $id = $in['id'] ?? null;
         $lang = ($in['lang'] ?? '') === 'it' ? 'it' : 'en';
         if (!is_int($id) || !isset($bank[$id])) jsonFail('bad_question', 'Unknown question', 400);
+        // shortcut: the answer is judged per id with no served-question token, so a cheater can read the bank; personal record only, add an HMAC token if a public ranking appears
         $answer = $bank[$id][$lang === 'it' ? 2 : 1][1];   // row: [difficulty, [en q, right, w1, w2, w3], [it ...]]
         jsonResponse(['success' => true, 'right' => is_string($in['text'] ?? null) && trim($in['text']) === $answer, 'answer' => $answer]);
     }
 
     if (($_GET['action'] ?? '') !== 'question') jsonFail('unknown_action', 'Unknown action', 400);
     if (!checkRateLimit('botola_question', 300, 600)) jsonFail('slow_down', 'Too many requests', 429);
-    $level = isset(BOTOLA_LEVELS[$_GET['level'] ?? '']) ? $_GET['level'] : 'rising';
+    $level = is_string($_GET['level'] ?? null) && isset(BOTOLA_LEVELS[$_GET['level']]) ? $_GET['level'] : 'rising';
     $round = max(1, min(1000, (int)($_GET['round'] ?? 1)));
     $exclude = array_slice(array_map('intval', array_filter(explode(',', (string)($_GET['exclude'] ?? '')), 'is_numeric')), 0, 400);
     $d = botolaDifficulty($level, $round);

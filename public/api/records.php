@@ -56,5 +56,6 @@ try {
     }
     jsonResponse(['success' => false, 'error' => 'Unknown action'], 400);
 } catch (Throwable $e) {
+    if (isset($db) && $db->inTransaction()) $db->rollBack();
     failInternal('RECORDS', $e);
 }

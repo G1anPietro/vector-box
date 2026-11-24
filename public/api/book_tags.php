@@ -39,5 +39,6 @@ try {
     $db->exec('COMMIT');
     jsonResponse(['success' => true, 'tags' => $tags]);
 } catch (Throwable $e) {
+    if (isset($db) && $db->inTransaction()) $db->rollBack();
     failInternal('BOOK_TAGS', $e);
 }
