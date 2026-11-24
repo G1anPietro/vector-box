@@ -3,7 +3,7 @@
 // "Who's the Spy" rooms. A phone is identified by the device token it got on create/join
 // (header X-Spia-Device); no account is needed to play.
 //
-// Rooms host one of the games: "spia" (Who's the Spy), "lupus" (werewolf, lupus_lib.php), "cucu" (cucu_lib.php) "botola" (quiz, botola_lib.php) "probabile" (most likely to, probabile_lib.php) "preferiresti" (would you rather, preferiresti_lib.php) "bomba" (hot potato bomb, bomba_lib.php) or "proibita" (forbidden word, proibita_lib.php).
+// Rooms host one of the games: "spia" (Who's the Spy), "lupus" (werewolf, lupus_lib.php), "cucu" (cucu_lib.php) "botola" (quiz, botola_lib.php) "probabile" (most likely to, probabile_lib.php) "preferiresti" (would you rather, preferiresti_lib.php) or "bomba" (hot potato bomb, bomba_lib.php).
 // GET  ?action=state                  -> this phone's view of the room (polled every ~2s)
 // POST {action: create|join|leave|kick|host|take|player_add|player_remove|settings|
 //               start|seen|vote_call|vote|vote_close|guess|end|reset_scores, ...}
@@ -16,6 +16,7 @@ require_once __DIR__ . '/botola_lib.php';
 require_once __DIR__ . '/probabile_lib.php';
 require_once __DIR__ . '/preferiresti_lib.php';
 require_once __DIR__ . '/bomba_lib.php';
+require_once __DIR__ . '/undercover_lib.php';
 require_once __DIR__ . '/proibita_lib.php';
 
 initSession();
@@ -148,6 +149,14 @@ try {
                 $room = spiaRoom($db, (int)$room['id']);
             }
         }
+        if ($room['game'] === 'undercover') {
+            $g = undercoverLoad($db, (int)$room['id']);
+            if ($g && undercoverTick($g)) {
+                undercoverSave($db, (int)$room['id'], $g);
+                spiaBump($db, (int)$room['id']);
+                $room = spiaRoom($db, (int)$room['id']);
+            }
+        }
         if ($room['game'] === 'bomba') {
             $g = bombaLoad($db, (int)$room['id']);
             if ($g && bombaTick($g)) {
@@ -187,7 +196,7 @@ try {
         if (!checkRateLimit('spia_create', 10, 600)) spiaFail('slow_down', 429);
         $db->exec('BEGIN IMMEDIATE');
         spiaPruneRooms($db);
-        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'proibita'], true) ? $in['game'] : 'spia';
+        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'proibita'], true) ? $in['game'] : 'spia';
         $rawSettings = is_array($in['settings'] ?? null) ? $in['settings'] : [];
         $settings = match ($game) {
             'lupus' => lupusSanitizeSettings($rawSettings, []),
@@ -196,6 +205,7 @@ try {
             'probabile' => probabileSanitizeSettings($rawSettings, []),
             'preferiresti' => preferirestiSanitizeSettings($rawSettings, []),
             'bomba' => bombaSanitizeSettings($rawSettings, []),
+            'undercover' => undercoverSanitizeSettings($rawSettings, []),
             'proibita' => proibitaSanitizeSettings($rawSettings, []),
             default => spiaSanitizeSettings($rawSettings, []),
         };
@@ -262,6 +272,14 @@ try {
     if ($room['game'] === 'proibita') {
         $r = proibitaHandle($db, $room, $device, $isHost, $in, $action);
         if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
+        $handled = $r === true;
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
+    if ($room['game'] === 'undercover') {
+        $r = undercoverHandle($db, $room, $device, $isHost, $in, $action);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out', 'not_white'], true) ? 403 : 409);
         $handled = $r === true;
         if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
             $fail('unknown_action');
