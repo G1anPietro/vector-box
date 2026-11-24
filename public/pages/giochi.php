@@ -43,6 +43,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'bomba', 'href' => 'bomba.html', 'icon' => '../assets/bomba/icon.svg',
+        'name' => ['it' => 'La bomba', 'en' => 'The bomb'],
+        'line' => ['it' => 'Una miccia nascosta e una categoria: dì una risposta e passa la bomba. Chi la tiene quando esplode perde una vita.',
+                   'en' => 'A hidden fuse and a category: say an answer and pass the bomb. Whoever holds it when it blows loses a life.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'preferiresti', 'href' => 'preferiresti.html', 'icon' => '../assets/preferiresti/icon.svg',
         'name' => ['it' => 'Preferiresti…?', 'en' => 'Would you rather…?'],
         'line' => ['it' => 'Due scelte assurde, tutti decidono in segreto: la minoranza segna e deve spiegarsi.',

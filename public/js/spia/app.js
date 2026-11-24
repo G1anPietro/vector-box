@@ -6,8 +6,8 @@
     'use strict';
     const API = '../api/spia.php';
     // The same app runs both games: <html data-game="lupus"> on pages/lupus.html
-    const GAME = ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti'].includes(document.documentElement.dataset.game) ? document.documentElement.dataset.game : 'spia';
-    // Games other than the spy game are "modules" (js/lupus/game.js, js/cucu/game.js, js/botola/game.js, js/probabile/game.js, js/preferiresti/game.js) with the same interface:
+    const GAME = ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba'].includes(document.documentElement.dataset.game) ? document.documentElement.dataset.game : 'spia';
+    // Games other than the spy game are "modules" (js/lupus/game.js, js/cucu/game.js, js/botola/game.js, js/probabile/game.js, js/preferiresti/game.js, js/bomba/game.js) with the same interface:
     // playView(), resultCard(), summary(), settings(). META holds their texts; M is null for the spy game.
     const META = {
         lupus: { key: 'lupus', title: 'lw_title', tagline: 'lw_tagline', note: 'lw_one_phone_note', need: 'lw_need_four',
@@ -22,14 +22,17 @@
         probabile: { key: 'probabile', title: 'pr_title', tagline: 'pr_tagline', note: 'pr_one_phone_note', need: 'pr_need_three',
             start: 'pr_start', again: 'pr_new_match', intro: 'intro_pr_', nextMatch: 'pr_settings_next_match',
             topics: ['pr_basics', 'pr_rounds', 'pr_titles', 'pr_host', 'phones', 'pr_settings'] },
+        bomba: { key: 'bomba', title: 'bm_title', tagline: 'bm_tagline', note: 'bm_one_phone_note', need: 'bm_need_three',
+            start: 'bm_start', again: 'bm_new_match', intro: 'intro_bm_', nextMatch: 'bm_settings_next_match',
+            topics: ['bm_basics', 'bm_rounds', 'bm_lives', 'bm_host', 'phones', 'bm_settings'] },
         preferiresti: { key: 'preferiresti', title: 'pf_title', tagline: 'pf_tagline', note: 'pf_one_phone_note', need: 'pf_need_three',
             start: 'pf_start', again: 'pf_new_match', intro: 'intro_pf_', nextMatch: 'pf_settings_next_match',
             topics: ['pf_basics', 'pf_rounds', 'pf_titles', 'pf_host', 'phones', 'pf_settings'] },
     };
     const M = META[GAME] || null;
     const K = (k) => `${GAME}_${k}`; // per-game storage keys (spia_token, lupus_token, ...)
-    const PAGES = { spia: 'spia.html', lupus: 'lupus.html', cucu: 'cucu.html', botola: 'botola.html', probabile: 'probabile.html', preferiresti: 'preferiresti.html' };
-    const MIN_PLAYERS = { lupus: 4, cucu: 2, botola: 2, probabile: 3, preferiresti: 3 }[GAME] || 3;
+    const PAGES = { spia: 'spia.html', lupus: 'lupus.html', cucu: 'cucu.html', botola: 'botola.html', probabile: 'probabile.html', preferiresti: 'preferiresti.html', bomba: 'bomba.html' };
+    const MIN_PLAYERS = { lupus: 4, cucu: 2, botola: 2, probabile: 3, preferiresti: 3, bomba: 3 }[GAME] || 3;
     let LG = null; // the module's screens (js/lupus/game.js or js/cucu/game.js), set up in boot()
     const POLL_MS = 2000;
     const POLL_HIDDEN_MS = 8000;
@@ -1108,6 +1111,7 @@
         if (GAME === 'cucu') LG = window.CucuGame.init(core());
         if (GAME === 'botola') LG = window.BotolaGame.init(core());
         if (GAME === 'probabile') LG = window.ProbabileGame.init(core());
+        if (GAME === 'bomba') LG = window.BombaGame.init(core());
         if (GAME === 'preferiresti') LG = window.PreferirestiGame.init(core());
 
         scheduleRender(true);

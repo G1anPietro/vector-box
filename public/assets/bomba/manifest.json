@@ -1,0 +1,18 @@
+{
+  "name": "The bomb",
+  "short_name": "The bomb",
+  "description": "La bomba. Una miccia nascosta, una categoria: dì una risposta e passa la bomba a un altro giocatore.",
+  "start_url": "../../pages/bomba.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#0d0b09",
+  "theme_color": "#0d0b09",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
