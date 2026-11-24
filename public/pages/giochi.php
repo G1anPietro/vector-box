@@ -51,6 +51,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'proibita', 'href' => 'proibita.html', 'icon' => '../assets/proibita/icon.svg',
+        'name' => ['it' => 'Parola proibita', 'en' => 'Forbidden word'],
+        'line' => ['it' => 'Fai indovinare la parola alla tua squadra senza dire le cinque vietate: il guardiano avversario preme BUZZ.',
+                   'en' => 'Make your team guess the word without saying the five forbidden ones: the opposing guardian hits BUZZ.'],
+        'who'  => ['it' => '2–20 giocatori, due squadre', 'en' => '2–20 players, two teams'],
+        'how'  => ['it' => 'un telefono a testa (da 4), o uno da passare', 'en' => 'one phone each (from 4), or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'preferiresti', 'href' => 'preferiresti.html', 'icon' => '../assets/preferiresti/icon.svg',
         'name' => ['it' => 'Preferiresti…?', 'en' => 'Would you rather…?'],
         'line' => ['it' => 'Due scelte assurde, tutti decidono in segreto: la minoranza segna e deve spiegarsi.',

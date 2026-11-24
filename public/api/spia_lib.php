@@ -521,6 +521,14 @@ function spiaRemovePlayer(PDO $db, array $room, ?array $round, int $playerId): v
         $wasSpy = $a && (int)$a['is_spy'] === 1 && $a['out_reason'] === null;
     }
     $db->prepare('UPDATE spia_players SET removed = 1 WHERE id = :id')->execute([':id' => $playerId]);
+    if (($room['game'] ?? 'spia') === 'proibita') {
+        $g = proibitaLoad($db, (int)$room['id']);
+        if ($g) {
+            proibitaPlayerLeft($g, $playerId);
+            proibitaSave($db, (int)$room['id'], $g);
+        }
+        return;
+    }
     if (($room['game'] ?? 'spia') === 'bomba') {
         $g = bombaLoad($db, (int)$room['id']);
         if ($g) {
@@ -599,6 +607,7 @@ function spiaDeleteRooms(PDO $db, array $roomIds): void {
     $db->exec("DELETE FROM probabile_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM preferiresti_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM bomba_games WHERE room_id IN ($in)");
+    $db->exec("DELETE FROM proibita_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_players WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_devices WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_rooms WHERE id IN ($in)");
@@ -734,6 +743,7 @@ function spiaLiveView(PDO $db): array {
             'cucu' => ($room['game'] ?? 'spia') === 'cucu' ? cucuLiveInfo($db, (int)$room['id']) : null,
             'botola' => ($room['game'] ?? 'spia') === 'botola' ? botolaLiveInfo($db, (int)$room['id']) : null,
             'probabile' => ($room['game'] ?? 'spia') === 'probabile' ? probabileLiveInfo($db, (int)$room['id']) : null,
+            'proibita' => ($room['game'] ?? 'spia') === 'proibita' ? proibitaLiveInfo($db, (int)$room['id']) : null,
             'bomba' => ($room['game'] ?? 'spia') === 'bomba' ? bombaLiveInfo($db, (int)$room['id']) : null,
             'preferiresti' => ($room['game'] ?? 'spia') === 'preferiresti' ? preferirestiLiveInfo($db, (int)$room['id']) : null,
             'updated_at' => (int)$room['updated_at'],
@@ -769,6 +779,7 @@ function spiaRoomView(PDO $db, array $room, array $device, bool $adminSession): 
     if (($room['game'] ?? 'spia') === 'lupus') return lupusView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'cucu') return cucuView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'botola') return botolaView($db, $room, $device, $adminSession);
+    if (($room['game'] ?? 'spia') === 'proibita') return proibitaView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'bomba') return bombaView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'preferiresti') return preferirestiView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'probabile') return probabileView($db, $room, $device, $adminSession);
