@@ -586,6 +586,15 @@ function migrateV16(PDO $db): void {
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
 /** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
 /** v44: the arcade leaderboards (api/game_scores.php): ONE row per account, game and variant: its best score (or best time). */
+function migrateV52(PDO $db): void {
+    // "Obbligo o verità" (obbligo, on the shared rooms): the whole match state as JSON, like bomba_games
+    $db->exec("CREATE TABLE IF NOT EXISTS obbligo_games (
+        room_id INTEGER PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+}
+
 function migrateV53(PDO $db): void {
     // "Mimo" (mimo, on the shared rooms): the whole match state as JSON (teams, score, the word on stage), like bomba_games
     $db->exec("CREATE TABLE IF NOT EXISTS mimo_games (
@@ -1275,6 +1284,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 51) {
             migrateV51($db);
+        }
+        if ($current < 52) {
+            migrateV52($db);
         }
         if ($current < 53) {
             migrateV53($db);

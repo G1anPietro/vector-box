@@ -43,6 +43,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'obbligo', 'href' => 'obbligo.html', 'icon' => '../assets/obbligo/icon.svg',
+        'name' => ['it' => 'Obbligo o verità', 'en' => 'Truth or dare'],
+        'line' => ['it' => 'Una carta, una bottiglia che gira: scegli verità o obbligo, gli altri votano se vale. Domande e sfide leggere, piccanti spente.',
+                   'en' => 'A card, a spinning bottle: pick truth or dare, the others vote whether it counts. Light questions and dares, spicy ones off.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'undercover', 'href' => 'undercover.html', 'icon' => '../assets/undercover/icon.svg',
         'name' => ['it' => 'Undercover', 'en' => 'Undercover'],
         'line' => ['it' => 'Una parola segreta a testa, ma una è diversa: un indizio a voce, un voto, e si scopre l’infiltrato. Attenti a Mr. White.',
