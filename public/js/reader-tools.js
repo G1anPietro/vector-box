@@ -483,7 +483,7 @@ const MARGINS = { normal: 0, wide: 24, xwide: 48 };
         const tags = tagsByBook[book.id] || [];
         const row = el('div', 'book-tags');
         tags.forEach((t) => { const c = el('button', 'tag-chip', t); c.type = 'button'; c.addEventListener('click', () => { F.tag = t; changed(); }); row.append(c); });
-        const add = el('button', 'tag-add', tags.length ? '✎' : '+ etichetta'); add.type = 'button'; add.title = 'Etichette (scaffali) di questo libro'; add.setAttribute('aria-label', 'Modifica le etichette di ' + (book.title || 'questo libro'));
+        const add = el('button', 'tag-add', tags.length ? '✎' : '+ etichetta'); add.type = 'button'; add.title = 'Etichette (scaffali) di questo libro'; add.setAttribute('aria-label', (tags.length ? '✎ Modifica le etichette di ' : '+ etichetta: ') + (book.title || 'questo libro'));
         add.addEventListener('click', (e) => { e.stopPropagation(); openTagDialog(book); });
         row.append(add);
         info.append(row);

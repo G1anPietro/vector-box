@@ -32,7 +32,7 @@
     --sheet: #f3e9cc;       /* the typed sheet inside the folder */
     --paper-edge: #c9b27a;
     --ink: #1f2433;         /* typewriter ink on paper */
-    --ink-soft: rgba(31, 36, 51, 0.64);
+    --ink-soft: rgba(31, 36, 51, 0.76);
     --rule: rgba(31, 36, 51, 0.16);
     --stamp: #b8322a;       /* spies, danger */
     --archive: #2f6b5e;     /* civilians, confirmed */

@@ -156,6 +156,7 @@ function barList(array $items, int $total, callable $h): void {
     </header>
 
     <main class="stats">
+        <h1 class="sr-only"><?= tt('Statistics', 'Statistiche') ?></h1>
         <nav class="range" aria-label="<?= tt('Period', 'Periodo') ?>">
             <?php foreach ([7, 30, 90] as $d): ?>
                 <a href="?days=<?= $d ?>" class="<?= $d === $days ? 'on' : '' ?>" <?= $d === $days ? 'aria-current="page"' : '' ?>><?= tt("Last $d days", "Ultimi $d giorni") ?></a>

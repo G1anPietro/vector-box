@@ -141,10 +141,10 @@
     // ---------- screens ----------
     function topBar() {
         return h('header', { class: 'topbar' },
-            h('a', { class: 'brand', href: '../index.php', 'aria-label': t('back_to_site') },
+            h('a', { class: 'brand', href: '../index.php', title: t('back_to_site') },
                 h('img', { src: '../assets/nonhomai/icon.svg?v=1', alt: '', class: 'brand-icon' }),
                 h('span', null, t('nh_title'))),
-            h('button', { class: 'icon-btn', onclick: () => { ui.sheet = 'lang'; render(); }, 'aria-label': t('language') }, lang.toUpperCase()),
+            h('button', { class: 'icon-btn', onclick: () => { ui.sheet = 'lang'; render(); }, 'aria-label': lang.toUpperCase() + ' – ' + t('language') }, lang.toUpperCase()),
             h('button', { class: 'icon-btn', onclick: () => { ui.sheet = 'help'; render(); }, 'aria-label': t('help') }, '?'));
     }
 

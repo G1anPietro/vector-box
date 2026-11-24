@@ -18,7 +18,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dg-classes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; }
 .dg-classes button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; font-size: .72rem; min-height: 78px; }
 .dg-classes button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 10px rgba(0, 255, 102, .3); }
-.dg-classes button.locked { opacity: .45; }
+.dg-classes button.locked { opacity: .72; }
 .dg-classes canvas { width: 32px; height: 32px; image-rendering: pixelated; }
 .dg-classinfo { width: 100%; min-height: 4.4em; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: .85rem; line-height: 1.45; background: var(--panel); }
 .dg-classinfo b { color: var(--accent); }

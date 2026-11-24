@@ -66,7 +66,7 @@
         for (let i = 0; i < N * N; i++) { const d = document.createElement('div'); d.className = 't'; grid.append(d); cells.push(d); }
 
         function paint() {
-            board.forEach((v, i) => { cells[i].textContent = v ? String(v) : ''; cells[i].className = 't' + (v ? ' v' + Math.min(v, 4096) : ''); cells[i].setAttribute('aria-label', v ? String(v) : VBLang.t('empty')); });
+            board.forEach((v, i) => { cells[i].textContent = v ? String(v) : ''; cells[i].className = 't' + (v ? ' v' + Math.min(v, 4096) : ''); if (v) cells[i].removeAttribute('aria-hidden'); else cells[i].setAttribute('aria-hidden', 'true'); });
             $('db-score').textContent = String(score);
             $('db-best').textContent = String(best);
             $('db-msg').textContent = over ? VBLang.t('over') : won ? VBLang.t('won') : '';

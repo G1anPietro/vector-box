@@ -440,7 +440,7 @@
         el('span', tl('menu_lang'), '', lg);
         for (const l of ['en', 'it']) {
             const b = btn(l.toUpperCase(), () => { if (self.VBLang) self.VBLang.set(l); }, lg);
-            b.lang = l; b.setAttribute('aria-pressed', String(l === lang())); b.setAttribute('aria-label', l === 'it' ? 'Italiano' : 'English');
+            b.lang = l; b.setAttribute('aria-pressed', String(l === lang())); b.setAttribute('aria-label', l.toUpperCase() + ' – ' + (l === 'it' ? 'Italiano' : 'English'));
         }
         btn(tl('help'), helpModal, body, 'dg-choice');
         const onoff = (v) => tl(v ? 'on' : 'off');

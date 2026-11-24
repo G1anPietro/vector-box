@@ -14,14 +14,14 @@
     <meta property="og:url" content="https://vector-box.duckdns.org/pages/dueamila.html">
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
     <meta name="twitter:card" content="summary">
-    <script src="../js/i18n.js?v=1789951323"></script>
+    <script src="../js/i18n.js?v=1550120119"></script>
     <link rel="stylesheet" href="../css/arcade-scores.css?v=1256759883">
     <script src="../js/csrf.js?v=1507642355" defer></script>
-    <script src="../js/arcade-scores.js?v=1331796318" defer></script>
+    <script src="../js/arcade-scores.js?v=1111238841" defer></script>
     <link rel="icon" href="../assets/dueamila/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/dueamila.css?v=1636898463">
+    <link rel="stylesheet" href="../css/dueamila.css?v=1450978986">
     <script src="../js/arcade-fx.js?v=1058792597" defer></script>
-    <script src="../js/dueamila.js?v=1787520732" defer></script>
+    <script src="../js/dueamila.js?v=1053811974" defer></script>
 </head>
 <body>
     <header class="db-top">
@@ -29,11 +29,12 @@
         <h1>2048</h1>
         <span class="ar-hbtns"><span id="fx-toggle"></span><button type="button" id="db-new" data-i18n="new">New</button></span>
     </header>
+    <main class="ar-main">
     <div class="db-bar">
         <div class="db-box"><small data-i18n="score">Score</small><strong id="db-score">0</strong></div>
         <div class="db-box"><small data-i18n="best">Best</small><strong id="db-best">0</strong></div>
     </div>
-    <div id="db-grid" role="grid" aria-label="4 by 4 grid" data-i18n-attr="aria-label:grid"></div>
+    <div id="db-grid" role="group" aria-label="4 by 4 grid" data-i18n-attr="aria-label:grid"></div>
     <div id="db-msg" role="status"></div>
     <div class="db-pad" aria-label="Arrows" data-i18n-attr="aria-label:arrows">
         <span></span><button type="button" data-dir="up" aria-label="Up" data-i18n-attr="aria-label:up">▲</button><span></span>
@@ -41,5 +42,6 @@
     </div>
     <p class="db-help" data-i18n="help">Swipe on the grid or use the arrow keys (or W A S D). Two equal numbers that touch merge into their sum: reach 2048.</p>
     <div id="vb-lang" style="text-align:center;margin:10px 0"></div>
+    </main>
 </body>
 </html>

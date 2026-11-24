@@ -24,3 +24,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .ar-hbtns { display: flex; gap: 8px; align-items: center; }
 #fx-toggle button { min-width: 40px; padding: 8px 10px; }
+
+/* the page's <main> landmark takes no space */
+.ar-main { display: contents; }

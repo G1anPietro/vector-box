@@ -49,14 +49,14 @@ if (!$canRead) {
     ); 
     ?>
     <link rel="stylesheet" href="../css/dropzone.css?v=<?= APP_VERSION ?>">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js" integrity="sha384-ZqmkDa/1AGF4SKdSmXgEG+3G+Gsb6yNqUSq2Mqp0jDf1GWk+UY5eNbEd7hgwiywI" crossorigin="anonymous"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js" integrity="sha384-ZqmkDa/1AGF4SKdSmXgEG+3G+Gsb6yNqUSq2Mqp0jDf1GWk+UY5eNbEd7hgwiywI" crossorigin="anonymous"></script>
 </head>
 <body>
 
     <header class="reader-header">
-        <a href="../index.php" class="reader-brand">
+        <a href="../index.php" class="reader-brand" aria-label="Vector Reader: torna al menu di vector-box">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
@@ -80,7 +80,7 @@ if (!$canRead) {
         </div>
     </header>
 
-    <div class="reader-container">
+    <main class="reader-container">
         <section class="toolbar-section">
             <form id="book-search-form" class="search-box" role="search">
                 <input type="search" id="book-search-input" class="input-text search-input" placeholder="Cerca per titolo o autore" autocomplete="off" aria-label="Cerca un libro">
@@ -97,7 +97,8 @@ if (!$canRead) {
             <?php endif; ?>
         </section>
 
-        <main>
+        <div id="shelf-area">
+            <h1 class="sr-only">Biblioteca e lettore di libri</h1>
             <details id="stats-section" class="stats-section">
                 <summary>Le tue letture</summary>
                 <div id="stats-body" class="stats-body" aria-live="polite">Caricamento…</div>
@@ -158,8 +159,8 @@ if (!$canRead) {
             </div>
             <div id="tidy-panel" class="tidy-panel" hidden></div>
             <div id="book-catalog" class="book-grid"></div>
-        </main>
-    </div>
+        </div>
+    </main>
 
     <!-- Reader: top bar (back, title, bookmarks, "Aa"), the page, bottom bar (page turn and position) -->
     <div id="viewer-modal" class="viewer-modal" data-theme="light">

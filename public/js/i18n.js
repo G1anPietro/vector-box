@@ -93,7 +93,7 @@
     function mountSwitch() {
         let host = doc.getElementById('vb-lang');
         if (!host && doc.documentElement.hasAttribute('data-lang-switch')) {
-            host = doc.createElement('div'); host.id = 'vb-lang'; host.className = 'vb-lang-fixed'; doc.body.appendChild(host);
+            host = doc.createElement('div'); host.id = 'vb-lang'; host.className = 'vb-lang-fixed'; (doc.querySelector('main') || doc.body).appendChild(host);
         }
         if (!host) return;
         host.textContent = '';
@@ -101,7 +101,7 @@
         SUPPORTED.forEach((l) => {
             const b = doc.createElement('button');
             b.type = 'button'; b.textContent = l.toUpperCase(); b.lang = l;
-            b.setAttribute('aria-pressed', String(l === lang)); b.setAttribute('aria-label', l === 'it' ? 'Italiano' : 'English');
+            b.setAttribute('aria-pressed', String(l === lang)); b.setAttribute('aria-label', l.toUpperCase() + ' – ' + (l === 'it' ? 'Italiano' : 'English'));
             b.addEventListener('click', () => setLang(l, true));
             host.appendChild(b);
         });

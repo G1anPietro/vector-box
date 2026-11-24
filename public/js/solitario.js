@@ -572,7 +572,7 @@
 
     function applyStatic() {
         document.title = t('sol_title');
-        $('sol-title').textContent = t('sol_title');
+        $('sol-title').textContent = t('sol_title'); if ($('sol-h1')) $('sol-h1').textContent = t('sol_title');
         $('sol-time-l').textContent = t('sol_time');
         $('sol-score-l').textContent = t('sol_score');
         $('sol-moves-l').textContent = t('sol_moves');

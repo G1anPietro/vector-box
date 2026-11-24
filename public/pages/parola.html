@@ -14,9 +14,9 @@
     <meta property="og:url" content="https://vector-box.duckdns.org/pages/parola.html">
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
     <meta name="twitter:card" content="summary">
-    <script src="../js/i18n.js?v=1789951323"></script>
+    <script src="../js/i18n.js?v=1550120119"></script>
     <link rel="icon" href="../assets/parola/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/arcade.css?v=1540020779">
+    <link rel="stylesheet" href="../css/arcade.css?v=1868069187">
     <link rel="stylesheet" href="../css/parola.css?v=1136340775">
     <script src="../js/csrf.js?v=1507642355"></script>
     <script src="../js/arcade-fx.js?v=1058792597" defer></script>
@@ -27,6 +27,7 @@
 </head>
 <body>
     <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1>Parola del giorno</h1><span id="fx-toggle"></span><button type="button" id="pa-new" data-i18n="new" hidden>New</button></header>
+    <main class="ar-main">
     <div class="ar-bar" role="group" aria-label="Mode" data-i18n-attr="aria-label:mode">
         <button type="button" data-mode="daily" aria-pressed="true" data-i18n="daily">Daily</button>
         <button type="button" data-mode="free" aria-pressed="false" data-i18n="free">Free</button>
@@ -45,5 +46,6 @@
     <p id="pa-guest" class="ar-help" data-i18n="guest_hint" hidden>Log in to keep your streak on every device.</p>
     <p class="ar-help" data-i18n="help">Guess the word (5 letters, or 6 in the 6-letter mode) in 6 tries. After each try: ● right letter in the right place, ◆ letter in the word but elsewhere, × letter not in the word. Only Italian words count (no accents).</p>
     <div id="vb-lang" style="text-align:center;margin:10px 0"></div>
+    </main>
 </body>
 </html>

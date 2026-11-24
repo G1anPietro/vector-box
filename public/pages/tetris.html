@@ -14,18 +14,19 @@
     <meta property="og:url" content="https://vector-box.duckdns.org/pages/tetris.html">
     <meta property="og:image" content="https://vector-box.duckdns.org/assets/og/giochi.jpg">
     <meta name="twitter:card" content="summary">
-    <script src="../js/i18n.js?v=1789951323"></script>
+    <script src="../js/i18n.js?v=1550120119"></script>
     <link rel="icon" href="../assets/tetris/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/arcade.css?v=1540020779">
+    <link rel="stylesheet" href="../css/arcade.css?v=1868069187">
     <link rel="stylesheet" href="../css/tetris.css?v=1768822555">
     <link rel="stylesheet" href="../css/arcade-scores.css?v=1256759883">
     <script src="../js/csrf.js?v=1507642355" defer></script>
-    <script src="../js/arcade-scores.js?v=1331796318" defer></script>
+    <script src="../js/arcade-scores.js?v=1111238841" defer></script>
     <script src="../js/arcade-fx.js?v=1058792597" defer></script>
     <script src="../js/tetris.js?v=1091749508" defer></script>
 </head>
 <body>
     <header class="ar-top"><a href="giochi.php" data-i18n="back">← Games</a><h1>Tetris</h1><span class="tt-hbtns"><span id="fx-toggle"></span><button type="button" id="tt-pause" data-i18n="pause" aria-pressed="false">Pause</button><button type="button" id="tt-new" data-i18n="new">New</button></span></header>
+    <main class="ar-main">
     <div class="tt-wrap">
         <canvas id="tt-canvas" width="240" height="480" aria-label="Playing field" data-i18n-attr="aria-label:field"></canvas>
         <div class="tt-side">
@@ -53,5 +54,6 @@
     <p class="ar-help" data-i18n="gestures">On the field: tap to rotate, drag sideways to move, drag down to soft drop, flick down to hard drop.</p>
     <p class="ar-help" data-i18n="help">Arrow keys or W A S D: move and rotate (Z and X turn both ways), Space drops the piece at once, C or Shift holds the piece (once per piece), P pauses. Complete lines to score: every 10 lines you go up a level. The game pauses if you switch tab.</p>
     <div id="vb-lang" style="text-align:center;margin:10px 0"></div>
+    </main>
 </body>
 </html>

@@ -410,7 +410,7 @@
                 h('img', { src: `../assets/${GAME}/icon.svg?v=4`, alt: '', class: 'brand-icon', draggable: 'false' }),
                 h('span', null, gameTitle())),
             h('div', { class: 'top-chips' }, chips),
-            h('button', { class: 'icon-btn', onclick: () => openSheet('lang'), 'aria-label': t('language') }, lang.toUpperCase()),
+            h('button', { class: 'icon-btn', onclick: () => openSheet('lang'), 'aria-label': lang.toUpperCase() + ' – ' + t('language') }, lang.toUpperCase()),
             h('button', { class: 'icon-btn', onclick: () => openSheet('help'), 'aria-label': t('help') }, '?'),
             mode ? h('button', { class: 'icon-btn', onclick: () => openSheet('menu'), 'aria-label': t('menu') }, '⋯') : null);
     }

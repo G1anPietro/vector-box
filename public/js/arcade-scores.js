@@ -53,7 +53,7 @@
         variant = variant || '';
         if (!el) {
             el = document.getElementById('vb-top');
-            if (!el) { el = document.createElement('div'); el.id = 'vb-top'; const l = document.getElementById('vb-lang'); document.body.insertBefore(el, l || null); }
+            if (!el) { el = document.createElement('div'); el.id = 'vb-top'; const l = document.getElementById('vb-lang'); const host = document.querySelector('.ar-main') || (l ? l.parentNode : document.body); host.insertBefore(el, l && l.parentNode === host ? l : null); }
         }
         const st = { game, variant, data: null };
         panels.set(el, st);

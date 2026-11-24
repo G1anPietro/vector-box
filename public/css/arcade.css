@@ -22,3 +22,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ar-hbtns { display: flex; gap: 6px; align-items: center; }
 .ar-hbtns button { padding: 8px 10px; }
 #fx-toggle button { min-width: 40px; padding: 8px 10px; }
+
+/* text only for screen readers (a heading the design does not show) */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; }
+
+/* the page's <main> landmark takes no space: the children lay out as before */
+.ar-main { display: contents; }

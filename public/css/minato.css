@@ -25,3 +25,6 @@ h1 { font-size: 1.2rem; margin: 0; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 .ar-paused { visibility: hidden; }
 #fx-toggle button { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 40px; min-height: 40px; cursor: pointer; font: inherit; }
+
+/* the page's <main> landmark takes no space */
+.ar-main { display: contents; }

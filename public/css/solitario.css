@@ -46,7 +46,7 @@ html[data-theme="classic"] {
     --btn: #ffffff;
     --btn-text: #1d1f21;
     --btn-line: #c4c4c0;
-    --primary: #3584e4;
+    --primary: #1c71d8;
     --primary-text: #ffffff;
     --accent: #f6d32d;
     --slot-line: rgba(0, 0, 0, 0.28);
@@ -357,3 +357,5 @@ body.desk #sol-score, body.desk #sol-time { font-weight: 700; }
 /* drag target and right-button peek */
 .card-sol.drop-ok, .slot.drop-ok { outline: 3px solid var(--accent); outline-offset: 1px; }
 .card-sol.peek { z-index: 900 !important; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; }

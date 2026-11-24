@@ -24,7 +24,7 @@ $canViewResume = $access['resume'];
     <?= socialMeta('vector-box', tt('A cyberpunk desktop in your browser: terminal, chat, party games for your phone and games to play alone.', 'Un desktop cyberpunk nel browser: terminale, chat, giochi da festa per il telefono e giochi da soli.'), '/desktop.php', '/assets/og/desktop.jpg') ?>
 </head>
 <body class="home">
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas" aria-hidden="true"></canvas>
 
     <header class="cyber-header">
         <div class="glitch">// VECTOR-BOX // <?php echo $isLoggedIn ? tt('USER: ', 'UTENTE: ') . htmlspecialchars($activeUsername) : tt('AUTH_REQUIRED', 'ACCESSO_RICHIESTO'); ?></div>
@@ -104,6 +104,7 @@ $canViewResume = $access['resume'];
     </header>
 
     <main class="desktop-viewport">
+        <h1 class="sr-only">vector-box desktop</h1>
         <!-- 1. SHELL TERMINAL -->
         <div id="win-terminal" class="cyber-panel draggable-window" style="top: 90px; left: 40px; width: 580px; height: 380px;">
             <div class="window-header">
