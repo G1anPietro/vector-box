@@ -118,6 +118,9 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "Undercover": grey-green case file with a red stamp */
 .box.undercover { --lid: #1a231e; --edge: #0a0f0c; --ink: #eef0e6; background: linear-gradient(180deg, #d4352d 0 8px, rgba(0, 0, 0, 0) 8px), var(--lid); }
 .box.undercover .name { font-family: "Courier New", Courier, monospace; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #b9d1bd; }
+/* "Mime": a red velvet curtain over a black stage */
+.box.mimo { --lid: #5e0b12; --edge: #1a0306; --ink: #f7ecd4; background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0 10px, rgba(0, 0, 0, 0) 10px 30px), var(--lid); }
+.box.mimo .name { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; color: #f2c14e; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }

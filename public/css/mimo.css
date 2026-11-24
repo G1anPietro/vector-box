@@ -1,0 +1,141 @@
+/* public/css/mimo.css — "Mimo" theme, loaded after spia.css on pages/mimo.html only.
+ * Direction: an old theatre. A red velvet curtain with folds and a gold fringe, a black stage floor, a warm spotlight with a small
+ * figure that gestures, programme-cream type. Serif display letters (Georgia italic) against plain sans body text.
+ * The figure's animation has a constant speed (it does not show the time); prefers-reduced-motion turns every animation off. */
+:root {
+    --desk: #100607;
+    --desk-2: #240c0f;
+    --desk-line: #6a2a2e;
+    --chalk: #f7ecd4;
+    --faded: #d8c3a2;
+    --paper: #240c0f;
+    --sheet: #1a090b;
+    --paper-edge: #b3202a;
+    --ink: #f7ecd4;
+    --ink-soft: rgba(247, 236, 212, 0.85);
+    --rule: rgba(247, 236, 212, 0.22);
+    --stamp: #f2c14e;
+    --archive: #f2c14e;
+    --velvet: #a3161f;
+    --velvet-dark: #5e0b12;
+    --gold: #f2c14e;
+    --light: #fff3c4;
+    --t0: #ff8a8f;
+    --t1: #f2c14e;
+    --t2: #7fd4c8;
+    --type: Georgia, "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
+}
+body {
+    font-size: 17px; background: var(--desk);
+    background-image: radial-gradient(ellipse at 50% 0, rgba(255, 223, 150, 0.12), rgba(0, 0, 0, 0) 60%);
+    padding-top: 0;
+}
+/* the curtain: velvet folds hanging from the top, with a gold fringe and scalloped lower edge */
+body::before {
+    content: ""; position: fixed; inset: 0 0 auto 0; height: 22px; z-index: 20; pointer-events: none;
+    background:
+        radial-gradient(circle at 12px 0, var(--velvet) 11px, rgba(0, 0, 0, 0) 12px) 0 100% / 24px 12px repeat-x,
+        repeating-linear-gradient(90deg, var(--velvet) 0 18px, var(--velvet-dark) 18px 26px, var(--velvet) 26px 44px);
+    border-bottom: 3px solid var(--gold);
+}
+.brand, .hero h1, .panel h2, .sheet-head h2, .mm-curtain, .mm-word, .mm-go, .mm-ok, .mm-skip, .mm-who, .mm-teamname { font-family: var(--type); }
+.hero h1 { font-size: clamp(36px, 11vw, 66px); line-height: 1; font-style: italic; font-weight: 700; color: var(--gold); text-shadow: 0 3px 0 var(--velvet-dark); overflow-wrap: anywhere; }
+.panel h2 { font-style: italic; font-weight: 700; letter-spacing: 0.02em; }
+.btn.primary { background: var(--velvet); color: var(--chalk); border-bottom-color: var(--velvet-dark); font-weight: 800; border: 2px solid var(--gold); }
+.btn.primary:active:not(:disabled) { background: #8d1019; }
+.btn.primary:disabled { background: transparent; color: var(--faded); border-color: var(--desk-line); }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.hero::before, .card-front::before { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.link { color: var(--gold); }
+.pass-name { color: var(--gold); font-family: var(--type); font-style: italic; }
+
+/* ---------- the match ---------- */
+.mm { padding-top: 14px; }
+.mm-curtain { text-align: center; font-style: italic; font-size: 18px; letter-spacing: 0.04em; color: var(--chalk); padding: 6px 10px; border-radius: 4px; border-bottom: 3px solid var(--gold);
+    background: repeating-linear-gradient(90deg, var(--velvet) 0 16px, var(--velvet-dark) 16px 22px, var(--velvet) 22px 40px); }
+.mm-mark { display: inline-block; width: 1.2em; text-align: center; font-size: 15px; }
+.mm-t0 .mm-mark, .mm-mark.mm-t0 { color: var(--t0); }
+.mm-t1 .mm-mark, .mm-mark.mm-t1 { color: var(--t1); }
+.mm-t2 .mm-mark, .mm-mark.mm-t2 { color: var(--t2); }
+
+.mm-board { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.mm-teamcard { padding: 10px 12px; border-radius: 6px; border: 2px solid var(--desk-line); background: var(--desk-2); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mm-teamcard.on { border-color: var(--gold); background: #3a1216; box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(242, 193, 78, 0.35); }
+.mm-teamcard.mine .mm-teamname::after { content: " •"; color: var(--gold); }
+.mm-teamhead { display: flex; align-items: center; gap: 6px; }
+.mm-teamname { font-weight: 700; font-style: italic; font-size: 18px; flex: 1; min-width: 0; }
+.mm-pts { font: 700 30px/1 var(--type); color: var(--chalk); }
+.mm-members { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 14px; color: var(--faded); }
+.mm-member { overflow-wrap: anywhere; }
+.mm-member.star { color: var(--chalk); font-weight: 800; }
+.mm-member.star::before { content: "★ "; color: var(--gold); }
+.mm-member.gone { text-decoration: line-through; opacity: 0.7; }
+
+.mm-stage { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px 0 4px; text-align: center; border-radius: 8px;
+    background: radial-gradient(ellipse at 50% 0, rgba(255, 233, 170, 0.16), rgba(0, 0, 0, 0) 70%); }
+.mm-art { width: min(52vw, 210px); height: auto; overflow: visible; }
+.mm-beam { fill: rgba(255, 238, 180, 0.13); }
+.mm-pool { fill: rgba(255, 238, 180, 0.22); }
+.mm-head { fill: var(--chalk); stroke: #0b0405; stroke-width: 3; }
+.mm-hat { fill: none; stroke: var(--gold); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.mm-body { fill: #23181a; stroke: var(--chalk); stroke-width: 3; stroke-linejoin: round; }
+.mm-leg, .mm-limb { fill: none; stroke: var(--chalk); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+.mm-fig { transform-origin: 100px 210px; animation: mm-sway 2.4s ease-in-out infinite; }
+.mm-arm-l { transform-origin: 86px 90px; animation: mm-wave-l 1.3s ease-in-out infinite; }
+.mm-arm-r { transform-origin: 114px 90px; animation: mm-wave-r 1.7s ease-in-out infinite; }
+@keyframes mm-sway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes mm-wave-l { 0%, 100% { transform: rotate(-22deg); } 50% { transform: rotate(28deg); } }
+@keyframes mm-wave-r { 0%, 100% { transform: rotate(24deg); } 50% { transform: rotate(-30deg); } }
+
+.mm-who { margin: 0; font-style: italic; font-weight: 700; font-size: clamp(22px, 7vw, 30px); line-height: 1.15; overflow-wrap: anywhere; color: var(--chalk); }
+.mm-hint { margin: 0; color: var(--faded); font-weight: 600; max-width: 34ch; }
+.mm-go { width: 100%; min-height: 76px; border-radius: 6px; border: 3px solid var(--gold); background: var(--velvet); color: var(--chalk); font-size: 32px; font-style: italic; font-weight: 700; cursor: pointer; letter-spacing: 0.04em; }
+.mm-go:active:not(:disabled) { background: #8d1019; }
+.mm-go:disabled { opacity: 0.6; cursor: default; }
+
+.mm-clock { width: 100%; display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 2px 4px; }
+.mm-time { font: 700 clamp(56px, 20vw, 84px)/1 var(--type); color: var(--light); font-variant-numeric: tabular-nums; }
+.mm-s { font: 700 22px var(--type); color: var(--faded); }
+.mm-bar { flex: 0 0 100%; height: 8px; border-radius: 4px; background: var(--desk-2); border: 1px solid var(--desk-line); overflow: hidden; }
+.mm-bar > i { display: block; height: 100%; background: var(--gold); }
+
+.mm-card { width: 100%; padding: 16px 14px; border-radius: 6px; background: var(--chalk); color: #1a0608; border: 4px double var(--velvet); display: flex; flex-direction: column; gap: 6px; box-shadow: 0 0 26px rgba(255, 233, 170, 0.28); }
+.mm-lead { font-size: 14px; text-transform: uppercase; letter-spacing: 0.16em; color: #5e0b12; font-weight: 800; }
+.mm-word { font-size: clamp(32px, 10.5vw, 52px); line-height: 1.1; font-weight: 700; font-style: italic; overflow-wrap: anywhere; }
+.mm-ok { width: 100%; min-height: 76px; border-radius: 6px; border: 3px solid var(--gold); background: #1f6b3a; color: #fff; font-size: 30px; font-style: italic; font-weight: 700; cursor: pointer; }
+.mm-ok:active:not(:disabled) { background: #17512c; }
+.mm-skip { width: 100%; min-height: 56px; border-radius: 6px; border: 2px solid var(--desk-line); background: var(--desk-2); color: var(--chalk); font-size: 20px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mm-skip:disabled, .mm-ok:disabled { opacity: 0.55; cursor: default; }
+.mm-skip-n { font-size: 14px; color: var(--faded); font-family: inherit; font-weight: 600; }
+.mm-got { margin: 0; color: var(--faded); font-weight: 700; }
+
+.mm-last { padding: 12px 14px; border-radius: 6px; border: 2px solid var(--desk-line); background: var(--desk-2); }
+.mm-last h3 { margin: 0 0 4px; font: italic 700 18px var(--type); color: var(--gold); }
+.mm-last-n { margin: 0 0 6px; font-weight: 700; }
+.mm-words { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.mm-words li { padding: 3px 10px; border-radius: 20px; background: var(--chalk); color: #1a0608; font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+
+.mm-flash { position: sticky; top: 28px; z-index: 5; background: var(--gold); color: #1a0608; border-radius: 6px; padding: 10px 14px; font-weight: 800; border: 3px solid #1a0608; animation: mm-in 0.3s ease-out; }
+@keyframes mm-in { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.mm-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.mm-feed li { padding-left: 12px; border-left: 3px solid var(--rule); }
+.mm-feed li.loud { border-left-color: var(--gold); font-weight: 700; }
+.mm-host summary { cursor: pointer; font-weight: 800; }
+.mm-host .btn { margin-top: 8px; }
+.mm-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.mm-place { flex-direction: column; align-items: stretch; gap: 8px; }
+.mm-place-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mm-place-name { flex: 1 1 100%; font-weight: 700; overflow-wrap: anywhere; }
+
+.mm-standings { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.mm-stand { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; border: 2px solid var(--desk-line); background: var(--desk-2); }
+.mm-stand.win { border-color: var(--gold); background: #3a1216; }
+.mm-stand-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.mm-stand-main b { font: italic 700 19px var(--type); }
+.mm-stand-names { flex: 1 1 100%; font-size: 14px; color: var(--faded); overflow-wrap: anywhere; }
+.mm-stand-n { flex: none; font-weight: 800; color: var(--chalk); }
+
+@media (prefers-reduced-motion: reduce) {
+    .mm-fig, .mm-arm-l, .mm-arm-r, .mm-flash { animation: none; }
+}

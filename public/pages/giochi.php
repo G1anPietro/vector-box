@@ -51,6 +51,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'mimo', 'href' => 'mimo.html', 'icon' => '../assets/mimo/icon.svg',
+        'name' => ['it' => 'Mimo', 'en' => 'Mime'],
+        'line' => ['it' => 'Due squadre, un mimo alla volta: fai indovinare la parola solo con i gesti, prima che finisca il tempo.',
+                   'en' => 'Two teams, one mime at a time: make your team guess the word with gestures only, before the time runs out.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'bomba', 'href' => 'bomba.html', 'icon' => '../assets/bomba/icon.svg',
         'name' => ['it' => 'La bomba', 'en' => 'The bomb'],
         'line' => ['it' => 'Una miccia nascosta e una categoria: dì una risposta e passa la bomba. Chi la tiene quando esplode perde una vita.',
