@@ -1,0 +1,18 @@
+{
+  "name": "Would you rather",
+  "short_name": "Would you rather",
+  "description": "Preferiresti…? Due scelte assurde, tutti scelgono in segreto dal proprio telefono, la minoranza segna un punto.",
+  "start_url": "../../pages/preferiresti.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#101216",
+  "theme_color": "#101216",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

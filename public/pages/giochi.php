@@ -43,6 +43,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'preferiresti', 'href' => 'preferiresti.html', 'icon' => '../assets/preferiresti/icon.svg',
+        'name' => ['it' => 'Preferiresti…?', 'en' => 'Would you rather…?'],
+        'line' => ['it' => 'Due scelte assurde, tutti decidono in segreto: la minoranza segna e deve spiegarsi.',
+                   'en' => 'Two absurd choices, everybody decides in secret: the minority scores and has to explain.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
         'name' => ['it' => 'Botola', 'en' => 'Botola'],
         'line' => ['it' => 'Quiz a eliminazione: stessa domanda per tutti, chi sbaglia cade nella botola. Se sono tutti bravi cade il più lento.',

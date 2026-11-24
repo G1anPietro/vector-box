@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 48;
+const DB_SCHEMA_VERSION = 49;
 
 /**
  * Session bootstrap.
@@ -586,6 +586,15 @@ function migrateV16(PDO $db): void {
 /** v39: ideas the people with an account suggest on the news page (api/news_ideas.php). */
 /** v40: the admin action log (every successful admin POST, see adminLogRequest in helpers.php) and the votes on ideas. */
 /** v44: the arcade leaderboards (api/game_scores.php): ONE row per account, game and variant: its best score (or best time). */
+function migrateV49(PDO $db): void {
+    // "Preferiresti…?" (preferiresti, on the shared rooms): the whole match state as JSON, like probabile_games
+    $db->exec("CREATE TABLE IF NOT EXISTS preferiresti_games (
+        room_id INTEGER PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+}
+
 function migrateV48(PDO $db): void {
     // "Chi è più probabile che…" (probabile, on the shared rooms): the whole match state as JSON, like botola_games
     $db->exec("CREATE TABLE IF NOT EXISTS probabile_games (
@@ -1230,6 +1239,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 48) {
             migrateV48($db);
+        }
+        if ($current < 49) {
+            migrateV49($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

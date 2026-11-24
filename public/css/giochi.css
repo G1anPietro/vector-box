@@ -109,6 +109,9 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 .box.botola .name { font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #ffb74d; }
 .box.probabile { --lid: #1d1029; --edge: #0e0714; --ink: #fff4fb; background: radial-gradient(circle at 15% 0%, rgba(255, 63, 164, 0.22), transparent 55%), var(--lid); }
 .box.probabile .name { font-style: italic; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #ff6fbd; font-size: 24px; }
+/* "Would you rather": a box split in two halves, amber and blue */
+.box.preferiresti { --lid: #14161d; --edge: #08090c; --ink: #f4f6fb; background: linear-gradient(135deg, rgba(255, 183, 3, 0.55) 0 50%, rgba(59, 108, 255, 0.6) 50% 100%), var(--lid); }
+.box.preferiresti .name { font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; color: #ffd166; font-size: 24px; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }

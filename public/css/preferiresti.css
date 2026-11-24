@@ -1,0 +1,126 @@
+/* public/css/preferiresti.css — "Would you rather" theme, loaded after spia.css on pages/preferiresti.html only.
+ * Direction: a screen split in two halves with opposite colours (amber A on top, blue B below) and a white line in the middle.
+ * In the vote the line is centred; at the reveal the halves grow with the votes and the line slides to the split.
+ * Near-black graphite around it, heavy upright grotesque type, no paper and no glow. */
+:root {
+    --desk: #101216;
+    --desk-2: #1b1f27;
+    --desk-line: #3a414f;
+    --chalk: #f4f6fb;
+    --faded: #b5bdcd;
+    --paper: #1b1f27;
+    --sheet: #151821;
+    --paper-edge: #ffb703;
+    --ink: #f4f6fb;
+    --ink-soft: rgba(244, 246, 251, 0.8);
+    --rule: rgba(244, 246, 251, 0.2);
+    --stamp: #ffb703;
+    --archive: #8fb0ff;
+    --amber: #ffb703;
+    --amber-ink: #1b1300;
+    --blue: #2c5ce6;
+    --type: "Arial Black", "Helvetica Neue", Arial, system-ui, sans-serif;
+}
+body { font-size: 17px; background: var(--desk); }
+.brand, .hero h1, .panel h2, .sheet-head h2, .pf-title { font-family: var(--type); font-weight: 900; letter-spacing: 0; text-transform: uppercase; }
+.hero h1 { font-size: clamp(24px, 7.4vw, 50px); line-height: 1.05; color: #fff; text-shadow: -3px 3px 0 var(--amber), 3px -3px 0 var(--blue); overflow-wrap: anywhere; }
+.btn.primary { background: #fff; color: #101216; border-bottom-color: #8f98aa; font-weight: 800; }
+.btn.primary:active:not(:disabled) { background: #e3e7f0; }
+.btn.primary:disabled { background: transparent; color: var(--faded); }
+:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.hero::before, .card-front::before { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- the match ---------- */
+.pf .pf-top { display: flex; justify-content: space-between; color: var(--faded); font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 2px; }
+.pf-crowd { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; border: 2px solid var(--desk-line); background: var(--desk-2); max-width: 100%; }
+.pf-chip-name { font-weight: 800; overflow-wrap: anywhere; line-height: 1.15; }
+.pf-chip-state { font-weight: 800; color: var(--amber); min-width: 1ch; }
+.pf-chip.me { border-color: var(--amber); }
+.pf-chip.done { border-color: #8fb0ff; }
+.pf-chip.gone { opacity: 0.55; text-decoration: line-through; }
+
+.pf-round { display: flex; flex-direction: column; gap: 10px; }
+.pf-title { font-size: 15px; color: var(--faded); }
+.pf-clock { display: flex; align-items: center; gap: 12px; }
+.pf-bar { flex: 1; height: 8px; background: #000; overflow: hidden; border: 1px solid var(--desk-line); }
+.pf-bar-fill { height: 100%; background: linear-gradient(90deg, var(--amber) 50%, #8fb0ff 50%); transform-origin: left; animation: pf-drain linear forwards; }
+@keyframes pf-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.pf-count { font: 900 26px/1 var(--type); min-width: 1.6em; text-align: right; color: #fff; font-variant-numeric: tabular-nums; }
+.pf-lead { font: 900 clamp(24px, 8vw, 34px)/1.05 var(--type); text-transform: uppercase; text-align: center; margin: 4px 0 0; }
+.pf-who { text-align: center; font-weight: 800; color: var(--amber); }
+.pf-wait { text-align: center; font-weight: 700; color: var(--faded); margin: 4px 0; }
+
+/* the split screen */
+.pf-split { display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; border: 3px solid #fff; background: #fff; }
+.pf-split.rv { height: clamp(380px, 62vh, 560px); }
+.pf-half {
+    position: relative; flex: 1 1 0; min-height: 132px; padding: 18px 64px 18px 16px; border: 0; border-radius: 0; text-align: left; cursor: pointer;
+    display: flex; flex-direction: column; justify-content: center; gap: 6px; font-family: var(--type);
+}
+.pf-half.a, .pf-opt-wait.a { background: var(--amber); color: var(--amber-ink); }
+.pf-half.b, .pf-opt-wait.b { background: var(--blue); color: #fff; }
+.pf-opt { font: 900 clamp(19px, 5.6vw, 25px)/1.15 var(--type); overflow-wrap: anywhere; position: relative; }
+.pf-letter { position: absolute; right: 14px; top: 8px; font: 900 56px/1 var(--type); opacity: 0.28; }
+.pf-half:active { filter: brightness(0.92); }
+.pf-half.on { box-shadow: inset 0 0 0 5px #fff; }
+.pf-half.on::after {
+    content: "✓"; position: absolute; right: 14px; bottom: 10px; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #101216;
+    display: flex; align-items: center; justify-content: center; font: 900 20px/1 var(--type);
+}
+.pf-opt-wait { margin: 0; flex: 1 1 0; min-height: 110px; padding: 16px; display: flex; align-items: center; font: 900 clamp(18px, 5.2vw, 23px)/1.15 var(--type); overflow-wrap: anywhere; }
+
+/* the line in the middle, with a round "OR" */
+.pf-line { position: relative; flex: none; height: 6px; background: #fff; z-index: 2; }
+.pf-line span {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 42px; height: 42px; padding: 0 8px; border-radius: 21px;
+    background: #fff; color: #101216; display: flex; align-items: center; justify-content: center; font: 900 15px/1 var(--type); text-transform: uppercase; border: 3px solid #101216;
+}
+.pf-lock { width: 100%; margin-top: 4px; }
+
+/* the reveal: the halves grow with the votes, the line slides */
+.pf-half.rv { flex: var(--w, 50) 1 0; animation: pf-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; justify-content: flex-start; }
+@keyframes pf-grow { from { flex-grow: 50; } }
+.pf-half.rv { cursor: default; }
+.pf-pct { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font: 900 clamp(34px, 11vw, 48px)/1 var(--type); font-variant-numeric: tabular-nums; }
+.pf-n { font: 800 14px/1.2 var(--type); text-transform: uppercase; letter-spacing: 0.05em; }
+.pf-half.min::before {
+    content: ""; position: absolute; inset: 0; border: 5px dashed rgba(255, 255, 255, 0.9); pointer-events: none;
+}
+.pf-half.min.a::before { border-color: #101216; }
+.pf-who-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-pill { padding: 3px 10px; border-radius: 4px; background: rgba(16, 18, 22, 0.82); color: #fff; font: 800 15px/1.3 var(--type); overflow-wrap: anywhere; }
+.pf-pill.fly { background: #fff; color: #101216; }
+.pf-pill.fly::before { content: "★ "; }
+.pf-pill.me { text-decoration: underline; text-underline-offset: 3px; }
+.pf-verdict { text-align: center; font: 900 21px/1.2 var(--type); text-transform: uppercase; margin: 6px 0 0; color: #fff; }
+.pf-verdict.hit { color: var(--amber); }
+.pf-explain { text-align: center; color: var(--faded); font-weight: 700; }
+.pf-next { text-align: center; }
+
+.pf-flash {
+    position: sticky; top: 6px; z-index: 5; background: #fff; color: #101216; border-radius: 6px; padding: 10px 14px; font-weight: 800;
+    border: 3px solid var(--amber); animation: pf-in 0.3s ease-out;
+}
+@keyframes pf-in { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.pf-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.pf-feed li { padding-left: 12px; border-left: 3px solid var(--rule); }
+.pf-feed li.loud { border-left-color: var(--amber); font-weight: 700; }
+.pf-host summary { cursor: pointer; font-weight: 800; }
+.pf-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* the standings */
+.pf-standings { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.pf-stand { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 6px; border: 2px solid var(--desk-line); background: var(--desk-2); }
+.pf-stand.titled { border-color: var(--amber); }
+.pf-stand-main { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.pf-stand-main b { font-size: 18px; overflow-wrap: anywhere; }
+.pf-badge { padding: 1px 8px; background: var(--amber); color: var(--amber-ink); font: 900 13px/1.5 var(--type); text-transform: uppercase; letter-spacing: 0.04em; }
+.pf-stand-n { flex: none; font-size: 14px; color: var(--faded); text-align: right; }
+@media (prefers-reduced-motion: reduce) {
+    .pf-flash { animation: none; } .pf-bar-fill { animation-duration: 0.001s !important; } .pf-half.rv { animation: none; }
+}
+
+/* the "pass the phone" screen of a shared phone: the name must be loud (spia.css paints it with --paper) */
+.pass-name { color: var(--amber); font-family: var(--type); text-transform: uppercase; }
