@@ -16,6 +16,7 @@ require_once __DIR__ . '/botola_lib.php';
 require_once __DIR__ . '/probabile_lib.php';
 require_once __DIR__ . '/preferiresti_lib.php';
 require_once __DIR__ . '/bomba_lib.php';
+require_once __DIR__ . '/indovina_lib.php';
 
 initSession();
 header('Cache-Control: no-store');
@@ -139,6 +140,14 @@ try {
                 $room = spiaRoom($db, (int)$room['id']);
             }
         }
+        if ($room['game'] === 'indovina') {
+            $g = indovinaLoad($db, (int)$room['id']);
+            if ($g && indovinaTick($g)) {
+                indovinaSave($db, (int)$room['id'], $g);
+                spiaBump($db, (int)$room['id']);
+                $room = spiaRoom($db, (int)$room['id']);
+            }
+        }
         if ($room['game'] === 'bomba') {
             $g = bombaLoad($db, (int)$room['id']);
             if ($g && bombaTick($g)) {
@@ -178,7 +187,7 @@ try {
         if (!checkRateLimit('spia_create', 10, 600)) spiaFail('slow_down', 429);
         $db->exec('BEGIN IMMEDIATE');
         spiaPruneRooms($db);
-        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba'], true) ? $in['game'] : 'spia';
+        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'indovina'], true) ? $in['game'] : 'spia';
         $rawSettings = is_array($in['settings'] ?? null) ? $in['settings'] : [];
         $settings = match ($game) {
             'lupus' => lupusSanitizeSettings($rawSettings, []),
@@ -187,6 +196,7 @@ try {
             'probabile' => probabileSanitizeSettings($rawSettings, []),
             'preferiresti' => preferirestiSanitizeSettings($rawSettings, []),
             'bomba' => bombaSanitizeSettings($rawSettings, []),
+            'indovina' => indovinaSanitizeSettings($rawSettings, []),
             default => spiaSanitizeSettings($rawSettings, []),
         };
         $db->prepare('INSERT INTO spia_rooms (code, game, settings, created_at, updated_at) VALUES (:c, :g, :s, :t, :t)')
@@ -243,6 +253,14 @@ try {
     }
     if ($room['game'] === 'botola') {
         $r = botolaHandle($db, $room, $device, $isHost, $in, $action);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
+        $handled = $r === true;
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
+    if ($room['game'] === 'indovina') {
+        $r = indovinaHandle($db, $room, $device, $isHost, $in, $action);
         if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
         $handled = $r === true;
         if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {

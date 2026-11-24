@@ -59,6 +59,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'indovina', 'href' => 'indovina.html', 'icon' => '../assets/indovina/icon.svg',
+        'name' => ['it' => 'Indovina cosa', 'en' => 'Guess what'],
+        'line' => ['it' => 'Uno custodisce una parola segreta, gli altri la scoprono con domande sì o no. Venti domande, un solo tentativo a testa.',
+                   'en' => 'One player keeps a secret word, the others find it with yes or no questions. Twenty questions, one try each.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
         'name' => ['it' => 'Botola', 'en' => 'Botola'],
         'line' => ['it' => 'Quiz a eliminazione: stessa domanda per tutti, chi sbaglia cade nella botola. Se sono tutti bravi cade il più lento.',

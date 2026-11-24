@@ -115,6 +115,9 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "The bomb": industrial black and orange with hazard stripes */
 .box.bomba { --lid: #17130f; --edge: #070605; --ink: #ffe9d2; background: repeating-linear-gradient(135deg, rgba(255, 106, 0, 0.5) 0 14px, rgba(0, 0, 0, 0) 14px 28px), var(--lid); }
 .box.bomba .name { font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #ff8a1f; }
+/* "Guess what": midnight blue with a yellow lamp, typewriter type */
+.box.indovina { --lid: #0e1a40; --edge: #060c20; --ink: #f4f1e6; background: radial-gradient(circle at 78% 18%, rgba(255, 216, 74, 0.35) 0 14%, rgba(255, 216, 74, 0) 15%), var(--lid); }
+.box.indovina .name { font-family: "Courier New", Courier, monospace; font-weight: 800; letter-spacing: 0.02em; color: #ffd84a; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }
