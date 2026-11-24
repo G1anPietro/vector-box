@@ -45,3 +45,7 @@
 .support .go { flex: none; font-size: 30px; color: #f2c66d; }
 @media (max-width: 520px) { .support { padding: 16px; gap: 12px; } .support .heart { font-size: 34px; } .support .name { font-size: 22px; } .support .go { display: none; } }
 @media (prefers-reduced-motion: reduce) { .support { transition: none; } }
+
+/* "New here?" link under the lead of the home menu */
+.menu-page .howto { margin: -8px 0 0; }
+.menu-page .howto a { display: inline-block; padding: 10px 0; min-height: 44px; color: var(--link); font-weight: 700; }

@@ -1,0 +1,16 @@
+/* public/css/come-funziona.css — "How it works" page. Colours and fonts come from giochi.css (the dusk theme). */
+.how .lead { font-size: 19px; line-height: 1.5; color: var(--text); }
+.how .shot { margin: 24px auto; max-width: 300px; }
+.how .shot img { display: block; width: 100%; height: auto; border: 1px solid var(--plank); border-radius: 18px; box-shadow: 0 8px 0 #0e0c13, 0 14px 26px rgba(0, 0, 0, 0.4); }
+.how .shot figcaption { margin-top: 12px; text-align: center; color: var(--muted); font-size: 15px; }
+.how .steps { list-style: none; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 14px; }
+.how .steps li { counter-increment: step; position: relative; padding: 16px 16px 16px 64px; border: 1px solid var(--plank); border-radius: 12px; background: var(--dusk-2); margin: 0; }
+.how .steps li::before { content: counter(step); position: absolute; left: 16px; top: 16px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--link); color: #231a08; font-weight: 800; }
+.how .steps h3 { margin: 0 0 4px; font-size: 20px; }
+.how .steps p { margin: 0; }
+.how .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.how .actions .cta { margin-top: 6px; }
+.how details { border: 1px solid var(--plank); border-radius: 10px; padding: 0 14px; margin-top: 10px; background: var(--dusk-2); }
+.how details summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; font-weight: 700; }
+.how details p { margin: 0 0 14px; }
+.how .foot, .foot { margin-top: 20px; }

@@ -119,6 +119,7 @@ $title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk
         <p class="lead"><?= $lang === 'it'
             ? 'Giochi, appunti di classe e un desktop cyberpunk nel browser. Scegli dove andare.'
             : 'Games, class notes and a cyberpunk desktop in your browser. Pick where to go.' ?></p>
+        <p class="howto"><a href="pages/come-funziona.php"><?= $lang === 'it' ? 'Nuovo qui? Scopri come funziona →' : 'New here? See how it works →' ?></a></p>
 
         <nav class="menu-cards" aria-label="<?= $lang === 'it' ? 'Menu principale' : 'Main menu' ?>">
             <?php foreach ($CARDS as $c): if (isset($c['show']) && !$c['show']) continue; ?>
@@ -143,6 +144,7 @@ $title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk
 
     <footer class="foot">
         <a href="pages/privacy.php">Privacy</a>
+        <a href="pages/come-funziona.php"><?= $lang === 'it' ? 'Come funziona' : 'How it works' ?></a>
         <a href="pages/sicurezza.php"><?= $lang === 'it' ? 'Sicurezza' : 'Security' ?></a>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>
     </footer>
