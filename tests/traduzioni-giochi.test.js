@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const { visibleText, looksItalian } = require('./lang-helpers');
 
 const PUB = path.join(__dirname, '..', 'public');
-const ARCADE = ['minato', 'dueamila', 'memory', 'tris', 'snake', 'forza4', 'impiccato', 'simon', 'tetris', 'parola', 'vita', 'difesa'];
+const ARCADE = ['minato', 'dueamila', 'memory', 'tris', 'snake', 'forza4', 'impiccato', 'simon', 'tetris', 'parola', 'vita', 'difesa', 'serata'];
 const PARTY = ['spia', 'lupus', 'cucu', 'botola', 'nonhomai', 'solitario'];
 const read = (p) => fs.readFileSync(path.join(PUB, p), 'utf8');
 

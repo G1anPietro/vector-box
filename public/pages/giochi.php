@@ -35,6 +35,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono in mezzo al tavolo', 'en' => 'one phone in the middle of the table'],
     ],
     [
+        'group' => 'friends', 'look' => 'nonhomai', 'href' => 'serata.html', 'icon' => '../assets/serata/icon.svg',
+        'name' => ['it' => 'Serata', 'en' => 'Party night'],
+        'line' => ['it' => 'Tre giochi veloci: chi è più probabile che…, preferiresti…? e la bomba da passare.',
+                   'en' => 'Three quick games: most likely to…, would you rather…? and the bomb to pass around.'],
+        'who'  => ['it' => '2 o più giocatori', 'en' => '2 or more players'],
+        'how'  => ['it' => 'un telefono in mezzo al tavolo', 'en' => 'one phone in the middle of the table'],
+    ],
+    [
         'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
         'name' => ['it' => 'Botola', 'en' => 'Botola'],
         'line' => ['it' => 'Quiz a eliminazione: stessa domanda per tutti, chi sbaglia cade nella botola. Se sono tutti bravi cade il più lento.',

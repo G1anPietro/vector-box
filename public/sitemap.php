@@ -11,6 +11,7 @@ $pages = [
     ['/pages/spia.html', 'monthly', '0.8'],
     ['/pages/lupus.html', 'monthly', '0.8'],
     ['/pages/nonhomai.html', 'monthly', '0.8'],
+    ['/pages/serata.html', 'monthly', '0.7'],
     ['/pages/solitario.html', 'monthly', '0.8'],
     ['/pages/cucu.html', 'monthly', '0.8'],
     ['/pages/minato.html', 'monthly', '0.7'],
