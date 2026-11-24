@@ -112,6 +112,9 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "Would you rather": a box split in two halves, amber and blue */
 .box.preferiresti { --lid: #14161d; --edge: #08090c; --ink: #f4f6fb; background: linear-gradient(135deg, rgba(255, 183, 3, 0.55) 0 50%, rgba(59, 108, 255, 0.6) 50% 100%), var(--lid); }
 .box.preferiresti .name { font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; color: #ffd166; font-size: 24px; }
+/* "Truth or dare": a purple card table with a gold rim and a spinning bottle */
+.box.obbligo { --lid: #2a1247; --edge: #130822; --ink: #fff4d6; background: radial-gradient(circle at 50% 0%, rgba(245, 197, 66, 0.28), rgba(0, 0, 0, 0) 60%), var(--lid); }
+.box.obbligo .name { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-style: italic; color: #f5c542; font-size: 34px; }
 /* "The bomb": industrial black and orange with hazard stripes */
 .box.bomba { --lid: #17130f; --edge: #070605; --ink: #ffe9d2; background: repeating-linear-gradient(135deg, rgba(255, 106, 0, 0.5) 0 14px, rgba(0, 0, 0, 0) 14px 28px), var(--lid); }
 .box.bomba .name { font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #ff8a1f; }

@@ -43,6 +43,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'obbligo', 'href' => 'obbligo.html', 'icon' => '../assets/obbligo/icon.svg',
+        'name' => ['it' => 'Obbligo o verità', 'en' => 'Truth or dare'],
+        'line' => ['it' => 'Una carta, una bottiglia che gira: scegli verità o obbligo, gli altri votano se vale. Domande e sfide leggere, piccanti spente.',
+                   'en' => 'A card, a spinning bottle: pick truth or dare, the others vote whether it counts. Light questions and dares, spicy ones off.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'bomba', 'href' => 'bomba.html', 'icon' => '../assets/bomba/icon.svg',
         'name' => ['it' => 'La bomba', 'en' => 'The bomb'],
         'line' => ['it' => 'Una miccia nascosta e una categoria: dì una risposta e passa la bomba. Chi la tiene quando esplode perde una vita.',

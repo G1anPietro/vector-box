@@ -1,0 +1,129 @@
+/* public/css/obbligo.css — "Truth or dare" theme, loaded after spia.css on pages/obbligo.html only.
+ * Direction: a card table at night. Deep violet felt, gold rim and gold type (a serif italic), cream playing cards that turn over,
+ * and a glass bottle that spins and stops pointing at the player whose turn it is.
+ * Motion (the spin, the card turn) is short and runs once; prefers-reduced-motion turns every animation off. */
+:root {
+    --desk: #130a22;
+    --desk-2: #21123a;
+    --desk-line: #5a3a8c;
+    --chalk: #fff4d6;
+    --faded: #cfc0ea;
+    --paper: #21123a;
+    --sheet: #1a0e2e;
+    --paper-edge: #f5c542;
+    --ink: #fff4d6;
+    --ink-soft: rgba(255, 244, 214, 0.84);
+    --rule: rgba(255, 244, 214, 0.22);
+    --stamp: #f5c542;
+    --archive: #f5c542;
+    --gold: #f5c542;
+    --gold-ink: #1e1200;
+    --violet: #8e5bd6;
+    --card: #fff4d6;
+    --card-ink: #2a1247;
+    --type: Georgia, "Times New Roman", "Iowan Old Style", serif;
+}
+body { font-size: 17px; background: var(--desk); background-image: radial-gradient(ellipse at 50% -10%, rgba(142, 91, 214, 0.35), rgba(0, 0, 0, 0) 60%); }
+body::before { content: ""; position: fixed; inset: 0 0 auto 0; height: 6px; z-index: 20; background: linear-gradient(90deg, var(--violet), var(--gold), var(--violet)); }
+.brand, .hero h1, .panel h2, .sheet-head h2, .ob-title { font-family: var(--type); font-weight: 700; font-style: italic; letter-spacing: 0.01em; }
+.hero h1 { font-size: clamp(32px, 9.5vw, 60px); line-height: 1.02; color: var(--gold); text-shadow: 0 3px 0 #5a3a8c; overflow-wrap: anywhere; }
+.btn.primary { background: var(--gold); color: var(--gold-ink); border-bottom-color: #a77d0f; font-weight: 800; }
+.btn.primary:active:not(:disabled) { background: #e0b12f; }
+.btn.primary:disabled { background: transparent; color: var(--faded); }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.hero::before, .card-front::before { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- the match ---------- */
+.ob .ob-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; color: var(--faded); font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; padding: 0 2px; }
+.ob-crowd { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.ob-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--desk-line); background: var(--desk-2); max-width: 100%; }
+.ob-chip-name { font-weight: 700; overflow-wrap: anywhere; line-height: 1.15; }
+.ob-chip-pts { font-size: 13px; color: var(--gold); font-weight: 700; white-space: nowrap; }
+.ob-chip-mark { color: #7fe0a8; font-weight: 800; }
+.ob-chip.me { border-color: var(--faded); }
+.ob-chip.spot { border-color: var(--gold); background: #3a2160; box-shadow: 0 0 0 2px var(--gold); }
+.ob-chip.gone { opacity: 0.6; text-decoration: line-through; }
+
+.ob-round { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0 4px; text-align: center; }
+.ob-title { margin: 0; font-size: clamp(26px, 8vw, 36px); color: var(--gold); }
+
+/* the round table */
+.ob-table { position: relative; width: min(74vw, 260px); aspect-ratio: 1; flex: none; }
+.ob-felt { position: absolute; inset: 9%; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #4a2a80, #2a1550 70%); border: 5px solid var(--gold); box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(0, 0, 0, 0.5); }
+.ob-seats { list-style: none; margin: 0; padding: 0; position: absolute; inset: 0; }
+.ob-seat { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; display: grid; place-items: center; font: 700 13px/1 var(--type); text-transform: uppercase; background: var(--desk); color: var(--faded); border: 2px solid var(--desk-line); }
+.ob-seat.on { background: var(--gold); color: var(--gold-ink); border-color: #fff4d6; transform: scale(1.25); }
+.ob-bottle { position: absolute; inset: 0; display: grid; place-items: center; transform: rotate(var(--a, 0deg)); transform-origin: 50% 50%; }
+.ob-bottle-art { position: absolute; left: 39%; top: 17%; width: 22%; height: 66%; overflow: visible; }
+.ob-glass { fill: #2f8a63; stroke: #bdf3d8; stroke-width: 2; stroke-linejoin: round; }
+.ob-label { fill: var(--card); stroke: #b8a46c; stroke-width: 1.5; }
+.ob-tip { fill: var(--gold); }
+@keyframes ob-spin { from { transform: rotate(calc(var(--a, 0deg) + 1260deg)); } to { transform: rotate(var(--a, 0deg)); } }
+
+.ob-spot { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ob-spot-lead { font-size: 14px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--faded); }
+.ob-spot-name { font: 700 italic clamp(30px, 10vw, 46px)/1.05 var(--type); color: var(--gold); overflow-wrap: anywhere; }
+.ob-ask { margin: 0; font: 700 italic clamp(22px, 7vw, 28px)/1.2 var(--type); }
+.ob-wait { margin: 0; color: var(--faded); font-weight: 600; }
+
+.ob-picks { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ob-pick { min-height: 92px; padding: 10px 8px; border-radius: 14px; border: 3px solid var(--gold); font: 700 italic clamp(22px, 7vw, 30px)/1.1 var(--type); cursor: pointer; color: var(--chalk); background: var(--desk-2); overflow-wrap: anywhere; }
+.ob-pick.truth { background: #3a2160; }
+.ob-pick.dare { background: var(--gold); color: var(--gold-ink); }
+.ob-pick.yes { background: #1d5a3f; border-color: #7fe0a8; }
+.ob-pick.no { background: #5c1f3a; border-color: #ff9fb8; }
+.ob-pick:active { transform: translateY(2px); }
+.ob-done { width: 100%; min-height: 64px; font-size: 22px; }
+.ob-row { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ob-pass { align-self: center; }
+
+/* the playing card */
+.ob-card { width: 100%; max-width: 360px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 12px; border-radius: 16px; background: var(--card); color: var(--card-ink); border: 4px solid var(--gold); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45), inset 0 0 0 3px #f1d98c; transform-origin: 50% 50%; }
+.ob-card.dare { background: #ffe9ad; }
+.ob-card-kind { font: 700 italic 15px/1 var(--type); text-transform: uppercase; letter-spacing: 0.18em; color: #5a2c9a; }
+.ob-card-text { margin: 0; font: 700 clamp(20px, 6.2vw, 26px)/1.25 var(--type); overflow-wrap: anywhere; }
+.ob-card-cat { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: #6b4d8f; align-self: flex-end; }
+@keyframes ob-flip { from { transform: perspective(700px) rotateY(90deg); opacity: 0.2; } to { transform: perspective(700px) rotateY(0); opacity: 1; } }
+
+/* vote and verdict */
+.ob-clock { width: 100%; max-width: 360px; display: flex; align-items: center; gap: 10px; }
+.ob-bar { flex: 1; height: 10px; border-radius: 999px; background: var(--desk-2); border: 1px solid var(--desk-line); overflow: hidden; }
+.ob-bar-fill { height: 100%; width: 100%; background: var(--gold); transform-origin: left center; animation: ob-drain linear forwards; }
+@keyframes ob-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.ob-count { font: 700 20px/1 var(--type); color: var(--gold); min-width: 2ch; text-align: right; }
+.ob-tally { width: 100%; max-width: 360px; height: 14px; border-radius: 999px; background: #5c1f3a; overflow: hidden; border: 1px solid var(--desk-line); }
+.ob-tally-ok { height: 100%; background: #3fc88a; }
+.ob-votes { margin: 0; font-weight: 700; color: var(--faded); }
+.ob-verdict { margin: 0; font: 700 italic clamp(24px, 7.5vw, 32px)/1.2 var(--type); overflow-wrap: anywhere; }
+.ob-verdict.done { color: #7fe0a8; }
+.ob-verdict.fail, .ob-verdict.none { color: #ffb3c6; }
+.ob-next { margin: 0; }
+
+.ob-flash { position: sticky; top: 14px; z-index: 5; background: var(--gold); color: var(--gold-ink); border-radius: 12px; padding: 10px 14px; font-weight: 800; border: 3px solid #5a3a8c; animation: ob-in 0.3s ease-out; }
+@keyframes ob-in { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ob-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.ob-feed li { padding-left: 12px; border-left: 3px solid var(--rule); }
+.ob-feed li.loud { border-left-color: var(--gold); font-weight: 700; }
+.ob-host summary { cursor: pointer; font-weight: 800; }
+.ob-host .btn { margin-top: 8px; margin-right: 8px; }
+.ob-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+.ob-standings { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.ob-stand { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--desk-line); background: var(--desk-2); }
+.ob-stand.win { border-color: var(--gold); background: #3a2160; }
+.ob-stand-main { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.ob-stand-main b { font-size: 18px; overflow-wrap: anywhere; }
+.ob-stand-pts { color: var(--gold); font-weight: 700; }
+.ob-stand-n { font-size: 14px; color: var(--faded); }
+
+@media (prefers-reduced-motion: reduce) {
+    .ob-bottle, .ob-card, .ob-flash, .ob-bar-fill { animation: none !important; }
+    .ob-pick:active { transform: none; }
+}
+
+/* the "pass the phone" screen of a shared phone: the name must be loud (spia.css paints it with --paper) */
+.pass-name { color: var(--gold); font-family: var(--type); font-style: italic; }
+
+/* spia.css paints the small links with --paper (dark here): make them readable on the dark ground */
+.link { color: var(--gold); }
