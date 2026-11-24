@@ -53,6 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const spreadRow = document.getElementById('spread-row');
     const spreadBtns = [...document.querySelectorAll('[data-spread]')];
     const pageRange = document.getElementById('page-range');
+    const topPageInput = document.getElementById('top-page-input');
+    const topPageTotal = document.getElementById('top-page-total');
+    const topPageForm = document.getElementById('top-page-form');
     const toastEl = document.getElementById('reader-toast');
     const pref = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
     const setPref = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* private mode */ } };
@@ -269,8 +272,28 @@ document.addEventListener('DOMContentLoaded', () => {
     spreadBtns.forEach((b) => b.addEventListener('click', () => setSpread(b.dataset.spread)));
     document.getElementById('tap-prev')?.addEventListener('click', () => turnPage(-1));
     document.getElementById('tap-next')?.addEventListener('click', () => turnPage(1));
+    /** The page number also lives in the top bar (always visible, editable): copy it from the bottom bar's fields. */
+    function syncTopPage() {
+        if (topPageInput && document.activeElement !== topPageInput) topPageInput.value = pageJumpInput.value;
+        if (topPageInput) topPageInput.max = pageJumpInput.max || '';
+        if (topPageTotal) topPageTotal.textContent = pageTotalLabel.textContent;
+        if (topPageForm) topPageForm.hidden = !(parseInt(pageJumpInput.max, 10) > 1);
+    }
+    if (topPageInput) {
+        const go = () => {
+            const max = parseInt(topPageInput.max, 10) || 1;
+            const v = Math.min(max, Math.max(1, parseInt(topPageInput.value, 10) || 1));
+            topPageInput.value = v;
+            jumpToPage(v);
+            topPageInput.blur();
+        };
+        topPageForm.addEventListener('submit', (e) => { e.preventDefault(); go(); });
+        topPageInput.addEventListener('focus', () => topPageInput.select());
+        topPageInput.addEventListener('blur', () => { setTimeout(syncTopPage, 50); });
+        topPageInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); topPageInput.blur(); } });
+    }
     if (pageRange) {
-        pageRange.addEventListener('input', () => { pageJumpInput.value = pageRange.value; });
+        pageRange.addEventListener('input', () => { pageJumpInput.value = pageRange.value; syncTopPage(); });
         pageRange.addEventListener('change', () => jumpToPage(parseInt(pageRange.value, 10)));
     }
     if (pdfStage) addSwipe(pdfStage);
@@ -314,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === '+' || e.key === '=') zoom(1);
         if (e.key === '-') zoom(-1);
         if (e.key === 'Escape') {
-            if ((settingsPanel && !settingsPanel.hidden) || (bookmarksPanel && bookmarksPanel.style.display !== 'none')) closePanels();
+            if (settingsPanel && !settingsPanel.hidden) closePanels();
             else if (viewerModal.classList.contains('bars-hidden')) toggleBars(false);
             else closeViewer();
         }
@@ -621,6 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
         epubBook = null;
         pdfDoc = null;
         currentBookId = null;
+        if (topPageForm) topPageForm.hidden = true;
         document.dispatchEvent(new CustomEvent('reader:close'));
         // Refresh progress bars / continue shelf after reading (give the debounced save time to land)
         setTimeout(async () => {
@@ -872,6 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pageTotalLabel.textContent = `/ ${epubTotalPages}`;
                 pageJumpInput.max = epubTotalPages;
                 if (pageRange) pageRange.max = epubTotalPages;
+                syncTopPage();
 
                 const currentLocation = epubRendition.currentLocation();
                 if (currentLocation && currentLocation.start) {
@@ -911,6 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 epubCurrentPage = loc + 1;
                 pageJumpInput.value = epubCurrentPage;
                 if (pageRange) { pageRange.max = epubTotalPages; pageRange.value = epubCurrentPage; }
+                syncTopPage();
             }
         }
     }
@@ -928,6 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             pageTotalLabel.textContent = `/ ${pdfTotalPages}`;
             pageJumpInput.max = pdfTotalPages;
+            syncTopPage();
 
             renderPdfPage(pdfCurrentPage);
             document.dispatchEvent(new CustomEvent('reader:ready'));
@@ -972,6 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const percentage = Math.round((pageNum / pdfTotalPages) * 100);
         pageJumpInput.value = pageNum;
         if (pageRange) { pageRange.max = pdfTotalPages; pageRange.value = pageNum; }
+        syncTopPage();
 
         currentLocation = pageNum.toString();
         currentPct = percentage;

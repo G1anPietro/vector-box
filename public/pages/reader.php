@@ -170,6 +170,10 @@ if (!$canRead) {
                 <button id="add-bookmark-btn" class="btn icon-btn" title="Aggiungi un segnalibro qui" aria-label="Aggiungi un segnalibro qui">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></svg>
                 </button>
+                <form id="top-page-form" class="top-page" novalidate title="Pagina: scrivi un numero e premi Invio per andarci" hidden>
+                    <input id="top-page-input" class="top-page-input" type="number" inputmode="numeric" min="1" value="1" aria-label="Numero di pagina: scrivilo e premi Invio per andarci" enterkeyhint="go">
+                    <span id="top-page-total" class="top-page-total">/ 1</span>
+                </form>
                 <div class="pop-wrap">
                     <button id="settings-btn" class="btn menu-open-btn" title="Menu del libro: indice, cerca, note, testo" aria-label="Menu del libro: indice, cerca, note e testo" aria-expanded="false" aria-controls="settings-panel">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>

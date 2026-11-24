@@ -27,7 +27,7 @@ test('the library page: one clear Menu button in the book, tabs for index/search
     const html = (await reader.get('/pages/reader.php')).text;
     assert.match(html, /id="settings-btn"[^>]*>[\s\S]*?<span>Menu<\/span>/, 'a button that says Menu');
     assert.ok(!html.includes('Segnalibri</button>') && !html.includes('class="btn icon-btn aa-btn"'), 'the old Aa and Segnalibri buttons are gone');
-    for (const id of ['tab-toc', 'tab-search', 'tab-notes', 'tab-text', 'toc-list', 'inbook-search-form', 'highlights-list', 'add-note-btn', 'export-notes-btn', 'sel-bar', 'shelf-filters', 'more-filters', 'f-format', 'f-author', 'f-tag', 'f-flags', 'shelf-count', 'filters-reset', 'shelf-sort', 'shuffle-btn', 'stats-section', 'tag-dialog', 'tidy-titles-btn']) assert.ok(html.includes(`id="${id}"`), id);
+    for (const id of ['tab-toc', 'tab-search', 'tab-notes', 'tab-text', 'toc-list', 'inbook-search-form', 'highlights-list', 'add-note-btn', 'export-notes-btn', 'sel-bar', 'top-page-form', 'top-page-input', 'top-page-total', 'shelf-filters', 'more-filters', 'f-format', 'f-author', 'f-tag', 'f-flags', 'shelf-count', 'filters-reset', 'shelf-sort', 'shuffle-btn', 'stats-section', 'tag-dialog', 'tidy-titles-btn']) assert.ok(html.includes(`id="${id}"`), id);
     for (const v of ['oldest', 'title-desc', 'author-desc', 'progress', 'finish', 'unread', 'notes', 'marks', 'big', 'small', 'format', 'random']) assert.ok(html.includes(`<option value="${v}"`), 'sort ' + v);
     for (const a of ['data-font="easy"', 'data-margin="xwide"', 'data-justify="justify"', 'id="lh-up-btn"']) assert.ok(html.includes(a), a);
     assert.ok(html.indexOf('reader-tools.js') !== -1 && html.indexOf('reader-tools.js') < html.indexOf('reader.js?'), 'tools load before reader.js');
