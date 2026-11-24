@@ -1,0 +1,18 @@
+{
+  "name": "Undercover",
+  "short_name": "Undercover",
+  "description": "Undercover. Una parola segreta a testa, ma una è diversa: un indizio, un voto, chi è l'infiltrato?",
+  "start_url": "../../pages/undercover.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#101612",
+  "theme_color": "#101612",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
