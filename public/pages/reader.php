@@ -72,7 +72,10 @@ if (!$canRead) {
                 <button class="theme-btn theme-black" data-theme="black" title="OLED Nero"></button>
             </div>
             <span class="who">Utente: <strong><?php echo htmlspecialchars($username); ?></strong></span>
-            <a href="../index.php" class="btn">&larr; Sito</a>
+            <a href="../index.php" class="btn menu-btn" title="Torna al menu principale di vector-box" aria-label="Torna al menu principale di vector-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                <span>Menu</span>
+            </a>
         </div>
     </header>
 

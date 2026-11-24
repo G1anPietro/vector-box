@@ -614,3 +614,8 @@ body.reading { overflow: hidden; }
 @keyframes flip-back { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
 @keyframes flip-shade { 0% { opacity: 0; } 45% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .flip-layer { display: none; } }
+
+/* the way back to the home menu: a clear "Menu" button with the three-lines icon (it used to say "← Sito") */
+.menu-btn { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 700; border-color: var(--accent-color); min-height: 38px; }
+.menu-btn svg { flex: none; }
+@media (max-width: 420px) { .reader-nav .who { display: none; } }
