@@ -377,6 +377,7 @@ const MARGINS = { normal: 0, wide: 24, xwide: 48 };
         return { ...NO_FILTER, ...f };
     })();
     let sort = pref('vector_reader_sort', 'recent');
+    let seed = 1 + Math.floor(Math.random() * 9000);   // "A caso": a new order every time you ask for it, the same while you scroll
     const saveF = () => { setPref('vector_reader_filters', JSON.stringify(F)); setPref('vector_reader_filter', ''); };
     async function loadTags() {
         const [t, c] = await Promise.all([getJson('../api/book_tags.php'), getJson('../api/highlights.php?summary=1')]);
@@ -442,11 +443,29 @@ const MARGINS = { normal: 0, wide: 24, xwide: 48 };
         const count = $('shelf-count');
         if (count) count.textContent = out.length === books.length ? (books.length === 1 ? '1 libro' : `${books.length} libri`) : `${out.length} di ${books.length} libri`;
         const coll = new Intl.Collator('it', { sensitivity: 'base', numeric: true });
+        const byTitle = (a, b) => coll.compare(a.title || '', b.title || '');
+        const cnt = (b, k) => (counts[b.id] || {})[k] || 0;
+        const size = (b) => Number(b.file_size) || 0;
+        const inProg = (b) => { const p = pct(b); return p > 0 && p < 99; };
         out = out.slice();
-        if (sort === 'title') out.sort((a, b) => coll.compare(a.title || '', b.title || ''));
-        else if (sort === 'author') out.sort((a, b) => coll.compare(a.author || '', b.author || '') || coll.compare(a.title || '', b.title || ''));
-        else if (sort === 'progress') out.sort((a, b) => pct(b) - pct(a));
-        else if (sort === 'read') out.sort((a, b) => when(b).localeCompare(when(a)));
+        const by = {
+            oldest: () => out.reverse(),
+            title: () => out.sort(byTitle),
+            'title-desc': () => out.sort((a, b) => byTitle(b, a)),
+            author: () => out.sort((a, b) => coll.compare(a.author || '', b.author || '') || byTitle(a, b)),
+            'author-desc': () => out.sort((a, b) => coll.compare(b.author || '', a.author || '') || byTitle(a, b)),
+            progress: () => out.sort((a, b) => pct(b) - pct(a)),
+            unread: () => out.sort((a, b) => pct(a) - pct(b) || byTitle(a, b)),
+            finish: () => out.sort((a, b) => (inProg(b) - inProg(a)) || (inProg(a) && inProg(b) ? pct(b) - pct(a) : 0)),   // started and not finished first, the nearest to the end on top
+            read: () => out.sort((a, b) => when(b).localeCompare(when(a))),
+            notes: () => out.sort((a, b) => (cnt(b, 'hl') + cnt(b, 'notes')) - (cnt(a, 'hl') + cnt(a, 'notes')) || byTitle(a, b)),
+            marks: () => out.sort((a, b) => cnt(b, 'bookmarks') - cnt(a, 'bookmarks') || byTitle(a, b)),
+            big: () => out.sort((a, b) => size(b) - size(a)),
+            small: () => out.sort((a, b) => size(a) - size(b)),
+            format: () => out.sort((a, b) => String(a.format).localeCompare(String(b.format)) || byTitle(a, b)),
+            random: () => out.sort((a, b) => ((a.id * seed) % 9973) - ((b.id * seed) % 9973)),
+        };
+        if (by[sort]) by[sort]();
         return out;                // 'recent' = the order of the list (newest upload first)
     }
     /** On every card: a clear "finished" / "% read" mark, the date of the last reading and the labels with an edit button. */
@@ -535,8 +554,14 @@ const MARGINS = { normal: 0, wide: 24, xwide: 48 };
         bindTidy();
         if ($('add-note-btn')) $('add-note-btn').addEventListener('click', addPageNote);
         if ($('inbook-search-form')) $('inbook-search-form').addEventListener('submit', (e) => { e.preventDefault(); searchBook($('inbook-search-input').value); });
-        const sel = $('shelf-sort');
-        if (sel) { if ([...sel.options].some((o) => o.value === sort)) sel.value = sort; else sort = 'recent'; sel.addEventListener('change', () => { sort = sel.value; setPref('vector_reader_sort', sort); ctx().refreshCatalog(); }); }
+        const sel = $('shelf-sort'), shuffle = $('shuffle-btn');
+        if (sel) {
+            if ([...sel.options].some((o) => o.value === sort)) sel.value = sort; else sort = 'recent';
+            const show = () => { if (shuffle) shuffle.hidden = sort !== 'random'; };
+            show();
+            sel.addEventListener('change', () => { sort = sel.value; seed = 1 + Math.floor(Math.random() * 9000); setPref('vector_reader_sort', sort); show(); ctx().refreshCatalog(); });
+            if (shuffle) shuffle.addEventListener('click', () => { seed = 1 + Math.floor(Math.random() * 9000); ctx().refreshCatalog(); });
+        }
         const stats = $('stats-section');
         if (stats) stats.addEventListener('toggle', () => { if (stats.open) renderStats(); });
         paintFilters();

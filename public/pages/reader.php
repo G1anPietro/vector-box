@@ -125,12 +125,34 @@ if (!$canRead) {
                 <div class="filter-status"><span id="shelf-count" aria-live="polite"></span> <button type="button" id="filters-reset" class="link-btn" hidden>Azzera i filtri</button></div>
                 <label class="sort-label">Ordina per
                     <select id="shelf-sort" class="input-text sort-select">
-                        <option value="recent">Aggiunti di recente</option>
-                        <option value="read">Letti di recente</option>
-                        <option value="title">Titolo (A-Z)</option>
-                        <option value="author">Autore (A-Z)</option>
-                        <option value="progress">Più avanti nella lettura</option>
+                        <optgroup label="Aggiunta">
+                            <option value="recent">Aggiunti di recente</option>
+                            <option value="oldest">Aggiunti da più tempo</option>
+                        </optgroup>
+                        <optgroup label="Nome">
+                            <option value="title">Titolo (A-Z)</option>
+                            <option value="title-desc">Titolo (Z-A)</option>
+                            <option value="author">Autore (A-Z)</option>
+                            <option value="author-desc">Autore (Z-A)</option>
+                        </optgroup>
+                        <optgroup label="Lettura">
+                            <option value="read">Letti di recente</option>
+                            <option value="progress">Più avanti nella lettura</option>
+                            <option value="finish">Da finire (i più vicini alla fine)</option>
+                            <option value="unread">Da iniziare prima</option>
+                        </optgroup>
+                        <optgroup label="Contenuto">
+                            <option value="notes">Con più note ed evidenziazioni</option>
+                            <option value="marks">Con più segnalibri</option>
+                            <option value="big">Più grandi (file)</option>
+                            <option value="small">Più piccoli (file)</option>
+                            <option value="format">Formato (EPUB, poi PDF)</option>
+                        </optgroup>
+                        <optgroup label="Altro">
+                            <option value="random">A caso</option>
+                        </optgroup>
                     </select>
+                    <button type="button" id="shuffle-btn" class="btn small-btn" hidden title="Mischia di nuovo">🔀 Mischia</button>
                 </label>
                 <?php if ($canUpload): ?><button type="button" id="tidy-titles-btn" class="btn small-btn" title="Toglie dai titoli i resti dei siti di download">Sistema i titoli</button><?php endif; ?>
             </div>
