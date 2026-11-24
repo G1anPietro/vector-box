@@ -691,3 +691,13 @@ body.reading { overflow: hidden; }
 .goal-track { height: 10px; border-radius: 5px; background: var(--bg-tertiary); overflow: hidden; }
 .goal-fill { height: 100%; background: #1f9a5e; }
 @media (max-width: 420px) { .menu-open-btn span { display: inline; } .viewer-title { max-width: 30vw; } }
+
+.more-filters { border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-secondary); }
+.more-filters > summary { cursor: pointer; padding: 8px 12px; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.filter-grid { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group select { max-width: none; }
+.filter-status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-muted); min-height: 24px; }
+.link-btn { border: 0; background: none; color: var(--accent-color); font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 6px 0; min-height: 36px; }
+.link-btn[hidden] { display: none; }
+@media (min-width: 700px) { .filter-grid { display: grid; grid-template-columns: repeat(2, 1fr); } }

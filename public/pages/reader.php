@@ -108,7 +108,21 @@ if (!$canRead) {
             </section>
             <h2 class="shelf-title">La tua libreria</h2>
             <div class="shelf-tools" id="shelf-tools">
-                <div id="shelf-filters" class="chips" role="group" aria-label="Filtra i libri"></div>
+                <div id="shelf-filters" class="chips" role="group" aria-label="Stato di lettura"></div>
+                <details id="more-filters" class="more-filters">
+                    <summary id="more-filters-sum">Altri filtri</summary>
+                    <div class="filter-grid">
+                        <div class="filter-group"><span class="set-label">Formato</span>
+                            <div id="f-format" class="chips" role="group" aria-label="Formato"></div></div>
+                        <label class="filter-group"><span class="set-label">Autore</span>
+                            <select id="f-author" class="input-text sort-select"></select></label>
+                        <label class="filter-group"><span class="set-label">Etichetta</span>
+                            <select id="f-tag" class="input-text sort-select"></select></label>
+                        <div class="filter-group"><span class="set-label">Solo i libri…</span>
+                            <div id="f-flags" class="chips" role="group" aria-label="Altri criteri"></div></div>
+                    </div>
+                </details>
+                <div class="filter-status"><span id="shelf-count" aria-live="polite"></span> <button type="button" id="filters-reset" class="link-btn" hidden>Azzera i filtri</button></div>
                 <label class="sort-label">Ordina per
                     <select id="shelf-sort" class="input-text sort-select">
                         <option value="recent">Aggiunti di recente</option>

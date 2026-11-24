@@ -27,7 +27,7 @@ test('the library page: one clear Menu button in the book, tabs for index/search
     const html = (await reader.get('/pages/reader.php')).text;
     assert.match(html, /id="settings-btn"[^>]*>[\s\S]*?<span>Menu<\/span>/, 'a button that says Menu');
     assert.ok(!html.includes('Segnalibri</button>') && !html.includes('class="btn icon-btn aa-btn"'), 'the old Aa and Segnalibri buttons are gone');
-    for (const id of ['tab-toc', 'tab-search', 'tab-notes', 'tab-text', 'toc-list', 'inbook-search-form', 'highlights-list', 'add-note-btn', 'export-notes-btn', 'sel-bar', 'shelf-filters', 'shelf-sort', 'stats-section', 'tag-dialog', 'tidy-titles-btn']) assert.ok(html.includes(`id="${id}"`), id);
+    for (const id of ['tab-toc', 'tab-search', 'tab-notes', 'tab-text', 'toc-list', 'inbook-search-form', 'highlights-list', 'add-note-btn', 'export-notes-btn', 'sel-bar', 'shelf-filters', 'more-filters', 'f-format', 'f-author', 'f-tag', 'f-flags', 'shelf-count', 'filters-reset', 'shelf-sort', 'stats-section', 'tag-dialog', 'tidy-titles-btn']) assert.ok(html.includes(`id="${id}"`), id);
     for (const a of ['data-font="easy"', 'data-margin="xwide"', 'data-justify="justify"', 'id="lh-up-btn"']) assert.ok(html.includes(a), a);
     assert.ok(html.indexOf('reader-tools.js') !== -1 && html.indexOf('reader-tools.js') < html.indexOf('reader.js?'), 'tools load before reader.js');
     for (const f of ['/js/reader-tools.js', '/js/reader.js', '/css/reader.css']) assert.equal((await fetch(site.base + f)).status, 200, f);
@@ -90,6 +90,22 @@ test('highlights and notes: add, list, update, delete, export; private to the ac
     const got = (await reader.get(`/api/highlights.php?book_id=${id}`)).json.items.find((x) => x.id === long.id);
     assert.ok(got.text.length <= 600 && !got.text.includes('\u0007'));
     assert.equal((await new Client(site).post('/api/highlights.php', { action: 'add' })).status !== 200, true, 'no login, no highlights');
+});
+
+test('library filters: per-book counts of highlights, notes and bookmarks, only for the account itself', async () => {
+    const { reader, plain, id } = await setup('sum_a');
+    assert.equal((await plain.get('/api/highlights.php?summary=1')).status, 403);
+    assert.deepEqual((await reader.get('/api/highlights.php?summary=1')).json.counts, {}, 'nothing yet');
+    await reader.post('/api/highlights.php', { action: 'add', book_id: id, kind: 'hl', location: 'a', text: 'uno' });
+    await reader.post('/api/highlights.php', { action: 'add', book_id: id, kind: 'hl', location: 'b', text: 'due' });
+    await reader.post('/api/highlights.php', { action: 'add', book_id: id, kind: 'note', location: '3', note: 'n' });
+    await reader.post('/api/bookmarks.php', { action: 'add', book_id: id, location: '5', label: 'x', percentage: 3 });
+    const c = (await reader.get('/api/highlights.php?summary=1')).json.counts;
+    assert.deepEqual(c[id], { hl: 2, notes: 1, bookmarks: 1 });
+    const other = await new Client(site).init(); await other.register('sum_b'); site.db('UPDATE accounts SET can_read_books = 1 WHERE username = ?', ['sum_b']);
+    assert.deepEqual((await other.get('/api/highlights.php?summary=1')).json.counts, {}, "someone else's counts are not mine");
+    site.db("INSERT INTO bookmarks (user_id, book_id, location, label) VALUES ((SELECT id FROM accounts WHERE username = 'sum_a'), 999, '1', 'solo segnalibro')");
+    assert.deepEqual((await reader.get('/api/highlights.php?summary=1')).json.counts[999], { hl: 0, notes: 0, bookmarks: 1 }, 'a book with only bookmarks');
 });
 
 test('labels ("shelves"): set, replace, clean up, list; per account', async () => {

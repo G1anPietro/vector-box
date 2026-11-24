@@ -366,37 +366,81 @@ const MARGINS = { normal: 0, wide: 24, xwide: 48 };
     }
 
     // ------------------------------------------------------------------------- library shelves ---
-    let tagsByBook = {}, allTags = [];
-    let filter = pref('vector_reader_filter', 'all');
+    let tagsByBook = {}, allTags = [], counts = {};
+    // Filters combine (all of them must match). Saved on this phone.
+    const NO_FILTER = { status: 'all', format: 'all', author: 'all', tag: 'all', notes: false, marks: false, recent: false };
+    let F = (() => {
+        let f = {};
+        try { f = JSON.parse(pref('vector_reader_filters', '{}')) || {}; } catch (e) { f = {}; }
+        const old = pref('vector_reader_filter', '');                      // the first version saved a single string
+        if (old.startsWith('tag:')) f.tag = old.slice(4); else if (['reading', 'new', 'done'].includes(old)) f.status = old;
+        return { ...NO_FILTER, ...f };
+    })();
     let sort = pref('vector_reader_sort', 'recent');
+    const saveF = () => { setPref('vector_reader_filters', JSON.stringify(F)); setPref('vector_reader_filter', ''); };
     async function loadTags() {
-        const d = await getJson('../api/book_tags.php');
-        if (d.success) { tagsByBook = d.tags || {}; allTags = d.all || []; }
-        if (filter.startsWith('tag:') && !allTags.includes(filter.slice(4))) filter = 'all';
+        const [t, c] = await Promise.all([getJson('../api/book_tags.php'), getJson('../api/highlights.php?summary=1')]);
+        if (t.success) { tagsByBook = t.tags || {}; allTags = t.all || []; }
+        if (c.success) counts = c.counts || {};
         paintFilters();
     }
+    const activeCount = () => ['status', 'format', 'author', 'tag'].filter((k) => F[k] !== 'all').length + ['notes', 'marks', 'recent'].filter((k) => F[k]).length;
+    const chip = (label, on, fn) => { const b = el('button', 'chip-btn', label); b.type = 'button'; b.setAttribute('aria-pressed', String(on)); b.addEventListener('click', fn); return b; };
+    const changed = () => { saveF(); paintFilters(); ctx().refreshCatalog(); };
     function paintFilters() {
+        const books = (ctx() && ctx().books) || [];
+        if (F.tag !== 'all' && F.tag !== '__none__' && !allTags.includes(F.tag)) F.tag = 'all';
+        if (F.author !== 'all' && books.length && !books.some((b) => (b.author || '') === F.author)) F.author = 'all';
         const box = $('shelf-filters');
         if (!box) return;
-        const defs = [['all', 'Tutti'], ['reading', 'In corso'], ['new', 'Da iniziare'], ['done', 'Finiti'], ...allTags.map((t) => ['tag:' + t, '🏷 ' + t])];
-        box.replaceChildren(...defs.map(([k, label]) => {
-            const b = el('button', 'chip-btn', label); b.type = 'button'; b.setAttribute('aria-pressed', String(filter === k));
-            b.addEventListener('click', () => { filter = k; setPref('vector_reader_filter', k); paintFilters(); ctx().refreshCatalog(); });
-            return b;
-        }));
+        box.replaceChildren(...[['all', 'Tutti'], ['reading', 'In corso'], ['new', 'Da iniziare'], ['done', 'Finiti']].map(([k, l]) => chip(l, F.status === k, () => { F.status = k; changed(); })));
+        const fmts = [...new Set(books.map((b) => String(b.format || '').toLowerCase()))].filter(Boolean).sort();
+        $('f-format').replaceChildren(...[['all', 'Tutti'], ...fmts.map((x) => [x, x.toUpperCase()])].map(([k, l]) => chip(l, F.format === k, () => { F.format = k; changed(); })));
+        // authors, each with how many books
+        const byAuthor = new Map();
+        books.forEach((b) => { const a = b.author && b.author !== 'Unknown' ? b.author : ''; if (a) byAuthor.set(a, (byAuthor.get(a) || 0) + 1); });
+        const coll = new Intl.Collator('it', { sensitivity: 'base' });
+        const au = $('f-author');
+        au.replaceChildren(new Option('Tutti gli autori', 'all'), ...[...byAuthor].sort((x, y) => coll.compare(x[0], y[0])).map(([a, n]) => new Option(`${a} (${n})`, a)));
+        au.value = byAuthor.has(F.author) ? F.author : 'all';
+        au.onchange = () => { F.author = au.value; changed(); };
+        const tg = $('f-tag');
+        tg.replaceChildren(new Option('Tutte le etichette', 'all'), new Option('Senza etichetta', '__none__'), ...allTags.map((t) => new Option('🏷 ' + t, t)));
+        tg.value = F.tag;
+        tg.onchange = () => { F.tag = tg.value; changed(); };
+        $('f-flags').replaceChildren(
+            chip('Con note o evidenziazioni', F.notes, () => { F.notes = !F.notes; changed(); }),
+            chip('Con segnalibri', F.marks, () => { F.marks = !F.marks; changed(); }),
+            chip('Aggiunti negli ultimi 30 giorni', F.recent, () => { F.recent = !F.recent; changed(); }));
+        const n = activeCount();
+        $('more-filters-sum').textContent = 'Altri filtri' + (['format', 'author', 'tag'].some((k) => F[k] !== 'all') || F.notes || F.marks || F.recent ? ` (${['format', 'author', 'tag'].filter((k) => F[k] !== 'all').length + [F.notes, F.marks, F.recent].filter(Boolean).length})` : '');
+        const rs = $('filters-reset');
+        rs.hidden = n === 0;
+        rs.onclick = () => { F = { ...NO_FILTER }; changed(); };
     }
-    /** The books to show: filtered by shelf and sorted. `prog` is reader.js's map book_id -> {percentage, updated_at}. */
+    /** The books to show: all the filters, then the sort. `prog` is reader.js's map book_id -> {percentage, updated_at}. */
     function arrange(books, prog) {
         const pct = (b) => (prog.get(Number(b.id)) || {}).percentage || 0;
         const when = (b) => String((prog.get(Number(b.id)) || {}).updated_at || '');
+        const monthAgo = Date.now() - 30 * 86400000;
+        const added = (b) => { const d = new Date(String(b.created_at || '').replace(' ', 'T') + 'Z'); return isNaN(d) ? 0 : d.getTime(); };
         let out = books.filter((b) => {
-            const p = pct(b);
-            if (filter === 'reading') return p > 0 && p < 99;
-            if (filter === 'new') return !(p > 0);
-            if (filter === 'done') return p >= 99;
-            if (filter.startsWith('tag:')) return (tagsByBook[b.id] || []).includes(filter.slice(4));
+            const p = pct(b), c = counts[b.id] || { hl: 0, notes: 0, bookmarks: 0 };
+            if (F.status === 'reading' && !(p > 0 && p < 99)) return false;
+            if (F.status === 'new' && p > 0) return false;
+            if (F.status === 'done' && p < 99) return false;
+            if (F.format !== 'all' && String(b.format || '').toLowerCase() !== F.format) return false;
+            if (F.author !== 'all' && (b.author || '') !== F.author) return false;
+            const tg = tagsByBook[b.id] || [];
+            if (F.tag === '__none__' && tg.length) return false;
+            if (F.tag !== 'all' && F.tag !== '__none__' && !tg.includes(F.tag)) return false;
+            if (F.notes && !(c.hl + c.notes > 0)) return false;
+            if (F.marks && !(c.bookmarks > 0)) return false;
+            if (F.recent && added(b) < monthAgo) return false;
             return true;
         });
+        const count = $('shelf-count');
+        if (count) count.textContent = out.length === books.length ? (books.length === 1 ? '1 libro' : `${books.length} libri`) : `${out.length} di ${books.length} libri`;
         const coll = new Intl.Collator('it', { sensitivity: 'base', numeric: true });
         out = out.slice();
         if (sort === 'title') out.sort((a, b) => coll.compare(a.title || '', b.title || ''));
@@ -419,7 +463,7 @@ const MARGINS = { normal: 0, wide: 24, xwide: 48 };
         }
         const tags = tagsByBook[book.id] || [];
         const row = el('div', 'book-tags');
-        tags.forEach((t) => { const c = el('button', 'tag-chip', t); c.type = 'button'; c.addEventListener('click', () => { filter = 'tag:' + t; setPref('vector_reader_filter', filter); paintFilters(); ctx().refreshCatalog(); }); row.append(c); });
+        tags.forEach((t) => { const c = el('button', 'tag-chip', t); c.type = 'button'; c.addEventListener('click', () => { F.tag = t; changed(); }); row.append(c); });
         const add = el('button', 'tag-add', tags.length ? '✎' : '+ etichetta'); add.type = 'button'; add.title = 'Etichette (scaffali) di questo libro'; add.setAttribute('aria-label', 'Modifica le etichette di ' + (book.title || 'questo libro'));
         add.addEventListener('click', (e) => { e.stopPropagation(); openTagDialog(book); });
         row.append(add);
@@ -512,7 +556,7 @@ const MARGINS = { normal: 0, wide: 24, xwide: 48 };
         if (c && c.format === 'epub') c.reapplyTheme();   // the saved text options reach the first page
     });
     document.addEventListener('reader:page', () => { if (skipPage) { skipPage = false; return; } pages++; lastActive = Date.now(); });
-    document.addEventListener('reader:close', () => { stopClock(true); items = []; shown = new Set(); hideSelBar(); if ($('stats-section') && $('stats-section').open) setTimeout(renderStats, 2800); });
+    document.addEventListener('reader:close', () => { setTimeout(async () => { await loadTags(); ctx().refreshCatalog(); }, 2900); stopClock(true); items = []; shown = new Set(); hideSelBar(); if ($('stats-section') && $('stats-section').open) setTimeout(renderStats, 2800); });
 
     window.VBReaderTools = { extraCss, arrange, decorateCard, loadTags };
 })();

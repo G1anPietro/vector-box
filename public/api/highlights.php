@@ -1,5 +1,6 @@
 <?php
 // public/api/highlights.php — highlights and notes of the book reader (visible only to the account that wrote them).
+// GET  ?summary=1                  -> {counts: {book_id: {hl, notes, bookmarks}}}  (for the library filters)
 // GET  ?book_id=N                  -> [{id, kind, location, text, note, color, percentage, created_at}]
 // GET  ?book_id=N&export=1         -> the same as a Markdown file (download)
 // POST {action:"add", book_id, kind:"hl"|"note", location, text, note, color, percentage}
@@ -22,6 +23,17 @@ try {
         jsonResponse(['success' => false, 'error' => 'FORBIDDEN: Book reader access required'], 403);
     }
     $clean = fn(string $s, int $max) => textCut(trim(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/', ' ', $s) ?? ''), $max);
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($_GET['summary'])) {
+        $counts = [];
+        $st = $db->prepare("SELECT book_id, SUM(kind = 'hl') AS hl, SUM(kind = 'note') AS notes FROM book_highlights WHERE user_id = :u GROUP BY book_id");
+        $st->execute([':u' => $userId]);
+        foreach ($st->fetchAll() as $r) $counts[(int)$r['book_id']] = ['hl' => (int)$r['hl'], 'notes' => (int)$r['notes'], 'bookmarks' => 0];
+        $st = $db->prepare('SELECT book_id, COUNT(*) AS n FROM bookmarks WHERE user_id = :u GROUP BY book_id');
+        $st->execute([':u' => $userId]);
+        foreach ($st->fetchAll() as $r) { $b = (int)$r['book_id']; $counts[$b] = ($counts[$b] ?? ['hl' => 0, 'notes' => 0]) + ['bookmarks' => 0]; $counts[$b]['bookmarks'] = (int)$r['n']; }
+        jsonResponse(['success' => true, 'counts' => (object)$counts]);
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $bookId = (int)($_GET['book_id'] ?? 0);
