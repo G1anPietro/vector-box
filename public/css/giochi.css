@@ -200,3 +200,11 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 .none { margin-top: 30px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .cell.glow .box { transition: none; } }
 .cell .lid { padding-right: 50px; }   /* room for the star */
+
+/* one column on a phone: every box has the same height (fixed room for the name, 4 lines of text and the facts) */
+@media (max-width: 520px) {
+    .lid { height: 88px; min-height: 0; overflow: hidden; }
+    .lid .name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; line-height: 1.05; }
+    .line { height: calc(4 * 1.4em); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; flex: none; }
+    .facts { height: calc(3 * 1.4em); overflow: hidden; }
+}
