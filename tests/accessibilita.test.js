@@ -7,7 +7,7 @@ const path = require('node:path');
 const { startSite, Client, makeAdmin } = require('./helpers');
 
 const PUB = path.join(__dirname, '..', 'public');
-const ARCADE = ['tris', 'forza4', 'impiccato', 'memory', 'simon', 'snake', 'minato', 'dueamila', 'tetris', 'parola', 'vita', 'difesa', 'skillcheck', 'serata'];
+const ARCADE = ['tris', 'forza4', 'impiccato', 'memory', 'simon', 'snake', 'minato', 'dueamila', 'tetris', 'parola', 'vita', 'difesa', 'skillcheck'];
 
 let site;
 test.before(async () => { site = await startSite(); });

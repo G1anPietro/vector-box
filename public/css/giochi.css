@@ -107,6 +107,8 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 .box.cucu .name { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: 34px; color: #d8a94a; }
 .box.botola { --lid: #241a10; --edge: #120c06; --ink: #f1e6d0; }
 .box.botola .name { font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #ffb74d; }
+.box.probabile { --lid: #1d1029; --edge: #0e0714; --ink: #fff4fb; background: radial-gradient(circle at 15% 0%, rgba(255, 63, 164, 0.22), transparent 55%), var(--lid); }
+.box.probabile .name { font-style: italic; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #ff6fbd; font-size: 24px; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }
