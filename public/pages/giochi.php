@@ -43,6 +43,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'undercover', 'href' => 'undercover.html', 'icon' => '../assets/undercover/icon.svg',
+        'name' => ['it' => 'Undercover', 'en' => 'Undercover'],
+        'line' => ['it' => 'Una parola segreta a testa, ma una è diversa: un indizio a voce, un voto, e si scopre l’infiltrato. Attenti a Mr. White.',
+                   'en' => 'A secret word each, but one is different: a spoken clue, a vote, and the infiltrator is found. Beware of Mr. White.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'bomba', 'href' => 'bomba.html', 'icon' => '../assets/bomba/icon.svg',
         'name' => ['it' => 'La bomba', 'en' => 'The bomb'],
         'line' => ['it' => 'Una miccia nascosta e una categoria: dì una risposta e passa la bomba. Chi la tiene quando esplode perde una vita.',
@@ -226,7 +234,39 @@ $GROUPS = [
 ];
 $other = $lang === 'it' ? 'en' : 'it';
 
-function gameBox(array $g, callable $T): void { ?>
+// The shelves are grouped by kind of game (not by the order they were added). A game missing here goes to "other".
+$KINDS = [
+    'bluff'   => ['it' => 'Bluff e ruoli segreti', 'en' => 'Bluff and secret roles'],
+    'talk'    => ['it' => 'Chiacchiere e risate', 'en' => 'Talk and laughs'],
+    'action'  => ['it' => 'Azione e squadre', 'en' => 'Action and teams'],
+    'quiz'    => ['it' => 'Domande e parole', 'en' => 'Questions and words'],
+    'cards'   => ['it' => 'Carte e tavolo', 'en' => 'Cards and table'],
+    'arcade'  => ['it' => 'Arcade e riflessi', 'en' => 'Arcade and reflexes'],
+    'puzzle'  => ['it' => 'Rompicapi', 'en' => 'Puzzles'],
+    'other'   => ['it' => 'Altro', 'en' => 'Other'],
+];
+$KIND_OF = [
+    'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
+    'nonhomai' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
+    'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
+    'botola' => 'quiz', 'indovina' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
+    'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
+    'skillcheck' => 'arcade', 'simon' => 'arcade', 'snake' => 'arcade', 'tetris' => 'arcade', 'difesa' => 'arcade', 'dungeon' => 'arcade', 'hack' => 'arcade',
+    'dueamila' => 'puzzle', 'minato' => 'puzzle', 'vita' => 'puzzle', 'memory' => 'puzzle', 'forza4' => 'puzzle', 'tris' => 'puzzle', 'vault' => 'puzzle',
+];
+/** id (file name without extension), kind, and the player range read from the English "who" text ("3–20 players", "2 or more players"). */
+function gameMeta(array $g, array $kindOf): array {
+    $id = pathinfo($g['href'], PATHINFO_FILENAME);
+    preg_match_all('/\d+/', $g['who']['en'], $m);
+    $n = array_map('intval', $m[0]);
+    $min = $n[0] ?? 1;
+    $max = str_contains($g['who']['en'], 'more') ? 99 : ($n ? end($n) : $min);
+    return ['id' => $id, 'kind' => $kindOf[$id] ?? 'other', 'min' => $min, 'max' => $max];
+}
+
+function gameBox(array $g, callable $T, array $meta): void { ?>
+    <div class="cell" data-id="<?= htmlspecialchars($meta['id']) ?>" data-kind="<?= $meta['kind'] ?>" data-group="<?= htmlspecialchars($g['group']) ?>" data-min="<?= $meta['min'] ?>" data-max="<?= $meta['max'] ?>" data-name="<?= htmlspecialchars(mb_strtolower($g['name']['it'] . ' ' . $g['name']['en'] . ' ' . $g['line']['it'] . ' ' . $g['line']['en'])) ?>">
+    <button type="button" class="fav" hidden aria-pressed="false" data-label="<?= htmlspecialchars($T($g['name'])) ?>">☆</button>
     <a class="box <?= htmlspecialchars($g['look']) ?>" href="<?= htmlspecialchars($g['href']) ?>">
         <span class="lid">
             <?php if (str_contains($g['icon'], '/')): ?>
@@ -239,6 +279,7 @@ function gameBox(array $g, callable $T): void { ?>
         <span class="line"><?= $T($g['line']) ?></span>
         <span class="facts"><b><?= $T($g['who']) ?></b><span><?= $T($g['how']) ?></span></span>
     </a>
+    </div>
 <?php }
 ?>
 <!DOCTYPE html>
@@ -253,8 +294,9 @@ function gameBox(array $g, callable $T): void { ?>
         : 'Party games to play with your phone (Who’s the spy?, Lupus, Never have I ever…) and solo games, free in the browser.',
         '/pages/giochi.php') ?>
     <link rel="icon" href="../assets/solitario/icon.svg?v=1" type="image/svg+xml">
-    <link rel="stylesheet" href="../css/giochi.css?v=4">
+    <link rel="stylesheet" href="../css/giochi.css?v=<?= filemtime(__DIR__ . '/../css/giochi.css') ?>">
     <?= adsScriptTag() ?>
+    <script src="../js/giochi.js?v=<?= filemtime(__DIR__ . '/../js/giochi.js') ?>" defer></script>
 </head>
 <body class="shelf-page">
     <header class="top">
@@ -270,15 +312,33 @@ function gameBox(array $g, callable $T): void { ?>
 
         <p class="lead"><a href="classifiche.php"><?= $lang === 'it' ? 'Classifiche dei giochi →' : 'Game leaderboards →' ?></a></p>
 
-        <?php $first = true; foreach ($GROUPS as $key => $title): ?>
+        <?php $it = $lang === 'it'; ?>
+        <form class="tools" id="tools" hidden role="search">
+            <label class="srch"><span class="sr"><?= $it ? 'Cerca un gioco' : 'Search a game' ?></span>
+                <input type="search" id="q" placeholder="<?= $it ? 'Cerca un gioco…' : 'Search a game…' ?>" autocomplete="off"></label>
+            <label class="num"><span><?= $it ? 'Quanti siete?' : 'How many of you?' ?></span>
+                <input type="number" id="n" min="1" max="20" inputmode="numeric" placeholder="–"></label>
+            <div class="chips" role="group" aria-label="<?= $it ? 'Tipo di gioco' : 'Kind of game' ?>">
+                <button type="button" class="chip" data-g="" aria-pressed="true"><?= $it ? 'Tutti' : 'All' ?></button>
+                <?php foreach ($GROUPS as $k => $t): ?><button type="button" class="chip" data-g="<?= $k ?>" aria-pressed="false"><?= $T($t) ?></button><?php endforeach; ?>
+            </div>
+            <button type="button" class="surprise" id="surprise">🎲 <?= $it ? 'Sorprendimi' : 'Surprise me' ?></button>
+            <p class="pick" id="pick" role="status" aria-live="polite"></p>
+        </form>
+        <div id="mine"></div>
+        <?php $first = true; foreach ($KINDS as $key => $title):
+            $mine = [];
+            foreach ($GAMES as $g) { $mt = gameMeta($g, $KIND_OF); if ($mt['kind'] === $key) $mine[] = [$g, $mt]; }
+            if (!$mine) continue; ?>
             <?php if (!$first) echo adsSlot('ADSENSE_SLOT_GAMES', $lang); $first = false; ?>
-            <section class="group">
+            <section class="group" data-kind="<?= $key ?>">
                 <h2><?= $T($title) ?></h2>
                 <div class="boxes">
-                    <?php foreach ($GAMES as $g) if ($g['group'] === $key) gameBox($g, $T); ?>
+                    <?php foreach ($mine as [$g, $mt]) gameBox($g, $T, $mt); ?>
                 </div>
             </section>
         <?php endforeach; ?>
+        <p class="none" id="none" hidden><?= $it ? 'Nessun gioco trovato: prova con meno filtri.' : 'No game found: try fewer filters.' ?></p>
     </main>
 
     <footer class="foot">

@@ -115,6 +115,9 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "The bomb": industrial black and orange with hazard stripes */
 .box.bomba { --lid: #17130f; --edge: #070605; --ink: #ffe9d2; background: repeating-linear-gradient(135deg, rgba(255, 106, 0, 0.5) 0 14px, rgba(0, 0, 0, 0) 14px 28px), var(--lid); }
 .box.bomba .name { font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #ff8a1f; }
+/* "Undercover": grey-green case file with a red stamp */
+.box.undercover { --lid: #1a231e; --edge: #0a0f0c; --ink: #eef0e6; background: linear-gradient(180deg, #d4352d 0 8px, rgba(0, 0, 0, 0) 8px), var(--lid); }
+.box.undercover .name { font-family: "Courier New", Courier, monospace; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #b9d1bd; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }
@@ -163,3 +166,25 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 .doc .cta.coffee { background: #f2c66d; color: #231a08; margin-right: 10px; }
 .doc .cta.secondary { background: transparent; color: var(--link); border: 1px solid var(--link); }
 .doc, .doc a, .doc li, .doc p { overflow-wrap: anywhere; }
+
+/* ---------- shelf tools: search, filters, favourites ---------- */
+.tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-top: 22px; }
+.tools .srch { flex: 1 1 220px; }
+.tools input { width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--plank); background: var(--dusk-2); color: var(--text); font: inherit; }
+.tools .num { display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
+.tools .num input { width: 96px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip, .surprise { min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--plank); background: transparent; color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--link); color: #231a08; border-color: var(--link); }
+.surprise { border-radius: 8px; }
+.tools .pick { flex-basis: 100%; min-height: 1.4em; margin: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cell { position: relative; display: flex; }
+.cell .box { flex: 1; min-width: 0; }
+.cell.hide { display: none; }
+.fav { position: absolute; top: 6px; right: 6px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, 0.45); color: #ffd166; font-size: 22px; line-height: 1; cursor: pointer; }
+.fav:focus-visible, .chip:focus-visible, .surprise:focus-visible, .tools input:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+.cell.glow .box { outline: 4px solid var(--link); outline-offset: 3px; }
+.none { margin-top: 30px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .cell.glow .box { transition: none; } }
+.cell .lid { padding-right: 50px; }   /* room for the star */
