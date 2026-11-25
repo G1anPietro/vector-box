@@ -6,7 +6,7 @@
     'use strict';
     const API = '../api/spia.php';
     // The same app runs both games: <html data-game="lupus"> on pages/lupus.html
-    const GAME = ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'proibita', 'indovina', 'bingo'].includes(document.documentElement.dataset.game) ? document.documentElement.dataset.game : 'spia';
+    const GAME = ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'proibita', 'indovina', 'bandiere', 'bingo'].includes(document.documentElement.dataset.game) ? document.documentElement.dataset.game : 'spia';
     // Games other than the spy game are "modules" (js/lupus/game.js, js/cucu/game.js, js/botola/game.js, js/probabile/game.js, js/preferiresti/game.js, js/bomba/game.js) with the same interface:
     // playView(), resultCard(), summary(), settings(). META holds their texts; M is null for the spy game.
     const META = {
@@ -44,13 +44,16 @@
             start: 'pf_start', again: 'pf_new_match', intro: 'intro_pf_', nextMatch: 'pf_settings_next_match',
             topics: ['pf_basics', 'pf_rounds', 'pf_titles', 'pf_host', 'phones', 'pf_settings'] },
     };
+    META.bandiere = { key: 'bandiere', title: 'bd_title', tagline: 'bd_tagline', note: 'bd_one_phone_note', need: 'bd_need_two',
+        start: 'bd_start', again: 'bd_new_match', intro: 'intro_bd_', nextMatch: 'bd_settings_next_match',
+        topics: ['bd_basics', 'bd_rounds', 'bd_scoring', 'bd_host', 'phones', 'bd_settings'] };
     META.mimo = { key: 'mimo', title: 'mm_title', tagline: 'mm_tagline', note: 'mm_one_phone_note', need: 'mm_need_players',
         start: 'mm_start', again: 'mm_new_match', intro: 'intro_mm_', nextMatch: 'mm_settings_next_match',
         topics: ['mm_basics', 'mm_turns', 'mm_teams', 'mm_host', 'phones', 'mm_settings'] };
     const M = META[GAME] || null;
     const K = (k) => `${GAME}_${k}`; // per-game storage keys (spia_token, lupus_token, ...)
-    const PAGES = { spia: 'spia.html', lupus: 'lupus.html', cucu: 'cucu.html', botola: 'botola.html', probabile: 'probabile.html', preferiresti: 'preferiresti.html', bomba: 'bomba.html', undercover: 'undercover.html', mimo: 'mimo.html', obbligo: 'obbligo.html', proibita: 'proibita.html', indovina: 'indovina.html', bingo: 'bingo.html' };
-    const MIN_PLAYERS = { lupus: 4, cucu: 2, botola: 2, probabile: 3, preferiresti: 3, bomba: 3, undercover: 3, mimo: 2 , obbligo: 3, proibita: 2, indovina: 3, bingo: 2 }[GAME] || 3;
+    const PAGES = { spia: 'spia.html', lupus: 'lupus.html', cucu: 'cucu.html', botola: 'botola.html', probabile: 'probabile.html', preferiresti: 'preferiresti.html', bomba: 'bomba.html', undercover: 'undercover.html', mimo: 'mimo.html', obbligo: 'obbligo.html', proibita: 'proibita.html', indovina: 'indovina.html', bandiere: 'bandiere.html', bingo: 'bingo.html' };
+    const MIN_PLAYERS = { lupus: 4, cucu: 2, botola: 2, probabile: 3, preferiresti: 3, bomba: 3, undercover: 3, mimo: 2 , obbligo: 3, proibita: 2, indovina: 3, bandiere: 2, bingo: 2 }[GAME] || 3;
     let LG = null; // the module's screens (js/lupus/game.js or js/cucu/game.js), set up in boot()
     const POLL_MS = 2000;
     const POLL_HIDDEN_MS = 8000;
@@ -1128,6 +1131,7 @@
         if (GAME === 'lupus') LG = window.LupusGame.init(core());
         if (GAME === 'cucu') LG = window.CucuGame.init(core());
         if (GAME === 'botola') LG = window.BotolaGame.init(core());
+        if (GAME === 'bandiere') LG = window.BandiereGame.init(core());
         if (GAME === 'probabile') LG = window.ProbabileGame.init(core());
         if (GAME === 'obbligo') LG = window.ObbligoGame.init(core());
         if (GAME === 'bingo') LG = window.BingoGame.init(core());

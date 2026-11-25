@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 57;
+const DB_SCHEMA_VERSION = 58;
 
 /**
  * Session bootstrap.
@@ -616,6 +616,15 @@ function migrateV51(PDO $db): void {
 function migrateV54(PDO $db): void {
     // "Parola proibita" (proibita, on the shared rooms): the whole match state as JSON (the cards included), like bomba_games
     $db->exec("CREATE TABLE IF NOT EXISTS proibita_games (
+        room_id INTEGER PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+}
+
+function migrateV58(PDO $db): void {
+    // "Bandiere" (bandiere, on the shared rooms): the whole match state as JSON, like botola_games
+    $db->exec("CREATE TABLE IF NOT EXISTS bandiere_games (
         room_id INTEGER PRIMARY KEY,
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
@@ -1326,6 +1335,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 57) {
             migrateV57($db);
+        }
+        if ($current < 58) {
+            migrateV58($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

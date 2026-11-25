@@ -115,6 +115,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa', 'en' => 'one phone each'],
     ],
     [
+        'group' => 'friends', 'look' => 'bandiere', 'href' => 'bandiere.html', 'icon' => '../assets/bandiere/icon.svg',
+        'name' => ['it' => 'Bandiere', 'en' => 'Flags'],
+        'line' => ['it' => 'Bandiere, paesi e capitali: stessa domanda su ogni telefono, più punti a chi risponde giusto e in fretta. Anche da solo.',
+                   'en' => 'Flags, countries and capitals: the same question on every phone, more points for right and fast answers. Alone too.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa, da solo o uno da passare', 'en' => 'one phone each, alone, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'cucu', 'href' => 'cucu.html', 'icon' => '../assets/cucu/icon.svg',
         'name' => ['it' => 'Cucù', 'en' => 'Cucù'],
         'line' => ['it' => 'Una carta a testa: tieni o cambia col vicino, il Re blocca. Le vite si ricordano a memoria.',
@@ -289,7 +297,7 @@ $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
     'nonhomai' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
-    'botola' => 'quiz', 'indovina' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
+    'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
     'skillcheck' => 'arcade', 'simon' => 'arcade', 'snake' => 'arcade', 'tetris' => 'arcade', 'difesa' => 'arcade', 'dungeon' => 'arcade', 'hack' => 'arcade',
     'dueamila' => 'puzzle', 'minato' => 'puzzle', 'vita' => 'puzzle', 'memory' => 'puzzle', 'forza4' => 'puzzle', 'tris' => 'puzzle', 'vault' => 'puzzle',
