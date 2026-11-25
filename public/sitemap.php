@@ -15,6 +15,8 @@ $pages = [
     ['/pages/preferiresti.html', 'monthly', '0.8'],
     ['/pages/bomba.html', 'monthly', '0.8'],
     ['/pages/indovina.html', 'monthly', '0.8'],
+    ['/pages/bingo.html', 'monthly', '0.8'],
+    ['/pages/bandiere.html', 'monthly', '0.8'],
     ['/pages/undercover.html', 'monthly', '0.8'],
     ['/pages/mimo.html', 'monthly', '0.8'],
     ['/pages/obbligo.html', 'monthly', '0.8'],
