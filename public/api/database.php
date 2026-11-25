@@ -649,6 +649,15 @@ function migrateV56(PDO $db): void {
     )");
 }
 
+function migrateV57(PDO $db): void {
+    // "Bingo della lezione" (bingo, on the shared rooms): the whole match state as JSON (every card and its marks), like indovina_games
+    $db->exec("CREATE TABLE IF NOT EXISTS bingo_games (
+        room_id INTEGER PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+}
+
 function migrateV50(PDO $db): void {
     // "La bomba" (bomba, on the shared rooms): the whole match state as JSON (the hidden fuse included), like preferiresti_games
     $db->exec("CREATE TABLE IF NOT EXISTS bomba_games (
@@ -1335,6 +1344,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 56) {
             migrateV56($db);
+        }
+        if ($current < 57) {
+            migrateV57($db);
         }
         if ($current < 58) {
             migrateV58($db);

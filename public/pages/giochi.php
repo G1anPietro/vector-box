@@ -107,6 +107,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'bingo', 'href' => 'bingo.html', 'icon' => '../assets/bingo/icon.svg',
+        'name' => ['it' => 'Bingo della lezione', 'en' => 'Lesson bingo'],
+        'line' => ['it' => 'Il gruppo scrive le frasi tipiche, ognuno ha la sua cartella e tocca la casella quando la sente. Vince la prima riga.',
+                   'en' => 'The group writes the typical phrases, everybody gets a card and taps a square when they hear it. First line wins.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
         'name' => ['it' => 'Botola', 'en' => 'Botola'],
         'line' => ['it' => 'Quiz a eliminazione: stessa domanda per tutti, chi sbaglia cade nella botola. Se sono tutti bravi cade il più lento.',
@@ -295,7 +303,7 @@ $KINDS = [
 ];
 $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
-    'nonhomai' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
+    'nonhomai' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
