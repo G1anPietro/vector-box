@@ -51,6 +51,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'storia', 'href' => 'storia.html', 'icon' => '../assets/storia/icon.svg',
+        'name' => ['it' => 'Storia a catena', 'en' => 'Chain story'],
+        'line' => ['it' => 'Una storia scritta insieme, una frase a testa: vedi solo quella di prima. Alla fine si legge tutto e si vota la più bella.',
+                   'en' => 'A story written together, one sentence each: you only see the one before yours. At the end it is read out and you vote the best.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'undercover', 'href' => 'undercover.html', 'icon' => '../assets/undercover/icon.svg',
         'name' => ['it' => 'Undercover', 'en' => 'Undercover'],
         'line' => ['it' => 'Una parola segreta a testa, ma una è diversa: un indizio a voce, un voto, e si scopre l’infiltrato. Attenti a Mr. White.',
@@ -279,7 +287,7 @@ $KINDS = [
 ];
 $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
-    'nonhomai' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
+    'nonhomai' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
