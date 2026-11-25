@@ -267,6 +267,26 @@ test('names are validated and unique per room; leaving the last phone deletes th
     assert.equal(site.db('SELECT COUNT(*) AS n FROM spia_rooms WHERE code = ?', [code])[0].n, 0);
 });
 
+test('every location and category has all 5 languages; monsters pack is all-ages, new black-humor places are adults only', () => {
+    const data = require('../public/assets/spia/locations.json');
+    const langs = ['it', 'en', 'es', 'fr', 'de'];
+    const full = (o) => langs.every((g) => typeof o[g] === 'string' && o[g].trim());
+    const cats = new Set(data.categories.map((c) => c.id));
+    for (const c of data.categories) assert.ok(full(c.name), `category ${c.id}`);
+    assert.ok(cats.has('monsters') && cats.has('adult'));
+    const ids = new Set();
+    for (const l of data.locations) {
+        assert.ok(!ids.has(l.id), `duplicate ${l.id}`); ids.add(l.id);
+        assert.ok(cats.has(l.cat), `${l.id} category`);
+        assert.ok(full(l.name), `${l.id} name`);
+        assert.ok(l.roles.length >= 6 && l.roles.length <= 8, `${l.id} roles`);
+        l.roles.forEach((r, i) => assert.ok(full(r), `${l.id} role ${i}`));
+    }
+    const cat = (id) => data.locations.find((l) => l.id === id).cat;
+    for (const id of ['vampire_castle', 'mummy_crypt', 'witch_swamp', 'haunted_house', 'frankenstein_lab', 'werewolf_forest', 'zombie_cemetery', 'dragon_cave']) assert.equal(cat(id), 'monsters');
+    for (const id of ['nursing_home', 'rehab', 'cheap_funeral', 'court', 'cult', 'aa_meeting', 'stereotypes']) assert.equal(cat(id), 'adult');
+});
+
 test('family mode never deals adults-only locations or tagged roles; default mode does', async () => {
     const data = require('../public/assets/spia/locations.json');
     const byId = Object.fromEntries(data.locations.map((l) => [l.id, l]));

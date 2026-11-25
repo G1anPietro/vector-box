@@ -161,3 +161,9 @@ h2 { font-weight: 700; }
 /* Shadows in the night's colour, not the spy's navy */
 .hero, .card-front, .card-back, .modal, .toast, .lobby .hero { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45); }
 .card-back { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px var(--paper-edge), inset 0 0 0 6px var(--sheet), inset 0 0 0 7px var(--paper-edge); }
+
+/* Monsters: seating circle editor and the ghosts' whispers */
+.seat-list { list-style: decimal inside; margin: 8px 0; }
+.seat-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
+.seat-list .step { margin-left: 6px; }
+.ghost-lines li { font-style: italic; opacity: 0.85; }
