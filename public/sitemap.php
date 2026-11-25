@@ -18,6 +18,7 @@ $pages = [
     ['/pages/undercover.html', 'monthly', '0.8'],
     ['/pages/mimo.html', 'monthly', '0.8'],
     ['/pages/obbligo.html', 'monthly', '0.8'],
+    ['/pages/scommessa.html', 'monthly', '0.8'],
     ['/pages/proibita.html', 'monthly', '0.8'],
     ['/pages/solitario.html', 'monthly', '0.8'],
     ['/pages/cucu.html', 'monthly', '0.8'],

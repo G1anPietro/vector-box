@@ -51,6 +51,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'scommessa', 'href' => 'scommessa.html', 'icon' => '../assets/scommessa/icon.svg',
+        'name' => ['it' => 'Scommessa tra amici', 'en' => 'Bet buddy'],
+        'line' => ['it' => 'Sfida un amico, punta fiches finte: se accetta e ce la fa vince lui, altrimenti tu. La giuria decide. Nessun denaro.',
+                   'en' => 'Dare a friend and stake pretend chips: if they accept and pull it off they win, otherwise you do. The jury decides. No money.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'undercover', 'href' => 'undercover.html', 'icon' => '../assets/undercover/icon.svg',
         'name' => ['it' => 'Undercover', 'en' => 'Undercover'],
         'line' => ['it' => 'Una parola segreta a testa, ma una è diversa: un indizio a voce, un voto, e si scopre l’infiltrato. Attenti a Mr. White.',
@@ -280,7 +288,7 @@ $KINDS = [
 $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
     'nonhomai' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
-    'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
+    'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action', 'scommessa' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
     'skillcheck' => 'arcade', 'simon' => 'arcade', 'snake' => 'arcade', 'tetris' => 'arcade', 'difesa' => 'arcade', 'dungeon' => 'arcade', 'hack' => 'arcade',
