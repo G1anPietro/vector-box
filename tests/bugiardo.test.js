@@ -265,6 +265,7 @@ test('one shared phone: every local player gets own question; the liar is told n
     assert.equal((await a.post({ action: 'start' })).status, 200);
     const where = 'room_id = (SELECT id FROM spia_rooms WHERE code = ?)';
     const g = JSON.parse(site.db(`SELECT state FROM bugiardo_games WHERE ${where}`, [code])[0].state);
+    g.pair = IDX.n; site.db(`UPDATE bugiardo_games SET state = ? WHERE ${where}`, [JSON.stringify(g), code]);   // numbers, whatever the draw
     let P = (await a.state()).bugiardo;
     assert.equal(P.me.length, 3);
     for (const m of P.me) assert.deepEqual(m.question, BANK[g.pair][m.player_id === g.liar ? 2 : 1]);
