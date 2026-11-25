@@ -12,7 +12,7 @@
     const META = {
         lupus: { key: 'lupus', title: 'lw_title', tagline: 'lw_tagline', note: 'lw_one_phone_note', need: 'lw_need_four',
             start: 'lw_start', again: 'lw_new_match', intro: 'intro_lw_', nextMatch: 'lw_settings_next_match',
-            topics: ['lw_basics', 'lw_roles', 'lw_night', 'lw_day', 'lw_win', 'phones', 'shared', 'lw_settings'] },
+            topics: ['lw_basics', 'lw_roles', 'lw_monsters', 'lw_night', 'lw_day', 'lw_win', 'phones', 'shared', 'lw_settings'] },
         cucu: { key: 'cucu', title: 'cu_title', tagline: 'cu_tagline', note: 'cu_one_phone_note', need: 'cu_need_two',
             start: 'cu_start', again: 'cu_new_match', intro: 'intro_cu_', nextMatch: 'cu_settings_next_match',
             topics: ['cu_basics', 'cu_hand', 'cu_lives', 'cu_dead', 'cu_host', 'phones', 'cu_settings'] },
