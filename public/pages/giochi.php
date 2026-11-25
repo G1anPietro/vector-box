@@ -91,6 +91,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'bugiardo', 'href' => 'bugiardo.html', 'icon' => '../assets/bugiardo/icon.svg',
+        'name' => ['it' => 'Chi è il bugiardo', 'en' => 'Find the liar'],
+        'line' => ['it' => 'Tutti ricevono la stessa domanda segreta, tranne uno. Confrontate le risposte, votate e scoprite il bugiardo prima che indovini la domanda vera.',
+                   'en' => 'Everybody gets the same secret question, except one. Compare the answers, vote and catch the liar before he guesses the real question.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'indovina', 'href' => 'indovina.html', 'icon' => '../assets/indovina/icon.svg',
         'name' => ['it' => 'Indovina cosa', 'en' => 'Guess what'],
         'line' => ['it' => 'Uno custodisce una parola segreta, gli altri la scoprono con domande sì o no. Venti domande, un solo tentativo a testa.',
@@ -278,7 +286,7 @@ $KINDS = [
     'other'   => ['it' => 'Altro', 'en' => 'Other'],
 ];
 $KIND_OF = [
-    'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
+    'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff', 'bugiardo' => 'bluff',
     'nonhomai' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
