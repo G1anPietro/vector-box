@@ -51,6 +51,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'scommessa', 'href' => 'scommessa.html', 'icon' => '../assets/scommessa/icon.svg',
+        'name' => ['it' => 'Scommessa tra amici', 'en' => 'Bet buddy'],
+        'line' => ['it' => 'Sfida un amico, punta fiches finte: se accetta e ce la fa vince lui, altrimenti tu. La giuria decide. Nessun denaro.',
+                   'en' => 'Dare a friend and stake pretend chips: if they accept and pull it off they win, otherwise you do. The jury decides. No money.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'storia', 'href' => 'storia.html', 'icon' => '../assets/storia/icon.svg',
         'name' => ['it' => 'Storia a catena', 'en' => 'Chain story'],
         'line' => ['it' => 'Una storia scritta insieme, una frase a testa: vedi solo quella di prima. Alla fine si legge tutto e si vota la più bella.',
@@ -312,7 +320,7 @@ $KINDS = [
 $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
     'nonhomai' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk',
-    'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
+    'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action', 'scommessa' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'inventato' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
     'skillcheck' => 'arcade', 'simon' => 'arcade', 'snake' => 'arcade', 'tetris' => 'arcade', 'difesa' => 'arcade', 'dungeon' => 'arcade', 'hack' => 'arcade',

@@ -115,6 +115,9 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "Truth or dare": a purple card table with a gold rim and a spinning bottle */
 .box.obbligo { --lid: #2a1247; --edge: #130822; --ink: #fff4d6; background: radial-gradient(circle at 50% 0%, rgba(245, 197, 66, 0.28), rgba(0, 0, 0, 0) 60%), var(--lid); }
 .box.obbligo .name { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-style: italic; color: #f5c542; font-size: 34px; }
+/* "Bet buddy": green felt with a gold rim and a row of casino chips */
+.box.scommessa { --lid: #0b4030; --edge: #04170f; --ink: #fdf6dc; background: repeating-linear-gradient(90deg, #c1272d 0 14px, #fdf6dc 14px 28px, #2a63c4 28px 42px, #1a1a1a 42px 56px) 0 0 / 100% 6px no-repeat, radial-gradient(circle at 50% 0%, rgba(233, 196, 106, 0.25), rgba(0, 0, 0, 0) 60%), var(--lid); }
+.box.scommessa .name { font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; color: #e9c46a; font-size: 24px; }
 /* "The bomb": industrial black and orange with hazard stripes */
 .box.bomba { --lid: #17130f; --edge: #070605; --ink: #ffe9d2; background: repeating-linear-gradient(135deg, rgba(255, 106, 0, 0.5) 0 14px, rgba(0, 0, 0, 0) 14px 28px), var(--lid); }
 .box.bomba .name { font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #ff8a1f; }
