@@ -51,6 +51,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'scommessa', 'href' => 'scommessa.html', 'icon' => '../assets/scommessa/icon.svg',
+        'name' => ['it' => 'Scommessa tra amici', 'en' => 'Bet buddy'],
+        'line' => ['it' => 'Sfida un amico, punta fiches finte: se accetta e ce la fa vince lui, altrimenti tu. La giuria decide. Nessun denaro.',
+                   'en' => 'Dare a friend and stake pretend chips: if they accept and pull it off they win, otherwise you do. The jury decides. No money.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'storia', 'href' => 'storia.html', 'icon' => '../assets/storia/icon.svg',
         'name' => ['it' => 'Storia a catena', 'en' => 'Chain story'],
         'line' => ['it' => 'Una storia scritta insieme, una frase a testa: vedi solo quella di prima. Alla fine si legge tutto e si vota la più bella.',
@@ -103,6 +111,14 @@ $GAMES = [
         'name' => ['it' => '10 su 10, ma…', 'en' => '10 out of 10, but…'],
         'line' => ['it' => 'Uno è un 10/10… ma: tutti scrivono il suo difetto più buffo, poi si vota in segreto la frase più divertente.',
                    'en' => 'One player is a 10/10… but: everybody writes their funniest flaw, then you vote in secret for the funniest sentence.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
+        'group' => 'friends', 'look' => 'bugiardo', 'href' => 'bugiardo.html', 'icon' => '../assets/bugiardo/icon.svg',
+        'name' => ['it' => 'Chi è il bugiardo', 'en' => 'Find the liar'],
+        'line' => ['it' => 'Tutti ricevono la stessa domanda segreta, tranne uno. Confrontate le risposte, votate e scoprite il bugiardo prima che indovini la domanda vera.',
+                   'en' => 'Everybody gets the same secret question, except one. Compare the answers, vote and catch the liar before he guesses the real question.'],
         'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
@@ -310,9 +326,9 @@ $KINDS = [
     'other'   => ['it' => 'Altro', 'en' => 'Other'],
 ];
 $KIND_OF = [
-    'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
+    'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff', 'bugiardo' => 'bluff',
     'nonhomai' => 'talk', 'dieci' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk',
-    'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
+    'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action', 'scommessa' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
     'skillcheck' => 'arcade', 'simon' => 'arcade', 'snake' => 'arcade', 'tetris' => 'arcade', 'difesa' => 'arcade', 'dungeon' => 'arcade', 'hack' => 'arcade',

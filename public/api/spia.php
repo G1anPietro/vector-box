@@ -17,6 +17,7 @@ require_once __DIR__ . '/probabile_lib.php';
 require_once __DIR__ . '/preferiresti_lib.php';
 require_once __DIR__ . '/bomba_lib.php';
 require_once __DIR__ . '/indovina_lib.php';
+require_once __DIR__ . '/bugiardo_lib.php';
 require_once __DIR__ . '/bingo_lib.php';
 require_once __DIR__ . '/bandiere_lib.php';
 require_once __DIR__ . '/storia_lib.php';
@@ -25,6 +26,7 @@ require_once __DIR__ . '/proibita_lib.php';
 require_once __DIR__ . '/mimo_lib.php';
 require_once __DIR__ . '/obbligo_lib.php';
 require_once __DIR__ . '/dieci_lib.php';
+require_once __DIR__ . '/scommessa_lib.php';
 
 initSession();
 header('Cache-Control: no-store');
@@ -156,6 +158,14 @@ try {
                 $room = spiaRoom($db, (int)$room['id']);
             }
         }
+        if ($room['game'] === 'scommessa') {
+            $g = scommessaLoad($db, (int)$room['id']);
+            if ($g && scommessaTick($g)) {
+                scommessaSave($db, (int)$room['id'], $g);
+                spiaBump($db, (int)$room['id']);
+                $room = spiaRoom($db, (int)$room['id']);
+            }
+        }
         if ($room['game'] === 'proibita') {
             $g = proibitaLoad($db, (int)$room['id']);
             if ($g && proibitaTick($g)) {
@@ -168,6 +178,14 @@ try {
             $g = undercoverLoad($db, (int)$room['id']);
             if ($g && undercoverTick($g)) {
                 undercoverSave($db, (int)$room['id'], $g);
+                spiaBump($db, (int)$room['id']);
+                $room = spiaRoom($db, (int)$room['id']);
+            }
+        }
+        if ($room['game'] === 'bugiardo') {
+            $g = bugiardoLoad($db, (int)$room['id']);
+            if ($g && bugiardoTick($g)) {
+                bugiardoSave($db, (int)$room['id'], $g);
                 spiaBump($db, (int)$room['id']);
                 $room = spiaRoom($db, (int)$room['id']);
             }
@@ -251,7 +269,7 @@ try {
         if (!checkRateLimit('spia_create', 10, 600)) spiaFail('slow_down', 429);
         $db->exec('BEGIN IMMEDIATE');
         spiaPruneRooms($db);
-        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'proibita', 'indovina', 'bandiere', 'bingo', 'storia', 'dieci'], true) ? $in['game'] : 'spia';
+        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'proibita', 'indovina', 'bugiardo', 'bandiere', 'bingo', 'storia', 'scommessa', 'dieci'], true) ? $in['game'] : 'spia';
         $rawSettings = is_array($in['settings'] ?? null) ? $in['settings'] : [];
         $settings = match ($game) {
             'lupus' => lupusSanitizeSettings($rawSettings, []),
@@ -262,6 +280,7 @@ try {
             'bomba' => bombaSanitizeSettings($rawSettings, []),
             'indovina' => indovinaSanitizeSettings($rawSettings, []),
             'dieci' => dieciSanitizeSettings($rawSettings, []),
+            'bugiardo' => bugiardoSanitizeSettings($rawSettings, []),
             'bingo' => bingoSanitizeSettings($rawSettings, []),
             'bandiere' => bandiereSanitizeSettings($rawSettings, []),
             'storia' => storiaSanitizeSettings($rawSettings, []),
@@ -269,6 +288,7 @@ try {
             'proibita' => proibitaSanitizeSettings($rawSettings, []),
             'mimo' => mimoSanitizeSettings($rawSettings, []),
             'obbligo' => obbligoSanitizeSettings($rawSettings, []),
+            'scommessa' => scommessaSanitizeSettings($rawSettings, []),
             default => spiaSanitizeSettings($rawSettings, []),
         };
         $db->prepare('INSERT INTO spia_rooms (code, game, settings, created_at, updated_at) VALUES (:c, :g, :s, :t, :t)')
@@ -339,6 +359,14 @@ try {
             $fail('unknown_action');
         }
     }
+    if ($room['game'] === 'scommessa') {
+        $r = scommessaHandle($db, $room, $device, $isHost, $in, $action);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
+        $handled = $r === true;
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
     if ($room['game'] === 'proibita') {
         $r = proibitaHandle($db, $room, $device, $isHost, $in, $action);
         if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
@@ -350,6 +378,14 @@ try {
     if ($room['game'] === 'undercover') {
         $r = undercoverHandle($db, $room, $device, $isHost, $in, $action);
         if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out', 'not_white'], true) ? 403 : 409);
+        $handled = $r === true;
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
+    if ($room['game'] === 'bugiardo') {
+        $r = bugiardoHandle($db, $room, $device, $isHost, $in, $action);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out', 'not_liar'], true) ? 403 : 409);
         $handled = $r === true;
         if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
             $fail('unknown_action');

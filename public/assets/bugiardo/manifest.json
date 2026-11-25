@@ -1,0 +1,18 @@
+{
+  "name": "Chi è il bugiardo",
+  "short_name": "Bugiardo",
+  "description": "Chi è il bugiardo. Tutti ricevono la stessa domanda segreta tranne uno: confronta le risposte e scopri chi mente.",
+  "start_url": "../../pages/bugiardo.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#050806",
+  "theme_color": "#050806",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
