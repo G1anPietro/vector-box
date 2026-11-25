@@ -130,8 +130,11 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "Guess what": midnight blue with a yellow lamp, typewriter type */
 .box.indovina { --lid: #0e1a40; --edge: #060c20; --ink: #f4f1e6; background: radial-gradient(circle at 78% 18%, rgba(255, 216, 74, 0.35) 0 14%, rgba(255, 216, 74, 0) 15%), var(--lid); }
 .box.indovina .name { font-family: "Courier New", Courier, monospace; font-weight: 800; letter-spacing: 0.02em; color: #ffd84a; }
+/* "Flags": ocean blue chart with a brass compass, serif italic */
+.box.bandiere { --lid: #0a2540; --edge: #05152a; --ink: #f6efdc; background: linear-gradient(rgba(169, 201, 227, 0.1) 1px, transparent 1px) 0 0 / 100% 22px, linear-gradient(90deg, rgba(169, 201, 227, 0.1) 1px, transparent 1px) 0 0 / 22px 100%, var(--lid); }
 .box.storia { --lid: #f3ead2; --edge: #cdbd8c; --ink: #1b2a52; background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0 22px, rgba(200, 67, 58, 0.7) 22px 24px, rgba(0, 0, 0, 0) 24px), repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 23px, rgba(52, 96, 170, 0.3) 23px 24px), var(--lid); }
 .box.storia .name { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 800; letter-spacing: 0; color: #1b2a52; }
+.box.bandiere .name { font-family: Georgia, "Palatino Linotype", serif; font-style: italic; font-weight: 700; color: #e9b949; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }
