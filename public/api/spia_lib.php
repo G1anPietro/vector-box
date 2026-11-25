@@ -521,6 +521,14 @@ function spiaRemovePlayer(PDO $db, array $room, ?array $round, int $playerId): v
         $wasSpy = $a && (int)$a['is_spy'] === 1 && $a['out_reason'] === null;
     }
     $db->prepare('UPDATE spia_players SET removed = 1 WHERE id = :id')->execute([':id' => $playerId]);
+    if (($room['game'] ?? 'spia') === 'scommessa') {
+        $g = scommessaLoad($db, (int)$room['id']);
+        if ($g) {
+            scommessaPlayerLeft($g, $playerId);
+            scommessaSave($db, (int)$room['id'], $g);
+        }
+        return;
+    }
     if (($room['game'] ?? 'spia') === 'obbligo') {
         $g = obbligoLoad($db, (int)$room['id']);
         if ($g) {
@@ -680,6 +688,7 @@ function spiaDeleteRooms(PDO $db, array $roomIds): void {
     $db->exec("DELETE FROM proibita_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM mimo_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM obbligo_games WHERE room_id IN ($in)");
+    $db->exec("DELETE FROM scommessa_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_players WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_devices WHERE room_id IN ($in)");
     $db->exec("DELETE FROM spia_rooms WHERE id IN ($in)");
@@ -816,6 +825,7 @@ function spiaLiveView(PDO $db): array {
             'botola' => ($room['game'] ?? 'spia') === 'botola' ? botolaLiveInfo($db, (int)$room['id']) : null,
             'probabile' => ($room['game'] ?? 'spia') === 'probabile' ? probabileLiveInfo($db, (int)$room['id']) : null,
             'obbligo' => ($room['game'] ?? 'spia') === 'obbligo' ? obbligoLiveInfo($db, (int)$room['id']) : null,
+            'scommessa' => ($room['game'] ?? 'spia') === 'scommessa' ? scommessaLiveInfo($db, (int)$room['id']) : null,
             'proibita' => ($room['game'] ?? 'spia') === 'proibita' ? proibitaLiveInfo($db, (int)$room['id']) : null,
             'bingo' => ($room['game'] ?? 'spia') === 'bingo' ? bingoLiveInfo($db, (int)$room['id']) : null,
             'indovina' => ($room['game'] ?? 'spia') === 'indovina' ? indovinaLiveInfo($db, (int)$room['id']) : null,
@@ -860,6 +870,7 @@ function spiaRoomView(PDO $db, array $room, array $device, bool $adminSession): 
     if (($room['game'] ?? 'spia') === 'cucu') return cucuView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'botola') return botolaView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'obbligo') return obbligoView($db, $room, $device, $adminSession);
+    if (($room['game'] ?? 'spia') === 'scommessa') return scommessaView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'proibita') return proibitaView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'undercover') return undercoverView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'mimo') return mimoView($db, $room, $device, $adminSession);
