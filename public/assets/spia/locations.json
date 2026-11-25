@@ -42,6 +42,16 @@
    }
   },
   {
+   "id": "monsters",
+   "name": {
+    "it": "Mostri mistici",
+    "en": "Mystic Monsters",
+    "es": "Monstruos místicos",
+    "fr": "Monstres mystiques",
+    "de": "Mystische Monster"
+   }
+  },
+  {
    "id": "adult",
    "name": {
     "it": "Vietato ai minori",
@@ -2126,6 +2136,558 @@
    ]
   },
   {
+   "id": "vampire_castle",
+   "cat": "monsters",
+   "name": {
+    "it": "Castello del vampiro",
+    "en": "Vampire's Castle",
+    "es": "Castillo del vampiro",
+    "fr": "Château du vampire",
+    "de": "Vampirschloss"
+   },
+   "roles": [
+    {
+     "it": "Conte vampiro",
+     "en": "Count Vampire",
+     "es": "Conde vampiro",
+     "fr": "Comte vampire",
+     "de": "Graf Vampir"
+    },
+    {
+     "it": "Maggiordomo",
+     "en": "Butler",
+     "es": "Mayordomo",
+     "fr": "Majordome",
+     "de": "Butler"
+    },
+    {
+     "it": "Cacciatore di vampiri con il paletto",
+     "en": "Vampire Hunter With a Stake",
+     "es": "Cazavampiros con estaca",
+     "fr": "Chasseur de vampires avec un pieu",
+     "de": "Vampirjäger mit Holzpflock"
+    },
+    {
+     "it": "Vittima con due buchi sul collo",
+     "en": "Victim With Two Holes in the Neck",
+     "es": "Víctima con dos agujeros en el cuello",
+     "fr": "Victime avec deux trous dans le cou",
+     "de": "Opfer mit zwei Löchern im Hals"
+    },
+    {
+     "it": "Pipistrello domestico",
+     "en": "Pet Bat",
+     "es": "Murciélago doméstico",
+     "fr": "Chauve-souris de compagnie",
+     "de": "Haus-Fledermaus"
+    },
+    {
+     "it": "Sposa del conte",
+     "en": "Count's Bride",
+     "es": "Esposa del conde",
+     "fr": "Épouse du comte",
+     "de": "Braut des Grafen"
+    },
+    {
+     "it": "Viaggiatore perso nella notte",
+     "en": "Traveler Lost in the Night",
+     "es": "Viajero perdido en la noche",
+     "fr": "Voyageur perdu dans la nuit",
+     "de": "Reisender, der sich in der Nacht verirrt hat"
+    },
+    {
+     "it": "Servo che mangia aglio di nascosto",
+     "en": "Servant Secretly Eating Garlic",
+     "es": "Sirviente que come ajo a escondidas",
+     "fr": "Serviteur qui mange de l'ail en cachette",
+     "de": "Diener, der heimlich Knoblauch isst"
+    }
+   ]
+  },
+  {
+   "id": "mummy_crypt",
+   "cat": "monsters",
+   "name": {
+    "it": "Cripta della mummia",
+    "en": "Mummy's Crypt",
+    "es": "Cripta de la momia",
+    "fr": "Crypte de la momie",
+    "de": "Gruft der Mumie"
+   },
+   "roles": [
+    {
+     "it": "Mummia",
+     "en": "Mummy",
+     "es": "Momia",
+     "fr": "Momie",
+     "de": "Mumie"
+    },
+    {
+     "it": "Archeologo curioso",
+     "en": "Curious Archaeologist",
+     "es": "Arqueólogo curioso",
+     "fr": "Archéologue curieux",
+     "de": "Neugieriger Archäologe"
+    },
+    {
+     "it": "Ladro di tombe",
+     "en": "Tomb Robber",
+     "es": "Ladrón de tumbas",
+     "fr": "Pilleur de tombes",
+     "de": "Grabräuber"
+    },
+    {
+     "it": "Sacerdote del faraone",
+     "en": "Pharaoh's Priest",
+     "es": "Sacerdote del faraón",
+     "fr": "Prêtre du pharaon",
+     "de": "Priester des Pharaos"
+    },
+    {
+     "it": "Guida turistica del posto",
+     "en": "Local Tour Guide",
+     "es": "Guía turístico del lugar",
+     "fr": "Guide touristique local",
+     "de": "Einheimischer Reiseführer"
+    },
+    {
+     "it": "Gatto sacro",
+     "en": "Sacred Cat",
+     "es": "Gato sagrado",
+     "fr": "Chat sacré",
+     "de": "Heilige Katze"
+    },
+    {
+     "it": "Turista che tocca tutto",
+     "en": "Tourist Who Touches Everything",
+     "es": "Turista que lo toca todo",
+     "fr": "Touriste qui touche à tout",
+     "de": "Tourist, der alles anfasst"
+    },
+    {
+     "it": "Scarabeo gigante",
+     "en": "Giant Scarab",
+     "es": "Escarabajo gigante",
+     "fr": "Scarabée géant",
+     "de": "Riesenskarabäus"
+    }
+   ]
+  },
+  {
+   "id": "witch_swamp",
+   "cat": "monsters",
+   "name": {
+    "it": "Palude della strega",
+    "en": "Witch's Swamp",
+    "es": "Pantano de la bruja",
+    "fr": "Marais de la sorcière",
+    "de": "Hexensumpf"
+   },
+   "roles": [
+    {
+     "it": "Strega",
+     "en": "Witch",
+     "es": "Bruja",
+     "fr": "Sorcière",
+     "de": "Hexe"
+    },
+    {
+     "it": "Gatto nero",
+     "en": "Black Cat",
+     "es": "Gato negro",
+     "fr": "Chat noir",
+     "de": "Schwarzer Kater"
+    },
+    {
+     "it": "Rana che era un principe",
+     "en": "Frog Who Was a Prince",
+     "es": "Rana que era príncipe",
+     "fr": "Grenouille qui était prince",
+     "de": "Frosch, der ein Prinz war"
+    },
+    {
+     "it": "Apprendista stregone",
+     "en": "Sorcerer's Apprentice",
+     "es": "Aprendiz de brujo",
+     "fr": "Apprenti sorcier",
+     "de": "Zauberlehrling"
+    },
+    {
+     "it": "Raccoglitore di funghi",
+     "en": "Mushroom Picker",
+     "es": "Recolector de setas",
+     "fr": "Cueilleur de champignons",
+     "de": "Pilzsammler"
+    },
+    {
+     "it": "Corvo parlante",
+     "en": "Talking Raven",
+     "es": "Cuervo parlante",
+     "fr": "Corbeau parlant",
+     "de": "Sprechender Rabe"
+    },
+    {
+     "it": "Viandante col pentolone",
+     "en": "Wanderer With a Cauldron",
+     "es": "Caminante con un caldero",
+     "fr": "Voyageur avec un chaudron",
+     "de": "Wanderer mit Kessel"
+    },
+    {
+     "it": "Spaventapasseri vivente",
+     "en": "Living Scarecrow",
+     "es": "Espantapájaros viviente",
+     "fr": "Épouvantail vivant",
+     "de": "Lebendige Vogelscheuche"
+    }
+   ]
+  },
+  {
+   "id": "haunted_house",
+   "cat": "monsters",
+   "name": {
+    "it": "Villa stregata",
+    "en": "Haunted Mansion",
+    "es": "Mansión encantada",
+    "fr": "Manoir hanté",
+    "de": "Spukvilla"
+   },
+   "roles": [
+    {
+     "it": "Fantasma",
+     "en": "Ghost",
+     "es": "Fantasma",
+     "fr": "Fantôme",
+     "de": "Geist"
+    },
+    {
+     "it": "Medium",
+     "en": "Medium",
+     "es": "Médium",
+     "fr": "Médium",
+     "de": "Medium"
+    },
+    {
+     "it": "Cacciatore di fantasmi",
+     "en": "Ghost Hunter",
+     "es": "Cazafantasmas",
+     "fr": "Chasseur de fantômes",
+     "de": "Geisterjäger"
+    },
+    {
+     "it": "Agente immobiliare",
+     "en": "Real Estate Agent",
+     "es": "Agente inmobiliario",
+     "fr": "Agent immobilier",
+     "de": "Immobilienmakler"
+    },
+    {
+     "it": "Bambino coraggioso",
+     "en": "Brave Kid",
+     "es": "Niño valiente",
+     "fr": "Enfant courageux",
+     "de": "Mutiger Junge"
+    },
+    {
+     "it": "Cane che ringhia al vuoto",
+     "en": "Dog Growling at Nothing",
+     "es": "Perro que gruñe al vacío",
+     "fr": "Chien qui grogne dans le vide",
+     "de": "Hund, der ins Leere knurrt"
+    },
+    {
+     "it": "Famiglia appena trasferita",
+     "en": "Family Just Moved In",
+     "es": "Familia recién mudada",
+     "fr": "Famille tout juste emménagée",
+     "de": "Gerade eingezogene Familie"
+    },
+    {
+     "it": "Governante con la candela",
+     "en": "Housekeeper With a Candle",
+     "es": "Ama de llaves con una vela",
+     "fr": "Gouvernante avec une chandelle",
+     "de": "Haushälterin mit Kerze"
+    }
+   ]
+  },
+  {
+   "id": "frankenstein_lab",
+   "cat": "monsters",
+   "name": {
+    "it": "Laboratorio di Frankenstein",
+    "en": "Frankenstein's Lab",
+    "es": "Laboratorio de Frankenstein",
+    "fr": "Laboratoire de Frankenstein",
+    "de": "Frankensteins Labor"
+   },
+   "roles": [
+    {
+     "it": "Dottor Frankenstein",
+     "en": "Doctor Frankenstein",
+     "es": "Doctor Frankenstein",
+     "fr": "Docteur Frankenstein",
+     "de": "Doktor Frankenstein"
+    },
+    {
+     "it": "Mostro",
+     "en": "The Monster",
+     "es": "El monstruo",
+     "fr": "Le monstre",
+     "de": "Das Monster"
+    },
+    {
+     "it": "Assistente gobbo",
+     "en": "Hunchbacked Assistant",
+     "es": "Ayudante jorobado",
+     "fr": "Assistant bossu",
+     "de": "Buckliger Gehilfe"
+    },
+    {
+     "it": "Fulmine ben addestrato",
+     "en": "Well-Trained Lightning Bolt",
+     "es": "Rayo bien entrenado",
+     "fr": "Éclair bien dressé",
+     "de": "Gut dressierter Blitz"
+    },
+    {
+     "it": "Moglie del mostro",
+     "en": "Monster's Bride",
+     "es": "Novia del monstruo",
+     "fr": "Fiancée du monstre",
+     "de": "Braut des Monsters"
+    },
+    {
+     "it": "Contadino con la forca",
+     "en": "Villager With a Pitchfork",
+     "es": "Aldeano con horca",
+     "fr": "Villageois avec une fourche",
+     "de": "Dorfbewohner mit Heugabel"
+    },
+    {
+     "it": "Sindaco preoccupato",
+     "en": "Worried Mayor",
+     "es": "Alcalde preocupado",
+     "fr": "Maire inquiet",
+     "de": "Besorgter Bürgermeister"
+    },
+    {
+     "it": "Corriere che consegna pezzi di ricambio",
+     "en": "Courier Delivering Spare Parts",
+     "es": "Mensajero que entrega repuestos",
+     "fr": "Coursier qui livre des pièces détachées",
+     "de": "Kurier mit Ersatzteilen"
+    }
+   ]
+  },
+  {
+   "id": "werewolf_forest",
+   "cat": "monsters",
+   "name": {
+    "it": "Foresta dei licantropi",
+    "en": "Werewolf Forest",
+    "es": "Bosque de los hombres lobo",
+    "fr": "Forêt des loups-garous",
+    "de": "Werwolfwald"
+   },
+   "roles": [
+    {
+     "it": "Licantropo",
+     "en": "Werewolf",
+     "es": "Hombre lobo",
+     "fr": "Loup-garou",
+     "de": "Werwolf"
+    },
+    {
+     "it": "Cacciatore con pallottole d'argento",
+     "en": "Hunter With Silver Bullets",
+     "es": "Cazador con balas de plata",
+     "fr": "Chasseur aux balles d'argent",
+     "de": "Jäger mit Silberkugeln"
+    },
+    {
+     "it": "Campeggiatore ignaro",
+     "en": "Clueless Camper",
+     "es": "Campista despistado",
+     "fr": "Campeur ignorant",
+     "de": "Ahnungsloser Camper"
+    },
+    {
+     "it": "Guardaboschi",
+     "en": "Forest Ranger",
+     "es": "Guardabosques",
+     "fr": "Garde forestier",
+     "de": "Förster"
+    },
+    {
+     "it": "Bambina con il cappuccetto rosso",
+     "en": "Girl in a Red Hood",
+     "es": "Niña con caperuza roja",
+     "fr": "Fillette au chaperon rouge",
+     "de": "Mädchen mit rotem Käppchen"
+    },
+    {
+     "it": "Branco di lupi veri",
+     "en": "Pack of Real Wolves",
+     "es": "Manada de lobos de verdad",
+     "fr": "Meute de vrais loups",
+     "de": "Rudel echter Wölfe"
+    },
+    {
+     "it": "Veterinario ossessionato dalla luna",
+     "en": "Vet Obsessed With the Moon",
+     "es": "Veterinario obsesionado con la luna",
+     "fr": "Vétérinaire obsédé par la lune",
+     "de": "Tierarzt, der vom Mond besessen ist"
+    },
+    {
+     "it": "Eremita che ulula per divertimento",
+     "en": "Hermit Who Howls for Fun",
+     "es": "Ermitaño que aúlla por diversión",
+     "fr": "Ermite qui hurle pour s'amuser",
+     "de": "Einsiedler, der zum Spaß heult"
+    }
+   ]
+  },
+  {
+   "id": "zombie_cemetery",
+   "cat": "monsters",
+   "name": {
+    "it": "Cimitero degli zombie",
+    "en": "Zombie Graveyard",
+    "es": "Cementerio de zombis",
+    "fr": "Cimetière des zombies",
+    "de": "Zombie-Friedhof"
+   },
+   "roles": [
+    {
+     "it": "Zombie affamato",
+     "en": "Hungry Zombie",
+     "es": "Zombi hambriento",
+     "fr": "Zombie affamé",
+     "de": "Hungriger Zombie"
+    },
+    {
+     "it": "Custode del cimitero",
+     "en": "Cemetery Caretaker",
+     "es": "Cuidador del cementerio",
+     "fr": "Gardien du cimetière",
+     "de": "Friedhofswärter"
+    },
+    {
+     "it": "Sopravvissuto con la mazza",
+     "en": "Survivor With a Bat",
+     "es": "Superviviente con un bate",
+     "fr": "Survivant avec une batte",
+     "de": "Überlebender mit Baseballschläger"
+    },
+    {
+     "it": "Scienziato che ha combinato il guaio",
+     "en": "Scientist Who Caused the Mess",
+     "es": "Científico que causó el lío",
+     "fr": "Scientifique qui a causé le problème",
+     "de": "Wissenschaftler, der das Chaos angerichtet hat"
+    },
+    {
+     "it": "Becchino distratto",
+     "en": "Absent-Minded Gravedigger",
+     "es": "Sepulturero distraído",
+     "fr": "Fossoyeur distrait",
+     "de": "Zerstreuter Totengräber"
+    },
+    {
+     "it": "Cantante che balla come uno zombie",
+     "en": "Singer Who Dances Like a Zombie",
+     "es": "Cantante que baila como un zombi",
+     "fr": "Chanteur qui danse comme un zombie",
+     "de": "Sänger, der wie ein Zombie tanzt"
+    },
+    {
+     "it": "Bambino con il pallone",
+     "en": "Kid With a Ball",
+     "es": "Niño con un balón",
+     "fr": "Enfant avec un ballon",
+     "de": "Kind mit Ball"
+    },
+    {
+     "it": "Zombie vegetariano",
+     "en": "Vegetarian Zombie",
+     "es": "Zombi vegetariano",
+     "fr": "Zombie végétarien",
+     "de": "Vegetarischer Zombie"
+    }
+   ]
+  },
+  {
+   "id": "dragon_cave",
+   "cat": "monsters",
+   "name": {
+    "it": "Caverna del drago",
+    "en": "Dragon's Cave",
+    "es": "Cueva del dragón",
+    "fr": "Caverne du dragon",
+    "de": "Drachenhöhle"
+   },
+   "roles": [
+    {
+     "it": "Drago",
+     "en": "Dragon",
+     "es": "Dragón",
+     "fr": "Dragon",
+     "de": "Drache"
+    },
+    {
+     "it": "Cavaliere in armatura",
+     "en": "Knight in Armor",
+     "es": "Caballero con armadura",
+     "fr": "Chevalier en armure",
+     "de": "Ritter in Rüstung"
+    },
+    {
+     "it": "Principessa prigioniera",
+     "en": "Captive Princess",
+     "es": "Princesa prisionera",
+     "fr": "Princesse prisonnière",
+     "de": "Gefangene Prinzessin"
+    },
+    {
+     "it": "Mago saggio",
+     "en": "Wise Wizard",
+     "es": "Mago sabio",
+     "fr": "Mage sage",
+     "de": "Weiser Zauberer"
+    },
+    {
+     "it": "Nano minatore",
+     "en": "Dwarf Miner",
+     "es": "Enano minero",
+     "fr": "Nain mineur",
+     "de": "Zwergen-Bergmann"
+    },
+    {
+     "it": "Ladro attirato dal tesoro",
+     "en": "Thief Lured by the Treasure",
+     "es": "Ladrón atraído por el tesoro",
+     "fr": "Voleur attiré par le trésor",
+     "de": "Dieb, den der Schatz anlockt"
+    },
+    {
+     "it": "Bardo che scrive la ballata",
+     "en": "Bard Writing the Ballad",
+     "es": "Bardo que escribe la balada",
+     "fr": "Barde qui écrit la ballade",
+     "de": "Barde, der die Ballade schreibt"
+    },
+    {
+     "it": "Draghetto appena nato",
+     "en": "Newborn Baby Dragon",
+     "es": "Dragoncito recién nacido",
+     "fr": "Bébé dragon tout juste né",
+     "de": "Frisch geschlüpfter Babydrache"
+    }
+   ]
+  },
+  {
    "id": "strip_club",
    "cat": "adult",
    "name": {
@@ -2950,6 +3512,489 @@
      "es": "Paramédico",
      "fr": "Secouriste",
      "de": "Sanitäter"
+    }
+   ]
+  },
+  {
+   "id": "nursing_home",
+   "cat": "adult",
+   "name": {
+    "it": "Casa di riposo",
+    "en": "Nursing Home",
+    "es": "Residencia de ancianos",
+    "fr": "Maison de retraite",
+    "de": "Seniorenheim"
+   },
+   "roles": [
+    {
+     "it": "Vecchio che ha cambiato testamento",
+     "en": "Old Man Who Changed His Will",
+     "es": "Anciano que cambió el testamento",
+     "fr": "Vieil homme qui a changé son testament",
+     "de": "Alter Mann, der sein Testament geändert hat"
+    },
+    {
+     "it": "Badante che aspetta l'eredità",
+     "en": "Caregiver Waiting for the Inheritance",
+     "es": "Cuidadora que espera la herencia",
+     "fr": "Aide-soignante qui attend l'héritage",
+     "de": "Pflegerin, die auf das Erbe wartet"
+    },
+    {
+     "it": "Nipote che viene solo a Natale",
+     "en": "Grandson Who Only Visits at Christmas",
+     "es": "Nieto que solo viene en Navidad",
+     "fr": "Petit-fils qui ne vient qu'à Noël",
+     "de": "Enkel, der nur an Weihnachten kommt"
+    },
+    {
+     "it": "Ospite morto da due giorni",
+     "en": "Resident Dead for Two Days",
+     "es": "Residente muerto hace dos días",
+     "fr": "Résident mort depuis deux jours",
+     "de": "Bewohner, der seit zwei Tagen tot ist"
+    },
+    {
+     "it": "Infermiera stanca",
+     "en": "Exhausted Nurse",
+     "es": "Enfermera agotada",
+     "fr": "Infirmière épuisée",
+     "de": "Erschöpfte Krankenschwester"
+    },
+    {
+     "it": "Direttore della struttura",
+     "en": "Facility Director",
+     "es": "Director de la residencia",
+     "fr": "Directeur de l'établissement",
+     "de": "Heimleiter"
+    },
+    {
+     "it": "Signora che fa bingo truccato",
+     "en": "Lady Who Rigs the Bingo",
+     "es": "Señora que amaña el bingo",
+     "fr": "Dame qui truque le loto",
+     "de": "Dame, die beim Bingo schummelt"
+    },
+    {
+     "it": "Animatore troppo allegro",
+     "en": "Far Too Cheerful Entertainer",
+     "es": "Animador demasiado alegre",
+     "fr": "Animateur beaucoup trop joyeux",
+     "de": "Viel zu fröhlicher Animateur"
+    }
+   ]
+  },
+  {
+   "id": "rehab",
+   "cat": "adult",
+   "name": {
+    "it": "Centro di disintossicazione",
+    "en": "Rehab Center",
+    "es": "Centro de desintoxicación",
+    "fr": "Centre de désintoxication",
+    "de": "Entzugsklinik"
+   },
+   "roles": [
+    {
+     "it": "Quello alla quinta ricaduta",
+     "en": "Guy on His Fifth Relapse",
+     "es": "El de la quinta recaída",
+     "fr": "Celui à sa cinquième rechute",
+     "de": "Der bei seinem fünften Rückfall"
+    },
+    {
+     "it": "Terapeuta che beve più dei pazienti",
+     "en": "Therapist Who Drinks More Than the Patients",
+     "es": "Terapeuta que bebe más que los pacientes",
+     "fr": "Thérapeute qui boit plus que les patients",
+     "de": "Therapeut, der mehr trinkt als die Patienten"
+    },
+    {
+     "it": "Spacciatore travestito da volontario",
+     "en": "Dealer Disguised as a Volunteer",
+     "es": "Camello disfrazado de voluntario",
+     "fr": "Dealer déguisé en bénévole",
+     "de": "Dealer als Freiwilliger verkleidet"
+    },
+    {
+     "it": "Celebrità venuta per l'immagine",
+     "en": "Celebrity Here for the Image",
+     "es": "Famoso que viene por la imagen",
+     "fr": "Célébrité venue pour l'image",
+     "de": "Promi, der nur fürs Image da ist"
+    },
+    {
+     "it": "Famiglia che ha pagato la retta",
+     "en": "Family Who Paid the Fees",
+     "es": "Familia que pagó la cuota",
+     "fr": "Famille qui a payé les frais",
+     "de": "Familie, die die Gebühren zahlt"
+    },
+    {
+     "it": "Cuoco che cucina con il vino",
+     "en": "Cook Who Cooks With Wine",
+     "es": "Cocinero que cocina con vino",
+     "fr": "Cuisinier qui cuisine au vin",
+     "de": "Koch, der mit Wein kocht"
+    },
+    {
+     "it": "Medico con le pillole in tasca",
+     "en": "Doctor With Pills in His Pocket",
+     "es": "Médico con pastillas en el bolsillo",
+     "fr": "Médecin avec des pilules dans la poche",
+     "de": "Arzt mit Pillen in der Tasche"
+    },
+    {
+     "it": "Nuovo arrivato in negazione",
+     "en": "New Arrival in Denial",
+     "es": "Recién llegado en negación",
+     "fr": "Nouvel arrivant dans le déni",
+     "de": "Neuankömmling im Verdrängungsmodus"
+    }
+   ]
+  },
+  {
+   "id": "cheap_funeral",
+   "cat": "adult",
+   "name": {
+    "it": "Pompe funebri low cost",
+    "en": "Budget Funeral Home",
+    "es": "Funeraria low cost",
+    "fr": "Pompes funèbres low cost",
+    "de": "Billig-Bestattung"
+   },
+   "roles": [
+    {
+     "it": "Titolare con il sorriso fisso",
+     "en": "Owner With a Fixed Smile",
+     "es": "Dueño con sonrisa fija",
+     "fr": "Patron au sourire figé",
+     "de": "Inhaber mit festem Lächeln"
+    },
+    {
+     "it": "Cliente che contratta sul prezzo",
+     "en": "Client Haggling Over the Price",
+     "es": "Cliente que regatea el precio",
+     "fr": "Client qui marchande le prix",
+     "de": "Kunde, der um den Preis feilscht"
+    },
+    {
+     "it": "Venditore di bare di cartone",
+     "en": "Cardboard Coffin Salesman",
+     "es": "Vendedor de ataúdes de cartón",
+     "fr": "Vendeur de cercueils en carton",
+     "de": "Verkäufer von Pappsärgen"
+    },
+    {
+     "it": "Morto riciclato",
+     "en": "Recycled Corpse",
+     "es": "Cadáver reciclado",
+     "fr": "Défunt recyclé",
+     "de": "Recycelte Leiche"
+    },
+    {
+     "it": "Vedova che cerca lo sconto",
+     "en": "Widow Looking for a Discount",
+     "es": "Viuda que busca descuento",
+     "fr": "Veuve qui cherche une remise",
+     "de": "Witwe auf der Suche nach Rabatt"
+    },
+    {
+     "it": "Autista del carro funebre",
+     "en": "Hearse Driver",
+     "es": "Conductor del coche fúnebre",
+     "fr": "Chauffeur du corbillard",
+     "de": "Leichenwagenfahrer"
+    },
+    {
+     "it": "Parente che vuole il pacchetto premium",
+     "en": "Relative Who Wants the Premium Package",
+     "es": "Pariente que quiere el paquete premium",
+     "fr": "Parent qui veut le forfait premium",
+     "de": "Verwandter, der das Premium-Paket will"
+    },
+    {
+     "it": "Stagista del cimitero",
+     "en": "Cemetery Intern",
+     "es": "Becario del cementerio",
+     "fr": "Stagiaire du cimetière",
+     "de": "Friedhofspraktikant"
+    }
+   ]
+  },
+  {
+   "id": "court",
+   "cat": "adult",
+   "name": {
+    "it": "Tribunale",
+    "en": "Courtroom",
+    "es": "Tribunal",
+    "fr": "Tribunal",
+    "de": "Gericht"
+   },
+   "roles": [
+    {
+     "it": "Avvocato che ha già perso",
+     "en": "Lawyer Who Already Lost",
+     "es": "Abogado que ya perdió",
+     "fr": "Avocat qui a déjà perdu",
+     "de": "Anwalt, der schon verloren hat"
+    },
+    {
+     "it": "Imputato innocente con le mani sporche",
+     "en": "Innocent Defendant With Dirty Hands",
+     "es": "Acusado inocente con las manos sucias",
+     "fr": "Accusé innocent aux mains sales",
+     "de": "Unschuldiger Angeklagter mit schmutzigen Händen"
+    },
+    {
+     "it": "Giudice che dorme",
+     "en": "Sleeping Judge",
+     "es": "Juez que duerme",
+     "fr": "Juge qui dort",
+     "de": "Schlafender Richter"
+    },
+    {
+     "it": "Giurato che vota a caso",
+     "en": "Juror Who Votes at Random",
+     "es": "Jurado que vota al azar",
+     "fr": "Juré qui vote au hasard",
+     "de": "Geschworener, der zufällig abstimmt"
+    },
+    {
+     "it": "Pubblico ministero rabbioso",
+     "en": "Furious Prosecutor",
+     "es": "Fiscal furioso",
+     "fr": "Procureur furieux",
+     "de": "Wütender Staatsanwalt"
+    },
+    {
+     "it": "Testimone che cambia versione",
+     "en": "Witness Who Changes His Story",
+     "es": "Testigo que cambia de versión",
+     "fr": "Témoin qui change de version",
+     "de": "Zeuge, der seine Aussage ändert"
+    },
+    {
+     "it": "Cancelliere che sbaglia tutto",
+     "en": "Clerk Who Gets Everything Wrong",
+     "es": "Secretario que se equivoca en todo",
+     "fr": "Greffier qui se trompe sur tout",
+     "de": "Gerichtsschreiber, der alles falsch macht"
+    },
+    {
+     "it": "Giornalista in prima fila",
+     "en": "Reporter in the Front Row",
+     "es": "Periodista en primera fila",
+     "fr": "Journaliste au premier rang",
+     "de": "Reporter in der ersten Reihe"
+    }
+   ]
+  },
+  {
+   "id": "cult",
+   "cat": "adult",
+   "name": {
+    "it": "Setta religiosa",
+    "en": "Religious Cult",
+    "es": "Secta religiosa",
+    "fr": "Secte religieuse",
+    "de": "Sekte"
+   },
+   "roles": [
+    {
+     "it": "Guru con tre mogli",
+     "en": "Guru With Three Wives",
+     "es": "Gurú con tres esposas",
+     "fr": "Gourou avec trois épouses",
+     "de": "Guru mit drei Frauen"
+    },
+    {
+     "it": "Adepto che ha appena donato la casa",
+     "en": "Follower Who Just Donated His House",
+     "es": "Adepto que acaba de donar su casa",
+     "fr": "Adepte qui vient de donner sa maison",
+     "de": "Anhänger, der gerade sein Haus gespendet hat"
+    },
+    {
+     "it": "Quello che «esce stasera» da 12 anni",
+     "en": "The One Who Is «Leaving Tonight» for 12 Years",
+     "es": "El que «se va esta noche» desde hace 12 años",
+     "fr": "Celui qui «part ce soir» depuis 12 ans",
+     "de": "Der, der seit 12 Jahren «heute Abend geht»"
+    },
+    {
+     "it": "Cuoca della comunità",
+     "en": "Community Cook",
+     "es": "Cocinera de la comunidad",
+     "fr": "Cuisinière de la communauté",
+     "de": "Köchin der Gemeinschaft"
+    },
+    {
+     "it": "Guardia del cancello",
+     "en": "Gate Guard",
+     "es": "Guardia de la puerta",
+     "fr": "Garde du portail",
+     "de": "Torwächter"
+    },
+    {
+     "it": "Giornalista infiltrato",
+     "en": "Undercover Journalist",
+     "es": "Periodista infiltrado",
+     "fr": "Journaliste infiltré",
+     "de": "Eingeschleuster Journalist"
+    },
+    {
+     "it": "Madre venuta a riprendersi il figlio",
+     "en": "Mother Here to Take Her Son Back",
+     "es": "Madre que viene a recuperar a su hijo",
+     "fr": "Mère venue récupérer son fils",
+     "de": "Mutter, die ihren Sohn zurückholen will"
+    },
+    {
+     "it": "Contabile della setta",
+     "en": "Cult Accountant",
+     "es": "Contable de la secta",
+     "fr": "Comptable de la secte",
+     "de": "Buchhalter der Sekte"
+    }
+   ]
+  },
+  {
+   "id": "aa_meeting",
+   "cat": "adult",
+   "name": {
+    "it": "Alcolisti Anonimi",
+    "en": "Alcoholics Anonymous",
+    "es": "Alcohólicos Anónimos",
+    "fr": "Alcooliques Anonymes",
+    "de": "Anonyme Alkoholiker"
+   },
+   "roles": [
+    {
+     "it": "Uno che porta il vino per festeggiare un anno",
+     "en": "Guy Who Brings Wine to Celebrate One Year",
+     "es": "El que trae vino para celebrar un año",
+     "fr": "Celui qui apporte du vin pour fêter un an",
+     "de": "Typ, der Wein zum Einjährigen mitbringt"
+    },
+    {
+     "it": "Coordinatore del gruppo",
+     "en": "Group Leader",
+     "es": "Coordinador del grupo",
+     "fr": "Animateur du groupe",
+     "de": "Gruppenleiter"
+    },
+    {
+     "it": "Nuovo che non vuole parlare",
+     "en": "Newcomer Who Won't Talk",
+     "es": "Nuevo que no quiere hablar",
+     "fr": "Nouveau qui ne veut pas parler",
+     "de": "Neuling, der nicht reden will"
+    },
+    {
+     "it": "Veterano con mille storie",
+     "en": "Veteran With a Thousand Stories",
+     "es": "Veterano con mil historias",
+     "fr": "Vétéran avec mille histoires",
+     "de": "Veteran mit tausend Geschichten"
+    },
+    {
+     "it": "Quello che è qui per il caffè",
+     "en": "The One Who Is Here for the Coffee",
+     "es": "El que está aquí por el café",
+     "fr": "Celui qui est là pour le café",
+     "de": "Der, der nur wegen des Kaffees da ist"
+    },
+    {
+     "it": "Quello mandato dal giudice",
+     "en": "The One Sent by the Judge",
+     "es": "El enviado por el juez",
+     "fr": "Celui envoyé par le juge",
+     "de": "Der vom Richter Geschickte"
+    },
+    {
+     "it": "Moglie che aspetta fuori",
+     "en": "Wife Waiting Outside",
+     "es": "Esposa que espera fuera",
+     "fr": "Épouse qui attend dehors",
+     "de": "Ehefrau, die draußen wartet"
+    },
+    {
+     "it": "Quello che ha sbagliato sala",
+     "en": "The One Who Got the Wrong Room",
+     "es": "El que se equivocó de sala",
+     "fr": "Celui qui s'est trompé de salle",
+     "de": "Der, der im falschen Raum sitzt"
+    }
+   ]
+  },
+  {
+   "id": "stereotypes",
+   "cat": "adult",
+   "name": {
+    "it": "Stereotipi leggeri sulle nazionalità",
+    "en": "Light Nationality Stereotypes",
+    "es": "Estereotipos suaves de nacionalidades",
+    "fr": "Stéréotypes légers sur les nationalités",
+    "de": "Harmlose Nationalitäten-Klischees"
+   },
+   "roles": [
+    {
+     "it": "Turista tedesco con sandali e calzini",
+     "en": "German Tourist in Sandals and Socks",
+     "es": "Turista alemán con sandalias y calcetines",
+     "fr": "Touriste allemand en sandales et chaussettes",
+     "de": "Deutscher Tourist mit Sandalen und Socken"
+    },
+    {
+     "it": "Inglese ustionato al primo giorno",
+     "en": "Englishman Sunburnt on Day One",
+     "es": "Inglés quemado el primer día",
+     "fr": "Anglais brûlé dès le premier jour",
+     "de": "Engländer mit Sonnenbrand am ersten Tag"
+    },
+    {
+     "it": "Americano che urla al ristorante",
+     "en": "American Shouting in the Restaurant",
+     "es": "Estadounidense que grita en el restaurante",
+     "fr": "Américain qui crie au restaurant",
+     "de": "Amerikaner, der im Restaurant laut ist"
+    },
+    {
+     "it": "Italiano che spiega la carbonara al cameriere",
+     "en": "Italian Explaining Carbonara to the Waiter",
+     "es": "Italiano que explica la carbonara al camarero",
+     "fr": "Italien qui explique la carbonara au serveur",
+     "de": "Italiener, der dem Kellner die Carbonara erklärt"
+    },
+    {
+     "it": "Francese che commenta il vino",
+     "en": "Frenchman Commenting on the Wine",
+     "es": "Francés que comenta el vino",
+     "fr": "Français qui commente le vin",
+     "de": "Franzose, der den Wein kommentiert"
+    },
+    {
+     "it": "Spagnolo che ha sempre un'ora di ritardo",
+     "en": "Spaniard Who Is Always an Hour Late",
+     "es": "Español que siempre llega una hora tarde",
+     "fr": "Espagnol toujours en retard d'une heure",
+     "de": "Spanier, der immer eine Stunde zu spät kommt"
+    },
+    {
+     "it": "Cameriere stremato",
+     "en": "Worn-Out Waiter",
+     "es": "Camarero agotado",
+     "fr": "Serveur à bout",
+     "de": "Erschöpfter Kellner"
+    },
+    {
+     "it": "Guida turistica con la bandierina",
+     "en": "Tour Guide With a Little Flag",
+     "es": "Guía turístico con banderita",
+     "fr": "Guide touristique avec son petit drapeau",
+     "de": "Reiseleiter mit Fähnchen"
     }
    ]
   }

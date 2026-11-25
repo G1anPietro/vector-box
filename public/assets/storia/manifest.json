@@ -1,0 +1,18 @@
+{
+  "name": "Chain story",
+  "short_name": "Chain story",
+  "description": "Storia a catena. Si scrive una storia insieme, una frase a testa: vedi solo l'ultima frase scritta prima della tua. Alla fine si legge tutto e si vota la frase più bella.",
+  "start_url": "../../pages/storia.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#f3ead2",
+  "theme_color": "#f3ead2",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

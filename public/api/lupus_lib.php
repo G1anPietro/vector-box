@@ -13,9 +13,14 @@
 const LUPUS_MIN_PLAYERS = 4;
 // Dealing priority when there are fewer seats than enabled roles: the house standard first
 const LUPUS_SPECIALS = ['whore', 'jester', 'fisher', 'seer', 'guard', 'witch', 'hunter', 'judge',
-                        'cupid', 'medium', 'minion', 'mayor', 'crow', 'elder', 'masons', 'white_wolf'];
+                        'cupid', 'medium', 'minion', 'mayor', 'crow', 'elder', 'masons', 'bear', 'shaman', 'vampire', 'vampire_hunter', 'white_wolf'];
+// Mystic monsters and new roles change the balance: they are dealt only from this many players
+const LUPUS_ROLE_MIN = ['bear' => 5, 'shaman' => 6, 'vampire' => 7, 'vampire_hunter' => 7];
+// Words a ghost may whisper to the living (ids only: the UI has the texts, there is no free text)
+const LUPUS_HAUNT_WORDS = ['boo', 'liar', 'trust', 'behind', 'run', 'silence', 'betrayal', 'help'];
+const LUPUS_NIGHT_SECONDS = [0, 30, 45, 60];
 // Village powers switched off when the village executes the elder
-const LUPUS_VILLAGE_POWERS = ['seer', 'guard', 'whore', 'witch', 'hunter', 'judge', 'medium', 'crow', 'mayor', 'fisher', 'cupid'];
+const LUPUS_VILLAGE_POWERS = ['seer', 'guard', 'whore', 'witch', 'hunter', 'judge', 'medium', 'crow', 'mayor', 'fisher', 'cupid', 'bear', 'shaman', 'vampire_hunter'];
 const LUPUS_NOBODY = 0;   // vote / pick target meaning "nobody"
 
 function lupusDefaultSettings(): array {
@@ -41,6 +46,13 @@ function lupusDefaultSettings(): array {
         'elder'        => false,   // survives the first attack; if executed, the village loses its powers
         'masons'       => false,   // two villagers who know each other
         'white_wolf'   => false,   // a killer who can also kill a fellow killer and wins only alone
+        'bear'         => false,   // growls at dawn when a killer sits next to him (needs the seating)
+        'shaman'       => false,   // each night asks a dead player a yes/no question
+        'vampire'      => false,   // mystic monsters: a team of their own, they bite instead of killing
+        'vampire_hunter' => false, // once per game stakes a suspect: a vampire dies, an innocent kills the hunter
+        'ghost'        => false,   // the dead may haunt the living with a word from a fixed list
+        'night_sec'    => 0,       // night timer in seconds (0 = none, 30, 45, 60)
+        'seating'      => [],      // player ids in the order they sit around the table
         'wolves_know'  => true,    // killers see each other
         'reveal_dead'  => true,    // a dead player's role is shown to everybody
         'dead_see_all' => false,   // phones whose players are all dead see every role
@@ -56,10 +68,14 @@ function lupusSanitizeSettings(array $in, array $base): array {
     $int = fn($v, $min, $max, $def) => is_numeric($v) ? max($min, min($max, (int)$v)) : $def;
     if (isset($in['wolves_mode']) && in_array($in['wolves_mode'], ['auto', 'fixed'], true)) $s['wolves_mode'] = $in['wolves_mode'];
     $s['wolves'] = $int($in['wolves'] ?? $s['wolves'], 1, 9, 1);
-    foreach ([...LUPUS_SPECIALS, 'fisher_sees', 'wolves_know', 'reveal_dead', 'dead_see_all', 'day_timer', 'scores'] as $k) {
+    foreach ([...LUPUS_SPECIALS, 'fisher_sees', 'wolves_know', 'reveal_dead', 'dead_see_all', 'day_timer', 'scores', 'ghost'] as $k) {
         $s[$k] = $bool($in[$k] ?? $s[$k], (bool)$s[$k]);
     }
     $s['day_min'] = $int($in['day_min'] ?? $s['day_min'], 1, 30, 5);
+    $sec = $in['night_sec'] ?? $s['night_sec'];
+    $s['night_sec'] = is_numeric($sec) && in_array((int)$sec, LUPUS_NIGHT_SECONDS, true) ? (int)$sec : 0;
+    $seat = $in['seating'] ?? $s['seating'];
+    $s['seating'] = is_array($seat) ? array_values(array_unique(array_slice(array_map('intval', array_filter($seat, 'is_numeric')), 0, 40))) : [];
     return $s;
 }
 
@@ -105,6 +121,14 @@ function lupusPower(array $g, int $pid): ?string {
     return !empty($g['powers_lost']) && in_array($role, LUPUS_VILLAGE_POWERS, true) ? 'villager' : $role;
 }
 
+function lupusVampireCount(int $n): int {
+    return max(1, intdiv($n, 6));
+}
+
+function lupusAliveVampires(array $g): array {
+    return lupusAliveWithRole($g, 'vampire');
+}
+
 function lupusAliveWithRole(array $g, string $role): array {
     return array_values(array_filter($g['alive'], fn($p) => lupusRole($g, (int)$p) === $role));
 }
@@ -128,6 +152,12 @@ function lupusStart(PDO $db, array $room): ?string {
             if ($n - count($deck) >= 2) array_push($deck, 'mason', 'mason');
             continue;
         }
+        if (isset(LUPUS_ROLE_MIN[$special]) && $n < LUPUS_ROLE_MIN[$special]) continue;   // too few players for the monsters
+        if ($special === 'vampire') {
+            for ($i = lupusVampireCount($n); $i > 0 && count($deck) < $n; $i--) $deck[] = 'vampire';
+            continue;
+        }
+        if ($special === 'vampire_hunter' && !in_array('vampire', $deck, true)) continue;
         if (count($deck) < $n) $deck[] = $special;
     }
     while (count($deck) < $n) $deck[] = 'villager';
@@ -156,6 +186,12 @@ function lupusStart(PDO $db, array $room): ?string {
         'guard_last' => [],
         'whore_last' => [],
         'seer_results' => [],
+        'seating' => lupusSeating($s['seating'], $ids),
+        'bitten' => [],           // pid => night of the bite; turns into a vampire two nights later unless protected
+        'turned' => [],           // pid => ['day' => n, 'seen' => bool]
+        'stake_used' => false,
+        'shaman' => null,         // ['p' => dead player asked, 'day' => n, 'answer' => null|bool]
+        'haunts' => [],
         'fished' => [],           // fisher pid => ['p' => fished player, 'role' => new role, 'day' => n, 'seen' => bool]
         'judge_used' => false,
         'lovers' => [],
@@ -176,6 +212,32 @@ function lupusStart(PDO $db, array $room): ?string {
     return null;
 }
 
+/** Table order: the host's order first (only players in the match), the others after, in join order. */
+function lupusSeating(array $wanted, array $ids): array {
+    $out = array_values(array_intersect(array_map('intval', $wanted), $ids));
+    return array_merge($out, array_values(array_diff($ids, $out)));
+}
+
+/** The bear growls when the nearest living player on either side is a killer. */
+function lupusBearGrowls(array $g): bool {
+    $seat = $g['seating'] ?? [];
+    $n = count($seat);
+    foreach (lupusAliveWithRole($g, 'bear') as $bear) {
+        if (lupusPower($g, (int)$bear) !== 'bear') continue;
+        $i = array_search((int)$bear, $seat, true);
+        if ($i === false) continue;
+        foreach ([1, -1] as $dir) {
+            for ($k = 1; $k < $n; $k++) {
+                $p = $seat[(($i + $dir * $k) % $n + $n) % $n];
+                if (!lupusIsAlive($g, $p)) continue;
+                if (lupusWolfish(lupusRole($g, $p))) return true;
+                break;
+            }
+        }
+    }
+    return false;
+}
+
 /** Ends the match when someone has won. Returns true if it did. */
 function lupusCheckWin(array &$g): bool {
     $alive = $g['alive'];
@@ -188,7 +250,13 @@ function lupusCheckWin(array &$g): bool {
         if ($a === $l) { lupusEnd($g, 'lovers', 'lovers_last'); return true; }
     }
     if (count($alive) === 1 && lupusRole($g, $alive[0]) === 'white_wolf') { lupusEnd($g, 'white_wolf', 'white_wolf_alone'); return true; }
-    if ($killers === 0) { lupusEnd($g, 'village', 'no_wolves'); return true; }
+    $vamps = count(lupusAliveVampires($g));
+    if ($killers === 0 && $vamps === 0) { lupusEnd($g, 'village', 'no_wolves'); return true; }
+    if ($killers === 0) {
+        // the vampires win once they are as many as everybody else alive
+        if ($vamps >= count($alive) - $vamps) { lupusEnd($g, 'vampires', 'vampires_parity'); return true; }
+        return false;
+    }
     if ($killers >= $others) {
         // Parity with only the white killer left among the killers: he finishes the job alone
         $onlyWhite = !array_filter(lupusAliveWolfish($g), fn($p) => lupusRole($g, (int)$p) !== 'white_wolf');
@@ -236,9 +304,11 @@ function lupusContinue(array &$g, string $next): void {
 function lupusStartNight(array &$g): void {
     $g['day']++;
     $g['phase'] = 'night';
-    $g['night'] = ['acted' => [], 'wolf' => [], 'seer' => [], 'guard' => [], 'whore' => [], 'fish' => [], 'crow' => [], 'white' => [], 'cupid' => null];
+    $g['night'] = ['acted' => [], 'wolf' => [], 'seer' => [], 'guard' => [], 'whore' => [], 'fish' => [], 'crow' => [], 'white' => [], 'cupid' => null,
+                    'vamp' => [], 'stake' => [], 'shaman' => []];
     $g['vote'] = ['open' => false, 'no' => $g['vote']['no'], 'forced' => false, 'votes' => []];
-    $g['timer_ends'] = null;
+    $sec = (int)($g['rules']['night_sec'] ?? 0);
+    $g['timer_ends'] = $sec > 0 ? time() + $sec : null;
     // $g['lynch'] stays: the night screens show yesterday's execution (it carries its own day)
 }
 
@@ -323,6 +393,19 @@ function lupusNightAct(array &$g, int $pid, int $target, int $target2 = LUPUS_NO
             }
             if ($target !== LUPUS_NOBODY && !$validOther) return 'bad_target';
             break;
+        case 'vampire':
+            if (!$validOther || lupusRole($g, $target) === 'vampire') return 'bad_target';
+            $g['night']['vamp'][$key] = $target;
+            break;
+        case 'vampire_hunter':
+            if ($target !== LUPUS_NOBODY && !$validOther) return 'bad_target';
+            // once the stake is gone the question stays on the screen and changes nothing
+            if ($target !== LUPUS_NOBODY && empty($g['stake_used'])) $g['night']['stake'][$key] = $target;
+            break;
+        case 'shaman':
+            if ($target !== LUPUS_NOBODY && !in_array($target, lupusShamanCandidates($g), true)) return 'bad_target';
+            $g['night']['shaman'][$key] = $target;
+            break;
         case 'cupid':
             if ($g['day'] === 1) {
                 if ($target === $target2 || !lupusIsAlive($g, $target) || !lupusIsAlive($g, $target2)) return 'bad_target';
@@ -345,6 +428,21 @@ function lupusNightAct(array &$g, int $pid, int $target, int $target2 = LUPUS_NO
     return null;
 }
 
+/** Dead players a shaman may call: anyone who died in the match and did not leave it. */
+function lupusShamanCandidates(array $g): array {
+    $out = [];
+    foreach ($g['dead'] as $d) if ($d['cause'] !== 'left') $out[] = (int)$d['p'];
+    return $out;
+}
+
+/** The vampires' bite: most voted, a tie is broken at random. */
+function lupusVampVictim(array $g): ?int {
+    $counts = array_count_values(array_map('intval', array_values($g['night']['vamp'] ?? [])));
+    if (!$counts) return null;
+    $top = array_keys(array_filter($counts, fn($c) => $c === max($counts)));
+    return (int)spiaPick($top);
+}
+
 /** The killers' victim: most voted; a tie is broken at random. Null when no killer voted. */
 function lupusWolfVictim(array $g): ?int {
     $counts = array_count_values(array_map('intval', array_values($g['night']['wolf'])));
@@ -356,6 +454,7 @@ function lupusWolfVictim(array $g): ?int {
 
 function lupusMaybeEndNight(array &$g): void {
     if ($g['phase'] !== 'night' || array_diff($g['alive'], $g['night']['acted'])) return;
+    $g['timer_ends'] = null;
     $g['night']['victim'] = lupusWolfVictim($g);
     if (!empty($g['rules']['witch'])) {
         // The witch step always happens when the witch is in the game, even if she is dead, out of
@@ -363,7 +462,10 @@ function lupusMaybeEndNight(array &$g): void {
         $witch = lupusAliveWithRole($g, 'witch')[0] ?? null;
         $canAct = $witch !== null && lupusPower($g, $witch) === 'witch' && ($g['witch']['heal'] || $g['witch']['kill']);
         $g['phase'] = 'witch';
-        $g['witch_step'] = ['p' => $canAct ? $witch : null, 'auto_at' => $canAct ? null : time() + random_int(5, 10)];
+        $sec = (int)($g['rules']['night_sec'] ?? 0);
+        $g['timer_ends'] = null;
+        // with a night timer the witch has the same time (plus a little to pass a shared phone around)
+        $g['witch_step'] = ['p' => $canAct ? $witch : null, 'auto_at' => $canAct ? ($sec > 0 ? time() + $sec + 15 : null) : time() + random_int(5, 10)];
         return;
     }
     lupusResolveNight($g);
@@ -407,6 +509,22 @@ function lupusResolveNight(array &$g): void {
     foreach ($n['white'] ?? [] as $t) {
         if (lupusIsAlive($g, (int)$t) && !in_array((int)$t, array_column($died, 0), true)) $died[] = [(int)$t, 'white'];
     }
+    // Vampires: protection cures a bitten player (also on the nights after) and stops a new bite
+    $protected = array_map('intval', array_merge(array_values($n['whore'] ?? []), array_values($n['guard'] ?? [])));
+    foreach (array_keys($g['bitten'] ?? []) as $b) {
+        if (in_array((int)$b, $protected, true) && $g['day'] > $g['bitten'][$b]) unset($g['bitten'][$b]);
+    }
+    $bite = lupusVampVictim(['night' => $n]);
+    if ($bite !== null && lupusIsAlive($g, $bite) && !in_array($bite, $protected, true) && !lupusWolfish(lupusRole($g, $bite))
+        && lupusRole($g, $bite) !== 'vampire' && !isset($g['bitten'][(string)$bite])) {
+        $g['bitten'][(string)$bite] = $g['day'];
+    }
+    // The vampire hunter's stake: a vampire dies, anybody else and the hunter dies instead
+    foreach ($n['stake'] ?? [] as $hunter => $t) {
+        if (!lupusIsAlive($g, (int)$hunter) || !empty($g['stake_used'])) continue;
+        $g['stake_used'] = true;
+        $died[] = lupusRole($g, (int)$t) === 'vampire' ? [(int)$t, 'stake'] : [(int)$hunter, 'stake_miss'];
+    }
     // The guard and the whore only stop the killers: poison always works
     $poisoned = !empty($n['poisoned']) ? (int)$n['poisoned'] : null;
     if ($poisoned !== null && !in_array($poisoned, array_column($died, 0), true)) $died[] = [$poisoned, 'witch'];
@@ -418,12 +536,26 @@ function lupusResolveNight(array &$g): void {
 
     $before = array_column($g['dead'], 'p');
     foreach ($died as [$p, $cause]) lupusKill($g, $p, $cause);
+    // two nights after the bite the victim becomes a vampire (secretly: only that player is told)
+    foreach ($g['bitten'] ?? [] as $b => $since) {
+        if (!lupusIsAlive($g, (int)$b)) { unset($g['bitten'][$b]); continue; }
+        if ($g['day'] - $since >= 2) {
+            $g['roles'][(string)$b] = 'vampire';
+            $g['turned'][(string)$b] = ['day' => $g['day'], 'seen' => false];
+            unset($g['bitten'][$b]);
+        }
+    }
+    // the shaman's call: a dead player will answer yes or no from his own phone
+    foreach ($n['shaman'] ?? [] as $sh => $t) {
+        if ((int)$t !== LUPUS_NOBODY && lupusIsAlive($g, (int)$sh)) $g['shaman'] = ['p' => (int)$t, 'day' => $g['day'], 'answer' => null];
+    }
     $dawnDied = array_values(array_diff(array_column($g['dead'], 'p'), $before));   // lovers included
     $g['dawn'] = [
         'day' => $g['day'],
         'died' => $dawnDied,
         'whore' => $byWhore,   // "la puttana ha puttanato"
         'crow' => $g['crow']['p'] ?? null,
+        'growl' => lupusBearGrowls($g),
     ];
     lupusLog($g, ['t' => 'dawn', 'died' => $dawnDied]);
     $g['witch_step'] = null;
@@ -437,6 +569,21 @@ function lupusHunterShoot(array &$g, int $pid, int $target): ?string {
     if ($target !== LUPUS_NOBODY) lupusKill($g, $target, 'hunter');
     lupusLog($g, ['t' => 'shot', 'p' => $pid, 'target' => $target]);
     lupusContinue($g, $g['after_hunter'] ?? 'night');
+    return null;
+}
+
+/** True when this dead player was called by the shaman and has not answered yet. */
+function lupusShamanCall(array $g, int $pid): bool {
+    return !empty($g['shaman']) && (int)$g['shaman']['p'] === $pid && $g['shaman']['answer'] === null && !lupusIsAlive($g, $pid);
+}
+
+/** A dead player haunts the living once a day with a word from the fixed list. */
+function lupusHaunt(array &$g, int $pid, string $word): ?string {
+    if (empty($g['rules']['ghost']) || $g['phase'] !== 'day') return 'not_now';
+    if (lupusIsAlive($g, $pid) || !in_array($pid, $g['in_game'], true)) return 'not_now';
+    if (!in_array($word, LUPUS_HAUNT_WORDS, true)) return 'bad_target';
+    foreach ($g['haunts'] ?? [] as $h) if ((int)$h['p'] === $pid && $h['day'] === $g['day']) return 'already_haunted';
+    $g['haunts'][] = ['p' => $pid, 'day' => $g['day'], 'w' => $word];
     return null;
 }
 
@@ -533,6 +680,13 @@ function lupusTick(array &$g): bool {
         lupusLog($g, ['t' => 'time_up']);
         return true;
     }
+    if ($g['phase'] === 'night' && $g['timer_ends'] !== null && $now >= $g['timer_ends']) {
+        // time is up: whoever has not chosen skips the night
+        foreach ($g['alive'] as $p) if (!in_array($p, $g['night']['acted'], true)) $g['night']['acted'][] = $p;
+        lupusLog($g, ['t' => 'night_time_up']);
+        lupusMaybeEndNight($g);
+        return true;
+    }
     if ($g['phase'] === 'witch' && ($g['witch_step']['auto_at'] ?? null) !== null && $now >= $g['witch_step']['auto_at']) {
         lupusResolveNight($g);
         return true;
@@ -548,10 +702,11 @@ function lupusWinners(array $g): array {
         $pid = (int)$pid;
         $won = match ($res['winner'] ?? '') {
             'wolves' => $role === 'wolf' || $role === 'minion',
-            'village' => !lupusWolfish($role) && !in_array($role, ['minion', 'jester'], true),
+            'village' => !lupusWolfish($role) && !in_array($role, ['minion', 'jester', 'vampire'], true),
             'jester' => $pid === (int)($res['jester'] ?? 0),
             'lovers' => in_array($pid, $res['lovers'] ?? [], true),
             'white_wolf' => $role === 'white_wolf',
+            'vampires' => $role === 'vampire',
             default => false,
         };
         if ($won) $out[] = $pid;
@@ -600,6 +755,26 @@ function lupusHandle(PDO $db, array $room, array $device, bool $isHost, array $i
             $pid = $own($in['player_id'] ?? 0);
             if ($pid === null || !isset($g['fished'][(string)$pid])) return 'not_your_player';
             $g['fished'][(string)$pid]['seen'] = true;
+            break;
+        case 'turn_seen':
+            if (!$playing) return 'no_round';
+            $pid = $own($in['player_id'] ?? 0);
+            if ($pid === null || !isset($g['turned'][(string)$pid])) return 'not_your_player';
+            $g['turned'][(string)$pid]['seen'] = true;
+            break;
+        case 'shaman_reply':
+            if (!$playing) return 'no_round';
+            $pid = $own($in['player_id'] ?? 0);
+            if ($pid === null) return 'not_your_player';
+            if (!lupusShamanCall($g, $pid)) return 'not_now';
+            $g['shaman']['answer'] = !empty($in['answer']);
+            break;
+        case 'haunt':
+            if (!$playing) return 'no_round';
+            $pid = $own($in['player_id'] ?? 0);
+            if ($pid === null) return 'not_your_player';
+            $err = lupusHaunt($g, $pid, (string)($in['word'] ?? ''));
+            if ($err) return $err;
             break;
         case 'seen':
         case 'night':
@@ -677,12 +852,15 @@ function lupusView(PDO $db, array $room, array $device, bool $adminSession): arr
         'hunter' => $g['phase'] === 'hunter' ? $g['hunter'] : null,
         'vote' => ['open' => $g['vote']['open'], 'forced' => $g['vote']['forced'], 'voted' => array_map('intval', array_keys($g['vote']['votes']))],
         'timer_ends' => $g['timer_ends'],
+        'haunts' => array_values(array_filter($g['haunts'] ?? [], fn($h) => $h['day'] === $g['day'])),   // public: ghosts whisper to everybody
         'log' => $g['log'],
         'result' => $g['result'],
+        'secret_turn' => null,
         'all_roles' => $seeAll ? $g['roles'] : null,
         'me' => [],
     ];
 
+    $vampires = array_values(array_map('intval', array_keys(array_filter($g['roles'], fn($r) => $r === 'vampire'))));
     $wolfish = array_values(array_map('intval', array_keys(array_filter($g['roles'], fn($r) => lupusWolfish($r)))));
     foreach ($mineInGame as $pid) {
         $role = lupusRole($g, $pid);
@@ -707,6 +885,20 @@ function lupusView(PDO $db, array $room, array $device, bool $adminSession): arr
                 return ['p' => $c, 'role' => !empty($g['rules']['fisher_sees']) ? $d['role'] : null];
             }, lupusFishCandidates($g));
         }
+        if ($role === 'vampire') {
+            $me['vamps'] = $vampires;
+            if ($night) $me['vamp_votes'] = $g['night']['vamp'] ?? [];
+        }
+        if (isset($g['bitten'][(string)$pid])) $me['bitten'] = true;
+        if (isset($g['turned'][(string)$pid])) $me['turned'] = $g['turned'][(string)$pid];
+        if ($power === 'vampire_hunter') $me['stake_used'] = !empty($g['stake_used']);
+        if ($power === 'shaman') {
+            if ($night) $me['shaman_candidates'] = lupusShamanCandidates($g);
+            if (!empty($g['shaman'])) $me['shaman_info'] = ['p' => (int)$g['shaman']['p'], 'answer' => $g['shaman']['answer']];
+        }
+        if (lupusShamanCall($g, $pid) && $g['phase'] === 'day') $me['summoned'] = true;
+        if (!empty($g['rules']['ghost']) && $g['phase'] === 'day' && !lupusIsAlive($g, $pid)
+            && !array_filter($g['haunts'] ?? [], fn($h) => (int)$h['p'] === $pid && $h['day'] === $g['day'])) $me['can_haunt'] = true;
         if (isset($g['fished'][(string)$pid])) $me['fished'] = $g['fished'][(string)$pid];
         if ($power === 'judge') $me['judge_available'] = empty($g['judge_used']);
         if ($power === 'guard') $me['guard_last'] = $g['guard_last'][(string)$pid] ?? null;
@@ -727,6 +919,15 @@ function lupusView(PDO $db, array $room, array $device, bool $adminSession): arr
         }
         $view['lupus']['me'][] = $me;
     }
+    // Shared phone: the secret turn (the witch's, a called ghost's) goes round EVERY player of the phone, so the order gives nobody away
+    $witchP = $g['phase'] === 'witch' ? ($g['witch_step']['p'] ?? null) : null;
+    if ($witchP !== null && in_array($witchP, $mineInGame, true)) {
+        $view['lupus']['secret_turn'] = ['kind' => 'witch', 'players' => array_values(array_filter($mineInGame, fn($p) => lupusIsAlive($g, $p)))];
+    } elseif ($g['phase'] === 'day' && !empty($g['shaman']) && in_array((int)$g['shaman']['p'], $mineInGame, true) && lupusShamanCall($g, (int)$g['shaman']['p'])) {
+        $view['lupus']['secret_turn'] = ['kind' => 'summon', 'players' => $mineInGame];
+    } elseif ($g['phase'] === 'day' && array_filter($mineInGame, fn($p) => !empty($g['turned'][(string)$p]) && !$g['turned'][(string)$p]['seen'])) {
+        $view['lupus']['secret_turn'] = ['kind' => 'turn', 'players' => array_values(array_filter($mineInGame, fn($p) => lupusIsAlive($g, $p)))];
+    }
     return $view;
 }
 
@@ -737,6 +938,7 @@ function lupusLiveInfo(PDO $db, int $roomId): ?array {
     return [
         'status' => $g['status'], 'phase' => $g['phase'], 'day' => $g['day'],
         'roles' => $g['roles'], 'alive' => $g['alive'], 'lovers' => $g['lovers'] ?? [],
-        'night' => $g['night'], 'votes' => $g['vote']['votes'], 'result' => $g['result'],
+        'night' => $g['night'], 'bitten' => $g['bitten'] ?? [], 'turned' => array_keys($g['turned'] ?? []),
+        'seating' => $g['seating'] ?? [], 'shaman' => $g['shaman'] ?? null, 'haunts' => $g['haunts'] ?? [], 'votes' => $g['vote']['votes'], 'result' => $g['result'],
     ];
 }

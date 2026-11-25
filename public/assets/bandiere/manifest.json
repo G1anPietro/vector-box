@@ -1,0 +1,18 @@
+{
+  "name": "Bandiere",
+  "short_name": "Bandiere",
+  "description": "Quiz di bandiere e capitali per amici: stessa domanda su ogni telefono, vince chi risponde giusto e più in fretta.",
+  "start_url": "../../pages/bandiere.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#0a2540",
+  "theme_color": "#0a2540",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
