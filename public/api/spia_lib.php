@@ -561,6 +561,14 @@ function spiaRemovePlayer(PDO $db, array $room, ?array $round, int $playerId): v
         }
         return;
     }
+    if (($room['game'] ?? 'spia') === 'bugiardo') {
+        $g = bugiardoLoad($db, (int)$room['id']);
+        if ($g) {
+            bugiardoPlayerLeft($g, $playerId);
+            bugiardoSave($db, (int)$room['id'], $g);
+        }
+        return;
+    }
     if (($room['game'] ?? 'spia') === 'storia') {
         $g = storiaLoad($db, (int)$room['id']);
         if ($g) {
@@ -680,6 +688,7 @@ function spiaDeleteRooms(PDO $db, array $roomIds): void {
     $db->exec("DELETE FROM preferiresti_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM bomba_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM indovina_games WHERE room_id IN ($in)");
+    $db->exec("DELETE FROM bugiardo_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM bingo_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM bandiere_games WHERE room_id IN ($in)");
     $db->exec("DELETE FROM inventato_games WHERE room_id IN ($in)");
@@ -829,6 +838,7 @@ function spiaLiveView(PDO $db): array {
             'proibita' => ($room['game'] ?? 'spia') === 'proibita' ? proibitaLiveInfo($db, (int)$room['id']) : null,
             'bingo' => ($room['game'] ?? 'spia') === 'bingo' ? bingoLiveInfo($db, (int)$room['id']) : null,
             'indovina' => ($room['game'] ?? 'spia') === 'indovina' ? indovinaLiveInfo($db, (int)$room['id']) : null,
+            'bugiardo' => ($room['game'] ?? 'spia') === 'bugiardo' ? bugiardoLiveInfo($db, (int)$room['id']) : null,
             'bandiere' => ($room['game'] ?? 'spia') === 'bandiere' ? bandiereLiveInfo($db, (int)$room['id']) : null,
             'inventato' => ($room['game'] ?? 'spia') === 'inventato' ? inventatoLiveInfo($db, (int)$room['id']) : null,
             'storia' => ($room['game'] ?? 'spia') === 'storia' ? storiaLiveInfo($db, (int)$room['id']) : null,
@@ -874,6 +884,7 @@ function spiaRoomView(PDO $db, array $room, array $device, bool $adminSession): 
     if (($room['game'] ?? 'spia') === 'proibita') return proibitaView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'undercover') return undercoverView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'mimo') return mimoView($db, $room, $device, $adminSession);
+    if (($room['game'] ?? 'spia') === 'bugiardo') return bugiardoView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'storia') return storiaView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'bingo') return bingoView($db, $room, $device, $adminSession);
     if (($room['game'] ?? 'spia') === 'indovina') return indovinaView($db, $room, $device, $adminSession);

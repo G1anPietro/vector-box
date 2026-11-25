@@ -649,6 +649,15 @@ function migrateV55(PDO $db): void {
     )");
 }
 
+function migrateV59(PDO $db): void {
+    // "Chi è il bugiardo" (bugiardo, on the shared rooms): the whole match state as JSON (the liar and both questions included), like bomba_games
+    $db->exec("CREATE TABLE IF NOT EXISTS bugiardo_games (
+        room_id INTEGER PRIMARY KEY,
+        state TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )");
+}
+
 function migrateV56(PDO $db): void {
     // "Storia a catena" (storia, on the shared rooms): the whole match state as JSON (the story and who wrote what), like bomba_games
     $db->exec("CREATE TABLE IF NOT EXISTS storia_games (
@@ -1368,6 +1377,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 58) {
             migrateV58($db);
+        }
+        if ($current < 59) {
+            migrateV59($db);
         }
         if ($current < 60) {
             migrateV60($db);
