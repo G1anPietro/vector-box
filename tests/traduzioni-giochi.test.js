@@ -9,7 +9,7 @@ const { visibleText, looksItalian } = require('./lang-helpers');
 
 const PUB = path.join(__dirname, '..', 'public');
 const ARCADE = ['minato', 'dueamila', 'memory', 'tris', 'snake', 'forza4', 'impiccato', 'simon', 'tetris', 'parola', 'vita', 'difesa'];
-const PARTY = ['spia', 'lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'nonhomai', 'solitario', 'proibita', 'indovina', 'bugiardo', 'bandiere', 'bingo', 'storia', 'scommessa', 'dieci'];
+const PARTY = ['spia', 'lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'nonhomai', 'solitario', 'proibita', 'indovina', 'bugiardo', 'bandiere', 'bingo', 'storia', 'scommessa', 'inventato', 'dieci'];
 const read = (p) => fs.readFileSync(path.join(PUB, p), 'utf8');
 
 /** Runs a game script in a sandbox with a fake VBI18N/VBLang and returns the dictionaries it registered. */

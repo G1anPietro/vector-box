@@ -1,0 +1,107 @@
+/* public/css/inventato.css — "Fake or fact" theme, loaded after spia.css on pages/inventato.html only.
+ * Direction: a tabloid front page on yellowed newsprint. Ink-black headlines, a hot red for "MADE UP", a bottle green for "TRUE",
+ * a heavy serif, thick rules like a masthead, and a rubber stamp that slams down on the claim when the truth is revealed. */
+:root {
+    --desk: #d8c58c;
+    --desk-2: #e9dcb0;
+    --desk-line: #6b5a35;
+    --chalk: #1c1712;
+    --faded: #4a3f2a;
+    --paper: #f7efd6;
+    --sheet: #fbf6e4;
+    --paper-edge: #1c1712;
+    --ink: #1c1712;
+    --ink-soft: rgba(28, 23, 18, 0.82);
+    --rule: rgba(28, 23, 18, 0.3);
+    --stamp: #b3201a;
+    --archive: #1d5a34;
+    --news: "Rockwell", "Roboto Slab", "Georgia", "Times New Roman", serif;
+    --head: "Impact", "Haettenschweiler", "Arial Narrow Bold", "Franklin Gothic Heavy", sans-serif;
+    color-scheme: light;
+}
+body {
+    font: 17px/1.45 var(--news);
+    background: repeating-linear-gradient(0deg, rgba(107, 90, 53, 0.06) 0 2px, transparent 2px 5px), radial-gradient(ellipse 100% 40% at 50% 0%, rgba(255, 250, 225, 0.55), transparent 70%), var(--desk);
+    background-attachment: fixed;
+}
+.topbar { background: var(--desk); border-bottom: 3px double var(--chalk); }
+.icon-btn { border-color: var(--chalk); }
+.brand, .hero h1, .panel h2, .sheet-head h2 { font-family: var(--head); letter-spacing: 0.04em; text-transform: uppercase; font-weight: 400; }
+.hero h1 { font-size: clamp(38px, 12vw, 64px); overflow-wrap: anywhere; line-height: 0.95; color: var(--chalk); border-top: 4px solid var(--chalk); border-bottom: 4px solid var(--chalk); padding: 10px 0; text-shadow: 3px 3px 0 var(--stamp); }
+.btn { border-color: var(--chalk); color: var(--chalk); }
+.btn.primary { background: var(--chalk); color: #fbf6e4; border-bottom-color: #000; font-weight: 800; }
+.btn.primary:active:not(:disabled) { background: #3b3126; }
+.btn.primary:disabled { background: transparent; color: var(--faded); }
+:focus-visible { outline: 3px solid var(--stamp); outline-offset: 2px; }
+.hero::before, .card-front::before { display: none; }
+.vi .sr-only, .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- the match ---------- */
+.pass-name { color: var(--stamp); font-family: var(--head); font-weight: 400; }
+.vi .vi-top { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; color: var(--faded); font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; padding: 0 2px; }
+.vi-crowd { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.vi-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 10px; border: 2px solid var(--chalk); background: var(--desk-2); max-width: 100%; }
+.vi-chip-name { font-weight: 800; overflow-wrap: anywhere; line-height: 1.15; }
+.vi-chip-pts { font: 400 18px/1 var(--head); color: var(--stamp); font-variant-numeric: tabular-nums; }
+.vi-chip-state { font-weight: 800; color: var(--archive); min-width: 1ch; }
+.vi-chip.me { box-shadow: 3px 3px 0 var(--chalk); }
+.vi-chip.done { background: #d4e6c6; }
+.vi-chip.gone { opacity: 0.55; text-decoration: line-through; }
+
+.vi-clock { display: flex; align-items: center; gap: 12px; margin: 2px 0 12px; }
+.vi-bar { flex: 1; height: 12px; background: var(--desk-2); border: 2px solid var(--chalk); overflow: hidden; }
+.vi-bar-fill { height: 100%; background: var(--stamp); transform-origin: left; animation: vi-drain linear forwards; }
+@keyframes vi-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.vi-count { font: 400 28px/1 var(--head); min-width: 1.6em; text-align: right; color: var(--chalk); font-variant-numeric: tabular-nums; }
+
+/* the clipping */
+.vi-card { position: relative; margin: 6px 0 14px; background: #fffaf0; border: 3px solid var(--chalk); box-shadow: 5px 5px 0 var(--chalk); color: var(--ink); }
+.vi-strip { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px; background: var(--chalk); color: #fbf6e4; font: 700 12px/1.2 var(--news); letter-spacing: 0.14em; text-transform: uppercase; }
+.vi-claim { padding: 16px 14px 20px; font: 800 clamp(22px, 6.4vw, 30px)/1.18 var(--news); overflow-wrap: anywhere; hyphens: auto; }
+.vi-who { text-align: center; font-weight: 800; color: var(--stamp); margin: 0 0 8px; }
+.vi-hint { color: var(--faded); margin: 0 0 10px; font-size: 15px; }
+
+/* TRUE / MADE UP */
+.vi-verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.vi-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 92px; padding: 10px 6px; border: 3px solid var(--chalk); font: 400 clamp(17px, 5vw, 28px)/1.05 var(--head); letter-spacing: 0.03em; text-transform: uppercase; box-shadow: 4px 4px 0 var(--chalk); overflow-wrap: normal; word-break: keep-all; }
+.vi-btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--chalk); }
+.vi-btn.is-true { background: var(--archive); color: #fff; }
+.vi-btn.is-fake { background: var(--stamp); color: #fff; }
+.vi-btn-mark { font: 800 26px/1 var(--news); }
+.vi-wait, .vi-next { text-align: center; }
+.vi-wait { color: var(--faded); font-weight: 700; }
+
+/* the rubber stamp */
+.vi-stamp { position: absolute; right: 10px; bottom: 10px; padding: 4px 12px; border: 5px solid; font: 400 clamp(28px, 9vw, 42px)/1 var(--head); letter-spacing: 0.06em; text-transform: uppercase; transform: rotate(-9deg); background: rgba(255, 250, 240, 0.86); animation: vi-slam 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; max-width: calc(100% - 20px); overflow-wrap: anywhere; text-align: center; }
+.vi-stamp.is-true { color: var(--archive); border-color: var(--archive); }
+.vi-stamp.is-fake { color: var(--stamp); border-color: var(--stamp); }
+@keyframes vi-slam { from { transform: rotate(-9deg) scale(2.4); opacity: 0; } to { transform: rotate(-9deg) scale(1); opacity: 1; } }
+.vi-card:has(.vi-stamp) .vi-claim { padding-bottom: 80px; }
+.vi-explain { margin: 4px 0 12px; padding: 10px 12px; border-left: 6px solid var(--chalk); background: var(--sheet); font-style: italic; }
+.vi-rows { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.vi-row { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 10px; align-items: baseline; padding: 7px 10px; border: 2px solid var(--chalk); background: var(--sheet); }
+.vi-row.ok { background: #d4e6c6; }
+.vi-row.me { box-shadow: 3px 3px 0 var(--chalk); }
+.vi-row-name { font-weight: 800; overflow-wrap: anywhere; }
+.vi-row-pick { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faded); font-weight: 700; }
+.vi-row-gain { font-weight: 800; font-variant-numeric: tabular-nums; }
+.vi-row.ok .vi-row-gain { color: var(--archive); }
+.vi-row.no .vi-row-gain { color: var(--stamp); }
+.vi-verdict { text-align: center; font: 400 28px/1.1 var(--head); color: var(--archive); margin: 4px 0 12px; }
+.vi-verdict.hit { color: var(--stamp); }
+.vi-flash { padding: 10px 12px; border: 3px solid var(--stamp); background: #fffaf0; font-weight: 800; }
+.vi-feed { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 15px; }
+.vi-feed .loud { font-weight: 800; color: var(--stamp); }
+.vi-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.vi-standings { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.vi-stand { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 2px solid var(--chalk); background: var(--sheet); }
+.vi-stand.win { background: #f3dd8a; }
+.vi-stand-name { font-weight: 800; overflow-wrap: anywhere; }
+.vi-stand-n { font-weight: 700; color: var(--faded); }
+
+@media (max-width: 359px) { .vi-verdicts { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+    .vi-bar-fill, .vi-stamp { animation: none; }
+    .vi-bar-fill { transform: none; }
+    .vi-btn:active { transform: none; }
+}
