@@ -51,6 +51,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'storia', 'href' => 'storia.html', 'icon' => '../assets/storia/icon.svg',
+        'name' => ['it' => 'Storia a catena', 'en' => 'Chain story'],
+        'line' => ['it' => 'Una storia scritta insieme, una frase a testa: vedi solo quella di prima. Alla fine si legge tutto e si vota la più bella.',
+                   'en' => 'A story written together, one sentence each: you only see the one before yours. At the end it is read out and you vote the best.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'undercover', 'href' => 'undercover.html', 'icon' => '../assets/undercover/icon.svg',
         'name' => ['it' => 'Undercover', 'en' => 'Undercover'],
         'line' => ['it' => 'Una parola segreta a testa, ma una è diversa: un indizio a voce, un voto, e si scopre l’infiltrato. Attenti a Mr. White.',
@@ -107,12 +115,28 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'bingo', 'href' => 'bingo.html', 'icon' => '../assets/bingo/icon.svg',
+        'name' => ['it' => 'Bingo della lezione', 'en' => 'Lesson bingo'],
+        'line' => ['it' => 'Il gruppo scrive le frasi tipiche, ognuno ha la sua cartella e tocca la casella quando la sente. Vince la prima riga.',
+                   'en' => 'The group writes the typical phrases, everybody gets a card and taps a square when they hear it. First line wins.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'botola', 'href' => 'botola.html', 'icon' => '../assets/botola/icon.svg',
         'name' => ['it' => 'Botola', 'en' => 'Botola'],
         'line' => ['it' => 'Quiz a eliminazione: stessa domanda per tutti, chi sbaglia cade nella botola. Se sono tutti bravi cade il più lento.',
                    'en' => 'Elimination quiz: same question for everybody, get it wrong and you fall through the trapdoor. If all are right the slowest falls.'],
         'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
         'how'  => ['it' => 'un telefono a testa', 'en' => 'one phone each'],
+    ],
+    [
+        'group' => 'friends', 'look' => 'bandiere', 'href' => 'bandiere.html', 'icon' => '../assets/bandiere/icon.svg',
+        'name' => ['it' => 'Bandiere', 'en' => 'Flags'],
+        'line' => ['it' => 'Bandiere, paesi e capitali: stessa domanda su ogni telefono, più punti a chi risponde giusto e in fretta. Anche da solo.',
+                   'en' => 'Flags, countries and capitals: the same question on every phone, more points for right and fast answers. Alone too.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa, da solo o uno da passare', 'en' => 'one phone each, alone, or one to pass around'],
     ],
     [
         'group' => 'friends', 'look' => 'cucu', 'href' => 'cucu.html', 'icon' => '../assets/cucu/icon.svg',
@@ -287,9 +311,9 @@ $KINDS = [
 ];
 $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff', 'bugiardo' => 'bluff',
-    'nonhomai' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
+    'nonhomai' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
-    'botola' => 'quiz', 'indovina' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
+    'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
     'skillcheck' => 'arcade', 'simon' => 'arcade', 'snake' => 'arcade', 'tetris' => 'arcade', 'difesa' => 'arcade', 'dungeon' => 'arcade', 'hack' => 'arcade',
     'dueamila' => 'puzzle', 'minato' => 'puzzle', 'vita' => 'puzzle', 'memory' => 'puzzle', 'forza4' => 'puzzle', 'tris' => 'puzzle', 'vault' => 'puzzle',
