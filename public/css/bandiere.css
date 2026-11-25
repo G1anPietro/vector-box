@@ -1,0 +1,124 @@
+/* public/css/bandiere.css — Bandiere theme, loaded after spia.css on pages/bandiere.html only.
+ * Direction: an old atlas on a ship's chart table. Deep ocean blue with a faint graticule (latitude and longitude lines), sand
+ * coloured chart cards with navy ink, a brass compass for the accents, serif type. The flag is hung on a pole and
+ * hangs over its own shadow; answers are chart labels with a compass bearing (N E S W) instead of colours or shapes. */
+:root {
+    --desk: #0a2540;
+    --desk-2: #11365a;
+    --desk-line: #2f6290;
+    --chalk: #f6efdc;
+    --faded: #a9c9e3;
+    --paper: #ecdcb0;
+    --sheet: #f7eed2;
+    --paper-edge: #bfa56b;
+    --ink: #10263b;
+    --ink-soft: rgba(16, 38, 59, 0.8);
+    --rule: rgba(16, 38, 59, 0.2);
+    --stamp: #a3301d;
+    --archive: #17624f;
+    --brass: #e9b949;
+    --type: Georgia, "Palatino Linotype", Palatino, "Book Antiqua", serif;
+    --emoji: "Twemoji Mozilla", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+body {
+    font-size: 17px;
+    background:
+        linear-gradient(rgba(169, 201, 227, 0.07) 1px, transparent 1px) 0 0 / 100% 56px,
+        linear-gradient(90deg, rgba(169, 201, 227, 0.07) 1px, transparent 1px) 0 0 / 56px 100%,
+        radial-gradient(ellipse 90% 45% at 50% 0%, rgba(233, 185, 73, 0.16), transparent 70%),
+        var(--desk);
+    background-attachment: fixed;
+}
+.brand, .hero h1, .panel h2, .sheet-head h2 { font-family: var(--type); letter-spacing: 0.01em; }
+.hero h1 { font-size: clamp(50px, 16vw, 80px); line-height: 1; color: #0a3a66; font-style: italic; text-shadow: 3px 3px 0 rgba(191, 165, 107, 0.7); }
+.btn.primary { background: var(--brass); color: #10263b; border-bottom-color: #8c6b16; font-weight: 800; }
+.btn.primary:active:not(:disabled) { background: var(--brass); }
+.btn.primary:disabled { background: transparent; color: var(--faded); }
+:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; box-shadow: 0 0 0 6px #05152a; }
+.hero::before, .card-front::before { display: none; }
+
+/* ---------- the match ---------- */
+.bd .bd-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; color: var(--faded); font-size: 14px; font-variant: small-caps; letter-spacing: 0.1em; padding: 0 2px; }
+.bd-board { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.bd-pod {
+    display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 0 8px; padding: 8px 10px; border: 2px solid var(--desk-line);
+    border-radius: 8px; background: var(--desk-2); color: var(--chalk);
+}
+.bd-pod.me { border-color: var(--brass); }
+.bd-pod.done { border-color: #5fd1a8; }
+.bd-pod-name { font-weight: 700; overflow-wrap: anywhere; line-height: 1.15; }
+.bd-pod-pts { font: 700 20px/1 var(--type); color: var(--brass); font-variant-numeric: tabular-nums; }
+.bd-pod-state { grid-column: 1 / -1; min-height: 1.2em; font-size: 14px; color: #5fd1a8; letter-spacing: 0.1em; }
+.bd-pod.out { background: #061a30; color: var(--faded); }
+.bd-pod.out .bd-pod-name { text-decoration: line-through; }
+.bd-pod.out .bd-pod-state { color: #ff9b86; font-variant: small-caps; }
+
+.bd-clock { display: flex; align-items: center; gap: 12px; margin: 2px 0 12px; }
+.bd-bar { flex: 1; height: 12px; border-radius: 6px; background: #0a2540; overflow: hidden; border: 2px solid #0a2540; }
+.bd-bar-fill { height: 100%; background: linear-gradient(90deg, #2f9a8a, var(--brass) 65%, var(--stamp)); transform-origin: left; animation: bd-drain linear forwards; }
+@keyframes bd-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.bd-count { font: 700 26px/1 var(--type); min-width: 1.6em; text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bd-count.sm { font-size: inherit; min-width: 0; }
+.bd-qhead { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; margin: 0 0 14px; }
+.bd-ask { margin: 2px 0 0; font: italic 700 clamp(19px, 5.2vw, 24px)/1.25 var(--type); }
+.bd-country { margin: 4px 0 2px; font: 700 clamp(30px, 9vw, 42px)/1.05 var(--type); overflow-wrap: anywhere; color: #0a3a66; }
+.bd-who { text-align: center; font-weight: 700; margin: 0 0 8px; color: #0a3a66; }
+.bd-noflags { margin: 6px 0 0; padding: 6px 10px; border: 2px dashed var(--ink); border-radius: 8px; font-size: 14px; }
+
+/* the flag, hung on a brass pole over its own shadow */
+.bd-pole { position: relative; display: inline-block; padding: 6px 10px 18px 22px; }
+.bd-pole::before { content: ""; position: absolute; left: 6px; top: 0; bottom: 4px; width: 6px; border-radius: 3px; background: linear-gradient(90deg, #8c6b16, var(--brass), #8c6b16); }
+.bd-pole::after { content: ""; position: absolute; left: 22px; right: 10px; bottom: 6px; height: 12px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(5, 21, 42, 0.45), transparent 70%); }
+.bd-flag { font-family: var(--emoji); font-style: normal; line-height: 1; display: inline-block; }
+.bd-flag.big { font-size: clamp(100px, 36vw, 150px); filter: drop-shadow(8px 10px 6px rgba(5, 21, 42, 0.5)); transform-origin: left center; animation: bd-wave 5s ease-in-out infinite alternate; }
+.bd-flag.inline { font-size: 1.3em; vertical-align: -0.12em; }
+.bd-flag.opt { font-size: clamp(54px, 17vw, 72px); filter: drop-shadow(3px 4px 3px rgba(5, 21, 42, 0.45)); }
+@keyframes bd-wave { from { transform: skewY(-1.5deg) rotate(-0.6deg); } to { transform: skewY(1.5deg) rotate(0.6deg); } }
+/* no flag glyphs on this device: the ISO code on a plate */
+.bd-flag.code { font-family: var(--type); font-weight: 900; letter-spacing: 0.06em; font-size: 0.5em; padding: 0.22em 0.35em; border: 4px solid var(--ink); border-radius: 6px; background: #fbf5e3; color: var(--ink); filter: none; animation: none; }
+.bd-flag.big.code { font-size: clamp(54px, 20vw, 84px); box-shadow: 8px 10px 0 rgba(5, 21, 42, 0.35); }
+.bd-flag.opt.code { font-size: clamp(26px, 9vw, 36px); border-width: 3px; }
+.bd-flag.inline.code { font-size: 0.85em; border-width: 2px; padding: 0.05em 0.25em; vertical-align: baseline; }
+
+.bd-opts { display: grid; gap: 10px; }
+.bd-opts.flags { grid-template-columns: 1fr 1fr; }
+.bd-opt {
+    position: relative; display: flex; align-items: center; gap: 12px; min-height: 60px; width: 100%; padding: 10px 14px; text-align: left;
+    border: 2px solid var(--ink); border-bottom-width: 5px; border-radius: 10px; background: #fbf5e3; color: var(--ink);
+    font: 700 18px/1.2 var(--type); cursor: pointer;
+}
+.bd-opt.flagopt { flex-direction: column; justify-content: center; min-height: 104px; padding: 12px 8px 8px; }
+.bd-opt.flagopt .bd-bearing { position: absolute; left: 8px; top: 8px; }
+.bd-opt.flagopt .bd-opt-text { flex: none; text-align: center; font-size: 15px; }
+.bd-bearing { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: var(--brass); font: 800 15px/1 var(--type); }
+button.bd-opt:active { transform: translateY(3px); border-bottom-width: 2px; }
+.bd-opt-text { flex: 1; overflow-wrap: anywhere; }
+.bd-opts.reveal .bd-opt { cursor: default; }
+.bd-opt.good { background: #d4efdf; border-color: var(--archive); box-shadow: 0 0 0 3px var(--archive); }
+.bd-opt.good .bd-bearing { background: var(--archive); color: #fff; }
+.bd-opt.bad { background: #f6d8cf; border-color: var(--stamp); box-shadow: 0 0 0 3px var(--stamp); }
+.bd-opt.bad .bd-bearing { background: var(--stamp); color: #fff; }
+.bd-opt.dim { opacity: 0.6; }
+.bd-wait { text-align: center; font-weight: 700; margin: 10px 0 4px; }
+.bd-info { text-align: center; margin: 12px 0 2px; }
+.bd-verdict { text-align: center; font: italic 700 22px/1.2 var(--type); margin: 8px 0 4px; color: var(--archive); }
+.bd-verdict.hit { color: var(--stamp); }
+.bd-fell { text-align: center; font-weight: 700; color: var(--stamp); margin: 0; }
+.bd-next { text-align: center; }
+.bd-host summary { cursor: pointer; font-weight: 700; }
+.bd-levels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.bd-result .result-list li.win { color: var(--archive); font-weight: 800; }
+.bd-ranking { list-style: none; padding: 0; margin: 10px 0; }
+@media (prefers-reduced-motion: reduce) {
+    .bd-bar-fill { animation-duration: 0.001s !important; }
+    .bd-flag.big { animation: none; }
+    button.bd-opt:active { transform: none; }
+}
+
+/* ---------- alone / one phone ---------- */
+.bd-row { display: flex; gap: 8px; margin: 6px 0; }
+.bd-row input { flex: 1; min-height: 46px; padding: 0 12px; border-radius: 8px; border: 2px solid var(--ink); background: #fbf5e3; color: var(--ink); font: inherit; }
+.bd-pass { margin: 6px 0 0; text-align: center; }
+.bd-pass-name { margin: 0 0 14px; text-align: center; font: italic 700 clamp(32px, 10vw, 44px)/1.05 var(--type); color: #0a3a66; overflow-wrap: anywhere; }
+input::placeholder { color: var(--faded); opacity: 0.85; }
+.bd-row input::placeholder { color: rgba(16, 38, 59, 0.62); }

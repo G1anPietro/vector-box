@@ -8,6 +8,7 @@
 const RECORD_RULES = [
     'skillcheck' => ['variants' => ['easy', 'normal', 'hard', 'easy-endless', 'normal-endless', 'hard-endless'], 'lower' => false, 'min' => 1, 'max' => 100000],
     'botola'     => ['variants' => ['easy', 'normal', 'hard', 'rising'], 'lower' => false, 'min' => 1, 'max' => 100000],
+    'bandiere'   => ['variants' => ['easy', 'normal', 'hard', 'mix'], 'lower' => false, 'min' => 1, 'max' => 100000],
     'memory'     => ['variants' => ['easy', 'medium', 'hard'], 'lower' => true, 'min' => 4, 'max' => 9999],
     'simon'      => ['variants' => [''], 'lower' => false, 'min' => 1, 'max' => 1000],
     'difesa'     => ['variants' => [''], 'lower' => false, 'min' => 1, 'max' => 30],
@@ -48,6 +49,7 @@ function recordLabels(): array {
     return [
         'skillcheck' => ['Skill check', 'Skill check', 'colpi', 'hits', $sc],
         'botola'     => ['Botola (da solo)', 'Botola (alone)', 'risposte giuste', 'right answers', array_intersect_key($lv, array_flip(['easy', 'normal', 'hard', 'rising']))],
+        'bandiere'   => ['Bandiere (da solo)', 'Flags (alone)', 'punti', 'points', ['easy' => ['Facile', 'Easy'], 'normal' => ['Medio', 'Medium'], 'hard' => ['Difficile', 'Hard'], 'mix' => ['Mix', 'Mix']]],
         'memory'     => ['Memory', 'Memory', 'mosse', 'moves', array_intersect_key($lv, array_flip(['easy', 'medium', 'hard']))],
         'simon'      => ['Simon', 'Simon', 'colori', 'colours', ['' => ['Sequenza più lunga', 'Longest sequence']]],
         'difesa'     => ['Difesa del server', 'Server defence', 'ondata', 'wave', ['' => ['Ondata raggiunta', 'Wave reached']]],
