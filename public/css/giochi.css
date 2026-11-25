@@ -130,6 +130,9 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 /* "Guess what": midnight blue with a yellow lamp, typewriter type */
 .box.indovina { --lid: #0e1a40; --edge: #060c20; --ink: #f4f1e6; background: radial-gradient(circle at 78% 18%, rgba(255, 216, 74, 0.35) 0 14%, rgba(255, 216, 74, 0) 15%), var(--lid); }
 .box.indovina .name { font-family: "Courier New", Courier, monospace; font-weight: 800; letter-spacing: 0.02em; color: #ffd84a; }
+/* "10 out of 10, but…": a light pink talent-show score card with a giant 10 */
+.box.dieci { --lid: #ffd6e6; --edge: #14070e; --ink: #14070e; background: radial-gradient(circle at 82% 78%, rgba(255, 45, 138, 0.55) 0 22%, rgba(255, 45, 138, 0) 23%), var(--lid); }
+.box.dieci .name { font-weight: 900; letter-spacing: 0.01em; color: #14070e; font-size: 26px; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }

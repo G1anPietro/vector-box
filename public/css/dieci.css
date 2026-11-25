@@ -1,0 +1,142 @@
+/* public/css/dieci.css — "10 out of 10, but…" theme, loaded after spia.css on pages/dieci.html only.
+ * Direction: a talent-show score card. Light pink desk, black judging cards, a GIANT pink 10 with a tiny "but…" that peeks out
+ * of its corner. Text on pink is black (contrast > 12:1), pink text only sits on black (> 6:1). Light theme, unlike the other games. */
+:root {
+    --desk: #ffd6e6;
+    --desk-2: #ffc2da;
+    --desk-line: #14070e;
+    --chalk: #14070e;
+    --faded: #5c1b3a;
+    --paper: #fff8fb;
+    --sheet: #ffeaf3;
+    --paper-edge: #14070e;
+    --ink: #14070e;
+    --ink-soft: rgba(20, 7, 14, 0.8);
+    --rule: rgba(20, 7, 14, 0.2);
+    --stamp: #c4004f;
+    --archive: #14070e;
+    --pink: #ff2d8a;
+    --pink-soft: #ff9ccb;
+    --black: #14070e;
+    --type: "Futura", "Trebuchet MS", "Avenir Next", system-ui, sans-serif;
+    --stencil: "Futura", "Trebuchet MS", "Avenir Next", Impact, sans-serif;
+    color-scheme: light;
+}
+body {
+    font: 17px/1.45 var(--type);
+    background: var(--desk);
+}
+.brand, .hero h1, .panel h2, .sheet-head h2 { font-family: var(--type); letter-spacing: 0.01em; font-weight: 900; }
+.hero h1 { font-size: clamp(38px, 12vw, 60px); color: var(--black); }
+.hero::before { display: none; }
+.panel { box-shadow: 5px 5px 0 var(--black); border: 2px solid var(--black); border-radius: 6px; }
+.bottom-bar { background: linear-gradient(to bottom, rgba(255, 214, 230, 0), var(--desk) 28%); }
+:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+.panel :focus-visible, .btn.primary:focus-visible { outline-color: var(--black); }
+.btn.primary { background: var(--black); color: var(--pink-soft); border-bottom: 4px solid var(--pink); font-weight: 900; letter-spacing: 0.02em; }
+.panel .btn.primary { color: var(--pink-soft); }
+.btn.primary:active:not(:disabled) { background: var(--black); }
+.btn.primary:disabled { background: transparent; color: var(--faded); border: 2px dashed var(--black); opacity: 0.7; }
+.btn.danger { color: var(--stamp); border-color: var(--stamp); }
+.link { color: var(--black); }
+.chip.code { background: var(--black); color: var(--pink-soft); }
+.chip.warn { color: #fff; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- the match ---------- */
+.dz .dz-top { display: flex; justify-content: space-between; color: var(--faded); font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 2px; }
+.dz-crowd { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.dz-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--black); background: var(--paper); max-width: 100%; }
+.dz-chip-name { font-weight: 800; overflow-wrap: anywhere; line-height: 1.15; }
+.dz-chip-state { font-weight: 900; min-width: 1ch; }
+.dz-chip-ten { background: var(--black); color: var(--pink-soft); border-radius: 999px; padding: 1px 7px; font-weight: 900; font-size: 14px; }
+.dz-chip.me { box-shadow: 0 0 0 2px var(--pink); }
+.dz-chip.done { background: var(--black); color: var(--pink-soft); }
+.dz-chip.done .dz-chip-ten { background: var(--pink-soft); color: var(--black); }
+.dz-chip.gone { opacity: 0.55; text-decoration: line-through; }
+
+.dz-clock { display: flex; align-items: center; gap: 12px; margin: 0 0 4px; }
+.dz-bar { flex: 1; height: 12px; border-radius: 6px; background: var(--sheet); overflow: hidden; border: 2px solid var(--black); }
+.dz-bar-fill { height: 100%; background: var(--pink); transform-origin: left; animation: dz-drain linear forwards; }
+@keyframes dz-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.dz-count { font: 900 26px/1 var(--type); min-width: 1.6em; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* the score card: black, a giant pink 10, the small "but…" sticking out of its lower-right corner */
+.dz-card { position: relative; margin: 4px 0 6px; padding: 8px 16px 18px; background: var(--black); color: var(--pink-soft); border-radius: 6px; overflow: hidden; }
+.dz-ten { position: relative; display: flex; align-items: baseline; gap: 4px; line-height: 0.8; padding-top: 4px; }
+.dz-num { font: 900 clamp(110px, 40vw, 170px)/0.8 var(--type); letter-spacing: -0.06em; color: var(--pink); text-shadow: 4px 4px 0 var(--pink-soft); }
+.dz-out { font: 900 clamp(26px, 9vw, 40px)/1 var(--type); color: var(--pink-soft); }
+.dz-but { position: absolute; right: 2px; bottom: -2px; font: 800 16px/1 var(--type); font-style: italic; color: #fff; background: var(--stamp); padding: 4px 8px; border-radius: 4px; transform: rotate(-5deg) translateY(0); animation: dz-peek 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.4) 0.4s backwards; }
+@keyframes dz-peek { from { transform: rotate(-5deg) translateY(160%); } }
+.dz-lead { margin: 10px 0 0; font: 800 clamp(20px, 5.6vw, 26px)/1.2 var(--type); color: #fff; overflow-wrap: anywhere; }
+.dz-who { text-align: center; font-weight: 900; margin: 0; }
+.dz-label { font-weight: 800; }
+.dz-input {
+    width: 100%; min-height: 84px; padding: 10px 12px; border: 3px solid var(--black); border-radius: 6px; background: #fff; color: var(--black);
+    font: 700 18px/1.3 var(--type); resize: none; outline: none;
+}
+.dz-input:focus { border-color: var(--pink); box-shadow: 0 0 0 3px var(--black); }
+.dz-left { margin: -4px 0 0; color: var(--ink-soft); }
+.dz-hint { margin: 0; padding: 10px 12px; border-left: 5px solid var(--pink); background: var(--sheet); border-radius: 4px; overflow-wrap: anywhere; }
+.dz-actions { display: grid; gap: 10px; }
+.dz-wait { text-align: center; font-weight: 800; margin: 6px 0 2px; }
+.dz-hint-line { margin: 0; color: var(--ink-soft); font-size: 16px; }
+.dz-prize-h { font: 900 18px/1.2 var(--type); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; }
+
+.dz-items { display: flex; flex-direction: column; gap: 10px; }
+.dz-item {
+    display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 58px; padding: 10px 12px; text-align: left;
+    border: 3px solid var(--black); border-bottom-width: 6px; border-radius: 10px; background: #fff; color: var(--black); font: 700 18px/1.3 var(--type); cursor: pointer;
+}
+.dz-item-n { flex: none; min-width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--black); color: var(--pink-soft); font-size: 15px; font-weight: 900; }
+.dz-item-text { overflow-wrap: anywhere; }
+.dz-item.on { background: var(--pink); border-color: var(--black); }
+.dz-item.on .dz-item-n { background: #fff; color: var(--black); }
+.dz-item:active { transform: translateY(3px); border-bottom-width: 3px; }
+.dz-lock, .dz-send { width: 100%; }
+
+/* the reveal */
+.dz-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.dz-row { padding: 12px; border: 3px solid var(--black); border-radius: 10px; background: #fff; }
+.dz-row.win { background: var(--pink-soft); }
+.dz-row.prize { box-shadow: 0 0 0 3px var(--pink), 5px 5px 0 3px var(--black); }
+.dz-row.me .dz-row-by { text-decoration: underline; text-decoration-thickness: 2px; }
+.dz-row-text { margin: 0 0 8px; font: 800 19px/1.25 var(--type); overflow-wrap: anywhere; }
+.dz-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.dz-row-by { font-weight: 800; overflow-wrap: anywhere; }
+.dz-row-n { margin-left: auto; font-weight: 900; font-variant-numeric: tabular-nums; }
+.dz-badge { padding: 2px 8px; border-radius: 4px; background: var(--black); color: var(--pink-soft); font: 900 12px/1.5 var(--type); letter-spacing: 0.08em; }
+.dz-badge.prize { background: var(--pink); color: var(--black); }
+.dz-verdict { text-align: center; font: 900 20px/1.2 var(--type); margin: 6px 0; }
+.dz-next { text-align: center; }
+.dz-skipped { margin: 0; }
+
+.dz-flash { position: sticky; top: 6px; z-index: 5; background: var(--black); color: var(--pink-soft); border-radius: 8px; padding: 10px 14px; font-weight: 800; box-shadow: 0 4px 0 var(--pink); animation: dz-in 0.3s ease-out; }
+@keyframes dz-in { from { transform: translateY(-8px) scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.dz-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
+.dz-feed li { padding-left: 12px; border-left: 4px solid var(--rule); }
+.dz-feed li.loud { border-left-color: var(--pink); font-weight: 800; }
+.dz-host summary { cursor: pointer; font-weight: 900; min-height: 44px; display: flex; align-items: center; }
+.dz-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.dz-remove { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dz-remove li { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dz-remove-text { overflow-wrap: anywhere; min-width: 0; }
+.dz-exclude { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* the standings */
+.dz-standings { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.dz-stand { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 3px solid var(--black); background: #fff; }
+.dz-stand.first { background: var(--black); color: var(--pink-soft); }
+.dz-stand-rank { flex: none; font: 900 28px/1 var(--type); min-width: 1.2em; text-align: center; color: var(--pink); }
+.dz-stand.first .dz-stand-rank { color: var(--pink); }
+.dz-stand-name { flex: 1; min-width: 0; font-size: 19px; overflow-wrap: anywhere; }
+.dz-stand-n { flex: none; font-size: 15px; text-align: right; font-weight: 700; }
+.dz-stand:not(.first) .dz-stand-rank { color: var(--stamp); }
+
+@media (prefers-reduced-motion: reduce) {
+    .dz-flash, .dz-but { animation: none; } .dz-bar-fill { animation-duration: 0.001s !important; }
+    .dz-item:active { transform: none; }
+}
+
+/* the "pass the phone" screen of a shared phone: the name must be loud (spia.css paints it with --paper) */
+.pass-name { color: var(--black); background: var(--pink); padding: 6px 18px; border-radius: 6px; font-family: var(--type); font-weight: 900; text-transform: uppercase; border: 3px solid var(--black); box-shadow: 5px 5px 0 var(--black); }

@@ -1,0 +1,18 @@
+{
+  "name": "10 out of 10, but…",
+  "short_name": "10/10 but…",
+  "description": "10 su 10, ma…? Un giocatore è un 10/10, tutti scrivono il suo difetto più buffo e si vota in segreto la frase più divertente.",
+  "start_url": "../../pages/dieci.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#ffd6e6",
+  "theme_color": "#ffd6e6",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

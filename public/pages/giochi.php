@@ -91,6 +91,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'dieci', 'href' => 'dieci.html', 'icon' => '../assets/dieci/icon.svg',
+        'name' => ['it' => '10 su 10, ma…', 'en' => '10 out of 10, but…'],
+        'line' => ['it' => 'Uno è un 10/10… ma: tutti scrivono il suo difetto più buffo, poi si vota in segreto la frase più divertente.',
+                   'en' => 'One player is a 10/10… but: everybody writes their funniest flaw, then you vote in secret for the funniest sentence.'],
+        'who'  => ['it' => '3–20 giocatori', 'en' => '3–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'indovina', 'href' => 'indovina.html', 'icon' => '../assets/indovina/icon.svg',
         'name' => ['it' => 'Indovina cosa', 'en' => 'Guess what'],
         'line' => ['it' => 'Uno custodisce una parola segreta, gli altri la scoprono con domande sì o no. Venti domande, un solo tentativo a testa.',
@@ -279,7 +287,7 @@ $KINDS = [
 ];
 $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
-    'nonhomai' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
+    'nonhomai' => 'talk', 'dieci' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
