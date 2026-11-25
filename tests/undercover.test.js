@@ -338,7 +338,8 @@ test('leaving: a speaker who leaves is skipped; a voter who leaves does not bloc
     const r = await room({}, 5);
     await begin(r, { P1: 'civ', P2: 'civ', P3: 'civ', P4: 'civ', P5: 'und' });
     const P0 = await U(r);
-    const leaver = P0.speakers.find((p) => who(r, p) !== r.a && p !== P0.speaker);
+    // never the only Undercover (P5): if he leaves the match ends at once and the rest of the test has nothing to do
+    const leaver = P0.speakers.find((p) => who(r, p) !== r.a && p !== P0.speaker && p !== r.id.P5);
     await who(r, leaver).post({ action: 'leave' });
     let P = await U(r);
     assert.ok(!P.alive.includes(leaver)); assert.equal(P.out.find((o) => o.p === leaver).left, true);

@@ -155,3 +155,4 @@ body::before { content: ""; position: fixed; inset: 0 0 auto 0; height: 6px; z-i
 
 /* spia.css paints the small links with --paper (dark here): make them readable on the dark ground */
 .link { color: var(--gold); }
+.brand span { white-space: normal; line-height: 1.05; font-size: 15px; letter-spacing: 0.03em; }   /* the long title wraps instead of ending in "…" */
