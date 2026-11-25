@@ -123,6 +123,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa', 'en' => 'one phone each'],
     ],
     [
+        'group' => 'friends', 'look' => 'inventato', 'href' => 'inventato.html', 'icon' => '../assets/inventato/icon.svg',
+        'name' => ['it' => 'Vero o inventato', 'en' => 'Fake or fact'],
+        'line' => ['it' => 'Una notizia curiosa: è vera o inventata? Tutti decidono in segreto, il timbro svela la verità. Anche da solo.',
+                   'en' => 'A curious claim: true or made up? Everybody decides in secret, then the stamp reveals the truth. Alone too.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa, da solo o uno da passare', 'en' => 'one phone each, alone, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'bandiere', 'href' => 'bandiere.html', 'icon' => '../assets/bandiere/icon.svg',
         'name' => ['it' => 'Bandiere', 'en' => 'Flags'],
         'line' => ['it' => 'Bandiere, paesi e capitali: stessa domanda su ogni telefono, più punti a chi risponde giusto e in fretta. Anche da solo.',
@@ -305,7 +313,7 @@ $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff',
     'nonhomai' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action',
-    'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
+    'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'inventato' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
     'skillcheck' => 'arcade', 'simon' => 'arcade', 'snake' => 'arcade', 'tetris' => 'arcade', 'difesa' => 'arcade', 'dungeon' => 'arcade', 'hack' => 'arcade',
     'dueamila' => 'puzzle', 'minato' => 'puzzle', 'vita' => 'puzzle', 'memory' => 'puzzle', 'forza4' => 'puzzle', 'tris' => 'puzzle', 'vault' => 'puzzle',

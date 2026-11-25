@@ -1,0 +1,18 @@
+{
+  "name": "Fake or fact",
+  "short_name": "Fake or fact",
+  "description": "Vero o inventato? Una notizia curiosa, tutti decidono in segreto dal proprio telefono se è vera o inventata.",
+  "start_url": "../../pages/inventato.html",
+  "scope": "../../pages/",
+  "display": "standalone",
+  "background_color": "#d8c58c",
+  "theme_color": "#d8c58c",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
