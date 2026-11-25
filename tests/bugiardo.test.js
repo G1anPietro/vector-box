@@ -333,12 +333,12 @@ test('translations: the five languages have the same keys, every key the game us
     const placeholders = (s) => (String(s).match(/\{\w+\}/g) || []).sort().join();
     for (const k of keys) for (const l of ['it', 'es', 'fr', 'de']) assert.equal(placeholders(dict[l][k]), placeholders(dict.en[k]), `${l}.${k} placeholders`);
     const js = fs.readFileSync(path.join(ROOT, 'public', 'js', 'bugiardo', 'game.js'), 'utf8');
-    for (const m of js.matchAll(/'(bg_[a-z_]+)'/g)) if (!m[1].endsWith('_')) assert.ok(keys.includes(m[1]), 'game.js uses an unknown key ' + m[1]);
-    for (const k of ['escaped', 'caught', 'stolen', 'void']) assert.ok(keys.includes('bg_v_' + k), k);
-    for (const k of ['done', 'host_ended', 'too_few']) assert.ok(keys.includes('bg_reason_' + k), k);
-    for (const k of ['bg_title', 'bg_tagline', 'bg_one_phone_note', 'bg_need_three', 'bg_start', 'bg_new_match', 'bg_settings_next_match', 'intro_bg_1', 'intro_bg_2_t', 'intro_bg_3',
-        'help_bg_basics_t', 'help_bg_rounds', 'help_bg_scoring', 'help_bg_host', 'help_bg_settings', 'err_need_players_bugiardo', 'err_not_liar', 'err_bad_answer', 'err_already_answered']) assert.ok(keys.includes(k), k);
-    for (const m of fs.readFileSync(path.join(ROOT, 'public', 'js', 'spia', 'app.js'), 'utf8').matchAll(/(?:title|tagline|note|need): '(bg_\w+)'/g)) assert.ok(keys.includes(m[1]), m[1]);
+    for (const m of js.matchAll(/'(lb_[a-z_]+)'/g)) if (!m[1].endsWith('_')) assert.ok(keys.includes(m[1]), 'game.js uses an unknown key ' + m[1]);
+    for (const k of ['escaped', 'caught', 'stolen', 'void']) assert.ok(keys.includes('lb_v_' + k), k);
+    for (const k of ['done', 'host_ended', 'too_few']) assert.ok(keys.includes('lb_reason_' + k), k);
+    for (const k of ['lb_title', 'lb_tagline', 'lb_one_phone_note', 'lb_need_three', 'lb_start', 'lb_new_match', 'lb_settings_next_match', 'intro_lb_1', 'intro_lb_2_t', 'intro_lb_3',
+        'help_lb_basics_t', 'help_lb_rounds', 'help_lb_scoring', 'help_lb_host', 'help_lb_settings', 'err_need_players_bugiardo', 'err_not_liar', 'err_bad_answer', 'err_already_answered']) assert.ok(keys.includes(k), k);
+    for (const m of fs.readFileSync(path.join(ROOT, 'public', 'js', 'spia', 'app.js'), 'utf8').matchAll(/(?:title|tagline|note|need): '(lb_\w+)'/g)) assert.ok(keys.includes(m[1]), m[1]);
     const lib = fs.readFileSync(path.join(ROOT, 'public', 'api', 'bugiardo_lib.php'), 'utf8');
     for (const m of lib.matchAll(/return '([a-z_]+)'/g)) assert.ok(keys.includes('err_' + m[1]) || ['host_only', 'not_now', 'round_running', 'no_round', 'not_your_player', 'you_are_out', 'bad_target'].includes(m[1]), 'no text for error ' + m[1]);
 });
