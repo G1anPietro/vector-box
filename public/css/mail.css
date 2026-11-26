@@ -40,6 +40,10 @@
 .wm-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; margin: 16px 0; }
 .wm-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .wm-addr { padding: 16px; }
+.wm-arow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--plank); border-radius: 10px; margin-top: 8px; background: var(--dusk); }
+.wm-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wm-who b { font-size: 1.05rem; overflow-wrap: anywhere; }
+.wm-who .muted { font-size: 14px; }
 .wm-newaddr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .wm-newaddr input, .wm-win input, .wm-win select, .wm-win textarea { font: inherit; font-size: 16px; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; }
 .wm-send { font: inherit; font-weight: 800; color: #231a08; background: var(--link); border: 0; border-radius: 999px; padding: 8px 22px; min-height: 40px; cursor: pointer; }

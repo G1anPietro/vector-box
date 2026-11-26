@@ -25,7 +25,7 @@
 
     async function boot() {
         const b = await api('?action=boot');
-        state.addresses = b.addresses; state.domain = b.domain;
+        state.addresses = b.addresses; state.domain = b.domain; state.driver = b.driver;
         $('wm-n-inbox').textContent = b.counts.inbox_unread ? String(b.counts.inbox_unread) : '';
         $('wm-n-draft').textContent = b.counts.draft ? String(b.counts.draft) : '';
         $('wm-mine').textContent = b.addresses.length ? t('mine') + ': ' + b.addresses.map((a) => a.address).join(', ') : t('noaddr');
@@ -103,7 +103,7 @@
         $('wm-to').value = draft ? draft.to_addr : (pre ? pre.to : '');
         $('wm-subject').value = draft ? draft.subject : (pre ? pre.subject : '');
         $('wm-body').value = draft ? '' : (pre ? pre.body : '');
-        $('wm-win-msg').textContent = '';
+        $('wm-win-msg').textContent = state.driver ? '' : t('off');
         if (draft) api('?action=get&id=' + draft.id).then(({ message }) => { $('wm-body').value = message.body; const o = [...$('wm-from').options].find((x) => state.addresses.find((a) => String(a.id) === x.value && a.address === message.from_addr)); if (o) $('wm-from').value = o.value; });
         ($('wm-to').value ? $('wm-body') : $('wm-to')).focus();
     }
@@ -143,7 +143,7 @@
         box.append(form, msg);
         if (!rows.length) box.append(el('p', 'muted', t('a_none')));
         for (const r of rows) {
-            const line = el('div', 'wm-row'); line.append(el('b', 'wm-from', r.address), el('span', 'wm-mid muted', r.username || '—'));
+            const line = el('div', 'wm-arow'); const who = el('span', 'wm-who'); who.append(el('b', '', r.address), el('span', 'muted', t('a_owner') + ': ' + (r.username || '—'))); line.append(who);
             const del = el('button', 'wm-pill', t('a_del')); del.type = 'button';
             del.addEventListener('click', async () => { if (!window.confirm(t('a_sure'))) return; try { await api('', { action: 'delete_address', id: r.id }); await boot(); await addresses(); } catch (x) { note(x.message); } });
             line.append(del); box.append(line);

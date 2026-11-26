@@ -77,14 +77,14 @@ $other = pageLang() === 'it' ? 'en' : 'it';
     <script type="application/json" id="wm-i18n"><?= json_encode(pageLang() === 'it' ? [
         'noaddr' => 'Non hai ancora un indirizzo: chiedilo all\'admin.', 'you' => 'Tu', 'nothing' => 'Niente qui.', 'nosub' => '(senza oggetto)', 'to' => 'A', 'from' => 'Da',
         'reply' => 'Rispondi', 'forward' => 'Inoltra', 'trash' => 'Cestino', 'saved' => 'Bozza salvata.', 'sent' => 'Inviato.', 'sentext' => 'Inviato (all\'esterno: in coda).', 'newm' => 'Nuovo messaggio',
-        'wrote' => 'ha scritto', 'confirm_del' => 'Eliminare per sempre?', 'confirm_empty' => 'Svuotare il cestino?', 'mine' => 'I tuoi indirizzi', 'off' => 'L\'invio a indirizzi esterni non è ancora attivo.',
-        'a_new' => 'Nuovo indirizzo', 'a_local' => 'parte prima della @', 'a_user' => 'nome utente', 'a_make' => 'Crea', 'a_del' => 'Elimina', 'a_made' => 'Creato: ', 'a_none' => 'Nessun indirizzo.', 'a_sure' => 'Eliminare l\'indirizzo? I messaggi restano.',
+        'wrote' => 'ha scritto', 'confirm_del' => 'Eliminare per sempre?', 'confirm_empty' => 'Svuotare il cestino?', 'mine' => 'I tuoi indirizzi', 'off' => 'Per ora puoi scrivere solo agli indirizzi @talvera.site: l\'invio all\'esterno non è ancora attivato.',
+        'a_new' => 'Nuovo indirizzo', 'a_local' => 'parte prima della @', 'a_user' => 'nome utente', 'a_make' => 'Crea', 'a_del' => 'Elimina', 'a_made' => 'Creato: ', 'a_none' => 'Nessun indirizzo.', 'a_owner' => 'di', 'a_sure' => 'Eliminare l\'indirizzo? I messaggi restano.',
         'wrong' => 'Qualcosa è andato storto.', 'moved' => 'Spostato nel cestino.', 'restored' => 'Ripristinato.', 'deleted' => 'Eliminato.', 'draft_to' => 'Bozza'
     ] : [
         'noaddr' => 'You have no address yet: ask the admin.', 'you' => 'Me', 'nothing' => 'Nothing here.', 'nosub' => '(no subject)', 'to' => 'To', 'from' => 'From',
         'reply' => 'Reply', 'forward' => 'Forward', 'trash' => 'Trash', 'saved' => 'Draft saved.', 'sent' => 'Sent.', 'sentext' => 'Sent (to another address: queued).', 'newm' => 'New message',
-        'wrote' => 'wrote', 'confirm_del' => 'Delete forever?', 'confirm_empty' => 'Empty the trash?', 'mine' => 'Your addresses', 'off' => 'Sending to other addresses is not switched on yet.',
-        'a_new' => 'New address', 'a_local' => 'part before the @', 'a_user' => 'username', 'a_make' => 'Create', 'a_del' => 'Delete', 'a_made' => 'Created: ', 'a_none' => 'No addresses.', 'a_sure' => 'Delete the address? The messages stay.',
+        'wrote' => 'wrote', 'confirm_del' => 'Delete forever?', 'confirm_empty' => 'Empty the trash?', 'mine' => 'Your addresses', 'off' => 'For now you can only write to @talvera.site addresses: sending to other addresses is not switched on yet.',
+        'a_new' => 'New address', 'a_local' => 'part before the @', 'a_user' => 'username', 'a_make' => 'Create', 'a_del' => 'Delete', 'a_made' => 'Created: ', 'a_none' => 'No addresses.', 'a_owner' => 'owner', 'a_sure' => 'Delete the address? The messages stay.',
         'wrong' => 'Something went wrong.', 'moved' => 'Moved to trash.', 'restored' => 'Restored.', 'deleted' => 'Deleted.', 'draft_to' => 'Draft'
     ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 </body>
