@@ -125,4 +125,9 @@ test.describe('webmail', () => {
         assert.equal((await ada.get('/api/webmail.php?action=list&folder=system')).status, 403, 'a plain account');
         assert.equal((await ada.get(`/api/webmail.php?action=get&id=${id}&sys=1`)).status, 403, 'cannot read the queue');
     });
+
+    test('the addresses panel lists the usernames to pick from (no guests)', async () => {
+        const users = (await admin.get('/api/webmail.php?action=addresses')).json.users;
+        assert.ok(users.includes('wm_ada') && users.includes('wm_bob') && !users.some((u) => u.startsWith('guest_')));
+    });
 });

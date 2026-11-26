@@ -140,13 +140,14 @@
     async function addresses() {
         show('addr');
         const box = $('wm-addr'); box.replaceChildren();
-        const { rows, domain } = await api('?action=addresses');
+        const { rows, domain, users } = await api('?action=addresses');
         const form = el('form', 'wm-newaddr');
         const local = el('input'); local.placeholder = t('a_local'); local.maxLength = 32; local.autocomplete = 'off';
         const at = el('span', 'muted', '@' + domain);
-        const user = el('input'); user.placeholder = t('a_user'); user.value = state.me; user.maxLength = 40; user.autocomplete = 'off';
+        const user = el('input'); user.placeholder = t('a_user'); user.value = state.me; user.setAttribute('list', 'wm-users'); user.setAttribute('aria-label', t('a_user'));
+        const dl = el('datalist'); dl.id = 'wm-users'; for (const u of users || []) { const o = el('option'); o.value = u; dl.append(o); } user.maxLength = 40; user.autocomplete = 'off';
         const go = el('button', 'wm-send', t('a_make')); go.type = 'submit';
-        form.append(el('b', '', t('a_new')), local, at, user, go);
+        form.append(el('b', '', t('a_new')), local, at, user, dl, go);
         const msg = el('p', 'muted'); msg.setAttribute('role', 'status');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();

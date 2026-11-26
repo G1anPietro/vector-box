@@ -48,6 +48,7 @@
 .wm-who b { font-size: 1.05rem; overflow-wrap: anywhere; }
 .wm-who .muted { font-size: 14px; }
 .wm-newaddr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.wm-newaddr input[list] { min-width: 14ch; }
 .wm-newaddr input, .wm-win input, .wm-win select, .wm-win textarea { font: inherit; font-size: 16px; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; }
 .wm-send { font: inherit; font-weight: 800; color: #231a08; background: var(--link); border: 0; border-radius: 999px; padding: 8px 22px; min-height: 40px; cursor: pointer; }
 .wm-send:disabled { opacity: .5; }

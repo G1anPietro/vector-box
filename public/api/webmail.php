@@ -111,7 +111,8 @@ try {
         }
         if ($action === 'addresses' && $isAdmin) {
             $rows = $db->query('SELECT a.id, a.local_part, a.created_at, c.username FROM mail_addresses a LEFT JOIN accounts c ON c.id = a.account_id ORDER BY a.id')->fetchAll();
-            jsonResponse(['success' => true, 'domain' => wmDomain(), 'rows' => array_map(fn($r) => ['id' => (int)$r['id'], 'address' => strtolower($r['local_part']) . '@' . wmDomain(), 'username' => $r['username'], 'created_at' => (int)$r['created_at']], $rows)]);
+            $users = $db->query("SELECT username FROM accounts WHERE username NOT LIKE 'guest\\_%' ESCAPE '\\' ORDER BY username COLLATE NOCASE LIMIT 1000")->fetchAll(PDO::FETCH_COLUMN);
+            jsonResponse(['success' => true, 'users' => $users, 'domain' => wmDomain(), 'rows' => array_map(fn($r) => ['id' => (int)$r['id'], 'address' => strtolower($r['local_part']) . '@' . wmDomain(), 'username' => $r['username'], 'created_at' => (int)$r['created_at']], $rows)]);
         }
         jsonFail('unknown_action', 'Unknown action');
     }
