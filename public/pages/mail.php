@@ -29,6 +29,7 @@ $other = pageLang() === 'it' ? 'en' : 'it';
 </head>
 <body class="wm" data-admin="<?= sessionIsAdmin() ? '1' : '0' ?>">
     <header class="wm-top">
+        <button type="button" class="wm-burger" id="wm-burger" aria-label="<?= tt('Menu', 'Menu') ?>" aria-expanded="false">☰</button>
         <a class="wm-home" href="../index.php">vector-box</a>
         <form id="wm-search" class="wm-search" role="search">
             <input id="wm-q" type="search" placeholder="<?= tt('Search mail', 'Cerca nella posta') ?>" aria-label="<?= tt('Search mail', 'Cerca nella posta') ?>" autocomplete="off">
@@ -38,8 +39,10 @@ $other = pageLang() === 'it' ? 'en' : 'it';
             <a class="wm-pill" href="?lang=<?= $other ?>" hreflang="<?= $other ?>"><?= strtoupper($other) ?></a>
         </span>
     </header>
+    <div class="wm-scrim" id="wm-scrim" hidden></div>
     <div class="wm-body">
-        <nav class="wm-rail" aria-label="<?= tt('Folders', 'Cartelle') ?>">
+        <nav class="wm-rail" id="wm-rail" aria-label="<?= tt('Folders', 'Cartelle') ?>">
+            <a class="wm-rail-home" href="../index.php">vector-box</a>
             <button type="button" class="wm-compose" id="wm-compose">✎ <?= tt('Compose', 'Scrivi') ?></button>
             <button type="button" class="wm-folder" data-folder="inbox">📥 <span><?= tt('Inbox', 'In arrivo') ?></span><b id="wm-n-inbox"></b></button>
             <button type="button" class="wm-folder" data-folder="starred">★ <span><?= tt('Starred', 'Speciali') ?></span></button>
@@ -48,6 +51,10 @@ $other = pageLang() === 'it' ? 'en' : 'it';
             <button type="button" class="wm-folder" data-folder="trash">🗑 <span><?= tt('Trash', 'Cestino') ?></span></button>
             <?php if (sessionIsAdmin()): ?><button type="button" class="wm-folder" data-folder="addresses">⚙ <span><?= tt('Addresses', 'Indirizzi') ?></span></button><?php endif; ?>
             <p id="wm-mine" class="wm-mine"></p>
+            <div class="wm-rail-links">
+                <?php if (sessionIsAdmin()): ?><a href="admin_users.php"><?= tt('Users', 'Utenti') ?></a><a href="newsletter.php">Newsletter</a><?php endif; ?>
+                <a href="?lang=<?= $other ?>" hreflang="<?= $other ?>"><?= $other === 'en' ? 'English' : 'Italiano' ?></a>
+            </div>
         </nav>
         <main class="wm-main">
             <div class="wm-bar" id="wm-bar">
@@ -66,6 +73,7 @@ $other = pageLang() === 'it' ? 'en' : 'it';
             <section id="wm-addr" class="wm-addr" hidden></section>
         </main>
     </div>
+    <button type="button" class="wm-fab" id="wm-fab" aria-label="<?= tt('Compose', 'Scrivi') ?>">✎ <span><?= tt('Compose', 'Scrivi') ?></span></button>
     <form id="wm-win" class="wm-win" hidden aria-label="<?= tt('New message', 'Nuovo messaggio') ?>">
         <div class="wm-win-head"><b id="wm-win-title"><?= tt('New message', 'Nuovo messaggio') ?></b><button type="button" class="wm-ico" id="wm-win-close" title="<?= tt('Save and close', 'Salva e chiudi') ?>">✕</button></div>
         <select id="wm-from" aria-label="<?= tt('From', 'Da') ?>"></select>

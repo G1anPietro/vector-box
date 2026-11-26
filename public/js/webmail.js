@@ -31,7 +31,7 @@
         $('wm-mine').textContent = b.addresses.length ? t('mine') + ': ' + b.addresses.map((a) => a.address).join(', ') : t('noaddr');
         const from = $('wm-from'); from.replaceChildren();
         for (const a of b.addresses) { const o = el('option', '', a.address); o.value = String(a.id); from.append(o); }
-        $('wm-compose').disabled = !b.addresses.length;
+        $('wm-compose').disabled = $('wm-fab').disabled = !b.addresses.length;
         return b;
     }
 
@@ -66,13 +66,17 @@
     function row(r) {
         const li = el('div', 'wm-row' + (r.is_read || r.folder === 'draft' || r.folder === 'sent' ? '' : ' unread'));
         const cb = el('input'); cb.type = 'checkbox'; cb.setAttribute('aria-label', 'select');
-        cb.addEventListener('click', (e) => { e.stopPropagation(); cb.checked ? state.sel.add(r.id) : state.sel.delete(r.id); });
+        const pick = (on) => { cb.checked = on; on ? state.sel.add(r.id) : state.sel.delete(r.id); li.classList.toggle('picked', on); };
+        cb.addEventListener('click', (e) => { e.stopPropagation(); pick(cb.checked); });
+        // the round initial (phones, like Gmail): tapping it selects the message
+        const av = el('span', 'wm-av', ((r.folder === 'sent' || r.folder === 'draft' ? r.to_addr : r.from_addr) || '?').replace(/^[^A-Za-z0-9]+/, '').charAt(0).toUpperCase() || '?');
+        av.addEventListener('click', (e) => { e.stopPropagation(); pick(!cb.checked); });
         const star = el('button', 'wm-star' + (r.is_starred ? ' on' : ''), r.is_starred ? '★' : '☆'); star.type = 'button'; star.title = '★';
         star.addEventListener('click', async (e) => { e.stopPropagation(); const v = r.is_starred ? 0 : 1; await api('', { action: 'star', ids: [r.id], value: v }).catch((x) => note(x.message)); r.is_starred = v; star.textContent = v ? '★' : '☆'; star.classList.toggle('on', !!v); });
         const from = el('span', 'wm-from', who(r));
         const mid = el('span', 'wm-mid'); mid.append(el('b', '', r.subject || t('nosub')), el('span', 'muted', ' — ' + (r.snippet || '')));
         const date = el('span', 'wm-date', when(r.created_at));
-        li.append(cb, star, from, mid, date);
+        li.append(cb, av, star, from, mid, date);
         li.addEventListener('click', () => (r.folder === 'draft' ? compose(r) : open(r.id)));
         return li;
     }
@@ -170,6 +174,12 @@
         $('wm-send').disabled = false;
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('wm-win').hidden) closeWin(); });
+
+    const drawer = (on) => { $('wm-rail').classList.toggle('open', on); $('wm-scrim').hidden = !on; $('wm-burger').setAttribute('aria-expanded', String(on)); };
+    $('wm-burger').addEventListener('click', () => drawer(!$('wm-rail').classList.contains('open')));
+    $('wm-scrim').addEventListener('click', () => drawer(false));
+    document.querySelectorAll('.wm-folder, .wm-compose').forEach((b) => b.addEventListener('click', () => drawer(false)));
+    $('wm-fab').addEventListener('click', () => compose(null));
 
     boot().then(() => load('inbox', '')).catch((e) => note(e.message));
 })();
