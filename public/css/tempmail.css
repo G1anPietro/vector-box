@@ -1,0 +1,29 @@
+/* Temporary mail, in the look of the rest of the site (giochi.css palette). */
+.tm { margin: 0; }
+.muted { color: var(--muted); }
+.tm-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; border-bottom: 1px solid var(--plank); }
+.tm-home { font-weight: 800; text-decoration: none; color: var(--text); }
+.tm-wrap { max-width: 760px; margin: 0 auto; padding: 22px 16px 60px; }
+.tm-wrap h1 { margin: 0 0 8px; font-size: 1.8rem; }
+.tm-card { background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 14px; padding: 16px; margin: 16px 0; }
+.tm-card[hidden], .tm-list[hidden], .tm-read[hidden], .tm-warn[hidden] { display: none; }
+.tm-warn { color: var(--link); font-weight: 800; }
+.tm-trap { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.tm-btn { font: inherit; font-weight: 800; color: #231a08; background: var(--link); border: 0; border-radius: 999px; padding: 10px 22px; min-height: 42px; cursor: pointer; }
+.tm-btn:disabled { opacity: .5; cursor: default; }
+.tm-pill { font: inherit; font-size: 15px; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 999px; padding: 6px 14px; min-height: 36px; display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
+.tm-pill:hover { border-color: var(--link); }
+.tm-addr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.tm-addr { flex: 1 1 260px; min-width: 0; font-size: 1.2rem; font-weight: 800; padding: 10px 14px; background: var(--dusk); border: 1px solid var(--plank); border-radius: 10px; overflow-wrap: anywhere; user-select: all; }
+.tm-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+.tm-list { display: flex; flex-direction: column; border-top: 1px solid var(--plank); }
+.tm-empty { padding: 28px 8px; text-align: center; }
+.tm-row { font: inherit; text-align: left; color: var(--text); background: transparent; border: 0; border-bottom: 1px solid var(--plank); padding: 10px 6px; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }
+.tm-row:hover { background: rgba(242, 198, 109, .06); }
+.tm-row b, .tm-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-row .tm-d { font-size: 13px; color: var(--muted); grid-row: span 2; align-self: center; }
+.tm-row .tm-f { font-size: 14px; color: var(--muted); }
+.tm-read { padding: 14px 4px 4px; }
+.tm-read h2 { margin: 8px 0 4px; font-size: 1.3rem; overflow-wrap: anywhere; }
+.tm-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.55; margin: 14px 0; }
+.tm-fine { font-size: 13px; }

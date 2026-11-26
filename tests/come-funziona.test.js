@@ -44,7 +44,7 @@ test('the home menu points to it (under the lead and in the footer), it is in th
         const home = (await c.get(`/?lang=${lang}`)).text;
         assert.ok(home.includes('href="pages/come-funziona.php"') && home.includes(link), lang + ' lead link');
         assert.match(home, new RegExp(`<footer[\\s\\S]*come-funziona\\.php[^>]*>${foot}<`), lang + ' footer link');
-        assert.equal((home.match(/class="mcard /g) || []).length, 7, 'still seven cards');
+        assert.equal((home.match(/class="mcard /g) || []).length, 8, 'still eight cards');
     }
     assert.ok((await (await fetch(`${site.base}/sitemap.php`)).text()).includes('/pages/come-funziona.php'));
 });

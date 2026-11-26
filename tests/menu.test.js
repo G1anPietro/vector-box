@@ -8,15 +8,15 @@ let site;
 test.before(async () => { site = await startSite(); });
 test.after(() => site.stop());
 
-test('the home page is the menu: seven cards for everyone, the OS card goes to desktop.php, no desktop windows on it', async () => {
+test('the home page is the menu: eight cards for everyone, the OS card goes to desktop.php, no desktop windows on it', async () => {
     for (const p of ['/', '/index.php']) {
         const r = await new Client(site).get(p + '?lang=en');
         assert.equal(r.status, 200, p);
         assert.match(r.text, /<html lang="en"/);
-        for (const href of ['pages/giochi.php', 'pages/appunti.php', 'pages/login.php', 'pages/novita.php', 'pages/progetto.php', 'pages/wikipedia.php', 'desktop.php']) {
+        for (const href of ['pages/giochi.php', 'pages/appunti.php', 'pages/login.php', 'pages/novita.php', 'pages/progetto.php', 'pages/tempmail.php', 'pages/wikipedia.php', 'desktop.php']) {
             assert.ok(r.text.includes(`href="${href}"`), p + ' links to ' + href);
         }
-        assert.equal((r.text.match(/class="mcard /g) || []).length, 7);
+        assert.equal((r.text.match(/class="mcard /g) || []).length, 8);
         assert.ok(!r.text.includes('win-terminal') && !r.text.includes('id="canvas"'), 'the desktop is not on the menu');
         assert.match(r.text, /Operating system/);
     }
@@ -24,13 +24,13 @@ test('the home page is the menu: seven cards for everyone, the OS card goes to d
     assert.match(it.text, /<html lang="it"/); assert.match(it.text, /Sistema operativo/); assert.match(it.text, /Appunti di classe/);
 });
 
-test('the cards come in this order: games, book reader*, class notes, Wikipedia, desktop, account, news, project, mail*, statistics*  (* only for who may see them)', async () => {
+test('the cards come in this order: games, book reader*, class notes, Wikipedia, desktop, account, news, project, temporary mail, mail*, statistics*  (* only for who may see them)', async () => {
     const order = (html) => [...html.matchAll(/class="mcard [a-z]+" href="([^"]+)"/g)].map((m) => m[1]);
     assert.deepEqual(order((await new Client(site).get('/?lang=en')).text),
-        ['pages/giochi.php', 'pages/appunti.php', 'pages/wikipedia.php', 'desktop.php', 'pages/login.php', 'pages/novita.php', 'pages/progetto.php']);
+        ['pages/giochi.php', 'pages/appunti.php', 'pages/wikipedia.php', 'desktop.php', 'pages/login.php', 'pages/novita.php', 'pages/progetto.php', 'pages/tempmail.php']);
     const admin = await makeAdmin(site, 'order_admin');
     assert.deepEqual(order((await admin.get('/?lang=en')).text),
-        ['pages/giochi.php', 'pages/reader.php', 'pages/appunti.php', 'pages/wikipedia.php', 'desktop.php', 'pages/account.php', 'pages/novita.php', 'pages/progetto.php', 'pages/mail.php', 'pages/stats.php']);
+        ['pages/giochi.php', 'pages/reader.php', 'pages/appunti.php', 'pages/wikipedia.php', 'desktop.php', 'pages/account.php', 'pages/novita.php', 'pages/progetto.php', 'pages/tempmail.php', 'pages/mail.php', 'pages/stats.php']);
 });
 
 test('"Support vector-box" is a banner under the cards, not a footer link, in both languages', async () => {

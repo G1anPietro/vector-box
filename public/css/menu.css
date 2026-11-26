@@ -24,6 +24,7 @@
 @media (prefers-reduced-motion: reduce) { .mcard { transition: none; } }
 .mcard { position: relative; }
 .mcard .badge { position: absolute; top: 14px; right: 14px; padding: 2px 9px; border: 1px solid currentColor; border-radius: 999px; font: 700 12px/1.5 system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.mcard.tempmail { border-color: #6b5a2e; } .mcard.tempmail .glyph { color: #f2c66d; }
 .mcard.mail { border-color: #2e5d6b; } .mcard.mail .glyph { color: #6fd6f2; }
 .mcard.books { border-color: #6b5a2e; } .mcard.books .glyph { color: #f2c66d; }
 .mcard.stats { border-color: #2e6b6b; } .mcard.stats .glyph { color: #6be0e0; }

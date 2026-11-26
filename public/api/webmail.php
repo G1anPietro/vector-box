@@ -111,7 +111,7 @@ try {
             jsonResponse(['success' => true]);
         }
         $local = strtolower(trim((string)($in['local'] ?? '')));
-        if (!preg_match('/^[a-z0-9](?:[a-z0-9._-]{0,30}[a-z0-9])?$/', $local) || str_contains($local, '..')) jsonFail('bad_local', 'Use letters, numbers, dots, dashes and underscores (1-32 characters)');
+        if (!preg_match('/^[a-z0-9](?:[a-z0-9._-]{0,30}[a-z0-9])?$/', $local) || str_contains($local, '..') || str_starts_with($local, 'tmp-')) jsonFail('bad_local', 'Use letters, numbers, dots, dashes and underscores (1-32 characters); tmp- is reserved');
         $st = $db->prepare('SELECT id FROM accounts WHERE username = :u COLLATE NOCASE');
         $st->execute([':u' => trim((string)($in['username'] ?? ''))]);
         $acc = $st->fetchColumn();

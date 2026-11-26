@@ -89,6 +89,12 @@ $CARDS = [
                    'en' => 'What vector-box is, how it is built and where we are.'],
     ],
     [
+        'look' => 'tempmail', 'href' => 'pages/tempmail.php', 'glyph' => '⏳',
+        'name' => ['it' => 'Mail temporanea', 'en' => 'Temporary mail'],
+        'line' => ['it' => 'Un indirizzo e-mail usa e getta, per un\'ora, senza account.',
+                   'en' => 'A throwaway e-mail address for one hour, no account needed.'],
+    ],
+    [
         'look' => 'mail', 'href' => 'pages/mail.php', 'glyph' => '✉', 'private' => true, 'show' => $access['mail'],
         'name' => ['it' => 'Posta', 'en' => 'Mail'],
         'line' => ['it' => 'La tua casella e-mail @talvera.site: leggi, scrivi e rispondi. Solo per chi è stato abilitato.',

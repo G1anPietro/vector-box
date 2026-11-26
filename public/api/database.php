@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 64;
+const DB_SCHEMA_VERSION = 65;
 
 /**
  * Session bootstrap.
@@ -674,6 +674,29 @@ function migrateV57(PDO $db): void {
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
     )");
+}
+
+function migrateV65(PDO $db): void {
+    // Temporary public mailboxes (tempmail): no account. The secret token is kept only as a hash; boxes and their messages expire.
+    $db->exec("CREATE TABLE IF NOT EXISTS temp_boxes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        local_part TEXT NOT NULL UNIQUE,
+        token_hash TEXT NOT NULL,
+        pow_nonce TEXT NOT NULL UNIQUE,                -- a solved challenge works once
+        created_at INTEGER NOT NULL,
+        born_at INTEGER NOT NULL,                      -- extending never goes past born_at + TEMPMAIL_MAX_LIFE
+        expires_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_temp_boxes_exp ON temp_boxes(expires_at)');
+    $db->exec("CREATE TABLE IF NOT EXISTS temp_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        box_id INTEGER NOT NULL,
+        from_addr TEXT NOT NULL DEFAULT '',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_temp_messages_box ON temp_messages(box_id, id)');
 }
 
 function migrateV64(PDO $db): void {
@@ -1435,6 +1458,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 64) {
             migrateV64($db);
+        }
+        if ($current < 65) {
+            migrateV65($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
