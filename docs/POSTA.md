@@ -28,3 +28,7 @@ export default {
 };
 ```
 Limite noto: i messaggi MIME (HTML, allegati, codifica quoted-printable) compaiono grezzi; un parser (postal-mime) si può aggiungere al Worker quando serve.
+
+## Stato (26/11)
+Ricezione attiva: Email Routing acceso su `talvera.site`, catch-all verso il Worker `talvera-mail-in` (codice in `~/talvera-worker/src/index.js` sul portatile, non nel repo; usa `postal-mime` per leggere il testo, variabile segreta `INBOUND_SECRET` = `MAIL_INBOUND_SECRET` del `.env`). Un 404 del sito rimbalza il messaggio. Per aggiornarlo: `cd ~/talvera-worker && npx wrangler login && npx wrangler deploy`, poi `npx wrangler logout`.
+Invio verso fuori: ancora spento (serve `MAIL_DRIVER` + un servizio; Cloudflare ha anche "Email Sending", in beta, valutabile al posto di Resend).
