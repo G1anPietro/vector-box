@@ -85,7 +85,7 @@ require_once __DIR__ . '/../includes/head.php';
             di invio e un link per smettere in ogni messaggio. Resta spenta finché non viene configurata.</li>
             <li><strong>Posta personale:</strong> chi ha il permesso ha un indirizzo <code>@talvera.site</code> creato da chi gestisce, con una
             casella in stile Gmail (in arrivo, speciali, inviata, bozze, cestino, ricerca, risposta). Tra indirizzi del sito i messaggi arrivano subito;
-            l'invio verso altri indirizzi e la ricezione da fuori si accendono solo dopo la configurazione del servizio di posta.</li>
+            l'invio verso altri indirizzi (riservato a chi gestisce) e la ricezione da fuori si accendono solo dopo la configurazione del servizio di posta.</li>
             <li><strong>Un dominio tutto suo:</strong> il sito vive su <code>talvera.site</code> (DNS Cloudflare con DNSSEC, certificato Let's Encrypt
             e connessione cifrata verificata fino al server); il vecchio indirizzo DuckDNS rimanda al nuovo.</li>
             <li><strong>Pannelli per chi gestisce:</strong> le persone (permessi, sospensioni, distintivo di sostenitore), le novità

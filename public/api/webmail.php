@@ -3,7 +3,7 @@
 //   GET  ?action=boot                       -> my addresses, folder counts, domain, is_admin
 //   GET  ?action=list&folder=inbox|starred|sent|draft|trash[&q=text]
 //   GET  ?action=get&id=N                   -> the message (an inbox message becomes read)
-//   POST {action:'send', from_id, to, subject, body[, draft_id]}   -> local addresses get it at once, others go out through the mail queue
+//   POST {action:'send', from_id, to, subject, body[, draft_id]}   -> local addresses get it at once; other addresses (admin only) go out through the mail queue
 //   POST {action:'save_draft', id?, from_id, to, subject, body}
 //   POST {action:'star'|'read', ids:[…], value:0|1}   {action:'trash'|'restore'|'delete', ids:[…]}   {action:'empty_trash'}
 //   admin: GET ?action=addresses  POST {action:'create_address', local, username}  {action:'delete_address', id}
@@ -173,6 +173,7 @@ try {
         foreach ($to as $addr) if (!mailValidAddress($addr)) jsonFail('bad_address', "That does not look like an address: " . mailLine($addr, 60));
         if ($subject === '' && trim($body) === '') jsonFail('empty', 'Write a subject or a text first');
         $external = array_values(array_filter($to, fn($a) => wmOwnerOf($db, $a) === null));
+        if ($external && !$isAdmin) jsonFail('admin_only', 'Only the admin can write to addresses outside the site', 403);
         if ($external) {
             if (!checkRateLimit('webmail_out', 40, 86400, 'user:' . $me)) jsonFail('daily_limit', 'You reached today\'s limit of messages to other addresses', 429);
             if (!mailEnabled()) jsonFail('mail_off', 'Sending to other addresses is not switched on yet', 503);

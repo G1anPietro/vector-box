@@ -6,7 +6,7 @@ Scrivere tra indirizzi del sito funziona subito. Verso l'esterno (Gmail...) e da
 ## 1. Inviare verso fuori (Resend)
 `.env`: `MAIL_DRIVER=http`, `MAIL_HTTP_URL=https://api.resend.com/emails`, `MAIL_API_KEY=...`, `MAIL_FROM="vector-box <no-reply@talvera.site>"`.
 In Resend: aggiungere il dominio `talvera.site` e inserire in Cloudflare i record DNS (SPF, DKIM) che Resend mostra. Fino ad allora l'invio esterno risponde "non ancora attivo".
-Limiti: 40 messaggi al giorno a persona verso l'esterno, più `MAIL_DAILY_LIMIT` per tutto il sito.
+Verso l'esterno scrive solo l'admin (gli altri account possono scrivere solo agli indirizzi del sito). Limiti: 40 messaggi al giorno, più `MAIL_DAILY_LIMIT` per tutto il sito.
 
 ## 2. Ricevere da fuori (Cloudflare Email Routing + Worker)
 `.env`: `MAIL_INBOUND_SECRET=<una stringa lunga a caso>` (senza, l'endpoint risponde 503). `MAIL_DOMAIN=talvera.site` è il valore predefinito.

@@ -67,22 +67,27 @@ test.describe('webmail', () => {
         assert.equal((await bob.get('/api/webmail.php?action=list&folder=trash')).json.rows.length, 0);
     });
 
-    test('a message to Gmail goes out from the own address through the queue; bad addresses and missing address are refused', async () => {
+    test('only the admin writes to outside addresses (from the own address, through the queue); bad addresses and missing address are refused', async () => {
         const fromId = (await ada.get('/api/webmail.php?action=boot')).json.addresses[0].id;
-        const r = await wm(ada, { action: 'send', from_id: fromId, to: 'someone@gmail.com', subject: 'Hi\r\nBcc: x@y.z', body: 'hello out there' });
+        const refused = await wm(ada, { action: 'send', from_id: fromId, to: 'someone@gmail.com', subject: 'x', body: 'y' });
+        assert.deepEqual([refused.status, refused.json.error.length > 0], [403, true], 'a normal account cannot write outside');
+        assert.equal(site.db("SELECT COUNT(*) AS n FROM mail_queue WHERE kind = 'user'")[0].n, 0);
+        await wm(admin, { action: 'create_address', local: 'capo', username: 'wm_admin' });
+        const adminFrom = (await admin.get('/api/webmail.php?action=boot')).json.addresses[0].id;
+        const r = await wm(admin, { action: 'send', from_id: adminFrom, to: 'someone@gmail.com', subject: 'Hi\r\nBcc: x@y.z', body: 'hello out there' });
         assert.deepEqual([r.json.success, r.json.external, r.json.sent_now], [true, 1, 1]);
         const out = fs.readFileSync(log, 'utf8');
-        assert.match(out, /from=ada\.rossi@talvera\.site\tto=someone@gmail\.com/);
+        assert.match(out, /from=capo@talvera\.site\tto=someone@gmail\.com/);
         assert.ok(!/^Bcc:/mi.test(out), 'no header injection through the subject');
-        assert.equal((await wm(ada, { action: 'send', from_id: fromId, to: 'not an address', subject: 's', body: 'b' })).json.error.includes('address'), true);
-        assert.equal((await wm(ada, { action: 'send', from_id: 99999, to: 'x@gmail.com', subject: 's', body: 'b' })).json.success, false, 'cannot write from somebody else\'s address');
-        assert.equal((await wm(ada, { action: 'send', from_id: fromId, to: 'a@b.it,b@b.it,c@b.it,d@b.it,e@b.it,f@b.it', subject: 's', body: 'b' })).json.error.length > 0, true);
+        assert.equal((await wm(admin, { action: 'send', from_id: adminFrom, to: 'not an address', subject: 's', body: 'b' })).json.error.includes('address'), true);
+        assert.equal((await wm(admin, { action: 'send', from_id: fromId, to: 'x@gmail.com', subject: 's', body: 'b' })).json.success, false, 'cannot write from somebody else\'s address');
+        assert.equal((await wm(admin, { action: 'send', from_id: adminFrom, to: 'a@b.it,b@b.it,c@b.it,d@b.it,e@b.it,f@b.it', subject: 's', body: 'b' })).json.error.length > 0, true);
     });
 
     test('drafts, and incoming mail needs the secret and an existing address', async () => {
         const fromId = (await ada.get('/api/webmail.php?action=boot')).json.addresses[0].id;
-        const d = (await wm(ada, { action: 'save_draft', from_id: fromId, to: 'x@gmail.com', subject: 'bozza', body: 'a metà' })).json.id;
-        assert.equal((await wm(ada, { action: 'save_draft', id: d, from_id: fromId, to: 'x@gmail.com', subject: 'bozza 2', body: 'a metà' })).json.id, d, 'saving again updates it');
+        const d = (await wm(ada, { action: 'save_draft', from_id: fromId, to: 'bob@talvera.site', subject: 'bozza', body: 'a metà' })).json.id;
+        assert.equal((await wm(ada, { action: 'save_draft', id: d, from_id: fromId, to: 'bob@talvera.site', subject: 'bozza 2', body: 'a metà' })).json.id, d, 'saving again updates it');
         assert.equal((await ada.get('/api/webmail.php?action=list&folder=draft')).json.rows[0].subject, 'bozza 2');
         await wm(ada, { action: 'send', draft_id: d, from_id: fromId, to: 'bob@talvera.site', subject: 'bozza 2', body: 'finita' });
         assert.equal((await ada.get('/api/webmail.php?action=list&folder=draft')).json.rows.length, 0, 'a sent draft is gone');

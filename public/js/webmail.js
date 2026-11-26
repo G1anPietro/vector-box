@@ -103,7 +103,7 @@
         $('wm-to').value = draft ? draft.to_addr : (pre ? pre.to : '');
         $('wm-subject').value = draft ? draft.subject : (pre ? pre.subject : '');
         $('wm-body').value = draft ? '' : (pre ? pre.body : '');
-        $('wm-win-msg').textContent = state.driver ? '' : t('off');
+        $('wm-win-msg').textContent = !state.admin ? t('local_only') : (state.driver ? '' : t('off'));
         if (draft) api('?action=get&id=' + draft.id).then(({ message }) => { $('wm-body').value = message.body; const o = [...$('wm-from').options].find((x) => state.addresses.find((a) => String(a.id) === x.value && a.address === message.from_addr)); if (o) $('wm-from').value = o.value; });
         ($('wm-to').value ? $('wm-body') : $('wm-to')).focus();
     }
