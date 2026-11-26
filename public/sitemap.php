@@ -51,6 +51,7 @@ $pages = [
     ['/pages/privacy.php', 'yearly', '0.2'],
     ['/pages/sicurezza.php', 'yearly', '0.2'],
     ['/pages/come-funziona.php', 'monthly', '0.6'],
+    ['/pages/contatti.php', 'monthly', '0.4'],
     ['/pages/wikipedia.php', 'yearly', '0.3'],
     ['/pages/novita.php', 'weekly', '0.3'],
 ];

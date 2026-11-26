@@ -157,6 +157,7 @@ $title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk
     <footer class="foot">
         <a href="pages/privacy.php">Privacy</a>
         <a href="pages/come-funziona.php"><?= $lang === 'it' ? 'Come funziona' : 'How it works' ?></a>
+        <a href="pages/contatti.php"><?= $lang === 'it' ? 'Contatti' : 'Contact' ?></a>
         <a href="pages/sicurezza.php"><?= $lang === 'it' ? 'Sicurezza' : 'Security' ?></a>
         <a href="https://github.com/G1anPietro/vector-box" rel="noopener"><?= $lang === 'it' ? 'Codice sorgente' : 'Source code' ?></a>
     </footer>

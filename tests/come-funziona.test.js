@@ -48,3 +48,11 @@ test('the home menu points to it (under the lead and in the footer), it is in th
     }
     assert.ok((await (await fetch(`${site.base}/sitemap.php`)).text()).includes('/pages/come-funziona.php'));
 });
+
+test('the contact page shows the support address, and the home footer links to it', async () => {
+    const c = new Client(site);
+    const page = await c.get('/pages/contatti.php?lang=en');
+    assert.equal(page.status, 200); assert.match(page.text, /mailto:support@/);
+    assert.match((await c.get('/?lang=it')).text, /<footer[\s\S]*contatti\.php[^>]*>Contatti</);
+    assert.ok((await (await fetch(`${site.base}/sitemap.php`)).text()).includes('/pages/contatti.php'));
+});
