@@ -115,4 +115,14 @@ test.describe('webmail', () => {
         assert.deepEqual(await subj('&addr=ada.rossi@talvera.site'), ['to-boss', 'to-work'], 'not one of mine: ignored');
         assert.equal((await admin.get('/api/webmail.php?action=boot')).json.username, 'wm_admin');
     });
+
+    test('the admin sees what the site sent (queue) in "Site mail"; others cannot', async () => {
+        site.db("INSERT INTO mail_queue (to_email, subject, body, kind, status, created_at) VALUES ('who@example.org', 'Confirm your address', 'click the link', 'verify', 'sent', strftime('%s','now'))");
+        const rows = (await admin.get('/api/webmail.php?action=list&folder=system')).json.rows;
+        assert.ok(rows.some((r) => r.subject === 'Confirm your address' && r.to_addr === 'who@example.org' && r.from_addr === 'verify · sent'));
+        const id = rows.find((r) => r.subject === 'Confirm your address').id;
+        assert.equal((await admin.get(`/api/webmail.php?action=get&id=${id}&sys=1`)).json.message.body, 'click the link');
+        assert.equal((await ada.get('/api/webmail.php?action=list&folder=system')).status, 403, 'a plain account');
+        assert.equal((await ada.get(`/api/webmail.php?action=get&id=${id}&sys=1`)).status, 403, 'cannot read the queue');
+    });
 });

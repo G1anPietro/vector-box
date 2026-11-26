@@ -67,6 +67,12 @@ try {
         if ($action === 'list') {
             $folder = (string)($_GET['folder'] ?? 'inbox');
             $q = trim((string)($_GET['q'] ?? ''));
+            if ($folder === 'system' && $isAdmin) {   // admin: what the site itself sent (verification, newsletter, tests, people's outgoing mail)
+                $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], textCut($q, 80)) . '%';
+                $st = $db->prepare("SELECT id, kind, status, to_email, subject, substr(replace(body, char(10), ' '), 1, 110) AS snippet, created_at FROM mail_queue WHERE (subject LIKE :q ESCAPE '\\' OR to_email LIKE :q ESCAPE '\\') ORDER BY id DESC LIMIT 100");
+                $st->execute([':q' => $like]);
+                jsonResponse(['success' => true, 'rows' => array_map(fn($r) => ['id' => (int)$r['id'], 'folder' => 'sys', 'from_addr' => $r['kind'] . ' · ' . $r['status'], 'to_addr' => $r['to_email'], 'subject' => $r['subject'], 'snippet' => $r['snippet'], 'is_read' => 1, 'is_starred' => 0, 'created_at' => (int)$r['created_at']], $st->fetchAll())]);
+            }
             $where = 'account_id = ?'; $args = [$me];
             if ($folder === 'starred') $where .= " AND is_starred = 1 AND folder != 'trash'";
             elseif (in_array($folder, WM_FOLDERS, true)) { $where .= ' AND folder = ?'; $args[] = $folder; }
@@ -84,6 +90,13 @@ try {
             $st = $db->prepare("SELECT id, folder, from_addr, to_addr, subject, substr(replace(body, char(10), ' '), 1, 110) AS snippet, is_read, is_starred, created_at FROM mail_inbox WHERE $where ORDER BY id DESC LIMIT 100");
             $st->execute($args);
             jsonResponse(['success' => true, 'rows' => $st->fetchAll()]);
+        }
+        if ($action === 'get' && $isAdmin && ($_GET['sys'] ?? '') === '1') {
+            $st = $db->prepare('SELECT kind, status, last_error, to_email, from_email, subject, body, created_at FROM mail_queue WHERE id = :id');
+            $st->execute([':id' => (int)($_GET['id'] ?? 0)]);
+            $m = $st->fetch();
+            if (!$m) jsonFail('not_found', 'Message not found', 404);
+            jsonResponse(['success' => true, 'message' => ['id' => (int)($_GET['id'] ?? 0), 'folder' => 'sys', 'from_addr' => ($m['from_email'] ?: (string)envValue('MAIL_FROM', 'no-reply')) . ' (' . $m['kind'] . ' · ' . $m['status'] . ($m['last_error'] !== '' ? ': ' . $m['last_error'] : '') . ')', 'to_addr' => $m['to_email'], 'subject' => $m['subject'], 'body' => $m['body'], 'is_read' => 1, 'created_at' => (int)$m['created_at']]]);
         }
         if ($action === 'get') {
             $st = $db->prepare('SELECT * FROM mail_inbox WHERE id = :id AND account_id = :a');

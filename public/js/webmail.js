@@ -21,7 +21,7 @@
             : d.toLocaleDateString([], d.getFullYear() === n.getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
     };
     const bare = (a) => { const m = /<([^>]+)>/.exec(a || ''); return (m ? m[1] : a || '').trim(); };
-    const who = (r) => (r.folder === 'sent' || r.folder === 'draft') ? t('to') + ': ' + (r.to_addr || '—') : (r.from_addr || '—');
+    const who = (r) => (r.folder === 'sent' || r.folder === 'draft' || r.folder === 'sys') ? t('to') + ': ' + (r.to_addr || '—') : (r.from_addr || '—');
 
     async function boot() {
         const b = await api('?action=boot');
@@ -48,7 +48,7 @@
         $('wm-back').hidden = !reading;
         document.querySelectorAll('[data-bulk]').forEach((b) => {
             const k = b.dataset.bulk, inTrash = f === 'trash';
-            b.hidden = !(listing || reading) || (k === 'restore' || k === 'delete' ? !inTrash : k === 'trash' ? inTrash : (inTrash || f === 'draft'));
+            b.hidden = f === 'system' || !(listing || reading) || (k === 'restore' || k === 'delete' ? !inTrash : k === 'trash' ? inTrash : (inTrash || f === 'draft'));
         });
         $('wm-refresh').hidden = !listing;
         $('wm-empty').hidden = !(listing && f === 'trash');
@@ -80,17 +80,18 @@
         const av = el('span', 'wm-av', ((r.folder === 'sent' || r.folder === 'draft' ? r.to_addr : r.from_addr) || '?').replace(/^[^A-Za-z0-9]+/, '').charAt(0).toUpperCase() || '?');
         av.addEventListener('click', (e) => { e.stopPropagation(); pick(!cb.checked); });
         const star = el('button', 'wm-star' + (r.is_starred ? ' on' : ''), r.is_starred ? '★' : '☆'); star.type = 'button'; star.title = '★';
+        if (r.folder === 'sys') star.style.visibility = 'hidden';
         star.addEventListener('click', async (e) => { e.stopPropagation(); const v = r.is_starred ? 0 : 1; await api('', { action: 'star', ids: [r.id], value: v }).catch((x) => note(x.message)); r.is_starred = v; star.textContent = v ? '★' : '☆'; star.classList.toggle('on', !!v); });
         const from = el('span', 'wm-from', who(r));
         const mid = el('span', 'wm-mid'); mid.append(el('b', '', r.subject || t('nosub')), el('span', 'muted', ' — ' + (r.snippet || '')));
         const date = el('span', 'wm-date', when(r.created_at));
         li.append(cb, av, star, from, mid, date);
-        li.addEventListener('click', () => (r.folder === 'draft' ? compose(r) : open(r.id)));
+        li.addEventListener('click', () => (r.folder === 'draft' ? compose(r) : open(r.id, r.folder === 'sys')));
         return li;
     }
 
-    async function open(id) {
-        const { message: m } = await api('?action=get&id=' + id);
+    async function open(id, sys) {
+        const { message: m } = await api('?action=get&id=' + id + (sys ? '&sys=1' : ''));
         state.open = m; syncBar(); show('read');
         const box = $('wm-read'); box.replaceChildren();
         box.append(el('h2', '', m.subject || t('nosub')));
@@ -102,7 +103,7 @@
         const fwd = el('button', 'wm-pill', '➦ ' + t('forward')); fwd.type = 'button';
         fwd.addEventListener('click', () => compose(null, { to: '', subject: /^fwd:/i.test(m.subject) ? m.subject : 'Fwd: ' + m.subject, body: '\n\n---------- \n' + t('from') + ': ' + m.from_addr + '\n\n' + m.body }));
         acts.append(rep, fwd);
-        if (state.addresses.length === 0) acts.hidden = true;
+        if (state.addresses.length === 0 || sys) acts.hidden = true;
         box.append(acts);
         boot().catch(() => {});
     }

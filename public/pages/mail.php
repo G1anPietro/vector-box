@@ -49,7 +49,7 @@ $other = pageLang() === 'it' ? 'en' : 'it';
             <button type="button" class="wm-folder" data-folder="sent">➤ <span><?= tt('Sent', 'Inviata') ?></span></button>
             <button type="button" class="wm-folder" data-folder="draft">▤ <span><?= tt('Drafts', 'Bozze') ?></span><b id="wm-n-draft"></b></button>
             <button type="button" class="wm-folder" data-folder="trash">🗑 <span><?= tt('Trash', 'Cestino') ?></span></button>
-            <?php if (sessionIsAdmin()): ?><button type="button" class="wm-folder" data-folder="addresses">⚙ <span><?= tt('Addresses', 'Indirizzi') ?></span></button><?php endif; ?>
+            <?php if (sessionIsAdmin()): ?><button type="button" class="wm-folder" data-folder="system">⚙ <span><?= tt('Site mail', 'Mail del sito') ?></span></button><button type="button" class="wm-folder" data-folder="addresses">⚙ <span><?= tt('Addresses', 'Indirizzi') ?></span></button><?php endif; ?>
             <p id="wm-mine" class="wm-mine"></p>
             <?php if (sessionIsAdmin()): ?><select id="wm-switch" class="wm-switch" aria-label="<?= tt('Address in use', 'Indirizzo in uso') ?>" hidden></select><?php endif; ?>
             <div class="wm-rail-links">
