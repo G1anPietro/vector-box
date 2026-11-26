@@ -49,16 +49,17 @@ test.describe('e-mail box', () => {
     test('the box is admin only and needs the CSRF token', async () => {
         assert.equal((await ada.get('/api/mail.php?action=status')).status, 403);
         assert.equal((await mail(ada, { action: 'process' })).status, 403);
-        assert.equal((await fetch(`${site.base}/pages/mail.php`, { headers: { Cookie: ada.cookieHeader() } })).status, 403);
-        assert.equal((await fetch(`${site.base}/pages/mail.php`, { headers: { Cookie: admin.cookieHeader() } })).status, 200);
-        // an account the admin allows gets in; the permission is judged in the database, so removing it closes the door at once
+        assert.equal((await fetch(`${site.base}/pages/newsletter.php`, { headers: { Cookie: ada.cookieHeader() } })).status, 403);
+        assert.equal((await fetch(`${site.base}/pages/newsletter.php`, { headers: { Cookie: admin.cookieHeader() } })).status, 200);
+        // the news box stays admin only, even for an account the admin allowed into the personal mail
         site.db("UPDATE accounts SET can_use_mail = 1 WHERE username = 'em_ada'");
-        assert.equal((await ada.get('/api/mail.php?action=status')).status, 200);
+        assert.equal((await ada.get('/api/mail.php?action=status')).status, 403);
+        assert.equal((await fetch(`${site.base}/pages/newsletter.php`, { headers: { Cookie: ada.cookieHeader() } })).status, 403);
         assert.equal((await fetch(`${site.base}/pages/mail.php`, { headers: { Cookie: ada.cookieHeader() } })).status, 200);
         assert.equal((await ada.get('/')).text.includes('pages/mail.php'), true, 'the home shows the Mail card to an allowed account');
         assert.equal((await bob.get('/')).text.includes('pages/mail.php'), false);
         site.db("UPDATE accounts SET can_use_mail = 0 WHERE username = 'em_ada'");
-        assert.equal((await ada.get('/api/mail.php?action=status')).status, 403);
+        assert.equal((await fetch(`${site.base}/pages/mail.php`, { headers: { Cookie: ada.cookieHeader() } })).status, 403);
         const noCsrf = await fetch(`${site.base}/api/mail.php`, { method: 'POST', headers: { Cookie: admin.cookieHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'process' }) });
         assert.equal(noCsrf.status, 403);
     });

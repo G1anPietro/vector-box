@@ -57,10 +57,10 @@ function mailSentToday(PDO $db): int {
     return (int)$st->fetchColumn();
 }
 
-function mailEnqueue(PDO $db, ?int $messageId, ?int $accountId, string $to, string $subject, string $body, string $kind = 'bulk'): int {
+function mailEnqueue(PDO $db, ?int $messageId, ?int $accountId, string $to, string $subject, string $body, string $kind = 'bulk', string $from = ''): int {
     if (!mailValidAddress($to)) throw new InvalidArgumentException('bad address');
-    $db->prepare('INSERT INTO mail_queue (message_id, account_id, to_email, subject, body, kind, created_at) VALUES (:m, :a, :t, :s, :b, :k, :c)')
-       ->execute([':m' => $messageId, ':a' => $accountId, ':t' => $to, ':s' => mailLine($subject), ':b' => $body, ':k' => $kind, ':c' => time()]);
+    $db->prepare('INSERT INTO mail_queue (message_id, account_id, to_email, subject, body, kind, created_at, from_email) VALUES (:m, :a, :t, :s, :b, :k, :c, :f)')
+       ->execute([':m' => $messageId, ':a' => $accountId, ':t' => $to, ':s' => mailLine($subject), ':b' => $body, ':k' => $kind, ':c' => time(), ':f' => $from]);
     return (int)$db->lastInsertId();
 }
 
@@ -100,9 +100,10 @@ function mailVerifyMessage(PDO $db, array $account, string $email, string $lang)
 function mailTransport(array $row): void {
     $driver = mailDriver();
     $from = mailLine((string)envValue('MAIL_FROM', 'vector-box <no-reply@localhost>'));
+    if (!empty($row['from_email']) && mailValidAddress((string)$row['from_email'])) $from = $row['from_email'];   // a person's own address (kind 'user')
     if ($driver === 'log') {
         $file = dirname(__DIR__, 2) . '/data/mail.log';
-        file_put_contents($file, date('c') . "\tto=" . $row['to_email'] . "\tsubject=" . $row['subject'] . "\n" . $row['body'] . "\n----\n", FILE_APPEND | LOCK_EX);
+        file_put_contents($file, date('c') . "\tfrom=" . $from . "\tto=" . $row['to_email'] . "\tsubject=" . $row['subject'] . "\n" . $row['body'] . "\n----\n", FILE_APPEND | LOCK_EX);
         return;
     }
     if ($driver === 'http') {
@@ -156,7 +157,7 @@ function mailProcessQueue(PDO $db, int $limit = 20, ?array $ids = null): array {
             $claim->execute([':t' => time(), ':id' => $row['id']]);
             if ($claim->rowCount() !== 1) continue;                // somebody else took it
             try {
-                if ($row['kind'] === 'bulk' || $row['kind'] === 'direct') {
+                if ($row['kind'] === 'bulk' || $row['kind'] === 'direct') {   // kind 'user' (webmail): the address was chosen by the writer, nothing to re-check
                     // news need the consent too; a direct message from the admin only needs the address to be the confirmed one
                     $ok = $db->prepare('SELECT 1 FROM accounts WHERE id = :a AND email = :e AND email_verified = 1' . ($row['kind'] === 'bulk' ? ' AND email_optin = 1 AND is_banned = 0' : ''));
                     $ok->execute([':a' => (int)$row['account_id'], ':e' => $row['to_email']]);

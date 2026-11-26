@@ -1,6 +1,7 @@
 <?php
-// public/pages/mail.php — the e-mail box (admin, and the people the admin allows): drafts, sent, the sending queue, and a writing form.
-require_once __DIR__ . '/../includes/head.php';   // the site look (giochi.css), not the desktop one: no renderHead()
+// public/pages/mail.php — personal mail (accounts the admin allows): inbox, starred, sent, drafts, trash, search, writing window.
+// The admin also makes the addresses here. The news e-mails are in newsletter.php.
+require_once __DIR__ . '/../includes/head.php';
 require_once __DIR__ . '/../api/database.php';
 
 initSession();
@@ -10,7 +11,7 @@ if (!userCanUseMail(getDbConnection(), (int)($_SESSION['user_id'] ?? 0), session
     exit('Not allowed.');
 }
 header('X-Robots-Tag: noindex');
-$v = max(filemtime(__DIR__ . '/../js/mail.js'), filemtime(__DIR__ . '/../css/mail.css'), filemtime(__DIR__ . '/../js/i18n-ui.js'));
+$v = max(filemtime(__DIR__ . '/../js/webmail.js'), filemtime(__DIR__ . '/../css/mail.css'), filemtime(__DIR__ . '/../js/csrf.js'));
 $other = pageLang() === 'it' ? 'en' : 'it';
 ?>
 <!DOCTYPE html>
@@ -22,48 +23,69 @@ $other = pageLang() === 'it' ? 'en' : 'it';
     <meta name="robots" content="noindex">
     <title><?= tt('Mail', 'Posta') ?> — vector-box</title>
     <script src="../js/csrf.js?v=<?= $v ?>"></script>
-    <script src="../js/i18n.js?v=<?= $v ?>"></script>
-    <script src="../js/i18n-ui.js?v=<?= $v ?>"></script>
     <link rel="stylesheet" href="../css/giochi.css?v=4">
     <link rel="stylesheet" href="../css/mail.css?v=<?= $v ?>">
-    <script src="../js/mail.js?v=<?= $v ?>" defer></script>
+    <script src="../js/webmail.js?v=<?= $v ?>" defer></script>
 </head>
-<body>
-    <header class="top">
-        <a class="home" href="../index.php">vector-box</a>
-        <span class="mb-top"><?php if (sessionIsAdmin()): ?><a class="lang" href="admin_users.php"><?= tt('Users', 'Utenti') ?></a> <?php endif; ?><a class="lang" href="?lang=<?= $other ?>" hreflang="<?= $other ?>"><?= strtoupper($other) ?></a></span>
+<body class="wm" data-admin="<?= sessionIsAdmin() ? '1' : '0' ?>">
+    <header class="wm-top">
+        <a class="wm-home" href="../index.php">vector-box</a>
+        <form id="wm-search" class="wm-search" role="search">
+            <input id="wm-q" type="search" placeholder="<?= tt('Search mail', 'Cerca nella posta') ?>" aria-label="<?= tt('Search mail', 'Cerca nella posta') ?>" autocomplete="off">
+        </form>
+        <span class="wm-links">
+            <?php if (sessionIsAdmin()): ?><a class="wm-pill" href="admin_users.php"><?= tt('Users', 'Utenti') ?></a><a class="wm-pill" href="newsletter.php">Newsletter</a><?php endif; ?>
+            <a class="wm-pill" href="?lang=<?= $other ?>" hreflang="<?= $other ?>"><?= strtoupper($other) ?></a>
+        </span>
     </header>
-    <h1 class="mb-title"><?= tt('Mail', 'Posta') ?></h1>
-<main class="mailbox">
-        <aside class="mb-side" aria-label="<?= tt('Folders', 'Cartelle') ?>">
-            <button type="button" class="mb-btn mb-compose" id="mb-compose"><span class="mb-ico">✎</span> <?= tt('COMPOSE', 'SCRIVI') ?></button>
-            <button type="button" class="mb-btn mb-folder" data-folder="draft"><span class="mb-ico">▤</span> <?= tt('Drafts', 'Bozze') ?></button>
-            <button type="button" class="mb-btn mb-folder" data-folder="sent"><span class="mb-ico">➤</span> <?= tt('Sent', 'Inviati') ?></button>
-            <button type="button" class="mb-btn mb-folder" data-folder="queue"><span class="mb-ico">⏳</span> <?= tt('Queue', 'Coda') ?></button>
-            <div id="mb-status" class="muted mb-status" role="status"></div>
-            <button type="button" class="mb-btn" id="mb-process"><?= tt('SEND NOW', 'INVIA ORA') ?></button>
-        </aside>
-        <section class="mb-main">
-            <div id="mb-list" class="mb-list" aria-live="polite"></div>
-            <form id="mb-form" class="mb-form" hidden>
-                <label for="mb-subject" class="muted"><?= tt('Subject', 'Oggetto') ?></label>
-                <input id="mb-subject"  maxlength="150" autocomplete="off">
-                <label for="mb-audience" class="muted"><?= tt('To', 'A') ?></label>
-                <select id="mb-audience" class="mb-btn">
-                    <option value="optin"><?= tt('Everyone who confirmed the address and wants news', 'Tutti quelli che hanno confermato l\'indirizzo e vogliono le novità') ?></option>
-                    <option value="supporters"><?= tt('Only supporters (confirmed, wants news)', 'Solo i sostenitori (confermati, vogliono le novità)') ?></option>
-                </select>
-                <label for="mb-body" class="muted"><?= tt('Text (plain text; the unsubscribe link is added for every person)', 'Testo (solo testo semplice; il link per disiscriversi viene aggiunto per ogni persona)') ?></label>
-                <textarea id="mb-body"  rows="14" maxlength="20000"></textarea>
-                <div class="mb-actions">
-                    <button type="submit" class="mb-btn" id="mb-save"><?= tt('SAVE DRAFT', 'SALVA BOZZA') ?></button>
-                    <button type="button" class="mb-btn" id="mb-test"><?= tt('SEND ME A TEST', 'MANDAMI UNA PROVA') ?></button>
-                    <button type="button" class="mb-btn mb-danger" id="mb-send"><?= tt('SEND TO EVERYONE', 'INVIA A TUTTI') ?></button>
-                    <button type="button" class="mb-btn" id="mb-delete"><?= tt('DELETE DRAFT', 'ELIMINA BOZZA') ?></button>
-                </div>
-                <div id="mb-msg" class="muted" role="status"></div>
-            </form>
-        </section>
-    </main>
+    <div class="wm-body">
+        <nav class="wm-rail" aria-label="<?= tt('Folders', 'Cartelle') ?>">
+            <button type="button" class="wm-compose" id="wm-compose">✎ <?= tt('Compose', 'Scrivi') ?></button>
+            <button type="button" class="wm-folder" data-folder="inbox">📥 <span><?= tt('Inbox', 'In arrivo') ?></span><b id="wm-n-inbox"></b></button>
+            <button type="button" class="wm-folder" data-folder="starred">★ <span><?= tt('Starred', 'Speciali') ?></span></button>
+            <button type="button" class="wm-folder" data-folder="sent">➤ <span><?= tt('Sent', 'Inviata') ?></span></button>
+            <button type="button" class="wm-folder" data-folder="draft">▤ <span><?= tt('Drafts', 'Bozze') ?></span><b id="wm-n-draft"></b></button>
+            <button type="button" class="wm-folder" data-folder="trash">🗑 <span><?= tt('Trash', 'Cestino') ?></span></button>
+            <?php if (sessionIsAdmin()): ?><button type="button" class="wm-folder" data-folder="addresses">⚙ <span><?= tt('Addresses', 'Indirizzi') ?></span></button><?php endif; ?>
+            <p id="wm-mine" class="wm-mine"></p>
+        </nav>
+        <main class="wm-main">
+            <div class="wm-bar" id="wm-bar">
+                <button type="button" class="wm-ico" id="wm-back" hidden title="<?= tt('Back', 'Indietro') ?>">←</button>
+                <button type="button" class="wm-ico" id="wm-refresh" title="<?= tt('Refresh', 'Aggiorna') ?>">⟳</button>
+                <button type="button" class="wm-ico" data-bulk="read" title="<?= tt('Mark as read', 'Segna come letto') ?>">✉</button>
+                <button type="button" class="wm-ico" data-bulk="unread" title="<?= tt('Mark as unread', 'Segna come non letto') ?>">●</button>
+                <button type="button" class="wm-ico" data-bulk="trash" title="<?= tt('Move to trash', 'Sposta nel cestino') ?>">🗑</button>
+                <button type="button" class="wm-ico" data-bulk="restore" title="<?= tt('Restore', 'Ripristina') ?>" hidden>↩</button>
+                <button type="button" class="wm-ico" data-bulk="delete" title="<?= tt('Delete forever', 'Elimina per sempre') ?>" hidden>✖</button>
+                <button type="button" class="wm-ico" id="wm-empty" title="<?= tt('Empty the trash', 'Svuota il cestino') ?>" hidden>🗑 <?= tt('Empty', 'Svuota') ?></button>
+                <span id="wm-note" class="muted" role="status"></span>
+            </div>
+            <div id="wm-list" class="wm-list" aria-live="polite"></div>
+            <article id="wm-read" class="wm-read" hidden></article>
+            <section id="wm-addr" class="wm-addr" hidden></section>
+        </main>
+    </div>
+    <form id="wm-win" class="wm-win" hidden aria-label="<?= tt('New message', 'Nuovo messaggio') ?>">
+        <div class="wm-win-head"><b id="wm-win-title"><?= tt('New message', 'Nuovo messaggio') ?></b><button type="button" class="wm-ico" id="wm-win-close" title="<?= tt('Save and close', 'Salva e chiudi') ?>">✕</button></div>
+        <select id="wm-from" aria-label="<?= tt('From', 'Da') ?>"></select>
+        <input id="wm-to" placeholder="<?= tt('To (separate with commas)', 'A (separa con virgole)') ?>" autocomplete="off" maxlength="600">
+        <input id="wm-subject" placeholder="<?= tt('Subject', 'Oggetto') ?>" maxlength="150" autocomplete="off">
+        <textarea id="wm-body" rows="12" maxlength="20000"></textarea>
+        <div class="wm-win-foot"><button type="submit" class="wm-send" id="wm-send"><?= tt('Send', 'Invia') ?></button><span id="wm-win-msg" class="muted" role="status"></span></div>
+    </form>
+    <script type="application/json" id="wm-i18n"><?= json_encode(pageLang() === 'it' ? [
+        'noaddr' => 'Non hai ancora un indirizzo: chiedilo all\'admin.', 'you' => 'Tu', 'nothing' => 'Niente qui.', 'nosub' => '(senza oggetto)', 'to' => 'A', 'from' => 'Da',
+        'reply' => 'Rispondi', 'forward' => 'Inoltra', 'trash' => 'Cestino', 'saved' => 'Bozza salvata.', 'sent' => 'Inviato.', 'sentext' => 'Inviato (all\'esterno: in coda).', 'newm' => 'Nuovo messaggio',
+        'wrote' => 'ha scritto', 'confirm_del' => 'Eliminare per sempre?', 'confirm_empty' => 'Svuotare il cestino?', 'mine' => 'I tuoi indirizzi', 'off' => 'L\'invio a indirizzi esterni non è ancora attivo.',
+        'a_new' => 'Nuovo indirizzo', 'a_local' => 'parte prima della @', 'a_user' => 'nome utente', 'a_make' => 'Crea', 'a_del' => 'Elimina', 'a_made' => 'Creato: ', 'a_none' => 'Nessun indirizzo.', 'a_sure' => 'Eliminare l\'indirizzo? I messaggi restano.',
+        'wrong' => 'Qualcosa è andato storto.', 'moved' => 'Spostato nel cestino.', 'restored' => 'Ripristinato.', 'deleted' => 'Eliminato.', 'draft_to' => 'Bozza'
+    ] : [
+        'noaddr' => 'You have no address yet: ask the admin.', 'you' => 'Me', 'nothing' => 'Nothing here.', 'nosub' => '(no subject)', 'to' => 'To', 'from' => 'From',
+        'reply' => 'Reply', 'forward' => 'Forward', 'trash' => 'Trash', 'saved' => 'Draft saved.', 'sent' => 'Sent.', 'sentext' => 'Sent (to another address: queued).', 'newm' => 'New message',
+        'wrote' => 'wrote', 'confirm_del' => 'Delete forever?', 'confirm_empty' => 'Empty the trash?', 'mine' => 'Your addresses', 'off' => 'Sending to other addresses is not switched on yet.',
+        'a_new' => 'New address', 'a_local' => 'part before the @', 'a_user' => 'username', 'a_make' => 'Create', 'a_del' => 'Delete', 'a_made' => 'Created: ', 'a_none' => 'No addresses.', 'a_sure' => 'Delete the address? The messages stay.',
+        'wrong' => 'Something went wrong.', 'moved' => 'Moved to trash.', 'restored' => 'Restored.', 'deleted' => 'Deleted.', 'draft_to' => 'Draft'
+    ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 </body>
 </html>

@@ -1,0 +1,40 @@
+/* The mail page in the look of the rest of the site (giochi.css: dusk background, warm gold, serif), not the desktop one. */
+.mb-top { display: flex; gap: 8px; }
+.mb-title { max-width: 1120px; margin: 0 auto; padding: 4px 20px 0; font-size: clamp(34px, 7vw, 52px); }
+.muted { color: var(--muted); }
+.mailbox { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; max-width: 1120px; margin: 14px auto 0; padding: 0 20px calc(60px + env(safe-area-inset-bottom, 0px)); align-items: start; }
+.mb-side, .mb-main { background: var(--dusk-2); border: 1px solid var(--plank); border-radius: 12px; }
+.mb-side { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+.mb-btn { font: inherit; font-size: 16px; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 999px; min-height: 44px; padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; text-align: left; box-sizing: border-box; }
+.mb-btn:hover { border-color: var(--link); }
+.mb-btn:disabled { opacity: 0.5; cursor: default; }
+.mb-compose { justify-content: center; background: var(--link); color: #231a08; border-color: var(--link); font-weight: 800; }
+.mb-folder.active { border-color: var(--link); color: var(--link); font-weight: 800; }
+.mb-ico { width: 1.2em; text-align: center; }
+.mb-status { font-size: 0.85rem; line-height: 1.5; padding: 4px 4px 0; border-top: 1px solid var(--plank); margin-top: 6px; padding-top: 10px; }
+.mb-main { min-width: 0; min-height: 320px; overflow: hidden; }
+.mb-list { display: flex; flex-direction: column; }
+.mb-list > p { padding: 28px 16px; text-align: center; margin: 0; }
+.mb-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; text-align: left; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--plank); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.mb-row:last-child { border-bottom: 0; }
+.mb-row:hover { background: rgba(242, 198, 109, 0.07); }
+.mb-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #231a08; background: var(--link); }
+.mb-row.fail .mb-av { background: #e8776b; }
+.mb-row .mb-sub { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-row .mb-meta { font-size: 0.85rem; color: var(--muted); text-align: right; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-form { display: flex; flex-direction: column; gap: 8px; padding: 18px; }
+.mb-form label { font-size: 0.9rem; margin-top: 6px; }
+.mb-form input, .mb-form textarea, .mb-form select { width: 100%; box-sizing: border-box; font: inherit; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 8px; padding: 10px; }
+.mb-form textarea { line-height: 1.55; min-height: 260px; resize: vertical; }
+.mb-form select { border-radius: 8px; }
+.mb-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.mb-danger { border-color: #e8776b; color: #e8776b; }
+.mb-list[hidden], .mb-form[hidden] { display: none; }
+@media (max-width: 700px) {
+    .mailbox { grid-template-columns: 1fr; gap: 12px; }
+    .mb-side { flex-direction: row; flex-wrap: wrap; }
+    .mb-status { width: 100%; }
+    .mb-row { grid-template-columns: 36px minmax(0, 1fr); }
+    .mb-row .mb-meta { grid-column: 2; text-align: left; max-width: none; }
+    .mb-av { width: 36px; height: 36px; grid-row: span 2; }
+}

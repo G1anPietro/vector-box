@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 63;
+const DB_SCHEMA_VERSION = 64;
 
 /**
  * Session bootstrap.
@@ -674,6 +674,32 @@ function migrateV57(PDO $db): void {
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
     )");
+}
+
+function migrateV64(PDO $db): void {
+    // Personal mailboxes: addresses on the site domain (made by the admin), and every account's messages (inbox, sent, drafts, trash)
+    $db->exec("CREATE TABLE IF NOT EXISTS mail_addresses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        local_part TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        account_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_mail_addresses_account ON mail_addresses(account_id)');
+    $db->exec("CREATE TABLE IF NOT EXISTS mail_inbox (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL,
+        folder TEXT NOT NULL DEFAULT 'inbox',          -- inbox | sent | draft | trash
+        prev_folder TEXT NOT NULL DEFAULT '',          -- where a trashed message goes back to
+        from_addr TEXT NOT NULL DEFAULT '',
+        to_addr TEXT NOT NULL DEFAULT '',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL DEFAULT '',
+        is_read INTEGER NOT NULL DEFAULT 0,
+        is_starred INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_mail_inbox_acc ON mail_inbox(account_id, folder, id)');
+    addColumnIfMissing($db, 'mail_queue', 'from_email', "TEXT NOT NULL DEFAULT ''");   // a person's own address as the sender
 }
 
 function migrateV63(PDO $db): void {
@@ -1406,6 +1432,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 63) {
             migrateV63($db);
+        }
+        if ($current < 64) {
+            migrateV64($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

@@ -350,7 +350,8 @@ session_write_close();
             <h2 id="h-admin"><?= tt('Administration', 'Amministrazione') ?></h2>
             <div class="card links">
                 <a href="admin_users.php" class="btn ghost"><?= tt('Users', 'Utenti') ?></a>
-                <a href="mail.php" class="btn ghost"><?= tt('Mail box', 'Casella e-mail') ?></a>
+                <a href="mail.php" class="btn ghost"><?= tt("Mail", "Posta") ?></a>
+                <a href="newsletter.php" class="btn ghost"><?= tt("Newsletter", "Newsletter") ?></a>
             </div>
         </section>
         <?php endif; ?>
