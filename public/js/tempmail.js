@@ -42,7 +42,7 @@
         if (left === 0 && expires > 0 && token) gone();
     };
     const gone = () => {
-        token = ''; store(''); clearInterval(poll); show(false); note('tm-msg', T.gone);
+        token = ''; store.set(''); clearInterval(poll); show(false); note('tm-msg', T.gone);
     };
 
     const render = (msgs) => {
@@ -80,7 +80,7 @@
     };
 
     const start = (t) => {
-        token = t; store(t); show(true); openId = 0; $('tm-read').hidden = true; $('tm-list').hidden = false;
+        token = t; store.set(t); show(true); openId = 0; $('tm-read').hidden = true; $('tm-list').hidden = false;
         clearInterval(poll); clearInterval(timer);
         poll = setInterval(() => { if (!document.hidden) refresh(); }, 10000);
         timer = setInterval(tick, 1000);
@@ -110,7 +110,7 @@
     });
     $('tm-burn').addEventListener('click', async () => {
         if (!confirm(T.sure)) return;
-        await api('delete', { post: true }); token = ''; store(''); clearInterval(poll); clearInterval(timer); show(false); note('tm-msg', '');
+        await api('delete', { post: true }); token = ''; store.set(''); clearInterval(poll); clearInterval(timer); show(false); note('tm-msg', '');
     });
 
     if (document.body.dataset.on !== '1') { $('tm-off').hidden = false; return; }
