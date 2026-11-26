@@ -111,7 +111,6 @@
     function compose(draft, pre) {
         if (!state.addresses.length) return note(t('noaddr'));
         state.draftId = draft ? draft.id : 0;
-        const w = $('wm-win'); w.style.left = w.style.top = w.style.right = w.style.bottom = '';   // back to the corner each time
         $('wm-win').hidden = false;
         $('wm-win-title').textContent = t('newm');
         $('wm-to').value = draft ? draft.to_addr : (pre ? pre.to : '');
@@ -173,19 +172,8 @@
     $('wm-search').addEventListener('submit', (e) => { e.preventDefault(); load(state.folder === 'addresses' ? 'inbox' : state.folder, $('wm-q').value.trim()).catch((x) => note(x.message)); });
     $('wm-compose').addEventListener('click', () => compose(null));
     $('wm-win-close').addEventListener('click', closeWin);
-    // the writing window can be dragged by its title bar (not on phones, where it fills the screen)
-    $('wm-win').querySelector('.wm-win-head').addEventListener('pointerdown', (e) => {
-        if (e.target.closest('button') || e.button > 0 || matchMedia('(max-width: 760px)').matches) return;
-        const w = $('wm-win'), r = w.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
-        w.style.right = w.style.bottom = 'auto'; w.style.left = r.left + 'px'; w.style.top = r.top + 'px';
-        const head = e.currentTarget; head.setPointerCapture(e.pointerId);
-        const move = (m) => {
-            w.style.left = Math.min(Math.max(0, m.clientX - dx), innerWidth - 80) + 'px';   // always keep part of the bar on screen
-            w.style.top = Math.min(Math.max(0, m.clientY - dy), innerHeight - 40) + 'px';
-        };
-        const up = () => { head.removeEventListener('pointermove', move); head.removeEventListener('pointerup', up); head.removeEventListener('pointercancel', up); };
-        head.addEventListener('pointermove', move); head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
-    });
+    // the writing window moves and resizes with the desktop's window manager (js/window_manager.js); the size and place are remembered
+    document.addEventListener('DOMContentLoaded', () => { if (window.makeWindowInteractive) window.makeWindowInteractive($('wm-win'), 'wm-win', { simple: true, header: '.wm-win-head' }); });
     $('wm-empty').addEventListener('click', async () => { if (!window.confirm(t('confirm_empty'))) return; try { await api('', { action: 'empty_trash' }); await load(); } catch (e) { note(e.message); } });
     $('wm-win').addEventListener('submit', async (e) => {
         e.preventDefault();

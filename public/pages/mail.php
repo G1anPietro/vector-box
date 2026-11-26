@@ -11,7 +11,7 @@ if (!userCanUseMail(getDbConnection(), (int)($_SESSION['user_id'] ?? 0), session
     exit('Not allowed.');
 }
 header('X-Robots-Tag: noindex');
-$v = max(filemtime(__DIR__ . '/../js/webmail.js'), filemtime(__DIR__ . '/../css/mail.css'), filemtime(__DIR__ . '/../js/csrf.js'));
+$v = max(filemtime(__DIR__ . '/../js/webmail.js'), filemtime(__DIR__ . '/../js/window_manager.js'), filemtime(__DIR__ . '/../css/mail.css'), filemtime(__DIR__ . '/../js/csrf.js'));
 $other = pageLang() === 'it' ? 'en' : 'it';
 ?>
 <!DOCTYPE html>
@@ -25,6 +25,7 @@ $other = pageLang() === 'it' ? 'en' : 'it';
     <script src="../js/csrf.js?v=<?= $v ?>"></script>
     <link rel="stylesheet" href="../css/giochi.css?v=4">
     <link rel="stylesheet" href="../css/mail.css?v=<?= $v ?>">
+    <script src="../js/window_manager.js?v=<?= $v ?>" defer></script>
     <script src="../js/webmail.js?v=<?= $v ?>" defer></script>
 </head>
 <body class="wm" data-admin="<?= sessionIsAdmin() ? '1' : '0' ?>">

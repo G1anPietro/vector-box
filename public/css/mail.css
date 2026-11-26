@@ -55,9 +55,18 @@
 /* the writing window, bottom right like Gmail */
 .wm-win { position: fixed; right: 20px; bottom: 0; width: min(520px, calc(100vw - 20px)); max-height: 90vh; display: flex; flex-direction: column; gap: 6px; padding: 0 12px 12px; background: var(--dusk-2); border: 1px solid var(--plank); border-bottom: 0; border-radius: 12px 12px 0 0; box-shadow: 0 -4px 24px rgba(0, 0, 0, .55); z-index: 20; }
 .wm-win[hidden] { display: none; }
-.wm-win-head { cursor: move; touch-action: none; user-select: none; }
+/* the handles js/window_manager.js adds to the window (same shapes as the desktop's, css/layout.css) */
+.wm-win .resize-handle { position: absolute; z-index: 2; }
+.wm-win .resize-n  { top: -4px; left: 0; right: 0; height: 8px; cursor: ns-resize; }
+.wm-win .resize-s  { bottom: -4px; left: 0; right: 0; height: 8px; cursor: ns-resize; }
+.wm-win .resize-e  { right: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+.wm-win .resize-w  { left: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+.wm-win .resize-ne { top: -6px; right: -6px; width: 12px; height: 12px; cursor: nesw-resize; }
+.wm-win .resize-nw { top: -6px; left: -6px; width: 12px; height: 12px; cursor: nwse-resize; }
+.wm-win .resize-se { bottom: -6px; right: -6px; width: 12px; height: 12px; cursor: nwse-resize; }
+.wm-win .resize-sw { bottom: -6px; left: -6px; width: 12px; height: 12px; cursor: nesw-resize; }
 .wm-win-head { display: flex; justify-content: space-between; align-items: center; margin: 0 -12px 4px; padding: 6px 10px 6px 14px; background: var(--plank); border-radius: 12px 12px 0 0; }
-.wm-win textarea { min-height: 220px; resize: vertical; line-height: 1.5; flex: 1; }
+.wm-win textarea { min-height: 70px; resize: vertical; line-height: 1.5; flex: 1; }
 .wm-win-foot { display: flex; align-items: center; gap: 12px; }
 .wm-burger, .wm-fab, .wm-rail-home, .wm-rail-links, .wm-av, .wm-scrim { display: none; }
 .wm-burger { font: inherit; font-size: 22px; color: var(--text); background: none; border: 0; min-width: 44px; min-height: 44px; cursor: pointer; }
@@ -98,8 +107,9 @@
     .wm-read h2 { font-size: 1.3rem; }
     .wm-fab { display: flex; align-items: center; gap: 10px; position: fixed; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 12; font: inherit; font-weight: 800; font-size: 16px; color: #231a08; background: var(--link); border: 0; border-radius: 16px; padding: 16px 20px; box-shadow: 0 4px 14px rgba(0, 0, 0, .5); cursor: pointer; }
     .wm-fab:disabled { opacity: .45; }
-    .wm-win { inset: 0; width: 100vw; height: 100dvh; max-height: none; border-radius: 0; border: 0; padding: 0 14px calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 40; }
-    .wm-win-head { cursor: default; margin: 0 -14px 6px; padding: 12px 10px 12px 16px; border-radius: 0; }
+    .wm-win .resize-handle { display: none; }
+    .wm-win { inset: 0 !important; width: 100vw !important; height: 100dvh !important; max-height: none; border-radius: 0; border: 0; padding: 0 14px calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 40; }
+    .wm-win-head { margin: 0 -14px 6px; padding: 12px 10px 12px 16px; border-radius: 0; }
     .wm-win textarea { min-height: 0; border: 0; padding: 8px 2px; }
     .wm-win input, .wm-win select { border: 0; border-bottom: 1px solid var(--plank); border-radius: 0; padding: 12px 2px; }
     .wm-win-foot { justify-content: space-between; }

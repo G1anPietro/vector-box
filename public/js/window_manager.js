@@ -137,11 +137,37 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    const makeWindowInteractive = (winEl, id) => {
-        winEl.style.position = 'absolute';
+    // opts.simple: a window of an ordinary page (the mail writing window), not a desktop one. It keeps its CSS position, only moves and
+    // resizes, remembers just left/top/width/height (never "open"/"maximized"), and does nothing on phones where CSS makes it full screen.
+    const makeWindowInteractive = (winEl, id, opts = {}) => {
+        const simple = !!opts.simple;
+        const phone = () => simple && window.matchMedia('(max-width: 760px)').matches;
+        const front = () => { if (!simple) window.bringToFront(winEl); };
+        const save = () => {
+            if (!simple) return saveWindowState(winEl);
+            writeSavedWindowState(id, { left: winEl.style.left, top: winEl.style.top, width: winEl.style.width, height: winEl.style.height });
+        };
+        // from CSS anchoring (right/bottom) to plain left/top/width: what the drag and the resize below work on
+        const pin = (withHeight) => {
+            if (!simple) return;
+            const r = winEl.getBoundingClientRect();
+            winEl.style.right = winEl.style.bottom = 'auto';
+            winEl.style.left = r.left + 'px'; winEl.style.top = r.top + 'px'; winEl.style.width = r.width + 'px';
+            if (withHeight) winEl.style.height = r.height + 'px';
+        };
+        if (!simple) winEl.style.position = 'absolute';
 
         const savedState = readSavedWindowState(id);
-        if (savedState) {
+        if (simple && savedState && !phone()) {
+            const w = Math.min(parseInt(savedState.width, 10) || 0, innerWidth), h = Math.min(parseInt(savedState.height, 10) || 0, innerHeight);
+            if (w >= 280) winEl.style.width = w + 'px';
+            if (h >= 180) winEl.style.height = h + 'px';
+            if (savedState.left && savedState.top) {   // keep part of the title bar on the screen, whatever the screen is now
+                winEl.style.right = winEl.style.bottom = 'auto';
+                winEl.style.left = Math.min(Math.max(0, parseInt(savedState.left, 10) || 0), innerWidth - 80) + 'px';
+                winEl.style.top = Math.min(Math.max(0, parseInt(savedState.top, 10) || 0), innerHeight - 40) + 'px';
+            }
+        } else if (savedState && !simple) {
             if (savedState.left) winEl.style.left = savedState.left;
             if (savedState.top) winEl.style.top = savedState.top;
             if (savedState.width) winEl.style.width = savedState.width;
@@ -165,11 +191,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        winEl.addEventListener('mousedown', () => {
-            window.bringToFront(winEl);
-        });
+        winEl.addEventListener('mousedown', front);
 
-        const header = winEl.querySelector('.window-header') || winEl.firstElementChild;
+        const header = winEl.querySelector(opts.header || '.window-header') || winEl.firstElementChild;
         if (header) {
             header.style.cursor = 'move';
             header.style.userSelect = 'none';
@@ -178,7 +202,9 @@ document.addEventListener("DOMContentLoaded", () => {
             let startX, startY, startLeft, startTop;
 
             header.addEventListener('mousedown', (e) => {
-                if (['INPUT', 'BUTTON', 'A', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+                if (['INPUT', 'BUTTON', 'A', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || phone() || (simple && e.button !== 0)) return;
+                if (simple) e.preventDefault();   // no text selection while dragging
+                pin(false);
 
                 isDragging = true;
                 startX = e.clientX;
@@ -196,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const onMouseUp = () => {
                     isDragging = false;
-                    saveWindowState(winEl);
+                    save();
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
                 };
@@ -215,8 +241,10 @@ document.addEventListener("DOMContentLoaded", () => {
             handle.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                if (phone()) return;
 
-                window.bringToFront(winEl);
+                front();
+                pin(true);
 
                 const startX = e.clientX;
                 const startY = e.clientY;
@@ -245,7 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
 
                 const stopResize = () => {
-                    saveWindowState(winEl);
+                    save();
                     document.removeEventListener('mousemove', onResize);
                     document.removeEventListener('mouseup', stopResize);
                 };
@@ -255,6 +283,8 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     };
+
+    window.makeWindowInteractive = makeWindowInteractive;   // pages with their own window call it with {simple: true}
 
     document.querySelectorAll('.draggable-window').forEach((el, index) => {
         const windowId = el.id || `win_${index}`;
