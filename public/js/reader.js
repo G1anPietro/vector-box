@@ -108,13 +108,18 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadStatus.className = 'upload-status' + (cls ? ' ' + cls : '');
         };
         let uploading = false;
+        const UPLOAD_ERR = {
+            CONVERTER_MISSING: 'il server non sa ancora convertire questo formato: caricalo come EPUB',
+            CONVERSION_FAILED: 'conversione non riuscita: file rovinato o protetto da DRM',
+            TOO_MANY_CONVERSIONS: 'troppe conversioni, riprova tra un po’',
+        };
 
         // Several books: one request per file (each stays under the server's size limit),
         // one after the other, with progress and a summary at the end.
         const uploadFiles = async (files) => {
-            const list = Array.from(files).filter((f) => /\.(epub|pdf)$/i.test(f.name));
+            const list = Array.from(files).filter((f) => /\.(epub|pdf|mobi|azw3|fb2|lit)$/i.test(f.name));
             if (!list.length || uploading) {
-                if (!list.length) say('Solo file .epub o .pdf.', 'err');
+                if (!list.length) say('Formati accettati: EPUB, PDF, MOBI, AZW3, FB2, LIT.', 'err');
                 return;
             }
             uploading = true;
@@ -131,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     try { data = await res.json(); } catch (err) { /* nginx error page, e.g. file too large */ }
                     if (data && data.success) done++;
                     else if (data && data.error === 'DUPLICATE') failed.push(`${file.name} (già presente: «${data.title}»)`);
-                    else failed.push(`${file.name} (${(data && data.error) || (res.status === 413 ? 'file troppo grande' : 'errore ' + res.status)})`);
+                    else failed.push(`${file.name} (${UPLOAD_ERR[data && data.error] || (data && data.error) || (res.status === 413 ? 'file troppo grande' : 'errore ' + res.status)})`);
                 } catch (err) {
                     failed.push(`${file.name} (rete)`);
                 }
@@ -150,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Choosing the files is enough: no second button to press
         uploadInput.addEventListener('change', () => { uploadFiles(uploadInput.files); uploadInput.value = ''; });
         // Drag the books anywhere on the page: a see-through layer says where to let go (js/dropzone.js)
-        if (window.VBDrop) window.VBDrop.attach({ label: 'Mettili qui', hint: 'EPUB o PDF, anche più di uno', onFiles: uploadFiles });
+        if (window.VBDrop) window.VBDrop.attach({ label: 'Mettili qui', hint: 'EPUB, PDF, MOBI, AZW3, FB2 o LIT, anche più di uno', onFiles: uploadFiles });
     }
 
     if (closeViewerBtn) closeViewerBtn.addEventListener('click', () => closeViewer());

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/cover_lib.php';
 require_once __DIR__ . '/epub_meta.php';
+require_once __DIR__ . '/book_convert.php';
 require_once __DIR__ . '/books_lib.php';
 
 initSession();
@@ -321,7 +322,7 @@ try {
         }
 
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, ['epub', 'pdf'])) {
+        if (!in_array($ext, array_merge(['epub', 'pdf'], BOOK_CONVERT_EXT), true)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'INVALID_FORMAT']);
             exit();
@@ -332,7 +333,8 @@ try {
         $magic = $fh ? fread($fh, 4) : '';
         if ($fh) fclose($fh);
         $validMagic = ($ext === 'pdf' && strncmp($magic, '%PDF', 4) === 0)
-                   || ($ext === 'epub' && strncmp($magic, "PK\x03\x04", 4) === 0);
+                   || ($ext === 'epub' && strncmp($magic, "PK\x03\x04", 4) === 0)
+                   || (in_array($ext, BOOK_CONVERT_EXT, true) && bookConvertMagicOk($file['tmp_name'], $ext));
         if (!$validMagic) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'INVALID_FILE_CONTENT']);
@@ -368,13 +370,34 @@ try {
 
         $safeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
         $uniquePrefix = time() . '_' . bin2hex(random_bytes(3));
-        $targetFileName = $uniquePrefix . '_' . $safeName . '.' . $ext;
+        $convertFrom = in_array($ext, BOOK_CONVERT_EXT, true) ? $ext : null;
+        $targetFileName = $uniquePrefix . '_' . $safeName . '.' . ($convertFrom ? 'epub' : $ext);
         $targetPath = $uploadDir . $targetFileName;
 
-        $moved = move_uploaded_file($file['tmp_name'], $targetPath);
-        if (!$moved && file_exists($file['tmp_name'])) {
-            $moved = copy($file['tmp_name'], $targetPath);
-            if ($moved) @unlink($file['tmp_name']);
+        if ($convertFrom) {
+            // MOBI, AZW3, FB2, LIT: stored as EPUB (the hash above is the one of the original file, so the same upload is still refused)
+            require_once __DIR__ . '/rate_limiter.php';
+            if (!checkRateLimit('book_convert', 20, 3600, 'user:' . $userId)) {
+                http_response_code(429);
+                echo json_encode(['success' => false, 'error' => 'TOO_MANY_CONVERSIONS']);
+                exit();
+            }
+            $err = bookConvertToEpub($file['tmp_name'], $convertFrom, $targetPath);
+            if ($err !== '') {
+                if ($err === 'CONVERTER_MISSING') logSystemError('BOOK_CONVERT', 'ebook-convert (Calibre) is not installed: ' . strtoupper($convertFrom) . ' uploads are refused');
+                http_response_code($err === 'CONVERTER_MISSING' ? 503 : 422);
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit();
+            }
+            @unlink($file['tmp_name']);
+            $moved = true;
+            $ext = 'epub';
+        } else {
+            $moved = move_uploaded_file($file['tmp_name'], $targetPath);
+            if (!$moved && file_exists($file['tmp_name'])) {
+                $moved = copy($file['tmp_name'], $targetPath);
+                if ($moved) @unlink($file['tmp_name']);
+            }
         }
 
         if ($moved) {

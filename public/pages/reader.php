@@ -90,9 +90,9 @@ if (!$canRead) {
             <?php if ($canUpload): ?>
                 <form id="book-upload-form" class="upload-row" enctype="multipart/form-data">
                     <label class="btn upload-btn">+ Carica libri
-                        <input type="file" id="book-upload-input" accept=".epub,.pdf" multiple>
+                        <input type="file" id="book-upload-input" accept=".epub,.pdf,.mobi,.azw3,.fb2,.lit" multiple>
                     </label>
-                    <p id="book-upload-status" class="upload-status" aria-live="polite">EPUB o PDF, anche più di uno insieme (sul computer anche trascinandoli qui).</p>
+                    <p id="book-upload-status" class="upload-status" aria-live="polite">EPUB, PDF, MOBI, AZW3, FB2 o LIT, anche più di uno insieme (sul computer anche trascinandoli qui). MOBI, AZW3, FB2 e LIT vengono convertiti in EPUB.</p>
                 </form>
             <?php endif; ?>
         </section>
