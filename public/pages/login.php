@@ -207,6 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$step2) {
                 <input type="password" id="login-password" name="password" class="input" required autocomplete="current-password">
                 <?= $err ?>
                 <div class="actions"><button type="submit" class="btn wide"><?= tt('Sign in', 'Accedi') ?></button></div>
+                <p class="swap"><a href="password_reset.php"><?= tt('Forgot your password?', 'Password dimenticata?') ?></a></p>
                 <p class="swap"><?= tt('New here?', 'Sei nuovo?') ?> <a href="login.php?mode=register<?= $q ?>"><?= tt('Create an account', 'Crea un account') ?></a></p>
             </form>
             <?php endif; ?>
