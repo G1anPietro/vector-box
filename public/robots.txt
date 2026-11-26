@@ -10,7 +10,7 @@ Disallow: /pages/resume.php
 Disallow: /pages/stats.php
 
 # Public pages (keep this domain in step with SITE_URL in .env)
-Sitemap: https://vector-box.duckdns.org/sitemap.php
+Sitemap: https://talvera.site/sitemap.php
 
 # SEO / data scrapers and AI training crawlers: not welcome (the scrapers are also refused by the server)
 User-agent: AhrefsBot

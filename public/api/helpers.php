@@ -376,7 +376,7 @@ function sendBaseSecurityHeaders(): void {
 /** Public address of the site (for link previews and the sitemap): SITE_URL in .env, no trailing slash. */
 function siteUrl(): string {
     $u = rtrim(trim((string)envValue('SITE_URL', '')), '/');
-    return preg_match('#^https?://[A-Za-z0-9.-]+(:\d+)?$#', $u) ? $u : 'https://vector-box.duckdns.org';
+    return preg_match('#^https?://[A-Za-z0-9.-]+(:\d+)?$#', $u) ? $u : 'https://talvera.site';
 }
 
 /** Description + Open Graph tags (the preview shown when a link is shared on WhatsApp, Telegram…). */

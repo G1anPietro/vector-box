@@ -82,7 +82,7 @@ $L = fn(string $i, string $e) => $it ? $i : $e;
                 </section>
                 <section>
                     <h2><?= $L('Da vedere', 'See it') ?></h2>
-                    <p class="small"><?= $L('Il sito e i giochi descritti qui sono online: ', 'The site and games described here are live: ') ?><a href="giochi.php"><?= $L('pagina dei giochi', 'games page') ?></a><span class="print-only"> (vector-box.duckdns.org/pages/giochi.php)</span>.</p>
+                    <p class="small"><?= $L('Il sito e i giochi descritti qui sono online: ', 'The site and games described here are live: ') ?><a href="giochi.php"><?= $L('pagina dei giochi', 'games page') ?></a><span class="print-only"> (talvera.site/pages/giochi.php)</span>.</p>
                 </section>
             </aside>
             <div class="main">

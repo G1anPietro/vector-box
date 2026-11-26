@@ -1,8 +1,8 @@
 # How to report a security problem on vector-box (RFC 9116).
 # Static file: keep the domain in step with SITE_URL in .env, and renew Expires before it passes
 # (tests/sicurezza-pagina.test.js fails when it is in the past).
-Contact: https://vector-box.duckdns.org/pages/sicurezza.php#segnala
+Contact: https://talvera.site/pages/sicurezza.php#segnala
 Expires: 2027-11-01T00:00:00Z
 Preferred-Languages: it, en
-Canonical: https://vector-box.duckdns.org/.well-known/security.txt
-Policy: https://vector-box.duckdns.org/pages/sicurezza.php
+Canonical: https://talvera.site/.well-known/security.txt
+Policy: https://talvera.site/pages/sicurezza.php

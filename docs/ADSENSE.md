@@ -6,7 +6,7 @@ Ads are **off** until `ADSENSE_CLIENT` is set in `.env`. They appear only on
 
 ## Turning them on
 
-1. Sign up at <https://adsense.google.com> with `https://vector-box.duckdns.org`.
+1. Sign up at <https://adsense.google.com> with `https://talvera.site`.
    Google checks the site before approving it: the games and support pages must be
    reachable without logging in (they are).
 2. Copy the publisher id (`ca-pub-…`, Account > Settings > Account information).

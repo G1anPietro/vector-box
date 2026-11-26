@@ -38,7 +38,7 @@ function bookConvertToEpub(string $src, string $ext, string $dest): string {
     $ok = copy($src, $in);   // ebook-convert decides the format by the extension; the upload has none
     $code = 1;
     if ($ok) {
-        $p = proc_open(['timeout', '-k', '5', '180', $bin, $in, $dest], [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
+        $p = proc_open(['timeout', '-k', '5', '150', $bin, $in, $dest], [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
             $pipes, $work, ['HOME' => $work, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'QT_QPA_PLATFORM' => 'offscreen']);
         if (is_resource($p)) $code = proc_close($p);
     }

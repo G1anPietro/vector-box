@@ -95,7 +95,7 @@ function vapidHeader(string $endpoint): string {
     $p = parse_url($endpoint);
     $aud = $p['scheme'] . '://' . $p['host'] . (isset($p['port']) ? ':' . $p['port'] : '');
     $site = siteUrl();
-    $claims = ['aud' => $aud, 'exp' => time() + 12 * 3600, 'sub' => str_starts_with($site, 'https://') ? $site : 'https://vector-box.duckdns.org'];
+    $claims = ['aud' => $aud, 'exp' => time() + 12 * 3600, 'sub' => str_starts_with($site, 'https://') ? $site : 'https://talvera.site'];
     $data = base64UrlEncode(json_encode(['typ' => 'JWT', 'alg' => 'ES256'])) . '.' . base64UrlEncode(json_encode($claims, JSON_UNESCAPED_SLASHES));
     if (!openssl_sign($data, $der, $keys['private'], OPENSSL_ALGO_SHA256)) throw new RuntimeException('VAPID signing failed');
     return 'vapid t=' . $data . '.' . base64UrlEncode(webpushDerToRaw($der)) . ', k=' . $keys['public'];
