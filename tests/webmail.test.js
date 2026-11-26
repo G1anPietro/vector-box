@@ -101,4 +101,18 @@ test.describe('webmail', () => {
         site.db("UPDATE accounts SET can_use_mail = 0 WHERE username = 'wm_ada'");
         assert.equal((await ada.get('/api/webmail.php?action=boot')).status, 403, 'removing the permission closes the mailbox at once');
     });
+
+    test('the admin can switch between own addresses (list filter); a plain account cannot filter', async () => {
+        clear();
+        await wm(admin, { action: 'create_address', local: 'boss', username: 'wm_admin' });
+        await wm(admin, { action: 'create_address', local: 'boss.work', username: 'wm_admin' });
+        await inbound({ to: 'boss@talvera.site', from: 'a@x.y', subject: 'to-boss', text: 't' }, 's3cret-s3cret');
+        await inbound({ to: 'boss.work@talvera.site', from: 'a@x.y', subject: 'to-work', text: 't' }, 's3cret-s3cret');
+        const subj = async (q) => (await admin.get('/api/webmail.php?action=list&folder=inbox' + q)).json.rows.map((r) => r.subject).sort();
+        assert.deepEqual(await subj(''), ['to-boss', 'to-work']);
+        assert.deepEqual(await subj('&addr=boss.work@talvera.site'), ['to-work']);
+        assert.deepEqual(await subj('&addr=boss@talvera.site'), ['to-boss']);
+        assert.deepEqual(await subj('&addr=ada.rossi@talvera.site'), ['to-boss', 'to-work'], 'not one of mine: ignored');
+        assert.equal((await admin.get('/api/webmail.php?action=boot')).json.username, 'wm_admin');
+    });
 });

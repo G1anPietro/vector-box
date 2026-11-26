@@ -61,7 +61,7 @@ try {
                 if ($r['folder'] === 'inbox') { $counts['inbox'] = (int)$r['n']; $counts['inbox_unread'] = (int)$r['unread']; }
                 if ($r['folder'] === 'draft') $counts['draft'] = (int)$r['n'];
             }
-            jsonResponse(['success' => true, 'addresses' => wmMyAddresses($db, $me), 'counts' => $counts, 'domain' => wmDomain(), 'is_admin' => $isAdmin,
+            jsonResponse(['success' => true, 'addresses' => wmMyAddresses($db, $me), 'counts' => $counts, 'domain' => wmDomain(), 'is_admin' => $isAdmin, 'username' => (string)($_SESSION['username'] ?? ''),
                 'driver' => mailDriver()]);
         }
         if ($action === 'list') {
@@ -75,6 +75,11 @@ try {
                 $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], textCut($q, 80)) . '%';
                 $where .= " AND (subject LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\' OR from_addr LIKE ? ESCAPE '\\' OR to_addr LIKE ? ESCAPE '\\')";
                 array_push($args, $like, $like, $like, $like);
+            }
+            $addr = $isAdmin ? strtolower(trim((string)($_GET['addr'] ?? ''))) : '';   // admin: look at one of my addresses only
+            if ($addr !== '' && in_array($addr, array_column(wmMyAddresses($db, $me), 'address'), true)) {
+                $a = '%' . $addr . '%';   // addresses hold only letters, digits and . _ - @ : no LIKE wildcards but _ , harmless here
+                $where .= " AND (lower(from_addr) LIKE ? OR lower(to_addr) LIKE ?)"; array_push($args, $a, $a);
             }
             $st = $db->prepare("SELECT id, folder, from_addr, to_addr, subject, substr(replace(body, char(10), ' '), 1, 110) AS snippet, is_read, is_starred, created_at FROM mail_inbox WHERE $where ORDER BY id DESC LIMIT 100");
             $st->execute($args);

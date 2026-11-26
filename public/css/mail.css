@@ -17,6 +17,8 @@
 .wm-folder b { font-size: 13px; }
 .wm-folder:hover { background: rgba(255, 255, 255, .06); }
 .wm-folder.active { background: rgba(242, 198, 109, .18); color: var(--link); font-weight: 800; }
+.wm-switch { margin: 8px 14px 0; font: inherit; font-size: 14px; color: var(--text); background: var(--dusk); border: 1px solid var(--plank); border-radius: 8px; padding: 8px; max-width: calc(100% - 28px); }
+.wm-switch[hidden] { display: none; }
 .wm-mine { font-size: 13px; color: var(--muted); padding: 12px 14px 0; overflow-wrap: anywhere; }
 .wm-main { min-width: 0; background: var(--dusk-2); border-radius: 16px 0 0 0; border: 1px solid var(--plank); border-right: 0; border-bottom: 0; }
 .wm-bar { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--plank); min-height: 48px; flex-wrap: wrap; }

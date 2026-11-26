@@ -5,7 +5,7 @@
     let T = {};
     try { T = JSON.parse($('wm-i18n').textContent); } catch (e) { /* the page still works with empty texts */ }
     const t = (k) => T[k] || k;
-    const state = { folder: 'inbox', q: '', rows: [], open: null, sel: new Set(), addresses: [], domain: '', draftId: 0, admin: document.body.dataset.admin === '1' };
+    const state = { folder: 'inbox', q: '', rows: [], open: null, sel: new Set(), addresses: [], domain: '', draftId: 0, admin: document.body.dataset.admin === '1', addr: '', me: '' };
 
     async function api(path, body) {
         const r = await fetch('../api/webmail.php' + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -25,12 +25,20 @@
 
     async function boot() {
         const b = await api('?action=boot');
-        state.addresses = b.addresses; state.domain = b.domain; state.driver = b.driver;
+        state.me = b.username || ''; state.addresses = b.addresses; state.domain = b.domain; state.driver = b.driver;
         $('wm-n-inbox').textContent = b.counts.inbox_unread ? String(b.counts.inbox_unread) : '';
         $('wm-n-draft').textContent = b.counts.draft ? String(b.counts.draft) : '';
         $('wm-mine').textContent = b.addresses.length ? t('mine') + ': ' + b.addresses.map((a) => a.address).join(', ') : t('noaddr');
         const from = $('wm-from'); from.replaceChildren();
         for (const a of b.addresses) { const o = el('option', '', a.address); o.value = String(a.id); from.append(o); }
+        const sw = $('wm-switch');   // admin only: choose which of my addresses I am using (all of them, or one)
+        if (sw) {
+            sw.replaceChildren(); const all = el('option', '', t('all_addr')); all.value = ''; sw.append(all);
+            for (const a of b.addresses) { const o = el('option', '', a.address); o.value = a.address; sw.append(o); }
+            if (!b.addresses.some((a) => a.address === state.addr)) state.addr = '';
+            sw.value = state.addr; sw.hidden = b.addresses.length < 2;
+            const cur = b.addresses.find((a) => a.address === state.addr); if (cur) from.value = String(cur.id);
+        }
         $('wm-compose').disabled = $('wm-fab').disabled = !b.addresses.length;
         return b;
     }
@@ -56,7 +64,7 @@
         syncBar();
         if (state.folder === 'addresses') return addresses();
         show('list');
-        const { rows } = await api('?action=list&folder=' + state.folder + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+        const { rows } = await api('?action=list&folder=' + state.folder + (state.q ? '&q=' + encodeURIComponent(state.q) : '') + (state.addr ? '&addr=' + encodeURIComponent(state.addr) : ''));
         state.rows = rows;
         const list = $('wm-list'); list.replaceChildren();
         if (!rows.length) list.append(el('p', 'muted wm-empty', t('nothing')));
@@ -135,7 +143,7 @@
         const form = el('form', 'wm-newaddr');
         const local = el('input'); local.placeholder = t('a_local'); local.maxLength = 32; local.autocomplete = 'off';
         const at = el('span', 'muted', '@' + domain);
-        const user = el('input'); user.placeholder = t('a_user'); user.maxLength = 40; user.autocomplete = 'off';
+        const user = el('input'); user.placeholder = t('a_user'); user.value = state.me; user.maxLength = 40; user.autocomplete = 'off';
         const go = el('button', 'wm-send', t('a_make')); go.type = 'submit';
         form.append(el('b', '', t('a_new')), local, at, user, go);
         const msg = el('p', 'muted'); msg.setAttribute('role', 'status');
@@ -158,6 +166,7 @@
     document.querySelectorAll('[data-bulk]').forEach((b) => b.addEventListener('click', () => bulk(b.dataset.bulk)));
     $('wm-back').addEventListener('click', () => load().catch((e) => note(e.message)));
     $('wm-refresh').addEventListener('click', () => { boot().catch(() => {}); load().catch((e) => note(e.message)); });
+    if ($('wm-switch')) $('wm-switch').addEventListener('change', (e) => { state.addr = e.target.value; const cur = state.addresses.find((a) => a.address === state.addr); if (cur) $('wm-from').value = String(cur.id); load().catch(() => {}); });
     $('wm-search').addEventListener('submit', (e) => { e.preventDefault(); load(state.folder === 'addresses' ? 'inbox' : state.folder, $('wm-q').value.trim()).catch((x) => note(x.message)); });
     $('wm-compose').addEventListener('click', () => compose(null));
     $('wm-win-close').addEventListener('click', closeWin);
