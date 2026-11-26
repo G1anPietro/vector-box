@@ -42,7 +42,10 @@ function bookConvertToEpub(string $src, string $ext, string $dest): string {
             $pipes, $work, ['HOME' => $work, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'QT_QPA_PLATFORM' => 'offscreen']);
         if (is_resource($p)) $code = proc_close($p);
     }
-    @unlink($in);
+    // Calibre writes its settings into HOME (= $work): remove the whole folder
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($work, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST) as $f) {
+        $f->isDir() && !$f->isLink() ? @rmdir($f->getPathname()) : @unlink($f->getPathname());
+    }
     @rmdir($work);
     $fh = $code === 0 && is_file($dest) ? fopen($dest, 'rb') : false;
     $zip = $fh ? fread($fh, 4) === "PK\x03\x04" : false;
