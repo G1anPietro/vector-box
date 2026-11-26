@@ -110,6 +110,7 @@ $weekLine = $atk && time() - (int)$atk['generated_at'] < 2 * 86400
         <p>L'indirizzo e-mail è facoltativo. Vale solo dopo che lo hai confermato con un link firmato, valido solo per quell'indirizzo.
         Le novità arrivano solo a chi le ha chieste con una casella separata, e ogni messaggio ha un link per smettere; il consenso
         viene ricontrollato al momento dell'invio. La chiave del servizio di posta sta solo nella configurazione del server, mai nel codice.</p>
+        <p>La posta personale (indirizzi <code>@talvera.site</code>) è riservata a chi ha il permesso: gli indirizzi li crea solo chi gestisce il sito, ognuno apre soltanto la propria casella e scrive solo dai propri indirizzi, con limiti al giorno per i messaggi verso l'esterno. La posta in arrivo entra da un canale protetto da un segreto e spento se il segreto manca. I messaggi non sono cifrati sul server.</p>
 
         <h2>Dove stanno i dati e le copie</h2>
         <ul>
@@ -211,6 +212,7 @@ $weekLine = $atk && time() - (int)$atk['generated_at'] < 2 * 86400
         <p>The e-mail address is optional. It counts only after you confirm it through a signed link, valid for that address only.
         News goes only to those who asked for it with a separate checkbox, and every message has a link to stop; consent is checked
         again at the moment of sending. The mail service key lives only in the server's configuration, never in the code.</p>
+        <p>Personal mail (<code>@talvera.site</code> addresses) is only for people with the permission: only the site's owner creates addresses, everybody opens only their own mailbox and writes only from their own addresses, with daily limits for messages to the outside. Incoming mail comes in through a channel protected by a secret and switched off while the secret is missing. Messages are not encrypted on the server.</p>
 
         <h2>Where the data and the copies are</h2>
         <ul>

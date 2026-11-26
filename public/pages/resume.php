@@ -98,8 +98,10 @@ $L = fn(string $i, string $e) => $it ? $i : $e;
                                        'Chat with rooms and private messages: PHP and SQLite, with a Node.js hub that pushes messages in real time (Server-Sent Events) and falls back to polling if the hub stops.') ?></li>
                             <li><?= $L('Giochi multigiocatore per telefono (Chi è la spia?, Lupus) con stanze, ruoli segreti e cinque lingue; solitario, poker e altri giochi.',
                                        'Multiplayer phone games (Who’s the spy?, Lupus) with rooms, secret roles and five languages; solitaire, poker and more.') ?></li>
-                            <li><?= $L('Lettore di libri EPUB e PDF privato, con permessi per utente, segnalibri e avanzamento.',
-                                       'Private EPUB and PDF reader with per-user permissions, bookmarks and reading progress.') ?></li>
+                            <li><?= $L('Lettore di libri EPUB e PDF privato, con permessi per utente, segnalibri e avanzamento; MOBI, AZW3, FB2 e LIT convertiti in EPUB con Calibre.',
+                                       'Private EPUB and PDF reader with per-user permissions, bookmarks and reading progress; MOBI, AZW3, FB2 and LIT converted to EPUB with Calibre.') ?></li>
+                            <li><?= $L('Posta personale sul dominio del sito: indirizzi creati dall’admin, casella in stile Gmail, consegna interna, invio verso l’esterno tramite coda e ricezione da un Worker Cloudflare.',
+                                       'Personal mail on the site’s own domain: admin-made addresses, a Gmail-style inbox, internal delivery, outgoing mail through a queue and incoming mail from a Cloudflare Worker.') ?></li>
                             <li><?= $L('Sicurezza: protezione CSRF, Content Security Policy, limiti alle richieste, sessioni e password cifrate, migrazioni del database versionate.',
                                        'Security: CSRF protection, Content Security Policy, rate limiting, hardened sessions and password hashing, versioned database migrations.') ?></li>
                             <li><?= $L('Test automatici sulle API (account, permessi delle stanze, chat, giochi) eseguiti prima di ogni rilascio.',
@@ -112,8 +114,8 @@ $L = fn(string $i, string $e) => $it ? $i : $e;
                         <p><?= $L('Un portatile senza schermo con Ubuntu Server, acceso giorno e notte, che ospita il sito e i servizi della casa.',
                                   'A screenless laptop running Ubuntu Server around the clock, hosting the website and the household services.') ?></p>
                         <ul>
-                            <li><?= $L('nginx come reverse proxy con HTTPS (Let’s Encrypt), HTTP/2, compressione e cache; DNS dinamico con DuckDNS.',
-                                       'nginx reverse proxy with HTTPS (Let’s Encrypt), HTTP/2, compression and caching; dynamic DNS with DuckDNS.') ?></li>
+                            <li><?= $L('nginx come reverse proxy con HTTPS (Let’s Encrypt), HTTP/2, compressione e cache; dominio proprio su Cloudflare (DNS, DNSSEC, SSL Full strict) con DuckDNS per l’IP dinamico.',
+                                       'nginx reverse proxy with HTTPS (Let’s Encrypt), HTTP/2, compression and caching; own domain on Cloudflare (DNS, DNSSEC, Full strict SSL) with DuckDNS for the dynamic IP.') ?></li>
                             <li><?= $L('Pi-hole come DNS di tutta la rete di casa e VPN WireGuard per entrare nella rete da fuori; servizi in Docker.',
                                        'Pi-hole as the DNS of the whole home network and a WireGuard VPN to reach it from outside; services in Docker.') ?></li>
                             <li><?= $L('Firewall (ufw) e fail2ban; port forwarding sul router ridotto al minimo.',

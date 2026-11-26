@@ -45,6 +45,8 @@ function accountExport(PDO $db, int $userId): array {
         'note' => 'Everything vector-box keeps about this account. The password is stored only as a one-way hash and is not included.',
         'account' => $acc,
         'chat_messages' => $all('SELECT id, room_id, message, sender_ip, created_at FROM transmissions WHERE (user_id = :i OR username = :n) AND (is_deleted = 0 OR is_deleted IS NULL)', $name),
+        'mailbox' => $all('SELECT folder, from_addr, to_addr, subject, body, is_read, is_starred, created_at FROM mail_inbox WHERE account_id = :i', [':i' => $userId]),
+        'mail_addresses' => $all('SELECT local_part, created_at FROM mail_addresses WHERE account_id = :i', [':i' => $userId]),
         'idea_votes' => $all('SELECT idea_id FROM news_idea_votes WHERE user_id = :i', [':i' => $userId]),
         'admin_actions_on_this_account' => $all('SELECT script, action, detail, created_at FROM admin_log WHERE target_user_id = :i', [':i' => $userId]),
         'news_ideas' => $all('SELECT id, text, status, reply, created_at FROM news_ideas WHERE user_id = :i', [':i' => $userId]),
@@ -138,6 +140,8 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
         // donations stay for accounting, without the person
         $run("UPDATE donors SET account_id = NULL, display_name = '', is_public = 0, note = '' WHERE account_id = :i", $u);
         $run('DELETE FROM mail_queue WHERE account_id = :i', $u);   // messages written for this person
+        $run('DELETE FROM mail_inbox WHERE account_id = :i', $u);   // the personal mailbox
+        $run('DELETE FROM mail_addresses WHERE account_id = :i', $u);
         $gone['account'] = $run('DELETE FROM accounts WHERE id = :i', $u);
         $db->exec('COMMIT');
     } catch (Throwable $e) {

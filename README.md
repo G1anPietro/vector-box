@@ -31,7 +31,7 @@ PHP + SQLite do the work; a small optional Node.js process delivers the chat in 
 | **Solo games** | Solitaire (Klondike), Connect Four, Hangman, Simon, Memory, Tic-tac-toe, Snake, 2048, Minesweeper, Tetris, a word game (*Parola*), Conway's Game of Life, a tower defense (*Difesa del server*), Node Breach, ARG Vault, and a long roguelike campaign, *Il Dungeon del Server* (10 sectors, autosave, touch-first; see docs/ROGUELIKE.md). Static pages, no account needed. *Skill check* (a Dead by Daylight style timing game, with an endless mode) and *Botola* alone also run solo. Best results are kept per level on the account (**Records** section of the Account page), merged with the phone's. A page, [How vector-box works](public/pages/come-funziona.php), explains the site in three steps. |
 | **Offline Wikipedia** | An optional copy of the Italian Wikipedia served by [Kiwix](https://www.kiwix.org) at `/wiki/`, with a front page (`pages/wikipedia.php`) that has a search box and the credit its licence (CC BY-SA 4.0) asks for. No ads, no tracking, nothing stored. See "Offline Wikipedia" below. |
 | **Accounts and privacy** | Optional confirmed e-mail address with separate consent to news, download of all your data, account deletion, automatic data retention, a cookie banner that loads nothing from Google before consent. Public [privacy](public/pages/privacy.php) and [security](public/pages/sicurezza.php) pages. |
-| **Admin** | People panel (search, permissions, ban/timeout, supporter badge), an e-mail box with a queue (off until configured), donors list and a "where the money goes" page, visit and bot statistics. |
+| **Admin** | People panel (search, permissions, ban/timeout, supporter badge), personal mail on the site's own domain (addresses made by the admin, a Gmail-like inbox; sending to other addresses and receiving from outside are off until configured) and a separate newsletter page, donors list and a "where the money goes" page, visit and bot statistics. |
 
 <img src="docs/img/giochi.png" alt="Games page" width="640">
 
@@ -69,7 +69,7 @@ Everything is in `.env` (never committed); `.env.example` documents each key. Th
 - **Chat hub** (`CHAT_HUB_SECRET`, `CHAT_STREAM_URL`, `PORT`, `BIND_HOST`).
 - **Notifications** to the owner (`NTFY_TOPIC_URL`, `VISIT_*`).
 - **Class-notes AI** (`GEMINI_*`, `WHISPER_*`, `DEMO_CLASS`).
-- **E-mail** (`MAIL_*`), **ads and donations** (`ADSENSE_*`, `DONATE_*`), **data retention** (`RETENTION_*_DAYS`).
+- **E-mail** (`MAIL_*`, `MAIL_DOMAIN`, `MAIL_INBOUND_SECRET`; see `docs/POSTA.md`), **ads and donations** (`ADSENSE_*`, `DONATE_*`), **data retention** (`RETENTION_*_DAYS`).
 
 Serve **only** `public/`. `data/` (SQLite database, sessions, books, class files, logs) lives outside it.
 

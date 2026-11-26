@@ -74,7 +74,7 @@ require_once __DIR__ . '/../includes/head.php';
             schede; i giochi si installano come app e il Solitario funziona anche offline.</li>
             <li><strong>Messaggi privati</strong> con blocco degli utenti, e i messaggi vecchi che si caricano da soli scorrendo.</li>
             <li><strong>Biblioteca</strong> con lettore EPUB e PDF, copertine, segnalibri, avanzamento salvato e, a scelta, la pagina
-            che gira "come un libro".</li>
+            che gira "come un libro". I file MOBI, AZW3, FB2 e LIT si caricano lo stesso: vengono controllati e convertiti in EPUB con Calibre.</li>
             <li><strong>Wikipedia offline:</strong> una copia di Wikipedia in italiano che vive sul server, senza pubblicità né tracciamento: la serve il
             programma libero <a href="https://www.kiwix.org" rel="noopener">Kiwix</a> e nginx la inoltra sotto <code>/wiki/</code>. Il contenuto è di Wikipedia
             (licenza Creative Commons CC BY-SA) e la pagina <a href="wikipedia.php">dedicata</a> riporta i crediti. Per ora è una versione piccola; quella completa, con le immagini, è in scaricamento.</li>
@@ -83,8 +83,13 @@ require_once __DIR__ . '/../includes/head.php';
             che non carica niente da Google prima del consenso.</li>
             <li><strong>E-mail facoltativa:</strong> indirizzo confermato con un link firmato, consenso separato per le novità, una coda
             di invio e un link per smettere in ogni messaggio. Resta spenta finché non viene configurata.</li>
-            <li><strong>Pannelli per chi gestisce:</strong> le persone (permessi, sospensioni, distintivo di sostenitore), la casella
-            e-mail, le donazioni con la pagina <a href="soldi.php">Dove vanno i soldi</a>, le statistiche di visite e bot.</li>
+            <li><strong>Posta personale:</strong> chi ha il permesso ha un indirizzo <code>@talvera.site</code> creato da chi gestisce, con una
+            casella in stile Gmail (in arrivo, speciali, inviata, bozze, cestino, ricerca, risposta). Tra indirizzi del sito i messaggi arrivano subito;
+            l'invio verso altri indirizzi e la ricezione da fuori si accendono solo dopo la configurazione del servizio di posta.</li>
+            <li><strong>Un dominio tutto suo:</strong> il sito vive su <code>talvera.site</code> (DNS Cloudflare con DNSSEC, certificato Let's Encrypt
+            e connessione cifrata verificata fino al server); il vecchio indirizzo DuckDNS rimanda al nuovo.</li>
+            <li><strong>Pannelli per chi gestisce:</strong> le persone (permessi, sospensioni, distintivo di sostenitore), le novità
+            per e-mail, gli indirizzi della posta, le donazioni con la pagina <a href="soldi.php">Dove vanno i soldi</a>, le statistiche di visite e bot.</li>
             <li><strong>Appunti di classe:</strong> gli studenti caricano foto, audio e file delle lezioni (a pezzi, così riprendono anche se cade la
             connessione) e un'AI li unisce in appunti, schemi, dispense, riassunti e quiz per ogni verifica, divisi per materia, giorno e
             argomento. C'è una ricerca nel materiale, un calendario, i turni delle interrogazioni, una classifica in cui i punti li conta il

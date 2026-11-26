@@ -264,7 +264,7 @@ Si scrivono nella finestra TERMINAL. `help <comando>` spiega un comando.
 | **Giochi** | Pagine statiche: da festa (`pages/spia.html`, `lupus.html`, `cucu.html`, `nonhomai.html`) con motori lato server per le stanze (`api/spia_lib.php`, `api/lupus_lib.php`, `api/cucu_lib.php`); da soli (`solitario.html`, `minato.html`, `dueamila.html`, `memory.html`, `tris.html`, `snake.html`, `forza4.html`, `impiccato.html`, `simon.html`), ognuno con il suo `js/` e `css/`, senza server. Poker: `api/poker.php`, `js/poker.js`. |
 | **Pagine pubbliche** | Giochi, Supporta (`ads.php`), Dona (`dona.php`), Dove vanno i soldi (`soldi.php`), Privacy, Sicurezza (`sicurezza.php`, con `/.well-known/security.txt`), Il progetto, Credits. Curriculum (`resume.php`) privato. |
 | **Account e dati** | `pages/account.php`, `api/account_data.php` (esporta/cancella), `api/retention.php` (cancellazione automatica dei dati vecchi), `js/cookie_consent.js` (annunci di Google solo dopo il consenso). |
-| **Amministrazione** | Persone (`pages/admin_users.php`, `api/admin_users.php`), casella e-mail (`pages/mail.php`, `api/mail.php`, `api/mailer.php`, `bin/mail-worker.php`), donatori (`api/donors.php`), statistiche di visite e bot (`pages/stats.php`, `api/bots.php`). |
+| **Amministrazione** | Persone (`pages/admin_users.php`, `api/admin_users.php`), posta personale @dominio (`pages/mail.php`, `api/webmail.php`, `api/mail_inbound.php`, `js/webmail.js`; guida in `docs/POSTA.md`), newsletter (`pages/newsletter.php`, `api/mail.php`), coda di invio (`api/mailer.php`, `bin/mail-worker.php`), donatori (`api/donors.php`), statistiche di visite e bot (`pages/stats.php`, `api/bots.php`). |
 | **Appunti di classe** | `pages/appunti.php`, `js/appunti.js`; API `api/classi.php`, `api/appunti.php`, `api/notifiche.php`; lavoratore AI `bin/appunti-ai.php` (Gemini, promemoria). |
 | **Hub Node** (`server.js`) | Facoltativo: chat in tempo reale con una sola connessione SSE per browser. |
 
@@ -361,6 +361,9 @@ SQLite in modalità WAL. Lo schema ha una versione (`PRAGMA user_version`, oggi 
 | V33 | `school_classes.ai_allowed`, `ai_adults_at`, `ai_adults_by` (AI solo per le classi dichiarate di maggiorenni) |
 | V34 | indice unico `idx_accounts_username_nocase` (nomi unici senza distinguere maiuscole) |
 | V35 | e-mail: `accounts.email`, `email_verified`, `email_optin`, `email_optin_at`; `mail_messages` (bozze e inviati), `mail_queue` (coda) |
+| V36–V62 | (tabelle dei giochi di gruppo e altre aggiunte: vedi `database.php`; V56–V62 = Storia a catena, Bingo, Bandiere, Chi è il bugiardo, Inventato, 10 su 10, Scommessa tra amici, ognuna con la sua `<gioco>_games`) |
+| V63 | `accounts.can_use_mail` (chi può aprire la posta personale) |
+| V64 | `mail_addresses` (indirizzi @dominio fatti dall'admin), `mail_inbox` (cartelle in arrivo/inviata/bozze/cestino di ogni account), `mail_queue.from_email` |
 
 **Regole:** mai DDL fuori dalle migrazioni; ogni modifica = nuova `migrateVN()` + `DB_SCHEMA_VERSION` + chiamata in
 `runMigrations()` (`updatesite.sh` legge la versione attesa da `database.php`). Sul server il database non va aperto con `sqlite3` da un utente
@@ -420,6 +423,10 @@ a ogni `fetch` verso il sito (il token arriva da `check_session.php`).
 | `books.php` | POST `?action=upload`, multipart `book_file` (chi ha `can_upload_books`) | `.epub` o `.pdf` con controllo del contenuto vero; limite 64 MB (nginx) |
 | `progress.php` | GET `?book_id=` o `?all=1`; POST `{book_id, cfi_or_page, percentage}` | avanzamento di lettura |
 | `bookmarks.php` | GET `?book_id=`; POST `{action:"add", book_id, location, label, percentage}` · `{action:"delete", id}` | segnalibri (max 100 per libro) |
+| `highlights.php` | GET `?book_id=` (`&export=1` = file Markdown); POST `{action:"add", book_id, kind:"hl"\|"note", location, text, note, color, percentage}` · `{action:"update", id, note?, color?}` · `{action:"delete", id}` | evidenziazioni (EPUB) e note di pagina (EPUB e PDF), solo di chi le scrive (max 500 per libro) |
+| `book_tags.php` | GET; POST `{book_id, tags:[…]}` | etichette («scaffali») che ogni account dà ai libri (max 8 per libro, 30 caratteri) |
+| `reading_stats.php` | GET `?today=YYYY-MM-DD`; POST `{seconds, pages, day}` | tempo e pagine lette per giorno, per le statistiche e l'obiettivo settimanale (limiti per chiamata e per giorno) |
+| `books.php?action=clean_titles` | POST `{apply?}` (solo chi può caricare) | elenca (o applica) la pulizia dei titoli e degli autori; il caricamento rifiuta i duplicati (stesso file, o stesso titolo+autore+formato) con `409 DUPLICATE` |
 | `moderate_book_access.php` | admin: POST `{action:"grant"|"revoke", username, scope:"books"|"resume"}` | permesso di biblioteca o curriculum |
 
 ### Giochi
@@ -458,8 +465,10 @@ Tipi di materiale (`kind`): `appunti`, `slide`, `libro`, `domande`, `prova`, `al
 | Endpoint | Chi | Cosa fa |
 |---|---|---|
 | `moderate_user.php` | admin | POST `{action:"ban"|"timeout"|"unban", username, minutes}` |
-| `admin_users.php` | admin | Pannello delle persone (`pages/admin_users.php`). GET `?action=list&q=&filter=all\|admins\|banned\|email\|news\|supporters\|nobooks&page=` (50 per pagina), `?action=user&id=`. POST `set_flag {user_id, flag, value}` (`can_read_books`, `can_upload_books`, `can_view_resume`, `ads_free`), `ban` / `unban` / `timeout {user_id, minutes}` (mai su un admin), `badge {user_id, value}`, `send_mail {user_id, subject, body}` (un messaggio, solo a un indirizzo confermato) |
-| `mail.php` | admin | Casella e-mail (`pages/mail.php`). GET `status`, `list&folder=draft\|sent\|queue`, `get&id=`. POST `save_draft {id?, subject, body, audience: optin\|supporters}`, `delete`, `send_test` (solo al proprio indirizzo confermato), `send` (una riga in coda per chi ha confermato l'indirizzo e chiesto le novità), `process` (manda subito ciò che aspetta) |
+| `admin_users.php` | admin | Pannello delle persone (`pages/admin_users.php`). GET `?action=list&q=&filter=all\|admins\|banned\|email\|news\|supporters\|nobooks&page=` (50 per pagina), `?action=user&id=`. POST `set_flag {user_id, flag, value}` (`can_read_books`, `can_upload_books`, `can_view_resume`, `can_use_mail`, `ads_free`), `ban` / `unban` / `timeout {user_id, minutes}` (mai su un admin), `badge {user_id, value}`, `send_mail {user_id, subject, body}` (un messaggio, solo a un indirizzo confermato) |
+| `mail.php` | admin | Newsletter (`pages/newsletter.php`). GET `status`, `list&folder=draft\|sent\|queue`, `get&id=`. POST `save_draft {id?, subject, body, audience: optin\|supporters}`, `delete`, `send_test` (solo al proprio indirizzo confermato), `send` (una riga in coda per chi ha confermato l'indirizzo e chiesto le novità), `process` (manda subito ciò che aspetta) |
+| `webmail.php` | admin o chi ha `can_use_mail` | Posta personale (`pages/mail.php`). GET `boot`, `list&folder=inbox\|starred\|sent\|draft\|trash&q=`, `get&id=` (segna letto), admin: `addresses`. POST `send {from_id, to, subject, body, draft_id?}` (indirizzi del sito: consegna subito; altri: riga `user` nella coda con il proprio indirizzo come mittente, max 5 destinatari, 40 al giorno verso fuori), `save_draft`, `star`/`read {ids, value}`, `trash`/`restore`/`delete {ids}` (delete solo dal cestino), `empty_trash`, admin: `create_address {local, username}` (dà anche il permesso), `delete_address {id}` |
+| `mail_inbound.php` | segreto `MAIL_INBOUND_SECRET` | Posta in arrivo, chiamata dal Worker di Cloudflare (senza cookie né CSRF: solo `Authorization: Bearer`). POST `{to, from, subject, text}` → 200 salvata, 404 indirizzo inesistente, 401 segreto sbagliato, 503 spenta se il segreto non c'è |
 | `mail_link.php` | tutti (token firmato) | GET `?a=verify&t=` conferma l'indirizzo, `?a=unsub&t=` ferma le novità; risponde in testo semplice |
 | `donors.php` | admin | GET `list`; POST `add {amount, username?, name?, date?, public?, note?}`, `remove {id}`, `badge {username, value}`, `ads_free {username, value}` |
 | `account_data.php` | registrati | GET `?action=export` (file JSON con tutti i dati dell'account); POST `{action:"delete", password, delete_materials}` cancella l'account e chiude la sessione |
@@ -526,6 +535,10 @@ non sono endpoint: se richieste direttamente definiscono solo funzioni.
   `mailLine()` (niente a capo: nessuna intestazione aggiunta). Le novità si mandano solo a indirizzo confermato + consenso,
   ricontrollati al momento dell'invio; ogni riga della coda viene prenotata prima dell'invio (niente doppioni); tetto
   giornaliero `MAIL_DAILY_LIMIT`. La chiave del servizio sta solo nel `.env`.
+  **Posta personale** (`api/webmail.php`): il permesso `can_use_mail` si legge dal database a ogni richiesta; ogni query è legata a `account_id`
+  (nessuno apre la casella di un altro); si scrive solo dai propri indirizzi; la newsletter resta solo admin; la creazione degli indirizzi solo admin;
+  la ricerca tratta `%` e `_` alla lettera; il testo dei messaggi entra nella pagina solo con `textContent`. `mail_inbound.php` confronta il segreto con
+  `hash_equals`, rifiuta più di 1,5 MB e non funziona senza segreto. Esportazione e cancellazione dell'account includono casella e indirizzi.
 - **Dati personali:** `api/retention.php` cancella da solo, una volta al giorno, i dati vecchi (`RETENTION_*_DAYS`);
   `api/account_data.php` esporta e cancella l'account (con la password). Gli annunci di Google si caricano solo dopo il
   consenso (`js/cookie_consent.js`).
@@ -560,6 +573,7 @@ Si parte da `.env.example`, che spiega ogni voce.
 | `DEMO_CLASS` | `false` = il lavoratore non crea la classe di esempio degli Appunti (predefinito: acceso) |
 | `SITE_URL` | indirizzo del sito (anteprime dei link, contatto VAPID delle notifiche push) |
 | `WEBPUSH_EXTRA_HOSTS` | solo per i test: servizi push finti ammessi |
+| `MAIL_DOMAIN` (predefinito `talvera.site`), `MAIL_INBOUND_SECRET` | posta personale: dominio degli indirizzi; segreto per la posta in arrivo (vuoto = spenta) |
 | `MAIL_DRIVER`, `MAIL_FROM`, `MAIL_HTTP_URL`, `MAIL_API_KEY`, `MAIL_DAILY_LIMIT` | e-mail: spenta se `MAIL_DRIVER` è vuoto; `log` scrive in `data/mail.log`, `http` manda a `MAIL_HTTP_URL` (formato JSON di Resend) con la chiave; tetto di messaggi al giorno |
 | `DONATE_URL`, `DONATE_PAYPAL_URL`, `DONATE_GOAL_TEXT`, `DONATE_GOAL_EUR`, `DONATE_RAISED_EUR` | pulsanti e obiettivo della pagina Dona (nascosti se vuoti) |
 | `RETENTION_VISITS_DAYS`, `RETENTION_BOTS_DAYS`, `RETENTION_IP_DAYS`, `RETENTION_CHAT_DAYS`, `RETENTION_DM_DAYS`, `RETENTION_NOTIF_DAYS`, `RETENTION_SHARE_DAYS` | giorni di conservazione (predefiniti 90, 30, 90, 365, 365, 180, 30); la pagina privacy stampa gli stessi numeri |
@@ -623,7 +637,7 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - La pagina Doom non funziona.
 - Il poker è ancora una finestra del desktop: va rifatto come pagina della sezione Giochi.
 - Account: niente accesso in due passaggi e niente recupero della password dimenticata.
-- E-mail: spenta finché non c'è `MAIL_DRIVER`; il driver `http` parla solo il formato di Resend.
+- E-mail: spenta finché non c'è `MAIL_DRIVER`; il driver `http` parla solo il formato di Resend. Posta in arrivo: i messaggi HTML/allegati compaiono grezzi (serve un parser nel Worker); niente allegati né etichette.
 - Database e copie di backup non cifrati (vedi `pages/sicurezza.php`, "I limiti").
 - Le cancellazioni dei messaggi arrivano in tempo reale solo con l'hub Node attivo.
 - Appunti: con il livello gratuito di Gemini le richieste al giorno sono poche (circa 450 veloci e 18 del modello migliore):
@@ -684,3 +698,10 @@ di Gemini, così l'avviso ntfy lo segnala), `client_max_body_size 100M` e `fastc
 - **Giochi nuovi** (pagine statiche in `pages/*.html`, regole provate senza browser in `tests/minato.test.js`, `tests/dueamila.test.js`, `tests/arcade.test.js`, `tests/arcade2.test.js`): Campo minato, 2048, Memory, Tris, Snake, Forza 4, Impiccato, Simon. Stile comune in `css/arcade.css`.
 - **Lettore:** opzione "Come un libro" (un foglio che gira sulla pagina; spenta con `prefers-reduced-motion`).
 - **Pagina Sicurezza** (`pages/sicurezza.php`) e `/.well-known/security.txt`. Test: `tests/sicurezza-pagina.test.js`.
+
+## 17–26/11 — nuovo dominio, posta personale, giochi di gruppo, libreria (schema v64)
+- **Dominio `talvera.site`** (Cloudflare, DNS senza proxy: il record `@` punta a `vector-box.duckdns.org`, che tiene aggiornato l'IP di casa). Certificato Let's Encrypt con `certbot` (webroot), modalità SSL "Full (strict)", DNSSEC. Il vecchio nome DuckDNS risponde 308 al nuovo; resta usato per SSH e per i sottodomini (`cloud.`, `crafty.`, `navidrome.`). Nel `.env`: `SITE_URL=https://talvera.site`. Pi-hole (`dns.hosts`) risolve il dominio nuovo verso il server dentro la rete di casa.
+- **Posta personale** (v63–v64): indirizzi `@talvera.site` creati solo dall'admin (`create_address`), casella in stile Gmail (`pages/mail.php`, `js/webmail.js`, `css/mail.css`): in arrivo, speciali, inviata, bozze, cestino, ricerca, risposta/inoltro, finestra di scrittura. Scrivere a un indirizzo del sito consegna subito; verso altri indirizzi passa dalla coda (`kind = user`, mittente = indirizzo della persona; serve `MAIL_DRIVER`). La posta in arrivo entra da `api/mail_inbound.php` (Worker Cloudflare, segreto `MAIL_INBOUND_SECRET`). La newsletter è passata in `pages/newsletter.php` (solo admin). Pannello persone e posta usano lo stile del resto del sito (`giochi.css`). Guida: `docs/POSTA.md`. Test: `tests/webmail.test.js`, `tests/email.test.js`.
+- **Giochi di gruppo** nello stile dell'app Splash, ognuno con il suo aspetto, stanze, cinque lingue, vista LIVE dell'admin (pressione lunga sul titolo), modalità da soli o con un telefono solo: Storia a catena, Bingo della lezione, Bandiere, Chi è il bugiardo, Inventato, 10 su 10, Scommessa tra amici e altri. Lupus ha vampiri e altri ruoli; Chi è la spia? ha i luoghi "mostri" e la scheda di tutti i luoghi e ruoli. La pagina dei giochi ha filtri, preferiti, recenti e "sorprendimi".
+- **Libreria:** oltre a EPUB e PDF si caricano MOBI, AZW3, FB2 e LIT; vengono verificati dal contenuto e convertiti in EPUB con Calibre (`api/book_convert.php`, `EBOOK_CONVERT`; tempo massimo 150 s, nginx aspetta 180). Test: `tests/book-formati.test.js`.
+- **Privacy:** esportazione e cancellazione dell'account includono casella e indirizzi.
