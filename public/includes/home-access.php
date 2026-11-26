@@ -7,20 +7,22 @@ require_once __DIR__ . '/../api/database.php';
 function homeAccess(): array {
     $admin = !empty($_SESSION['is_admin']);
     $books = $admin;
+    $mail = $admin;
     $resume = $admin;   // the CV is private too: admin, or accounts allowed with /grantcv
     $userId = $_SESSION['user_id'] ?? null;
     if ($userId && !$admin) {
         try {
-            $stmt = getDbConnection()->prepare('SELECT can_read_books, can_view_resume FROM accounts WHERE id = :id');
+            $stmt = getDbConnection()->prepare('SELECT can_read_books, can_view_resume, can_use_mail FROM accounts WHERE id = :id');
             $stmt->execute([':id' => $userId]);
             $acc = $stmt->fetch();
             if ($acc) {
                 $books = (int)$acc['can_read_books'] === 1;
                 $resume = (int)($acc['can_view_resume'] ?? 0) === 1;
+                $mail = (int)($acc['can_use_mail'] ?? 0) === 1;
             }
         } catch (Exception $e) {
             $books = false;
         }
     }
-    return ['admin' => $admin, 'books' => $books, 'resume' => $resume];
+    return ['admin' => $admin, 'books' => $books, 'resume' => $resume, 'mail' => $mail];
 }

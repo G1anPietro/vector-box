@@ -86,7 +86,7 @@
                 h('dt', { text: 'E-mail' }), h('dd', { text: u.email ? `${u.email} (${u.email_verified ? VBLang.t('au_confirmed') : VBLang.t('au_notconf')}${u.email_optin ? VBLang.t('au_wantsnews') : ''})` : VBLang.t('au_none') }),
                 h('dt', { text: VBLang.t('au_activity') }), h('dd', { text: VBLang.t('au_counts', { a: r.counts.messages, b: r.counts.classes, c: r.counts.notes }) }),
                 u.bio ? h('dt', { text: 'Bio' }) : null, u.bio ? h('dd', { text: u.bio }) : null),
-            h('div', { class: 'au-checks' }, flag('can_read_books', VBLang.t('au_f_read')), flag('can_upload_books', VBLang.t('au_f_upload')), flag('can_view_resume', VBLang.t('au_f_cv')), flag('ads_free', VBLang.t('au_f_ads'))),
+            h('div', { class: 'au-checks' }, flag('can_read_books', VBLang.t('au_f_read')), flag('can_upload_books', VBLang.t('au_f_upload')), flag('can_view_resume', VBLang.t('au_f_cv')), flag('can_use_mail', VBLang.t('au_f_mail')), flag('ads_free', VBLang.t('au_f_ads'))),
             h('div', { class: 'au-actions' },
                 h('button', { type: 'button', class: 'nav-btn', text: u.supporter ? VBLang.t('au_badge_off') : VBLang.t('au_badge_on'), onclick: act({ action: 'badge', value: !u.supporter }) }),
                 u.is_admin ? null : h('button', { type: 'button', class: 'nav-btn', text: VBLang.t('au_timeout'), onclick: act({ action: 'timeout', minutes: 60 }, VBLang.t('au_timeout_done')) }),

@@ -89,6 +89,12 @@ $CARDS = [
                    'en' => 'What vector-box is, how it is built and where we are.'],
     ],
     [
+        'look' => 'mail', 'href' => 'pages/mail.php', 'glyph' => '✉', 'private' => true, 'show' => $access['mail'],
+        'name' => ['it' => 'Posta', 'en' => 'Mail'],
+        'line' => ['it' => 'La casella e-mail: bozze, inviati e coda. Solo per chi è stato abilitato.',
+                   'en' => 'The e-mail box: drafts, sent and queue. Only for people who were allowed in.'],
+    ],
+    [
         'look' => 'stats', 'href' => 'pages/stats.php', 'glyph' => '▥', 'private' => true, 'show' => $access['admin'],
         'name' => ['it' => 'Statistiche', 'en' => 'Statistics'],
         'line' => ['it' => 'Visite al sito e pagine più viste.', 'en' => 'Site visits and most viewed pages.'],

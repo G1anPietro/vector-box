@@ -3,7 +3,7 @@
 //   GET  ?action=list&q=&filter=all|admins|banned|email|news|supporters|nobooks&page=1   -> 50 per page + totals
 //   GET  ?action=log&page=1                                                                -> the admin action log, 50 per page, newest first
 //   GET  ?action=user&id=N                                                                  -> one person in detail
-//   POST {action:'set_flag', user_id, flag: can_read_books|can_upload_books|can_view_resume|ads_free, value}
+//   POST {action:'set_flag', user_id, flag: can_read_books|can_upload_books|can_view_resume|can_use_mail|ads_free, value}
 //   POST {action:'ban'|'unban'|'timeout', user_id, minutes?}                                (never on an admin)
 //   POST {action:'badge', user_id, value}                                                    (the supporter badge by hand)
 //   POST {action:'send_mail', user_id, subject, body}                                        (one message, only to a CONFIRMED address)
@@ -15,14 +15,14 @@ requireAdmin();
 $db = getDbConnection();
 $me = (int)$_SESSION['user_id'];
 
-const AU_FLAGS = ['can_read_books', 'can_upload_books', 'can_view_resume', 'ads_free'];
+const AU_FLAGS = ['can_read_books', 'can_upload_books', 'can_view_resume', 'can_use_mail', 'ads_free'];
 
 /** One account row as the panel shows it. */
 function auRow(PDO $db, array $a): array {
     return [
         'id' => (int)$a['id'], 'username' => $a['username'], 'is_admin' => (int)$a['is_admin'], 'created_at' => $a['created_at'],
         'can_read_books' => (int)$a['can_read_books'], 'can_upload_books' => (int)$a['can_upload_books'],
-        'can_view_resume' => (int)($a['can_view_resume'] ?? 0), 'ads_free' => (int)$a['ads_free'],
+        'can_view_resume' => (int)($a['can_view_resume'] ?? 0), 'can_use_mail' => (int)($a['can_use_mail'] ?? 0), 'ads_free' => (int)$a['ads_free'],
         'is_banned' => (int)$a['is_banned'], 'banned_until' => $a['banned_until'],
         'timed_out' => !empty($a['banned_until']) && strtotime((string)$a['banned_until']) > time(),   // judged here, in the server's own time zone
         'supporter' => accountIsSupporter($db, (int)$a['id']),

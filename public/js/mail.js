@@ -24,9 +24,10 @@
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'mb-row' + (extra || '');
+        const av = document.createElement('span'); av.className = 'mb-av'; av.setAttribute('aria-hidden', 'true'); av.textContent = (main.trim()[0] || '·').toUpperCase();
         const a = document.createElement('span'); a.className = 'mb-sub'; a.textContent = main;
         const m = document.createElement('span'); m.className = 'mb-meta'; m.textContent = meta;
-        b.append(a, m);
+        b.append(av, a, m);
         return b;
     }
 

@@ -1,5 +1,5 @@
 <?php
-// public/api/mail.php — the e-mail box (admin only).
+// public/api/mail.php — the e-mail box (admin, and the people the admin allows with accounts.can_use_mail).
 //   GET  ?action=status                     -> driver on/off, daily limit, sent today, pending, how many people can get news
 //   GET  ?action=list&folder=draft|sent|queue
 //   GET  ?action=get&id=N
@@ -12,9 +12,11 @@ require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/rate_limiter.php';
 
 initSession();
-requireAdmin();
 $db = getDbConnection();
-$me = (int)$_SESSION['user_id'];
+$me = (int)($_SESSION['user_id'] ?? 0);
+if (!userCanUseMail($db, $me, sessionIsAdmin())) {
+    jsonResponse(['success' => false, 'error' => 'UNAUTHORIZED: no access to the e-mail box'], 403);
+}
 
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {

@@ -596,6 +596,15 @@ function userCanReadBooks(PDO $db, ?int $userId, bool $isAdmin): bool {
     return (int)$stmt->fetchColumn() === 1;
 }
 
+/** E-mail box permission: admins always, others need accounts.can_use_mail = 1 (checked in the database, not in the session). */
+function userCanUseMail(PDO $db, ?int $userId, bool $isAdmin): bool {
+    if ($isAdmin) return true;
+    if (!$userId) return false;
+    $stmt = $db->prepare("SELECT can_use_mail FROM accounts WHERE id = :id AND is_banned = 0");
+    $stmt->execute([':id' => $userId]);
+    return (int)$stmt->fetchColumn() === 1;
+}
+
 /** mbstring is optional on some hosts: fall back to byte functions. */
 function textLength(string $s): int {
     return function_exists('mb_strlen') ? mb_strlen($s) : strlen($s);

@@ -24,13 +24,13 @@ test('the home page is the menu: seven cards for everyone, the OS card goes to d
     assert.match(it.text, /<html lang="it"/); assert.match(it.text, /Sistema operativo/); assert.match(it.text, /Appunti di classe/);
 });
 
-test('the cards come in this order: games, book reader*, class notes, Wikipedia, desktop, account, news, project, statistics*  (* only for who may see them)', async () => {
+test('the cards come in this order: games, book reader*, class notes, Wikipedia, desktop, account, news, project, mail*, statistics*  (* only for who may see them)', async () => {
     const order = (html) => [...html.matchAll(/class="mcard [a-z]+" href="([^"]+)"/g)].map((m) => m[1]);
     assert.deepEqual(order((await new Client(site).get('/?lang=en')).text),
         ['pages/giochi.php', 'pages/appunti.php', 'pages/wikipedia.php', 'desktop.php', 'pages/login.php', 'pages/novita.php', 'pages/progetto.php']);
     const admin = await makeAdmin(site, 'order_admin');
     assert.deepEqual(order((await admin.get('/?lang=en')).text),
-        ['pages/giochi.php', 'pages/reader.php', 'pages/appunti.php', 'pages/wikipedia.php', 'desktop.php', 'pages/account.php', 'pages/novita.php', 'pages/progetto.php', 'pages/stats.php']);
+        ['pages/giochi.php', 'pages/reader.php', 'pages/appunti.php', 'pages/wikipedia.php', 'desktop.php', 'pages/account.php', 'pages/novita.php', 'pages/progetto.php', 'pages/mail.php', 'pages/stats.php']);
 });
 
 test('"Support vector-box" is a banner under the cards, not a footer link, in both languages', async () => {
@@ -65,7 +65,7 @@ test('private cards: the book reader only for who may read books, statistics onl
     const home = (await admin.get('/?lang=en')).text;
     assert.ok(has(home, 'reader') && has(home, 'stats'), 'the admin sees both');
     assert.match(home, /Book reader/); assert.match(home, /Statistics/); assert.match(home, /Private/);
-    assert.ok(!has(home, 'mail') && !home.includes('STATISTICS'), 'nothing else for the admin is on the menu');
+    assert.ok(has(home, 'mail') && !has(page, 'mail') && !home.includes('STATISTICS'), 'the admin also sees Mail (a plain account does not); nothing else is on the menu');
 
     assert.equal((await admin.post('/api/moderate_book_access.php', { action: 'grant', username: 'menu_reader' })).json.success, true);
     page = (await user.get('/?lang=en')).text;

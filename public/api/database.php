@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 62;
+const DB_SCHEMA_VERSION = 63;
 
 /**
  * Session bootstrap.
@@ -674,6 +674,11 @@ function migrateV57(PDO $db): void {
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
     )");
+}
+
+function migrateV63(PDO $db): void {
+    // the e-mail box is for the admin and for the people the admin allows (accounts.can_use_mail)
+    addColumnIfMissing($db, 'accounts', 'can_use_mail', 'INTEGER NOT NULL DEFAULT 0');
 }
 
 function migrateV62(PDO $db): void {
@@ -1398,6 +1403,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 62) {
             migrateV62($db);
+        }
+        if ($current < 63) {
+            migrateV63($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');
