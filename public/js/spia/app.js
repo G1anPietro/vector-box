@@ -96,6 +96,7 @@
     let renderDeferred = false;
     let lastSig = '';
     let wakeLock = null;
+    const allOpen = new Set();   // categories left open in the "all locations and roles" sheet (kept outside ui: opening one must not redraw the page)
 
     // Per-screen UI state (plain data, part of the render signature)
     const ui = {
@@ -511,6 +512,7 @@
             ] : [h('p', { class: 'muted small center' }, t(M.note)), LG && LG.lobbyExtra ? LG.lobbyExtra() : null],
             h('div', { class: 'lobby-links' },
                 h('button', { class: 'link', onclick: () => { ui.introStep = 0; openSheet('intro'); } }, t('how_to_play')),
+                GAME === 'spia' ? h('button', { class: 'link', onclick: () => openSheet('allloc') }, t('all_locations')) : null,
                 h('a', { class: 'link', href: '../index.php' }, t('back_to_site'))));
     }
 
@@ -955,11 +957,11 @@
     function sheet() {
         const titles = {
             settings: t('settings'), help: t('help'), lang: t('language'), menu: t('menu'),
-            locations: t('possible_locations'), intro: t('how_to_play'),
+            locations: t('possible_locations'), intro: t('how_to_play'), allloc: t('all_locations'),
         };
         const body = {
             settings: settingsSheet, help: helpSheet, lang: langSheet, menu: menuSheet,
-            locations: locationsSheet, intro: introSheet,
+            locations: locationsSheet, intro: introSheet, allloc: allLocationsSheet,
         }[ui.sheet];
         if (!body) return null;
         return h('div', { class: 'sheet-backdrop', onclick: (e) => { if (e.target === e.currentTarget) closeSheet(); } },
@@ -993,6 +995,20 @@
     function locationsSheet() {
         if (!state || !state.round) return null;
         return h('ul', { class: 'loc-list' }, poolSorted().map((l) => h('li', null, l.name)));
+    }
+
+    /** Every location with its roles, by category (the start screen of "Who's the spy?"; the categories start closed). */
+    function allLocationsSheet() {
+        return h('div', { class: 'allloc' },
+            h('p', { class: 'muted small' }, t('all_locations_note')),
+            LOC.categories.map((c) => {
+                const locs = LOC.locations.filter((l) => l.cat === c.id);
+                if (!locs.length) return null;
+                return h('details', { class: 'allloc-cat', open: allOpen.has(c.id), ontoggle: (e) => { if (e.target.open) allOpen.add(c.id); else allOpen.delete(c.id); } },
+                    h('summary', null, `${lname(c.name)} (${locs.length})`),
+                    locs.map((l) => h('div', { class: 'allloc-loc' }, h('strong', null, lname(l.name)),
+                        h('ul', null, (l.roles || []).map((r) => h('li', null, lname(r)))))));
+            }));
     }
 
     function helpSheet() {
