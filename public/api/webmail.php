@@ -241,7 +241,6 @@ try {
         if (!$to) jsonFail('no_recipient', 'Write who it is for');
         if (count($to) > 5) jsonFail('too_many', 'At most 5 recipients');
         foreach ($to as $addr) if (!mailValidAddress($addr)) jsonFail('bad_address', "That does not look like an address: " . mailLine($addr, 60));
-        if ($subject === '' && trim($body) === '') jsonFail('empty', 'Write a subject or a text first');
         $fileIds = array_slice(array_values(array_unique(array_filter(array_map('intval', (array)($in['file_ids'] ?? [])), fn($i) => $i > 0))), 0, MF_MAX_FILES);
         $files = [];
         if ($fileIds) {
@@ -251,6 +250,7 @@ try {
             if (count($files) !== count($fileIds)) jsonFail('bad_file', 'An attached file is no longer there: attach it again');
             if (array_sum(array_map(fn($f) => (int)$f['size'], $files)) > MF_MAX_TOTAL) jsonFail('too_many', 'At most 5 files and 20 MB for one message', 413);
         }
+        if ($subject === '' && trim($body) === '' && !$files) jsonFail('empty', 'Write a subject, a text or attach a file first');
         $external = array_values(array_filter($to, fn($a) => wmOwnerOf($db, $a) === null));
         if ($external && !$isAdmin) jsonFail('admin_only', 'Only the admin can write to addresses outside the site', 403);
         if ($external) {

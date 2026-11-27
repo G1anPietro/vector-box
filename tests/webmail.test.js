@@ -172,6 +172,10 @@ test.describe('webmail', () => {
         const sentRow = (await admin.get('/api/webmail.php?action=list&folder=sent')).json.rows.find((r) => r.subject === 'with file');
         assert.equal(sentRow.nfiles, 1, 'the Sent copy keeps the file');
         assert.match(fs.readFileSync(log, 'utf8'), /files=report\.pdf:23|files=.*report/, 'the outgoing message carried the file');
+        // a file alone (no subject, no text) is a message
+        const solo = await upload(admin, 'solo.txt', Buffer.from('solo'));
+        assert.equal((await wm(admin, { action: 'send', from_id: mine.id, to: 'files.rcpt@talvera.site', subject: '', body: '', file_ids: [solo.json.id] })).json.success, true);
+        assert.equal((await wm(admin, { action: 'send', from_id: mine.id, to: 'files.rcpt@talvera.site', subject: '', body: '' })).json.success, false);
         // limits and cleanup
         for (let i = 0; i < 5; i++) assert.equal((await upload(admin, 'f' + i + '.txt', Buffer.from('x'))).json.success, true);
         assert.equal((await upload(admin, 'f6.txt', Buffer.from('x'))).status, 413, 'at most 5 pending files');

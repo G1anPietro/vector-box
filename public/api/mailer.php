@@ -116,7 +116,7 @@ function mailTransport(array $row): void {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode(['from' => $from, 'to' => [$row['to_email']], 'subject' => $row['subject'], 'text' => $row['body']]
+            CURLOPT_POSTFIELDS => json_encode(['from' => $from, 'to' => [$row['to_email']], 'subject' => $row['subject'] !== '' ? $row['subject'] : '(no subject)', 'text' => trim($row['body']) !== '' ? $row['body'] : ' ']
                 + ($files ? ['attachments' => array_map(fn($f) => ['filename' => $f['name'], 'content' => base64_encode((string)file_get_contents(mfPath($f)))], $files)] : []), JSON_UNESCAPED_UNICODE),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $key],
             CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_SSL_VERIFYPEER => true,
