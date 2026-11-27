@@ -9,6 +9,7 @@
 //   admin: GET ?action=addresses  POST {action:'create_address', local, username}  {action:'delete_address', id}
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/rate_limiter.php';
+require_once __DIR__ . '/mail_files_lib.php';
 
 const WM_FOLDERS = ['inbox', 'sent', 'draft', 'trash'];
 
@@ -87,7 +88,7 @@ try {
                 $a = '%' . $addr . '%';   // addresses hold only letters, digits and . _ - @ : no LIKE wildcards but _ , harmless here
                 $where .= " AND (lower(from_addr) LIKE ? OR lower(to_addr) LIKE ?)"; array_push($args, $a, $a);
             }
-            $st = $db->prepare("SELECT id, folder, from_addr, to_addr, subject, substr(replace(body, char(10), ' '), 1, 110) AS snippet, is_read, is_starred, created_at FROM mail_inbox WHERE $where ORDER BY id DESC LIMIT 100");
+            $st = $db->prepare("SELECT id, folder, from_addr, to_addr, subject, substr(replace(body, char(10), ' '), 1, 110) AS snippet, is_read, is_starred, created_at, (SELECT COUNT(*) FROM mail_files f WHERE f.message_id = mail_inbox.id) AS nfiles FROM mail_inbox WHERE $where ORDER BY id DESC LIMIT 100");
             $st->execute($args);
             jsonResponse(['success' => true, 'rows' => $st->fetchAll()]);
         }
@@ -98,6 +99,21 @@ try {
             if (!$m) jsonFail('not_found', 'Message not found', 404);
             jsonResponse(['success' => true, 'message' => ['id' => (int)($_GET['id'] ?? 0), 'folder' => 'sys', 'from_addr' => ($m['from_email'] ?: (string)envValue('MAIL_FROM', 'no-reply')) . ' (' . $m['kind'] . ' · ' . $m['status'] . ($m['last_error'] !== '' ? ': ' . $m['last_error'] : '') . ')', 'to_addr' => $m['to_email'], 'subject' => $m['subject'], 'body' => $m['body'], 'is_read' => 1, 'created_at' => (int)$m['created_at']]]);
         }
+        if ($action === 'file') {   // download one attachment of mine: always as a download, never shown by the browser
+            $st = $db->prepare('SELECT * FROM mail_files WHERE id = :i AND account_id = :a AND message_id IS NOT NULL');
+            $st->execute([':i' => (int)($_GET['id'] ?? 0), ':a' => $me]);
+            $f = $st->fetch();
+            if (!$f || !is_file(mfPath($f))) jsonFail('not_found', 'File not found', 404);
+            $ascii = preg_replace('/[^A-Za-z0-9._-]+/', '_', (string)$f['name']);
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode((string)$f['name']));
+            header('Content-Length: ' . (int)$f['size']);
+            header('X-Content-Type-Options: nosniff');
+            header("Content-Security-Policy: default-src 'none'; sandbox");
+            header('Cache-Control: private, no-store');
+            readfile(mfPath($f));
+            exit();
+        }
         if ($action === 'get') {
             $st = $db->prepare('SELECT * FROM mail_inbox WHERE id = :id AND account_id = :a');
             $st->execute([':id' => (int)($_GET['id'] ?? 0), ':a' => $me]);
@@ -107,6 +123,9 @@ try {
                 $db->prepare('UPDATE mail_inbox SET is_read = 1 WHERE id = :id')->execute([':id' => $m['id']]);
                 $m['is_read'] = 1;
             }
+            $fs = $db->prepare('SELECT id, name, size FROM mail_files WHERE message_id = :m AND account_id = :a ORDER BY id');
+            $fs->execute([':m' => $m['id'], ':a' => $me]);
+            $m['files'] = array_map(fn($f) => ['id' => (int)$f['id'], 'name' => $f['name'], 'size' => (int)$f['size']], $fs->fetchAll());
             jsonResponse(['success' => true, 'message' => $m]);
         }
         if ($action === 'contacts') {   // who I wrote to before, from one of my addresses (from_id) or from all of them (0)
@@ -126,6 +145,7 @@ try {
 
     requireCsrf();
     $in = readJsonBody();
+    if (!$in && isset($_POST['action'])) $in = $_POST;   // a file upload is a form, not JSON
     $action = (string)($in['action'] ?? '');
     if (!checkRateLimit('webmail', 300, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many requests', 429);
 
@@ -154,6 +174,27 @@ try {
         jsonResponse(['success' => true, 'address' => $local . '@' . wmDomain()]);
     }
 
+    // ---- attachments: upload one file (kept as pending until the message is sent), or take it back
+    if ($action === 'upload') {
+        $up = $_FILES['file'] ?? null;
+        if (!$up || ($up['error'] ?? 1) !== UPLOAD_ERR_OK || !is_uploaded_file((string)$up['tmp_name'])) jsonFail('upload_failed', 'The file could not be uploaded', 400);
+        if ((int)$up['size'] > MF_MAX_FILE) jsonFail('too_big', 'A file can be at most 10 MB', 413);
+        if (!checkRateLimit('webmail_up', 60, 3600, 'user:' . $me)) jsonFail('slow_down', 'Too many files, try later', 429);
+        mfSweepPending($db);
+        $pend = $db->prepare('SELECT COUNT(*), COALESCE(SUM(size), 0) FROM mail_files WHERE account_id = :a AND message_id IS NULL AND queue_id IS NULL');
+        $pend->execute([':a' => $me]);
+        [$np, $sp] = array_map('intval', $pend->fetch(PDO::FETCH_NUM));
+        if ($np >= MF_MAX_FILES || $sp + (int)$up['size'] > MF_MAX_TOTAL) jsonFail('too_many', 'At most 5 files and 20 MB for one message', 413);
+        if (mfUsed($db, $me) + (int)$up['size'] > MF_QUOTA) jsonFail('quota', 'Your attachment space (300 MB) is full: delete old messages with files', 413);
+        $bytes = (string)file_get_contents((string)$up['tmp_name']);
+        $id = mfStore($db, $me, (string)($up['name'] ?? 'file'), (string)($up['type'] ?? ''), $bytes);
+        jsonResponse(['success' => true, 'id' => $id, 'name' => mfName((string)($up['name'] ?? 'file')), 'size' => strlen($bytes)]);
+    }
+    if ($action === 'remove_file') {
+        mfDrop($db, 'id = ? AND account_id = ? AND message_id IS NULL AND queue_id IS NULL', [(int)($in['id'] ?? 0), $me]);
+        jsonResponse(['success' => true]);
+    }
+
     // ---- flags, trash
     if (in_array($action, ['star', 'read', 'trash', 'restore', 'delete'], true)) {
         $list = $ids($in);
@@ -166,11 +207,13 @@ try {
         elseif ($action === 'restore') $st = $db->prepare("UPDATE mail_inbox SET folder = CASE WHEN prev_folder = '' THEN 'inbox' ELSE prev_folder END, prev_folder = '' WHERE account_id = ? AND folder = 'trash' AND id IN ($mark)");
         else $st = $db->prepare("DELETE FROM mail_inbox WHERE account_id = ? AND folder = 'trash' AND id IN ($mark)");
         $st->execute(array_merge([$me], $list));
+        if ($action === 'delete') mfSweep($db, $me);
         jsonResponse(['success' => true, 'changed' => $st->rowCount()]);
     }
     if ($action === 'empty_trash') {
         $st = $db->prepare("DELETE FROM mail_inbox WHERE account_id = :a AND folder = 'trash'");
         $st->execute([':a' => $me]);
+        mfSweep($db, $me);
         jsonResponse(['success' => true, 'changed' => $st->rowCount()]);
     }
 
@@ -199,6 +242,15 @@ try {
         if (count($to) > 5) jsonFail('too_many', 'At most 5 recipients');
         foreach ($to as $addr) if (!mailValidAddress($addr)) jsonFail('bad_address', "That does not look like an address: " . mailLine($addr, 60));
         if ($subject === '' && trim($body) === '') jsonFail('empty', 'Write a subject or a text first');
+        $fileIds = array_slice(array_values(array_unique(array_filter(array_map('intval', (array)($in['file_ids'] ?? [])), fn($i) => $i > 0))), 0, MF_MAX_FILES);
+        $files = [];
+        if ($fileIds) {
+            $fs = $db->prepare('SELECT * FROM mail_files WHERE id IN (' . implode(',', array_fill(0, count($fileIds), '?')) . ') AND account_id = ? AND message_id IS NULL AND queue_id IS NULL');
+            $fs->execute(array_merge($fileIds, [$me]));
+            $files = $fs->fetchAll();
+            if (count($files) !== count($fileIds)) jsonFail('bad_file', 'An attached file is no longer there: attach it again');
+            if (array_sum(array_map(fn($f) => (int)$f['size'], $files)) > MF_MAX_TOTAL) jsonFail('too_many', 'At most 5 files and 20 MB for one message', 413);
+        }
         $external = array_values(array_filter($to, fn($a) => wmOwnerOf($db, $a) === null));
         if ($external && !$isAdmin) jsonFail('admin_only', 'Only the admin can write to addresses outside the site', 403);
         if ($external) {
@@ -210,10 +262,11 @@ try {
         try {
             foreach ($to as $addr) {
                 $owner = wmOwnerOf($db, $addr);
-                if ($owner !== null) wmStore($db, $owner, 'inbox', $from, $addr, $subject, $body, 0);
-                else $queued[] = mailEnqueue($db, null, $me, $addr, $subject, $body, 'user', $from);
+                if ($owner !== null) { $mid = wmStore($db, $owner, 'inbox', $from, $addr, $subject, $body, 0); foreach ($files as $f) mfClone($db, $f, $owner, $mid, null); }
+                else { $qid = mailEnqueue($db, null, $me, $addr, $subject, $body, 'user', $from); $queued[] = $qid; foreach ($files as $f) mfClone($db, $f, $me, null, $qid); }
             }
-            wmStore($db, $me, 'sent', $from, implode(', ', $to), $subject, $body, 1);
+            $sid = wmStore($db, $me, 'sent', $from, implode(', ', $to), $subject, $body, 1);
+            foreach ($files as $f) $db->prepare('UPDATE mail_files SET message_id = :m WHERE id = :i')->execute([':m' => $sid, ':i' => $f['id']]);   // the Sent copy keeps the uploaded file itself
             $keep = $db->prepare('INSERT INTO mail_contacts (account_id, address_id, email, last_used) VALUES (:a, :f, :e, :t) ON CONFLICT (account_id, address_id, email) DO UPDATE SET uses = uses + 1, last_used = excluded.last_used');
             foreach ($to as $addr) $keep->execute([':a' => $me, ':f' => (int)$in['from_id'], ':e' => strtolower($addr), ':t' => time()]);
             $db->prepare('DELETE FROM mail_contacts WHERE account_id = :a AND id NOT IN (SELECT id FROM mail_contacts WHERE account_id = :a ORDER BY last_used DESC, id DESC LIMIT 500)')->execute([':a' => $me]);

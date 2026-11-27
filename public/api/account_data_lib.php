@@ -46,6 +46,7 @@ function accountExport(PDO $db, int $userId): array {
         'account' => $acc,
         'chat_messages' => $all('SELECT id, room_id, message, sender_ip, created_at FROM transmissions WHERE (user_id = :i OR username = :n) AND (is_deleted = 0 OR is_deleted IS NULL)', $name),
         'mailbox' => $all('SELECT folder, from_addr, to_addr, subject, body, is_read, is_starred, created_at FROM mail_inbox WHERE account_id = :i', [':i' => $userId]),
+        'mail_attachments' => $all('SELECT message_id, name, mime, size, created_at FROM mail_files WHERE account_id = :i', [':i' => $userId]),   // names only, not the bytes
         'mail_contacts' => $all('SELECT address_id, email, uses, last_used FROM mail_contacts WHERE account_id = :i', [':i' => $userId]),
         'mail_addresses' => $all('SELECT local_part, created_at FROM mail_addresses WHERE account_id = :i', [':i' => $userId]),
         'idea_votes' => $all('SELECT idea_id FROM news_idea_votes WHERE user_id = :i', [':i' => $userId]),
@@ -141,6 +142,9 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
         // donations stay for accounting, without the person
         $run("UPDATE donors SET account_id = NULL, display_name = '', is_public = 0, note = '' WHERE account_id = :i", $u);
         $run('DELETE FROM mail_queue WHERE account_id = :i', $u);   // messages written for this person
+        $mfs = $db->prepare('SELECT stored FROM mail_files WHERE account_id = :i'); $mfs->execute($u);
+        foreach ($mfs->fetchAll(PDO::FETCH_COLUMN) as $stored) $files[] = dirname(__DIR__, 2) . '/data/mail_files/' . basename((string)$stored);   // removed from disk after the commit, like the class files
+        $run('DELETE FROM mail_files WHERE account_id = :i', $u);
         $run('DELETE FROM mail_inbox WHERE account_id = :i', $u);   // the personal mailbox
         $run('DELETE FROM mail_addresses WHERE account_id = :i', $u);
         $run('DELETE FROM mail_contacts WHERE account_id = :i', $u);

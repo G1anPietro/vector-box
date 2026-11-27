@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 66;
+const DB_SCHEMA_VERSION = 67;
 
 /**
  * Session bootstrap.
@@ -674,6 +674,24 @@ function migrateV57(PDO $db): void {
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
     )");
+}
+
+function migrateV67(PDO $db): void {
+    // attachments of the personal mail (the bytes are files in data/mail_files/)
+    $db->exec("CREATE TABLE IF NOT EXISTS mail_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL,
+        message_id INTEGER,                 -- mail_inbox.id
+        queue_id INTEGER,                   -- mail_queue.id (outgoing, until it is sent)
+        name TEXT NOT NULL,
+        mime TEXT NOT NULL DEFAULT '',
+        size INTEGER NOT NULL,
+        stored TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )");
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_mail_files_msg ON mail_files(message_id)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_mail_files_queue ON mail_files(queue_id)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_mail_files_acc ON mail_files(account_id)');
 }
 
 function migrateV66(PDO $db): void {
@@ -1477,6 +1495,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 66) {
             migrateV66($db);
+        }
+        if ($current < 67) {
+            migrateV67($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

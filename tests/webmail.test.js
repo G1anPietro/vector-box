@@ -144,4 +144,50 @@ test.describe('webmail', () => {
         assert.deepEqual(await c('&from_id=999999'), [], 'not my address: nothing');
         assert.deepEqual((await ada.get('/api/webmail.php?action=contacts')).json.contacts || [], [], 'another account sees none of it');
     });
+
+    test('attachments: upload, send to a local and an outside address, download only as the owner, limits, cleanup, incoming', async () => {
+        clear();
+        const dir = path.join(site.root, 'data', 'mail_files');
+        const count = () => (fs.existsSync(dir) ? fs.readdirSync(dir).length : 0);
+        const upload = async (c, name, bytes) => {
+            const fd = new FormData(); fd.append('action', 'upload'); fd.append('file', new Blob([bytes]), name);
+            const r = await fetch(`${site.base}/api/webmail.php`, { method: 'POST', headers: { Cookie: c.cookieHeader(), 'X-CSRF-Token': c.csrf }, body: fd });
+            return { status: r.status, json: await r.json() };
+        };
+        const mine = (await admin.get('/api/webmail.php?action=boot')).json.addresses[0];
+        await wm(admin, { action: 'create_address', local: 'files.rcpt', username: 'wm_ada' });
+        const up = await upload(admin, '../../etc/passwd report.pdf', Buffer.from('%PDF-1 hello attachment'));
+        assert.equal(up.json.success, true); assert.equal(up.json.name.includes('/'), false, 'no path in the name');
+        assert.equal((await upload(admin, 'big.bin', Buffer.alloc(11 * 1024 * 1024))).status, 413, 'over 10 MB');
+        const sent = await wm(admin, { action: 'send', from_id: mine.id, to: 'files.rcpt@talvera.site, out@example.org', subject: 'with file', body: 'see attached', file_ids: [up.json.id] });
+        assert.equal(sent.json.success, true);
+        const adaList = (await ada.get('/api/webmail.php?action=list&folder=inbox')).json.rows.find((r) => r.subject === 'with file');
+        assert.equal(adaList.nfiles, 1);
+        const msg = (await ada.get('/api/webmail.php?action=get&id=' + adaList.id)).json.message;
+        assert.equal(msg.files.length, 1);
+        const dl = await fetch(`${site.base}/api/webmail.php?action=file&id=${msg.files[0].id}`, { headers: { Cookie: ada.cookieHeader() } });
+        assert.equal(dl.headers.get('content-type'), 'application/octet-stream'); assert.match(dl.headers.get('content-disposition'), /^attachment/); assert.equal(dl.headers.get('x-content-type-options'), 'nosniff');
+        assert.equal(await dl.text(), '%PDF-1 hello attachment');
+        assert.equal((await fetch(`${site.base}/api/webmail.php?action=file&id=${msg.files[0].id}`, { headers: { Cookie: bob.cookieHeader() } })).status, 404, 'another account cannot get it');
+        const sentRow = (await admin.get('/api/webmail.php?action=list&folder=sent')).json.rows.find((r) => r.subject === 'with file');
+        assert.equal(sentRow.nfiles, 1, 'the Sent copy keeps the file');
+        assert.match(fs.readFileSync(log, 'utf8'), /files=report\.pdf:23|files=.*report/, 'the outgoing message carried the file');
+        // limits and cleanup
+        for (let i = 0; i < 5; i++) assert.equal((await upload(admin, 'f' + i + '.txt', Buffer.from('x'))).json.success, true);
+        assert.equal((await upload(admin, 'f6.txt', Buffer.from('x'))).status, 413, 'at most 5 pending files');
+        // trash + delete forever removes the files from disk
+        const before = count();
+        await wm(admin, { action: 'trash', ids: [sentRow.id] });
+        await wm(admin, { action: 'delete', ids: [sentRow.id] });
+        assert.ok(count() < before, 'the Sent copy file is gone from disk');
+        // incoming mail with attachments for an address of mine
+        const okB64 = Buffer.from('incoming file').toString('base64');
+        const rr = await inbound({ to: 'boss@talvera.site', from: 'x@y.z', subject: 'incoming files', text: 'hi', attachments: [{ name: 'a.txt', type: 'text/plain', data: okB64 }, { name: 'bad.bin', type: 'x/y', data: '***not base64***' }], skipped: ['huge.iso'] }, 's3cret-s3cret');
+        assert.equal(rr.status, 200);
+        const inc = (await admin.get('/api/webmail.php?action=list&folder=inbox')).json.rows.find((r) => r.subject === 'incoming files');
+        assert.equal(inc.nfiles, 1);
+        const got = (await admin.get('/api/webmail.php?action=get&id=' + inc.id)).json.message;
+        assert.match(got.body, /Not saved: .*bad\.bin.*huge\.iso/);
+        assert.equal(await (await fetch(`${site.base}/api/webmail.php?action=file&id=${got.files[0].id}`, { headers: { Cookie: admin.cookieHeader() } })).text(), 'incoming file');
+    });
 });

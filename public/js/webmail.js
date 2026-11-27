@@ -5,7 +5,7 @@
     let T = {};
     try { T = JSON.parse($('wm-i18n').textContent); } catch (e) { /* the page still works with empty texts */ }
     const t = (k) => T[k] || k;
-    const state = { folder: 'inbox', q: '', rows: [], open: null, sel: new Set(), addresses: [], domain: '', draftId: 0, admin: document.body.dataset.admin === '1', addr: '', me: '' };
+    const state = { folder: 'inbox', q: '', rows: [], open: null, sel: new Set(), addresses: [], domain: '', draftId: 0, admin: document.body.dataset.admin === '1', addr: '', me: '', files: [], uploading: 0 };
 
     async function api(path, body) {
         const r = await fetch('../api/webmail.php' + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -83,7 +83,7 @@
         if (r.folder === 'sys') star.style.visibility = 'hidden';
         star.addEventListener('click', async (e) => { e.stopPropagation(); const v = r.is_starred ? 0 : 1; await api('', { action: 'star', ids: [r.id], value: v }).catch((x) => note(x.message)); r.is_starred = v; star.textContent = v ? '★' : '☆'; star.classList.toggle('on', !!v); });
         const from = el('span', 'wm-from', who(r));
-        const mid = el('span', 'wm-mid'); mid.append(el('b', '', r.subject || t('nosub')), el('span', 'muted', ' — ' + (r.snippet || '')));
+        const mid = el('span', 'wm-mid'); mid.append(el('b', '', (r.nfiles > 0 ? '📎 ' : '') + (r.subject || t('nosub'))), el('span', 'muted', ' — ' + (r.snippet || '')));
         const date = el('span', 'wm-date', when(r.created_at));
         li.append(cb, av, star, from, mid, date);
         li.addEventListener('click', () => (r.folder === 'draft' ? compose(r) : open(r.id, r.folder === 'sys')));
@@ -97,6 +97,11 @@
         box.append(el('h2', '', m.subject || t('nosub')));
         const meta = el('p', 'muted'); meta.textContent = t('from') + ': ' + (m.from_addr || '—') + '  ·  ' + t('to') + ': ' + (m.to_addr || '—') + '  ·  ' + new Date(m.created_at * 1000).toLocaleString();
         box.append(meta, el('pre', 'wm-text', m.body));
+        if (m.files && m.files.length) {
+            const fl = el('div', 'wm-files'); fl.append(el('b', '', t('attached') + ': '));
+            for (const f of m.files) { const a = el('a', 'wm-chip', '📎 ' + f.name + ' (' + size(f.size) + ')'); a.href = '../api/webmail.php?action=file&id=' + f.id; a.setAttribute('download', f.name); fl.append(a); }
+            box.append(fl);
+        }
         const acts = el('div', 'wm-acts');
         const rep = el('button', 'wm-pill', '↩ ' + t('reply')); rep.type = 'button';
         rep.addEventListener('click', () => compose(null, { to: bare(m.folder === 'sent' ? m.to_addr : m.from_addr), subject: /^re:/i.test(m.subject) ? m.subject : 'Re: ' + m.subject, body: '\n\n' + new Date(m.created_at * 1000).toLocaleString() + ', ' + m.from_addr + ' ' + t('wrote') + ':\n' + m.body.split('\n').map((l) => '> ' + l).join('\n') }));
@@ -110,7 +115,7 @@
 
     function compose(draft, pre) {
         if (!state.addresses.length) return note(t('noaddr'));
-        state.draftId = draft ? draft.id : 0;
+        state.draftId = draft ? draft.id : 0; state.files = []; renderFiles();
         $('wm-win').hidden = false;
         $('wm-win-title').textContent = t('newm');
         $('wm-to').value = draft ? draft.to_addr : (pre ? pre.to : '');
@@ -132,10 +137,41 @@
     $('wm-to').addEventListener('input', suggest);
     $('wm-from').addEventListener('change', loadContacts);
     const dirty = () => $('wm-to').value.trim() || $('wm-subject').value.trim() || $('wm-body').value.trim();
-    const payload = () => ({ from_id: Number($('wm-from').value), to: $('wm-to').value, subject: $('wm-subject').value, body: $('wm-body').value });
+    const payload = () => ({ from_id: Number($('wm-from').value), to: $('wm-to').value, subject: $('wm-subject').value, body: $('wm-body').value, file_ids: state.files.map((f) => f.id) });
+    const size = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
+    // attachments: each file goes up at once (the server keeps it "pending" until the message is sent)
+    function renderFiles() {
+        const box = $('wm-files'); box.replaceChildren();
+        for (const f of state.files) {
+            const chip = el('span', 'wm-chip'); chip.append(el('span', '', f.name + ' (' + size(f.size) + ')'));
+            const x = el('button', 'wm-ico', '✕'); x.type = 'button'; x.setAttribute('aria-label', t('del') || 'remove');
+            x.addEventListener('click', async () => { state.files = state.files.filter((g) => g.id !== f.id); renderFiles(); api('', { action: 'remove_file', id: f.id }).catch(() => {}); });
+            chip.append(x); box.append(chip);
+        }
+    }
+    async function uploadFile(file) {
+        const fd = new FormData(); fd.append('action', 'upload'); fd.append('file', file);
+        const r = await fetch('../api/webmail.php', { method: 'POST', body: fd });
+        const j = await r.json().catch(() => null);
+        if (!r.ok || !j || !j.success) throw new Error((j && j.error) || t('wrong'));
+        return j;
+    }
+    $('wm-attach').addEventListener('click', () => $('wm-file').click());
+    $('wm-file').addEventListener('change', async () => {
+        const list = [...$('wm-file').files]; $('wm-file').value = '';
+        for (const file of list) {
+            if (file.size > 10 * 1048576) { $('wm-win-msg').textContent = t('too_big'); continue; }
+            state.uploading++; $('wm-send').disabled = true; $('wm-win-msg').textContent = '…';
+            try { state.files.push(await uploadFile(file)); $('wm-win-msg').textContent = ''; renderFiles(); }
+            catch (x) { $('wm-win-msg').textContent = x.message; }
+            if (--state.uploading === 0) $('wm-send').disabled = false;
+        }
+    });
 
     async function closeWin() {
-        if (dirty()) { try { await api('', { action: 'save_draft', id: state.draftId, ...payload() }); note(t('saved')); } catch (e) { note(e.message); } }
+        if (dirty()) { try { await api('', { action: 'save_draft', id: state.draftId, ...payload() }); note(state.files.length ? t('saved_nofiles') : t('saved')); } catch (e) { note(e.message); } }
+        for (const f of state.files) api('', { action: 'remove_file', id: f.id }).catch(() => {});
+        state.files = []; renderFiles();
         $('wm-win').hidden = true; state.draftId = 0;
         boot().catch(() => {}); if (state.folder === 'draft') load().catch(() => {});
     }
@@ -191,7 +227,7 @@
         $('wm-send').disabled = true;
         try {
             const r = await api('', { action: 'send', draft_id: state.draftId, ...payload() });
-            $('wm-win').hidden = true; state.draftId = 0;
+            $('wm-win').hidden = true; state.draftId = 0; state.files = []; renderFiles();
             note(r.external && !r.sent_now ? t('sentext') : t('sent'));
             boot().catch(() => {}); load().catch(() => {});
         } catch (x) { $('wm-win-msg').textContent = x.message; }

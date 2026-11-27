@@ -8,6 +8,7 @@
 // MAIL_FROM="Name <address@your-domain>"   MAIL_DAILY_LIMIT=200 (messages a day, all kinds)
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/classi_lib.php';   // appSetting / appSettingSet
+require_once __DIR__ . '/mail_files_lib.php';
 
 const MAIL_MAX_ATTEMPTS = 5;
 
@@ -99,11 +100,13 @@ function mailVerifyMessage(PDO $db, array $account, string $email, string $lang)
 /** The real sending of one queued row. Throws on failure. */
 function mailTransport(array $row): void {
     $driver = mailDriver();
+    $files = [];
+    if (!empty($row['id'])) { $fs = getDbConnection()->prepare('SELECT * FROM mail_files WHERE queue_id = :q'); $fs->execute([':q' => $row['id']]); $files = $fs->fetchAll(); }
     $from = mailLine((string)envValue('MAIL_FROM', 'vector-box <no-reply@localhost>'));
     if (!empty($row['from_email']) && mailValidAddress((string)$row['from_email'])) $from = $row['from_email'];   // a person's own address (kind 'user')
     if ($driver === 'log') {
         $file = dirname(__DIR__, 2) . '/data/mail.log';
-        file_put_contents($file, date('c') . "\tfrom=" . $from . "\tto=" . $row['to_email'] . "\tsubject=" . $row['subject'] . "\n" . $row['body'] . "\n----\n", FILE_APPEND | LOCK_EX);
+        file_put_contents($file, date('c') . "\tfrom=" . $from . "\tto=" . $row['to_email'] . "\tsubject=" . $row['subject'] . ($files ? "\tfiles=" . implode('|', array_map(fn($f) => $f['name'] . ':' . $f['size'], $files)) : '') . "\n" . $row['body'] . "\n----\n", FILE_APPEND | LOCK_EX);
         return;
     }
     if ($driver === 'http') {
@@ -113,7 +116,8 @@ function mailTransport(array $row): void {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode(['from' => $from, 'to' => [$row['to_email']], 'subject' => $row['subject'], 'text' => $row['body']], JSON_UNESCAPED_UNICODE),
+            CURLOPT_POSTFIELDS => json_encode(['from' => $from, 'to' => [$row['to_email']], 'subject' => $row['subject'], 'text' => $row['body']]
+                + ($files ? ['attachments' => array_map(fn($f) => ['filename' => $f['name'], 'content' => base64_encode((string)file_get_contents(mfPath($f)))], $files)] : []), JSON_UNESCAPED_UNICODE),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $key],
             CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_SSL_VERIFYPEER => true,
         ]);
@@ -167,13 +171,14 @@ function mailProcessQueue(PDO $db, int $limit = 20, ?array $ids = null): array {
                     }
                 }
                 mailTransport($row);
+                mfDrop($db, 'queue_id = ?', [$row['id']]);   // sent: the Sent folder keeps its own copy
                 $db->prepare("UPDATE mail_queue SET status = 'sent', sent_at = :t, attempts = attempts + 1, last_error = '' WHERE id = :id")->execute([':t' => time(), ':id' => $row['id']]);
                 $out['sent']++;
             } catch (Throwable $e) {
                 $final = (int)$row['attempts'] + 1 >= MAIL_MAX_ATTEMPTS;
                 $db->prepare('UPDATE mail_queue SET status = :s, attempts = attempts + 1, last_error = :e, sent_at = NULL WHERE id = :id')
                    ->execute([':s' => $final ? 'failed' : 'pending', ':e' => textCut($e->getMessage(), 300), ':id' => $row['id']]);
-                if ($final) $out['failed']++;
+                if ($final) { $out['failed']++; mfDrop($db, 'queue_id = ?', [$row['id']]); }
             }
         }
     }
