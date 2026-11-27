@@ -157,8 +157,14 @@
         return j;
     }
     $('wm-attach').addEventListener('click', () => $('wm-file').click());
-    $('wm-file').addEventListener('change', async () => {
-        const list = [...$('wm-file').files]; $('wm-file').value = '';
+    $('wm-file').addEventListener('change', () => { const list = [...$('wm-file').files]; $('wm-file').value = ''; addFiles(list); });
+    // drag and drop onto the writing window
+    const win = $('wm-win');
+    const hasFiles = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+    win.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; win.classList.add('wm-drop'); });
+    win.addEventListener('dragleave', (e) => { if (!win.contains(e.relatedTarget)) win.classList.remove('wm-drop'); });
+    win.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); win.classList.remove('wm-drop'); addFiles([...e.dataTransfer.files]); });
+    async function addFiles(list) {
         for (const file of list) {
             if (file.size > 10 * 1048576) { $('wm-win-msg').textContent = t('too_big'); continue; }
             state.uploading++; $('wm-send').disabled = true; $('wm-win-msg').textContent = '…';
@@ -166,7 +172,7 @@
             catch (x) { $('wm-win-msg').textContent = x.message; }
             if (--state.uploading === 0) $('wm-send').disabled = false;
         }
-    });
+    }
 
     async function closeWin() {
         if (dirty()) { try { await api('', { action: 'save_draft', id: state.draftId, ...payload() }); note(state.files.length ? t('saved_nofiles') : t('saved')); } catch (e) { note(e.message); } }

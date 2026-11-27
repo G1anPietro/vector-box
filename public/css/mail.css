@@ -41,6 +41,7 @@
 .wm-read { padding: 18px 22px 40px; }
 .wm-read h2 { margin: 0 0 6px; font-size: 1.5rem; overflow-wrap: anywhere; }
 .wm-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; margin: 16px 0; }
+.wm-win.wm-drop { outline: 2px dashed var(--link); outline-offset: -6px; }
 .wm-files { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
 .wm-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 4px 10px; border: 1px solid var(--plank); border-radius: 999px; background: var(--dusk); color: var(--text); font-size: 14px; text-decoration: none; overflow-wrap: anywhere; }
 a.wm-chip:hover { border-color: var(--link); }
