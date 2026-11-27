@@ -5,10 +5,10 @@
     let T = {};
     try { T = JSON.parse($('wm-i18n').textContent); } catch (e) { /* the page still works with empty texts */ }
     const t = (k) => T[k] || k;
-    const state = { folder: 'inbox', q: '', rows: [], open: null, sel: new Set(), addresses: [], domain: '', draftId: 0, admin: document.body.dataset.admin === '1', addr: '', me: '', files: [], uploading: 0 };
+    const state = { folder: 'inbox', q: '', rows: [], open: null, sel: new Set(), addresses: [], domain: '', draftId: 0, admin: document.body.dataset.admin === '1', addr: '', me: '', files: [], uploading: 0, unread: null, title: document.title, win: 0, saving: null, saveT: 0, pending: null, sigBlock: '' };
 
-    async function api(path, body) {
-        const r = await fetch('../api/webmail.php' + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+    async function api(path, body, keepalive) {
+        const r = await fetch('../api/webmail.php' + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!keepalive } : {});
         const j = await r.json().catch(() => null);
         if (!r.ok || !j || !j.success) throw new Error((j && j.error) || t('wrong'));
         return j;
@@ -27,6 +27,13 @@
         const b = await api('?action=boot');
         state.me = b.username || ''; state.addresses = b.addresses; state.domain = b.domain; state.driver = b.driver;
         $('wm-n-inbox').textContent = b.counts.inbox_unread ? String(b.counts.inbox_unread) : '';
+        const n = b.counts.inbox_unread;   // the unread count in the tab title; new mail while I am away shows a desktop notification (if allowed)
+        document.title = (n ? '(' + n + ') ' : '') + state.title;
+        if (state.unread !== null && n > state.unread) {
+            if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(state.title, { body: (n - state.unread) + ' ' + t('new_mail'), tag: 'wm-new' }); } catch (e) { /* some phones refuse */ } }
+            if (!state.open && state.folder === 'inbox' && !state.q) load().catch(() => {});
+        }
+        state.unread = n;
         $('wm-n-draft').textContent = b.counts.draft ? String(b.counts.draft) : '';
         $('wm-mine').textContent = b.addresses.length ? t('mine') + ': ' + b.addresses.map((a) => a.address).join(', ') : t('noaddr');
         const from = $('wm-from'); from.replaceChildren();
@@ -50,6 +57,8 @@
             const k = b.dataset.bulk, inTrash = f === 'trash';
             b.hidden = f === 'system' || !(listing || reading) || (k === 'restore' || k === 'delete' ? !inTrash : k === 'trash' ? inTrash : (inTrash || f === 'draft'));
         });
+        $('wm-label').hidden = f === 'system' || f === 'draft' || !(listing || reading);
+        $('wm-label').value = '?';
         $('wm-refresh').hidden = !listing;
         $('wm-empty').hidden = !(listing && f === 'trash');
         document.querySelectorAll('.wm-folder').forEach((b) => b.classList.toggle('active', b.dataset.folder === f));
@@ -83,7 +92,8 @@
         if (r.folder === 'sys') star.style.visibility = 'hidden';
         star.addEventListener('click', async (e) => { e.stopPropagation(); const v = r.is_starred ? 0 : 1; await api('', { action: 'star', ids: [r.id], value: v }).catch((x) => note(x.message)); r.is_starred = v; star.textContent = v ? '★' : '☆'; star.classList.toggle('on', !!v); });
         const from = el('span', 'wm-from', who(r));
-        const mid = el('span', 'wm-mid'); mid.append(el('b', '', (r.nfiles > 0 ? '📎 ' : '') + (r.subject || t('nosub'))), el('span', 'muted', ' — ' + (r.snippet || '')));
+        const mid = el('span', 'wm-mid'); if (r.label) mid.append(el('i', 'wm-dot l-' + r.label));
+        mid.append(el('b', '', (r.nfiles > 0 ? '📎 ' : '') + (r.subject || t('nosub'))), el('span', 'muted', ' — ' + (r.snippet || '')));
         const date = el('span', 'wm-date', when(r.created_at));
         li.append(cb, av, star, from, mid, date);
         li.addEventListener('click', () => (r.folder === 'draft' ? compose(r) : open(r.id, r.folder === 'sys')));
@@ -95,12 +105,19 @@
         state.open = m; syncBar(); show('read');
         const box = $('wm-read'); box.replaceChildren();
         box.append(el('h2', '', m.subject || t('nosub')));
-        const meta = el('p', 'muted'); meta.textContent = t('from') + ': ' + (m.from_addr || '—') + '  ·  ' + t('to') + ': ' + (m.to_addr || '—') + '  ·  ' + new Date(m.created_at * 1000).toLocaleString();
+        const meta = el('p', 'muted'); meta.textContent = t('from') + ': ' + (m.from_addr || '—') + '  ·  ' + t('to') + ': ' + (m.to_addr || '—') + (m.cc_addr ? '  ·  ' + t('cc') + ': ' + m.cc_addr : '') + (m.bcc_addr ? '  ·  ' + t('bcc') + ': ' + m.bcc_addr : '') + '  ·  ' + new Date(m.created_at * 1000).toLocaleString();
         box.append(meta, el('pre', 'wm-text', m.body));
         if (m.files && m.files.length) {
             const fl = el('div', 'wm-files'); fl.append(el('b', '', t('attached') + ': '));
-            for (const f of m.files) { const a = el('a', 'wm-chip', '📎 ' + f.name + ' (' + size(f.size) + ')'); a.href = '../api/webmail.php?action=file&id=' + f.id; a.setAttribute('download', f.name); fl.append(a); }
-            box.append(fl);
+            const pv = el('div', 'wm-previews');
+            for (const f of m.files) {
+                const url = '../api/webmail.php?action=file&id=' + f.id;
+                const a = el('a', 'wm-chip', '📎 ' + f.name + ' (' + size(f.size) + ')'); a.href = url; a.setAttribute('download', f.name); fl.append(a);
+                // pictures and PDFs can be looked at without downloading; the server checks the real bytes before it shows anything inline
+                if (/^image\/(png|jpeg|gif|webp)$/.test(f.mime)) { const l = el('a'); l.href = url + '&preview=1'; l.target = '_blank'; l.rel = 'noopener'; const im = el('img', 'wm-thumb'); im.src = url + '&preview=1'; im.alt = f.name; im.loading = 'lazy'; l.append(im); pv.append(l); }
+                else if (f.mime === 'application/pdf') { const l = el('a', 'wm-chip', '👁 ' + t('preview') + ' PDF'); l.href = url + '&preview=1'; l.target = '_blank'; l.rel = 'noopener'; fl.append(l); }
+            }
+            box.append(fl, pv);
         }
         const acts = el('div', 'wm-acts');
         const rep = el('button', 'wm-pill', '↩ ' + t('reply')); rep.type = 'button';
@@ -115,29 +132,50 @@
 
     function compose(draft, pre) {
         if (!state.addresses.length) return note(t('noaddr'));
+        flushPending(false);   // a message still waiting in its "undo" seconds goes out now
+        clearTimeout(state.saveT); state.win++;
         state.draftId = draft ? draft.id : 0; state.files = []; renderFiles();
-        $('wm-win').hidden = false;
+        $('wm-win').hidden = false; $('wm-sigbox').hidden = true;
         $('wm-win-title').textContent = t('newm');
         $('wm-to').value = draft ? draft.to_addr : (pre ? pre.to : '');
         $('wm-subject').value = draft ? draft.subject : (pre ? pre.subject : '');
-        $('wm-body').value = draft ? '' : (pre ? pre.body : '');
+        $('wm-cc').value = draft ? (draft.cc_addr || '') : ''; $('wm-bcc').value = ''; $('wm-ccrow').hidden = !$('wm-cc').value;
+        $('wm-body').value = ''; state.sigBlock = '';
+        if (!draft) { swapSig(); $('wm-body').value += pre ? pre.body : ''; }
         $('wm-win-msg').textContent = !state.admin ? t('local_only') : (state.driver ? '' : t('off'));
-        if (draft) api('?action=get&id=' + draft.id).then(({ message }) => { $('wm-body').value = message.body; const o = [...$('wm-from').options].find((x) => state.addresses.find((a) => String(a.id) === x.value && a.address === message.from_addr)); if (o) $('wm-from').value = o.value; });
+        if (draft) api('?action=get&id=' + draft.id).then(({ message }) => { $('wm-body').value = message.body; const o = [...$('wm-from').options].find((x) => state.addresses.find((a) => String(a.id) === x.value && a.address === message.from_addr)); if (o) $('wm-from').value = o.value; $('wm-cc').value = message.cc_addr || ''; $('wm-bcc').value = message.bcc_addr || ''; $('wm-ccrow').hidden = !(message.cc_addr || message.bcc_addr); });
         loadContacts();
-        ($('wm-to').value ? $('wm-body') : $('wm-to')).focus();
+        if ($('wm-to').value) { $('wm-body').focus(); $('wm-body').setSelectionRange(0, 0); } else $('wm-to').focus();
     }
     // suggestions for the "To" field: the addresses I wrote to before from the chosen sender, completing the last item of a comma list
     let contacts = [];
     async function loadContacts() { try { contacts = (await api('?action=contacts&from_id=' + Number($('wm-from').value || 0))).contacts || []; } catch (e) { contacts = []; } suggest(); }
-    function suggest() {
-        const v = $('wm-to').value, cut = Math.max(v.lastIndexOf(','), v.lastIndexOf(';')), head = v.slice(0, cut + 1), tail = v.slice(cut + 1).trim().toLowerCase();
+    function suggest(box) {
+        const v = (box && box.value != null ? box : $('wm-to')).value, cut = Math.max(v.lastIndexOf(','), v.lastIndexOf(';')), head = v.slice(0, cut + 1), tail = v.slice(cut + 1).trim().toLowerCase();
         const dl = $('wm-contacts'); dl.replaceChildren();
         for (const c of contacts.filter((c) => c.includes(tail) && !head.toLowerCase().includes(c)).slice(0, 8)) { const o = el('option'); o.value = head + (head ? ' ' : '') + c; dl.append(o); }
     }
-    $('wm-to').addEventListener('input', suggest);
-    $('wm-from').addEventListener('change', loadContacts);
-    const dirty = () => $('wm-to').value.trim() || $('wm-subject').value.trim() || $('wm-body').value.trim();
-    const payload = () => ({ from_id: Number($('wm-from').value), to: $('wm-to').value, subject: $('wm-subject').value, body: $('wm-body').value, file_ids: state.files.map((f) => f.id) });
+    for (const id of ['wm-to', 'wm-cc', 'wm-bcc']) $(id).addEventListener('input', (e) => suggest(e.target));
+    // the signature of the chosen address goes at the end of a new message (a reply: above the quote); changing the sender swaps it
+    function swapSig() {
+        const a = state.addresses.find((x) => String(x.id) === $('wm-from').value), nb = a && a.signature ? '\n\n-- \n' + a.signature : '', b = $('wm-body');
+        if (state.sigBlock && b.value.includes(state.sigBlock)) b.value = b.value.replace(state.sigBlock, () => nb);
+        else if (!state.sigBlock && !b.value.trim()) b.value = nb;
+        state.sigBlock = nb;
+    }
+    $('wm-from').addEventListener('change', () => { loadContacts(); swapSig(); });
+    $('wm-cc-btn').addEventListener('click', () => { $('wm-ccrow').hidden = !$('wm-ccrow').hidden; });
+    $('wm-sig-btn').addEventListener('click', () => {
+        const a = state.addresses.find((x) => String(x.id) === $('wm-from').value);
+        $('wm-sigbox').hidden = !$('wm-sigbox').hidden; $('wm-sig').value = a ? a.signature || '' : '';
+    });
+    $('wm-sig-save').addEventListener('click', async () => {
+        const a = state.addresses.find((x) => String(x.id) === $('wm-from').value); if (!a) return;
+        try { await api('', { action: 'set_signature', id: a.id, signature: $('wm-sig').value }); a.signature = $('wm-sig').value.replace(/\r/g, '').slice(0, 500); swapSig(); $('wm-sigbox').hidden = true; $('wm-win-msg').textContent = t('sig_saved'); }
+        catch (x) { $('wm-win-msg').textContent = x.message; }
+    });
+    const dirty = () => $('wm-to').value.trim() || $('wm-cc').value.trim() || $('wm-bcc').value.trim() || $('wm-subject').value.trim() || $('wm-body').value.replace(state.sigBlock, '').trim();   // the automatic signature alone is not a message
+    const payload = () => ({ from_id: Number($('wm-from').value), to: $('wm-to').value, cc: $('wm-cc').value, bcc: $('wm-bcc').value, subject: $('wm-subject').value, body: $('wm-body').value, file_ids: state.files.map((f) => f.id) });
     const size = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
     // attachments: each file goes up at once (the server keeps it "pending" until the message is sent)
     function renderFiles() {
@@ -175,10 +213,11 @@
     }
 
     async function closeWin() {
+        clearTimeout(state.saveT); await state.saving;
         if (dirty()) { try { await api('', { action: 'save_draft', id: state.draftId, ...payload() }); note(state.files.length ? t('saved_nofiles') : t('saved')); } catch (e) { note(e.message); } }
         for (const f of state.files) api('', { action: 'remove_file', id: f.id }).catch(() => {});
         state.files = []; renderFiles();
-        $('wm-win').hidden = true; state.draftId = 0;
+        $('wm-win').hidden = true; state.draftId = 0; state.win++;
         boot().catch(() => {}); if (state.folder === 'draft') load().catch(() => {});
     }
 
@@ -222,22 +261,66 @@
     $('wm-back').addEventListener('click', () => load().catch((e) => note(e.message)));
     $('wm-refresh').addEventListener('click', () => { boot().catch(() => {}); load().catch((e) => note(e.message)); });
     if ($('wm-switch')) $('wm-switch').addEventListener('change', (e) => { state.addr = e.target.value; const cur = state.addresses.find((a) => a.address === state.addr); if (cur) $('wm-from').value = String(cur.id); load().catch(() => {}); });
-    $('wm-search').addEventListener('submit', (e) => { e.preventDefault(); load(state.folder === 'addresses' ? 'inbox' : state.folder, $('wm-q').value.trim()).catch((x) => note(x.message)); });
+    $('wm-search').addEventListener('submit', (e) => { e.preventDefault(); const q = $('wm-q').value.trim(); (q ? load('all', q) : load('inbox', '')).catch((x) => note(x.message)); });   // a search looks in every folder but the trash
     $('wm-compose').addEventListener('click', () => compose(null));
     $('wm-win-close').addEventListener('click', closeWin);
     // the writing window moves and resizes with the desktop's window manager (js/window_manager.js); the size and place are remembered
     document.addEventListener('DOMContentLoaded', () => { if (window.makeWindowInteractive) window.makeWindowInteractive($('wm-win'), 'wm-win', { simple: true, header: '.wm-win-head' }); });
     $('wm-empty').addEventListener('click', async () => { if (!window.confirm(t('confirm_empty'))) return; try { await api('', { action: 'empty_trash' }); await load(); } catch (e) { note(e.message); } });
+    // drafts save themselves 5 seconds after the last key
+    async function autosave() {
+        if ($('wm-win').hidden || !dirty()) return;
+        const w = state.win;
+        state.saving = (async () => {
+            try {
+                const r = await api('', { action: 'save_draft', id: state.draftId, ...payload() });
+                if (w === state.win && !$('wm-win').hidden) { state.draftId = r.id; $('wm-win-msg').textContent = t('autosaved') + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+            } catch (e) { /* the next key tries again; closing the window saves too */ }
+        })();
+        await state.saving;
+    }
+    for (const id of ['wm-to', 'wm-cc', 'wm-bcc', 'wm-subject', 'wm-body']) $(id).addEventListener('input', () => { clearTimeout(state.saveT); state.saveT = setTimeout(autosave, 5000); });
+
+    // Send waits 10 seconds with an "Undo" button; closing the page meanwhile sends at once
+    const UNDO_MS = 10000;
+    function restore(job) {
+        state.win++; state.draftId = job.draftId; state.files = job.files; renderFiles(); state.sigBlock = '';
+        $('wm-win').hidden = false; $('wm-sigbox').hidden = true;
+        const p = job.p; $('wm-from').value = String(p.from_id); $('wm-to').value = p.to; $('wm-cc').value = p.cc; $('wm-bcc').value = p.bcc; $('wm-ccrow').hidden = !(p.cc || p.bcc);
+        $('wm-subject').value = p.subject; $('wm-body').value = p.body;
+    }
+    async function transmit(job, keepalive) {
+        try {
+            const r = await api('', { action: 'send', draft_id: job.draftId, ...job.p }, keepalive);
+            if (keepalive) return;
+            boot().catch(() => {}); await load().catch(() => {});   // load() clears the note line: say "sent" after it
+            note(r.external && !r.sent_now ? t('sentext') : t('sent'));
+        } catch (x) {
+            if (keepalive) return;
+            note(t('not_sent') + x.message);
+            if ($('wm-win').hidden) { restore(job); $('wm-win-msg').textContent = t('not_sent') + x.message; }
+            else api('', { action: 'save_draft', id: job.draftId, ...job.p }).then(() => boot()).catch(() => {});   // I am writing something else: the failed one waits in the drafts
+        }
+    }
+    function flushPending(keepalive) {
+        const j = state.pending; if (!j) return Promise.resolve();
+        state.pending = null; clearTimeout(j.timer); $('wm-undo').hidden = true;
+        return transmit(j, keepalive);
+    }
+    window.addEventListener('pagehide', () => flushPending(true));
+    $('wm-undo-btn').addEventListener('click', () => {
+        const j = state.pending; if (!j) return;
+        state.pending = null; clearTimeout(j.timer); $('wm-undo').hidden = true;
+        restore(j); note(t('undo_ok'));
+    });
     $('wm-win').addEventListener('submit', async (e) => {
         e.preventDefault();
-        $('wm-send').disabled = true;
-        try {
-            const r = await api('', { action: 'send', draft_id: state.draftId, ...payload() });
-            $('wm-win').hidden = true; state.draftId = 0; state.files = []; renderFiles();
-            note(r.external && !r.sent_now ? t('sentext') : t('sent'));
-            boot().catch(() => {}); load().catch(() => {});
-        } catch (x) { $('wm-win-msg').textContent = x.message; }
-        $('wm-send').disabled = false;
+        if (!$('wm-to').value.trim()) { $('wm-win-msg').textContent = t('no_to'); return; }
+        clearTimeout(state.saveT); await state.saving; await flushPending(false);
+        const job = { p: payload(), draftId: state.draftId, files: state.files };
+        $('wm-win').hidden = true; state.win++; state.draftId = 0; state.files = []; renderFiles();
+        state.pending = job; $('wm-undo-txt').textContent = t('sending'); $('wm-undo').hidden = false;
+        job.timer = setTimeout(() => flushPending(false), UNDO_MS);
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('wm-win').hidden) closeWin(); });
 
@@ -246,6 +329,19 @@
     $('wm-scrim').addEventListener('click', () => drawer(false));
     document.querySelectorAll('.wm-folder, .wm-compose').forEach((b) => b.addEventListener('click', () => drawer(false)));
     $('wm-fab').addEventListener('click', () => compose(null));
+
+    $('wm-label').addEventListener('change', async (e) => {
+        const v = e.target.value; if (v === '?') return;
+        const ids = state.open ? [state.open.id] : [...state.sel]; e.target.value = '?';
+        if (!ids.length) return;
+        try { await api('', { action: 'label', ids, value: v }); if (state.open) state.open.label = v; else await load(); } catch (x) { note(x.message); }
+    });
+    const bell = $('wm-bell');
+    if ('Notification' in window && Notification.permission === 'default') {
+        bell.hidden = false;
+        bell.addEventListener('click', async () => { try { await Notification.requestPermission(); } catch (e) { /* old browsers */ } bell.hidden = Notification.permission !== 'default'; });
+    }
+    setInterval(() => boot().catch(() => {}), 60000);   // new mail: the tab title, the list and (if allowed) a notification
 
     boot().then(() => load('inbox', '')).catch((e) => note(e.message));
 })();

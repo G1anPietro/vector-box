@@ -81,7 +81,7 @@ test.describe('webmail', () => {
         assert.ok(!/^Bcc:/mi.test(out), 'no header injection through the subject');
         assert.equal((await wm(admin, { action: 'send', from_id: adminFrom, to: 'not an address', subject: 's', body: 'b' })).json.error.includes('address'), true);
         assert.equal((await wm(admin, { action: 'send', from_id: fromId, to: 'x@gmail.com', subject: 's', body: 'b' })).json.success, false, 'cannot write from somebody else\'s address');
-        assert.equal((await wm(admin, { action: 'send', from_id: adminFrom, to: 'a@b.it,b@b.it,c@b.it,d@b.it,e@b.it,f@b.it', subject: 's', body: 'b' })).json.error.length > 0, true);
+        assert.equal((await wm(admin, { action: 'send', from_id: adminFrom, to: 'a@b.it,b@b.it,c@b.it,d@b.it,e@b.it,f@b.it,g@b.it,h@b.it,i@b.it,j@b.it,k@b.it', subject: 's', body: 'b' })).json.error.length > 0, true);
     });
 
     test('drafts, and incoming mail needs the secret and an existing address', async () => {
@@ -193,5 +193,42 @@ test.describe('webmail', () => {
         const got = (await admin.get('/api/webmail.php?action=get&id=' + inc.id)).json.message;
         assert.match(got.body, /Not saved: .*bad\.bin.*huge\.iso/);
         assert.equal(await (await fetch(`${site.base}/api/webmail.php?action=file&id=${got.files[0].id}`, { headers: { Cookie: admin.cookieHeader() } })).text(), 'incoming file');
+    });
+    test('signature, Cc/Bcc, colour labels, search in every folder, picture preview', async () => {
+        const me = (await ada.get('/api/webmail.php?action=boot')).json.addresses[0];
+        assert.equal((await wm(ada, { action: 'set_signature', id: me.id, signature: 'Ada\nvia mail' })).json.success, true);
+        assert.equal((await ada.get('/api/webmail.php?action=boot')).json.addresses[0].signature, 'Ada\nvia mail');
+        assert.equal((await wm(bob, { action: 'set_signature', id: me.id, signature: 'x' })).status, 404, 'not my address');
+        const r = await wm(ada, { action: 'send', from_id: me.id, to: 'bob@talvera.site', cc: 'boss@talvera.site', bcc: 'files.rcpt@talvera.site', subject: 'ccmsg', body: 'zebra' });
+        assert.deepEqual([r.json.success, r.json.delivered_here], [true, 3]);
+        const row = (await bob.get('/api/webmail.php?action=list&folder=inbox')).json.rows.find((x) => x.subject === 'ccmsg');
+        const got = (await bob.get('/api/webmail.php?action=get&id=' + row.id)).json.message;
+        assert.deepEqual([got.cc_addr, got.bcc_addr], ['boss@talvera.site', ''], 'the Cc is shown, the Bcc is not');
+        const sent = (await ada.get('/api/webmail.php?action=list&folder=sent')).json.rows.find((x) => x.subject === 'ccmsg');
+        const sm = (await ada.get('/api/webmail.php?action=get&id=' + sent.id)).json.message;
+        assert.deepEqual([sm.cc_addr, sm.bcc_addr], ['boss@talvera.site', 'files.rcpt@talvera.site'], 'the sender keeps both');
+        assert.ok((await admin.get('/api/webmail.php?action=list&folder=inbox')).json.rows.some((x) => x.subject === 'ccmsg'), 'the Cc got it too');
+        assert.equal((await wm(ada, { action: 'send', from_id: me.id, to: 'a@x.org,b@x.org,c@x.org', cc: 'd@x.org,e@x.org,f@x.org', bcc: 'g@x.org,h@x.org,i@x.org,j@x.org,k@x.org', subject: 'many', body: 'x' })).json.success, false, 'at most 10 recipients');
+        // labels
+        assert.equal((await wm(bob, { action: 'label', ids: [row.id], value: 'work' })).json.changed, 1);
+        assert.equal((await wm(bob, { action: 'label', ids: [row.id], value: 'nope' })).json.success, false);
+        assert.deepEqual((await bob.get('/api/webmail.php?action=list&folder=label:work')).json.rows.map((x) => x.subject), ['ccmsg']);
+        assert.equal((await ada.get('/api/webmail.php?action=list&folder=label:work')).json.rows.length, 0, 'labels are mine');
+        // the search looks in every folder but the trash
+        const all = (await ada.get('/api/webmail.php?action=list&folder=all&q=zebra')).json.rows;
+        assert.ok(all.some((x) => x.folder === 'sent') && all.some((x) => x.folder === 'inbox'), 'sent and inbox together');
+        await wm(ada, { action: 'trash', ids: all.map((x) => x.id) });
+        assert.equal((await ada.get('/api/webmail.php?action=list&folder=all&q=zebra')).json.rows.length, 0, 'not the trash');
+        // picture preview: shown inline only when the bytes are a picture; anything else stays a download
+        const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from('fake image data')]).toString('base64');
+        await inbound({ to: 'boss@talvera.site', from: 'x@y.z', subject: 'pics', text: 'hi', attachments: [{ name: 'p.png', type: 'image/png', data: png }, { name: 'liar.png', type: 'image/png', data: Buffer.from('<script>alert(1)</script>').toString('base64') }] }, 's3cret-s3cret');
+        const pm = (await admin.get('/api/webmail.php?action=list&folder=inbox')).json.rows.find((x) => x.subject === 'pics');
+        const files = (await admin.get('/api/webmail.php?action=get&id=' + pm.id)).json.message.files;
+        const fetchFile = (f, q) => fetch(`${site.base}/api/webmail.php?action=file&id=${f.id}${q}`, { headers: { Cookie: admin.cookieHeader() } });
+        const a = await fetchFile(files.find((f) => f.name === 'p.png'), '&preview=1');
+        assert.equal(a.headers.get('content-type'), 'image/png'); assert.match(a.headers.get('content-disposition'), /^inline/); assert.match(a.headers.get('content-security-policy'), /sandbox/);
+        const b = await fetchFile(files.find((f) => f.name === 'liar.png'), '&preview=1');
+        assert.equal(b.headers.get('content-type'), 'application/octet-stream'); assert.match(b.headers.get('content-disposition'), /^attachment/);
+        assert.match((await fetchFile(files.find((f) => f.name === 'p.png'), '')).headers.get('content-disposition'), /^attachment/, 'no preview asked: a download');
     });
 });

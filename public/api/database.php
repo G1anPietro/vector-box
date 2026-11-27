@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 67;
+const DB_SCHEMA_VERSION = 68;
 
 /**
  * Session bootstrap.
@@ -674,6 +674,14 @@ function migrateV57(PDO $db): void {
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
     )");
+}
+
+function migrateV68(PDO $db): void {
+    // personal mail: a signature per address, Cc / Bcc lines, one colour label per message
+    addColumnIfMissing($db, 'mail_addresses', 'signature', "TEXT NOT NULL DEFAULT ''");
+    addColumnIfMissing($db, 'mail_inbox', 'cc_addr', "TEXT NOT NULL DEFAULT ''");
+    addColumnIfMissing($db, 'mail_inbox', 'bcc_addr', "TEXT NOT NULL DEFAULT ''");
+    addColumnIfMissing($db, 'mail_inbox', 'label', "TEXT NOT NULL DEFAULT ''");
 }
 
 function migrateV67(PDO $db): void {
@@ -1498,6 +1506,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 67) {
             migrateV67($db);
+        }
+        if ($current < 68) {
+            migrateV68($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

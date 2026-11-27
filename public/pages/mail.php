@@ -49,6 +49,10 @@ $other = pageLang() === 'it' ? 'en' : 'it';
             <button type="button" class="wm-folder" data-folder="starred">★ <span><?= tt('Starred', 'Speciali') ?></span></button>
             <button type="button" class="wm-folder" data-folder="sent">➤ <span><?= tt('Sent', 'Inviata') ?></span></button>
             <button type="button" class="wm-folder" data-folder="draft">▤ <span><?= tt('Drafts', 'Bozze') ?></span><b id="wm-n-draft"></b></button>
+            <button type="button" class="wm-folder" data-folder="label:work"><i class="wm-dot l-work"></i> <span><?= tt('Work', 'Lavoro') ?></span></button>
+            <button type="button" class="wm-folder" data-folder="label:personal"><i class="wm-dot l-personal"></i> <span><?= tt('Personal', 'Personale') ?></span></button>
+            <button type="button" class="wm-folder" data-folder="label:important"><i class="wm-dot l-important"></i> <span><?= tt('Important', 'Importante') ?></span></button>
+            <button type="button" class="wm-folder" data-folder="label:later"><i class="wm-dot l-later"></i> <span><?= tt('Later', 'Dopo') ?></span></button>
             <button type="button" class="wm-folder" data-folder="trash">🗑 <span><?= tt('Trash', 'Cestino') ?></span></button>
             <?php if (sessionIsAdmin()): ?><button type="button" class="wm-folder" data-folder="system">⚙ <span><?= tt('Site mail', 'Mail del sito') ?></span></button><button type="button" class="wm-folder" data-folder="addresses">⚙ <span><?= tt('Addresses', 'Indirizzi') ?></span></button><?php endif; ?>
             <p id="wm-mine" class="wm-mine"></p>
@@ -67,6 +71,11 @@ $other = pageLang() === 'it' ? 'en' : 'it';
                 <button type="button" class="wm-ico" data-bulk="trash" title="<?= tt('Move to trash', 'Sposta nel cestino') ?>">🗑</button>
                 <button type="button" class="wm-ico" data-bulk="restore" title="<?= tt('Restore', 'Ripristina') ?>" hidden>↩</button>
                 <button type="button" class="wm-ico" data-bulk="delete" title="<?= tt('Delete forever', 'Elimina per sempre') ?>" hidden>✖</button>
+                <select id="wm-label" class="wm-labelsel" aria-label="<?= tt('Label', 'Etichetta') ?>">
+                    <option value="?"><?= tt('Label…', 'Etichetta…') ?></option><option value=""><?= tt('No label', 'Nessuna') ?></option>
+                    <option value="work"><?= tt('Work', 'Lavoro') ?></option><option value="personal"><?= tt('Personal', 'Personale') ?></option><option value="important"><?= tt('Important', 'Importante') ?></option><option value="later"><?= tt('Later', 'Dopo') ?></option>
+                </select>
+                <button type="button" class="wm-ico" id="wm-bell" title="<?= tt('Desktop notifications for new mail', 'Notifiche sul desktop per le nuove mail') ?>" hidden>🔔</button>
                 <button type="button" class="wm-ico" id="wm-empty" title="<?= tt('Empty the trash', 'Svuota il cestino') ?>" hidden>🗑 <?= tt('Empty', 'Svuota') ?></button>
                 <span id="wm-note" class="muted" role="status"></span>
             </div>
@@ -81,24 +90,30 @@ $other = pageLang() === 'it' ? 'en' : 'it';
         <select id="wm-from" aria-label="<?= tt('From', 'Da') ?>"></select>
         <datalist id="wm-contacts"></datalist>
         <input id="wm-to" list="wm-contacts" placeholder="<?= tt('To (separate with commas)', 'A (separa con virgole)') ?>" autocomplete="off" maxlength="600">
+        <div class="wm-ccrow" id="wm-ccrow" hidden>
+            <input id="wm-cc" list="wm-contacts" placeholder="Cc" autocomplete="off" maxlength="600" aria-label="Cc">
+            <input id="wm-bcc" list="wm-contacts" placeholder="<?= tt('Bcc (hidden)', 'Ccn (nascosti)') ?>" autocomplete="off" maxlength="600" aria-label="<?= tt('Bcc', 'Ccn') ?>">
+        </div>
         <input id="wm-subject" placeholder="<?= tt('Subject', 'Oggetto') ?>" maxlength="150" autocomplete="off">
         <textarea id="wm-body" rows="12" maxlength="20000"></textarea>
+        <div id="wm-sigbox" class="wm-sigbox" hidden><textarea id="wm-sig" rows="3" maxlength="500" placeholder="<?= tt('Signature for this address', 'Firma per questo indirizzo') ?>" aria-label="<?= tt('Signature', 'Firma') ?>"></textarea><button type="button" class="wm-pill" id="wm-sig-save"><?= tt('Save signature', 'Salva la firma') ?></button></div>
         <div id="wm-files" class="wm-files"></div>
         <input type="file" id="wm-file" multiple hidden>
-        <div class="wm-win-foot"><button type="submit" class="wm-send" id="wm-send"><?= tt('Send', 'Invia') ?></button><button type="button" class="wm-ico" id="wm-attach" title="<?= tt('Attach files', 'Allega file') ?>" aria-label="<?= tt('Attach files', 'Allega file') ?>">📎</button><span id="wm-win-msg" class="muted" role="status"></span></div>
+        <div class="wm-win-foot"><button type="submit" class="wm-send" id="wm-send"><?= tt('Send', 'Invia') ?></button><button type="button" class="wm-ico" id="wm-attach" title="<?= tt('Attach files', 'Allega file') ?>" aria-label="<?= tt('Attach files', 'Allega file') ?>">📎</button><button type="button" class="wm-ico" id="wm-cc-btn" title="Cc / <?= tt('Bcc', 'Ccn') ?>" aria-label="Cc / <?= tt('Bcc', 'Ccn') ?>">Cc</button><button type="button" class="wm-ico" id="wm-sig-btn" title="<?= tt('Signature', 'Firma') ?>" aria-label="<?= tt('Signature', 'Firma') ?>">✍</button><span id="wm-win-msg" class="muted" role="status"></span></div>
     </form>
+    <div id="wm-undo" class="wm-undo" role="status" hidden><span id="wm-undo-txt"></span><button type="button" class="wm-pill" id="wm-undo-btn"><?= tt('Undo', 'Annulla') ?></button></div>
     <script type="application/json" id="wm-i18n"><?= json_encode(pageLang() === 'it' ? [
         'noaddr' => 'Non hai ancora un indirizzo: chiedilo all\'admin.', 'you' => 'Tu', 'nothing' => 'Niente qui.', 'nosub' => '(senza oggetto)', 'to' => 'A', 'from' => 'Da',
         'reply' => 'Rispondi', 'forward' => 'Inoltra', 'trash' => 'Cestino', 'saved' => 'Bozza salvata.', 'sent' => 'Inviato.', 'sentext' => 'Inviato (all\'esterno: in coda).', 'newm' => 'Nuovo messaggio',
         'wrote' => 'ha scritto', 'confirm_del' => 'Eliminare per sempre?', 'confirm_empty' => 'Svuotare il cestino?', 'mine' => 'I tuoi indirizzi', 'off' => 'Per ora puoi scrivere solo agli indirizzi @talvera.site: l\'invio all\'esterno non è ancora attivato.',
         'all_addr' => 'Tutti i miei indirizzi', 'attached' => 'Allegati', 'too_big' => 'File troppo grande (massimo 10 MB).', 'saved_nofiles' => 'Bozza salvata (gli allegati non si salvano nelle bozze).', 'a_new' => 'Nuovo indirizzo', 'a_local' => 'parte prima della @', 'a_user' => 'nome utente', 'a_make' => 'Crea', 'a_del' => 'Elimina', 'a_made' => 'Creato: ', 'local_only' => 'Puoi scrivere agli indirizzi @talvera.site; l\'invio all\'esterno è riservato all\'admin.', 'a_none' => 'Nessun indirizzo.', 'a_owner' => 'di', 'a_sure' => 'Eliminare l\'indirizzo? I messaggi restano.',
-        'wrong' => 'Qualcosa è andato storto.', 'moved' => 'Spostato nel cestino.', 'restored' => 'Ripristinato.', 'deleted' => 'Eliminato.', 'draft_to' => 'Bozza'
+        'no_to' => 'Scrivi a chi è destinato', 'cc' => 'Cc', 'bcc' => 'Ccn', 'sending' => 'Invio in corso…', 'undo_ok' => 'Invio annullato.', 'not_sent' => 'Non inviato: ', 'autosaved' => 'Bozza salvata alle ', 'sig_saved' => 'Firma salvata.', 'new_mail' => 'nuovi messaggi', 'preview' => 'Apri', 'wrong' => 'Qualcosa è andato storto.', 'moved' => 'Spostato nel cestino.', 'restored' => 'Ripristinato.', 'deleted' => 'Eliminato.', 'draft_to' => 'Bozza'
     ] : [
         'noaddr' => 'You have no address yet: ask the admin.', 'you' => 'Me', 'nothing' => 'Nothing here.', 'nosub' => '(no subject)', 'to' => 'To', 'from' => 'From',
         'reply' => 'Reply', 'forward' => 'Forward', 'trash' => 'Trash', 'saved' => 'Draft saved.', 'sent' => 'Sent.', 'sentext' => 'Sent (to another address: queued).', 'newm' => 'New message',
         'wrote' => 'wrote', 'confirm_del' => 'Delete forever?', 'confirm_empty' => 'Empty the trash?', 'mine' => 'Your addresses', 'off' => 'For now you can only write to @talvera.site addresses: sending to other addresses is not switched on yet.',
         'all_addr' => 'All my addresses', 'attached' => 'Attachments', 'too_big' => 'File too big (10 MB at most).', 'saved_nofiles' => 'Draft saved (attachments are not kept in drafts).', 'a_new' => 'New address', 'a_local' => 'part before the @', 'a_user' => 'username', 'a_make' => 'Create', 'a_del' => 'Delete', 'a_made' => 'Created: ', 'local_only' => 'You can write to @talvera.site addresses; sending outside is for the admin only.', 'a_none' => 'No addresses.', 'a_owner' => 'owner', 'a_sure' => 'Delete the address? The messages stay.',
-        'wrong' => 'Something went wrong.', 'moved' => 'Moved to trash.', 'restored' => 'Restored.', 'deleted' => 'Deleted.', 'draft_to' => 'Draft'
+        'no_to' => 'Write who it is for', 'cc' => 'Cc', 'bcc' => 'Bcc', 'sending' => 'Sending…', 'undo_ok' => 'Sending cancelled.', 'not_sent' => 'Not sent: ', 'autosaved' => 'Draft saved at ', 'sig_saved' => 'Signature saved.', 'new_mail' => 'new messages', 'preview' => 'Open', 'wrong' => 'Something went wrong.', 'moved' => 'Moved to trash.', 'restored' => 'Restored.', 'deleted' => 'Deleted.', 'draft_to' => 'Draft'
     ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 </body>
 </html>

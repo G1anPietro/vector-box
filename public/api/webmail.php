@@ -12,14 +12,25 @@ require_once __DIR__ . '/rate_limiter.php';
 require_once __DIR__ . '/mail_files_lib.php';
 
 const WM_FOLDERS = ['inbox', 'sent', 'draft', 'trash'];
+const WM_LABELS = ['work', 'personal', 'important', 'later'];
+
+/** What the bytes really are (never the sender's word), if the browser may show it inline: png, jpeg, gif, webp, pdf. */
+function wmSniff(string $head): string {
+    if (str_starts_with($head, "\x89PNG\r\n\x1a\n")) return 'image/png';
+    if (str_starts_with($head, "\xFF\xD8\xFF")) return 'image/jpeg';
+    if (str_starts_with($head, 'GIF87a') || str_starts_with($head, 'GIF89a')) return 'image/gif';
+    if (str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WEBP') return 'image/webp';
+    if (str_starts_with($head, '%PDF-')) return 'application/pdf';
+    return '';
+}
 
 function wmDomain(): string { return strtolower(trim((string)envValue('MAIL_DOMAIN', 'talvera.site'))); }
 
 /** The addresses of one account, as full addresses. */
 function wmMyAddresses(PDO $db, int $me): array {
-    $st = $db->prepare('SELECT id, local_part FROM mail_addresses WHERE account_id = :a ORDER BY id');
+    $st = $db->prepare('SELECT id, local_part, signature FROM mail_addresses WHERE account_id = :a ORDER BY id');
     $st->execute([':a' => $me]);
-    return array_map(fn($r) => ['id' => (int)$r['id'], 'address' => strtolower($r['local_part']) . '@' . wmDomain()], $st->fetchAll());
+    return array_map(fn($r) => ['id' => (int)$r['id'], 'address' => strtolower($r['local_part']) . '@' . wmDomain(), 'signature' => (string)$r['signature']], $st->fetchAll());
 }
 
 /** The account owning a full address on the site domain, or null. */
@@ -34,9 +45,9 @@ function wmOwnerOf(PDO $db, string $addr): ?int {
 }
 
 /** Puts one message in an account's mailbox. */
-function wmStore(PDO $db, int $account, string $folder, string $from, string $to, string $subject, string $body, int $read): int {
-    $db->prepare('INSERT INTO mail_inbox (account_id, folder, from_addr, to_addr, subject, body, is_read, created_at) VALUES (:a, :f, :fr, :t, :s, :b, :r, :c)')
-       ->execute([':a' => $account, ':f' => $folder, ':fr' => $from, ':t' => $to, ':s' => mailLine($subject, 150), ':b' => textCut(str_replace("\r", '', $body), 50000), ':r' => $read, ':c' => time()]);
+function wmStore(PDO $db, int $account, string $folder, string $from, string $to, string $subject, string $body, int $read, string $cc = '', string $bcc = ''): int {
+    $db->prepare('INSERT INTO mail_inbox (account_id, folder, from_addr, to_addr, cc_addr, bcc_addr, subject, body, is_read, created_at) VALUES (:a, :f, :fr, :t, :cc, :bcc, :s, :b, :r, :c)')
+       ->execute([':a' => $account, ':f' => $folder, ':fr' => $from, ':t' => $to, ':cc' => mailLine($cc, 600), ':bcc' => mailLine($bcc, 600), ':s' => mailLine($subject, 150), ':b' => textCut(str_replace("\r", '', $body), 50000), ':r' => $read, ':c' => time()]);
     return (int)$db->lastInsertId();
 }
 
@@ -76,19 +87,21 @@ try {
             }
             $where = 'account_id = ?'; $args = [$me];
             if ($folder === 'starred') $where .= " AND is_starred = 1 AND folder != 'trash'";
+            elseif ($folder === 'all') $where .= " AND folder != 'trash'";   // the search: every folder but the trash
+            elseif (str_starts_with($folder, 'label:') && in_array(substr($folder, 6), WM_LABELS, true)) { $where .= " AND label = ? AND folder != 'trash'"; $args[] = substr($folder, 6); }
             elseif (in_array($folder, WM_FOLDERS, true)) { $where .= ' AND folder = ?'; $args[] = $folder; }
             else jsonFail('bad_folder', 'Unknown folder');
             if ($q !== '') {
                 $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], textCut($q, 80)) . '%';
-                $where .= " AND (subject LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\' OR from_addr LIKE ? ESCAPE '\\' OR to_addr LIKE ? ESCAPE '\\')";
-                array_push($args, $like, $like, $like, $like);
+                $where .= " AND (subject LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\' OR from_addr LIKE ? ESCAPE '\\' OR to_addr LIKE ? ESCAPE '\\' OR id IN (SELECT message_id FROM mail_files WHERE name LIKE ? ESCAPE '\\'))";
+                array_push($args, $like, $like, $like, $like, $like);
             }
             $addr = $isAdmin ? strtolower(trim((string)($_GET['addr'] ?? ''))) : '';   // admin: look at one of my addresses only
             if ($addr !== '' && in_array($addr, array_column(wmMyAddresses($db, $me), 'address'), true)) {
                 $a = '%' . $addr . '%';   // addresses hold only letters, digits and . _ - @ : no LIKE wildcards but _ , harmless here
                 $where .= " AND (lower(from_addr) LIKE ? OR lower(to_addr) LIKE ?)"; array_push($args, $a, $a);
             }
-            $st = $db->prepare("SELECT id, folder, from_addr, to_addr, subject, substr(replace(body, char(10), ' '), 1, 110) AS snippet, is_read, is_starred, created_at, (SELECT COUNT(*) FROM mail_files f WHERE f.message_id = mail_inbox.id) AS nfiles FROM mail_inbox WHERE $where ORDER BY id DESC LIMIT 100");
+            $st = $db->prepare("SELECT id, folder, from_addr, to_addr, subject, substr(replace(body, char(10), ' '), 1, 110) AS snippet, is_read, is_starred, label, created_at, (SELECT COUNT(*) FROM mail_files f WHERE f.message_id = mail_inbox.id) AS nfiles FROM mail_inbox WHERE $where ORDER BY id DESC LIMIT 100");
             $st->execute($args);
             jsonResponse(['success' => true, 'rows' => $st->fetchAll()]);
         }
@@ -105,6 +118,20 @@ try {
             $f = $st->fetch();
             if (!$f || !is_file(mfPath($f))) jsonFail('not_found', 'File not found', 404);
             $ascii = preg_replace('/[^A-Za-z0-9._-]+/', '_', (string)$f['name']);
+            $show = '';
+            if (($_GET['preview'] ?? '') === '1') {   // inline only when the bytes themselves are a picture or a PDF
+                $fh = fopen(mfPath($f), 'rb'); $show = $fh ? wmSniff((string)fread($fh, 16)) : ''; if ($fh) fclose($fh);
+            }
+            if ($show !== '') {
+                header('Content-Type: ' . $show);
+                header('Content-Disposition: inline; filename="' . $ascii . '"');
+                if ($show !== 'application/pdf') header("Content-Security-Policy: default-src 'none'; sandbox");   // the PDF viewer does not run inside a sandbox
+                header('Content-Length: ' . (int)$f['size']);
+                header('X-Content-Type-Options: nosniff');
+                header('Cache-Control: private, no-store');
+                readfile(mfPath($f));
+                exit();
+            }
             header('Content-Type: application/octet-stream');
             header('Content-Disposition: attachment; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode((string)$f['name']));
             header('Content-Length: ' . (int)$f['size']);
@@ -123,9 +150,9 @@ try {
                 $db->prepare('UPDATE mail_inbox SET is_read = 1 WHERE id = :id')->execute([':id' => $m['id']]);
                 $m['is_read'] = 1;
             }
-            $fs = $db->prepare('SELECT id, name, size FROM mail_files WHERE message_id = :m AND account_id = :a ORDER BY id');
+            $fs = $db->prepare('SELECT id, name, size, mime FROM mail_files WHERE message_id = :m AND account_id = :a ORDER BY id');
             $fs->execute([':m' => $m['id'], ':a' => $me]);
-            $m['files'] = array_map(fn($f) => ['id' => (int)$f['id'], 'name' => $f['name'], 'size' => (int)$f['size']], $fs->fetchAll());
+            $m['files'] = array_map(fn($f) => ['id' => (int)$f['id'], 'name' => $f['name'], 'size' => (int)$f['size'], 'mime' => (string)$f['mime']], $fs->fetchAll());
             jsonResponse(['success' => true, 'message' => $m]);
         }
         if ($action === 'contacts') {   // who I wrote to before, from one of my addresses (from_id) or from all of them (0)
@@ -195,6 +222,24 @@ try {
         jsonResponse(['success' => true]);
     }
 
+    // ---- my signature for one of my addresses, and the colour label of messages
+    if ($action === 'set_signature') {
+        $sig = textCut(str_replace("\r", '', (string)($in['signature'] ?? '')), 500);
+        $st = $db->prepare('UPDATE mail_addresses SET signature = :s WHERE id = :i AND account_id = :a');
+        $st->execute([':s' => $sig, ':i' => (int)($in['id'] ?? 0), ':a' => $me]);
+        if ($st->rowCount() !== 1) jsonFail('not_found', 'Address not found', 404);
+        jsonResponse(['success' => true]);
+    }
+    if ($action === 'label') {
+        $list = $ids($in);
+        $value = (string)($in['value'] ?? '');
+        if ($value !== '' && !in_array($value, WM_LABELS, true)) jsonFail('bad_label', 'Unknown label');
+        if (!$list) jsonResponse(['success' => true, 'changed' => 0]);
+        $st = $db->prepare("UPDATE mail_inbox SET label = ? WHERE account_id = ? AND id IN (" . $ph($list) . ')');
+        $st->execute(array_merge([$value, $me], $list));
+        jsonResponse(['success' => true, 'changed' => $st->rowCount()]);
+    }
+
     // ---- flags, trash
     if (in_array($action, ['star', 'read', 'trash', 'restore', 'delete'], true)) {
         $list = $ids($in);
@@ -226,20 +271,26 @@ try {
         $subject = mailLine((string)($in['subject'] ?? ''), 150);
         $body = textCut(str_replace("\r", '', (string)($in['body'] ?? '')), 20000);
         $toRaw = textCut((string)($in['to'] ?? ''), 600);
+        $ccRaw = textCut((string)($in['cc'] ?? ''), 600);
+        $bccRaw = textCut((string)($in['bcc'] ?? ''), 600);
         $draftId = (int)($in[$action === 'send' ? 'draft_id' : 'id'] ?? 0);
 
         if ($action === 'save_draft') {
             if ($draftId) {
-                $st = $db->prepare("UPDATE mail_inbox SET from_addr = :f, to_addr = :t, subject = :s, body = :b WHERE id = :id AND account_id = :a AND folder = 'draft'");
-                $st->execute([':f' => $from, ':t' => mailLine($toRaw, 600), ':s' => $subject, ':b' => $body, ':id' => $draftId, ':a' => $me]);
+                $st = $db->prepare("UPDATE mail_inbox SET from_addr = :f, to_addr = :t, cc_addr = :cc, bcc_addr = :bcc, subject = :s, body = :b WHERE id = :id AND account_id = :a AND folder = 'draft'");
+                $st->execute([':f' => $from, ':t' => mailLine($toRaw, 600), ':cc' => mailLine($ccRaw, 600), ':bcc' => mailLine($bccRaw, 600), ':s' => $subject, ':b' => $body, ':id' => $draftId, ':a' => $me]);
                 if ($st->rowCount() === 1) jsonResponse(['success' => true, 'id' => $draftId]);
             }
-            jsonResponse(['success' => true, 'id' => wmStore($db, $me, 'draft', $from, mailLine($toRaw, 600), $subject, $body, 1)]);
+            jsonResponse(['success' => true, 'id' => wmStore($db, $me, 'draft', $from, mailLine($toRaw, 600), $subject, $body, 1, $ccRaw, $bccRaw)]);
         }
 
-        $to = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;]+/', $toRaw) ?: []), fn($x) => $x !== '')));
-        if (!$to) jsonFail('no_recipient', 'Write who it is for');
-        if (count($to) > 5) jsonFail('too_many', 'At most 5 recipients');
+        $split = fn(string $raw) => array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;]+/', $raw) ?: []), fn($x) => $x !== '')));
+        $toL = $split($toRaw);
+        $ccL = array_values(array_diff($split($ccRaw), $toL));
+        $bccL = array_values(array_diff($split($bccRaw), $toL, $ccL));
+        if (!$toL) jsonFail('no_recipient', 'Write who it is for');
+        $to = array_merge($toL, $ccL, $bccL);   // everybody gets one copy; $to below means "all recipients"
+        if (count($to) > 10) jsonFail('too_many', 'At most 10 recipients in all');
         foreach ($to as $addr) if (!mailValidAddress($addr)) jsonFail('bad_address', "That does not look like an address: " . mailLine($addr, 60));
         $fileIds = array_slice(array_values(array_unique(array_filter(array_map('intval', (array)($in['file_ids'] ?? [])), fn($i) => $i > 0))), 0, MF_MAX_FILES);
         $files = [];
@@ -262,10 +313,10 @@ try {
         try {
             foreach ($to as $addr) {
                 $owner = wmOwnerOf($db, $addr);
-                if ($owner !== null) { $mid = wmStore($db, $owner, 'inbox', $from, $addr, $subject, $body, 0); foreach ($files as $f) mfClone($db, $f, $owner, $mid, null); }
+                if ($owner !== null) { $mid = wmStore($db, $owner, 'inbox', $from, $addr, $subject, $body, 0, implode(', ', $ccL)); foreach ($files as $f) mfClone($db, $f, $owner, $mid, null); }
                 else { $qid = mailEnqueue($db, null, $me, $addr, $subject, $body, 'user', $from); $queued[] = $qid; foreach ($files as $f) mfClone($db, $f, $me, null, $qid); }
             }
-            $sid = wmStore($db, $me, 'sent', $from, implode(', ', $to), $subject, $body, 1);
+            $sid = wmStore($db, $me, 'sent', $from, implode(', ', $toL), $subject, $body, 1, implode(', ', $ccL), implode(', ', $bccL));
             foreach ($files as $f) $db->prepare('UPDATE mail_files SET message_id = :m WHERE id = :i')->execute([':m' => $sid, ':i' => $f['id']]);   // the Sent copy keeps the uploaded file itself
             $keep = $db->prepare('INSERT INTO mail_contacts (account_id, address_id, email, last_used) VALUES (:a, :f, :e, :t) ON CONFLICT (account_id, address_id, email) DO UPDATE SET uses = uses + 1, last_used = excluded.last_used');
             foreach ($to as $addr) $keep->execute([':a' => $me, ':f' => (int)$in['from_id'], ':e' => strtolower($addr), ':t' => time()]);
