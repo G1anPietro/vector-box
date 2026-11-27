@@ -1,0 +1,130 @@
+/* public/css/nomi.css — "Names, things, cities" theme, loaded after spia.css on pages/nomi.html only.
+ * Direction: a school notebook. Cream squared paper with a red margin line, navy ink, a big handwritten letter, a yellow highlighter for the
+ * points. Text is navy on cream/white (contrast > 12:1); the red only marks lines and badges that also carry a word. Light theme. */
+:root {
+    --desk: #fffaf0;
+    --desk-2: #f6ecd3;
+    --desk-line: #1b2a52;
+    --chalk: #1b2a52;
+    --faded: #46568a;
+    --paper: #ffffff;
+    --sheet: #eef3ff;
+    --paper-edge: #1b2a52;
+    --ink: #1b2a52;
+    --ink-soft: rgba(27, 42, 82, 0.82);
+    --rule: rgba(27, 42, 82, 0.2);
+    --stamp: #b3243d;
+    --archive: #1b2a52;
+    --navy: #1b2a52;
+    --blue: #3b6fd4;
+    --margin: #d6465a;
+    --marker: #f2c94c;
+    --type: "Trebuchet MS", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --hand: "Comic Sans MS", "Segoe Print", "Bradley Hand", "Marker Felt", cursive;
+    --stencil: "Trebuchet MS", "Avenir Next", system-ui, sans-serif;
+    color-scheme: light;
+}
+body {
+    font: 17px/1.45 var(--type);
+    background: var(--desk) repeating-linear-gradient(0deg, transparent 0 27px, rgba(75, 120, 210, 0.16) 27px 28px);
+}
+.brand, .hero h1, .panel h2, .sheet-head h2 { font-family: var(--hand); letter-spacing: 0.01em; font-weight: 800; }
+.hero h1 { font-size: clamp(36px, 11vw, 56px); color: var(--navy); }
+.hero::before { display: none; }
+.panel { box-shadow: 4px 4px 0 var(--navy); border: 2px solid var(--navy); border-radius: 6px; }
+.bottom-bar { background: linear-gradient(to bottom, rgba(255, 250, 240, 0), var(--desk) 28%); }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.panel :focus-visible, .btn.primary:focus-visible { outline-color: var(--navy); }
+.btn.primary { background: var(--navy); color: #ffe9a8; border-bottom: 4px solid var(--margin); font-weight: 800; letter-spacing: 0.02em; }
+.panel .btn.primary { color: #ffe9a8; }
+.btn.primary:active:not(:disabled) { background: var(--navy); }
+.btn.primary:disabled { background: transparent; color: var(--faded); border: 2px dashed var(--navy); opacity: 0.7; }
+.btn.danger { color: var(--stamp); border-color: var(--stamp); }
+.link { color: var(--navy); }
+.chip.code { background: var(--navy); color: #ffe9a8; }
+.chip.warn { color: #fff; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- the match ---------- */
+.nm .nm-top { display: flex; justify-content: space-between; color: var(--faded); font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 2px; }
+.nm-crowd { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.nm-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--navy); background: var(--paper); max-width: 100%; }
+.nm-chip-name { font-weight: 800; overflow-wrap: anywhere; line-height: 1.15; }
+.nm-chip-state { font-weight: 900; min-width: 1ch; }
+.nm-chip.me { box-shadow: 0 0 0 2px var(--blue); }
+.nm-chip.done { background: var(--navy); color: #ffe9a8; }
+.nm-chip.gone { opacity: 0.55; text-decoration: line-through; }
+
+.nm-clock { display: flex; align-items: center; gap: 12px; margin: 0 0 4px; }
+.nm-bar { flex: 1; height: 12px; border-radius: 6px; background: var(--sheet); overflow: hidden; border: 2px solid var(--navy); }
+.nm-bar-fill { height: 100%; background: var(--margin); transform-origin: left; animation: nm-drain linear forwards; }
+@keyframes nm-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.nm-count { font: 800 26px/1 var(--type); min-width: 1.6em; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* the letter, big on a squared page with the red margin line */
+.nm-card {
+    position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 6px; padding: 8px 16px 8px 40px;
+    background: var(--paper) repeating-linear-gradient(0deg, transparent 0 21px, rgba(75, 120, 210, 0.28) 21px 22px);
+    border: 2px solid var(--navy); border-radius: 6px; overflow: hidden;
+}
+.nm-card::before { content: ""; position: absolute; left: 24px; top: 0; bottom: 0; width: 2px; background: var(--margin); }
+.nm-lead { font: 800 clamp(18px, 5vw, 24px)/1.2 var(--hand); color: var(--navy); }
+.nm-letter { font: 800 clamp(96px, 34vw, 150px)/0.9 var(--hand); color: var(--navy); background: linear-gradient(transparent 62%, var(--marker) 62% 92%, transparent 92%); padding: 0 12px; animation: nm-pop 0.35s ease-out; }
+@keyframes nm-pop { from { transform: rotate(-8deg) scale(0.7); opacity: 0; } to { transform: none; opacity: 1; } }
+.nm-who { text-align: center; font-weight: 800; margin: 0; }
+.nm-cut { margin: 0; padding: 8px 12px; text-align: center; font-weight: 800; background: var(--marker); color: var(--navy); border: 2px solid var(--navy); border-radius: 6px; }
+.nm-sheet { display: grid; gap: 12px; }
+.nm-field { display: grid; gap: 4px; }
+.nm-label { font: 800 15px/1.2 var(--type); text-transform: uppercase; letter-spacing: 0.08em; color: var(--faded); }
+.nm-input {
+    width: 100%; min-height: 50px; padding: 8px 12px; border: 3px solid var(--navy); border-radius: 6px; background: #fff; color: var(--navy);
+    font: 700 20px/1.3 var(--hand); outline: none;
+}
+.nm-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--navy); }
+.nm-input.bad { border-color: var(--stamp); background: #fff1f3; }
+.nm-note { margin: 0; min-height: 1.2em; color: var(--stamp); font-weight: 700; }
+.nm-wait { text-align: center; font-weight: 800; margin: 6px 0 2px; }
+.nm-send { width: 100%; }
+
+/* the review */
+.nm-cat { padding: 10px 12px; border: 2px solid var(--navy); border-radius: 8px; background: #fff; }
+.nm-cat-h { margin: 0 0 6px; font: 800 17px/1.2 var(--hand); text-transform: uppercase; letter-spacing: 0.06em; color: var(--navy); }
+.nm-answers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.nm-ans { display: grid; grid-template-columns: minmax(70px, 28%) minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--rule); }
+.nm-ans-by { font-weight: 800; overflow-wrap: anywhere; font-size: 15px; }
+.nm-ans-text { font: 700 19px/1.25 var(--hand); overflow-wrap: anywhere; }
+.nm-ans-pts { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nm-ans .btn { grid-column: 1 / -1; justify-self: end; }
+.nm-ans.solo { background: var(--marker); border-color: var(--navy); }
+.nm-ans.unique { background: #e3f1da; }
+.nm-ans.shared { background: var(--sheet); }
+.nm-ans.wrong, .nm-ans.cancelled { background: #f6e1e5; }
+.nm-ans.wrong .nm-ans-text, .nm-ans.cancelled .nm-ans-text { text-decoration: line-through; }
+.nm-ans.none .nm-ans-text { color: var(--faded); }
+.nm-ans.me .nm-ans-by { text-decoration: underline; text-decoration-thickness: 2px; }
+.nm-next { text-align: center; }
+
+.nm-flash { position: sticky; top: 6px; z-index: 5; background: var(--navy); color: #ffe9a8; border-radius: 8px; padding: 10px 14px; font-weight: 800; box-shadow: 0 4px 0 var(--margin); animation: nm-in 0.3s ease-out; }
+@keyframes nm-in { from { transform: translateY(-8px) scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.nm-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
+.nm-feed li { padding-left: 12px; border-left: 4px solid var(--rule); }
+.nm-feed li.loud { border-left-color: var(--margin); font-weight: 800; }
+.nm-host summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.nm-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.nm-exclude { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* the standings */
+.nm-standings { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.nm-stand { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 3px solid var(--navy); background: #fff; }
+.nm-stand.first { background: var(--marker); }
+.nm-stand-rank { flex: none; font: 800 28px/1 var(--hand); min-width: 1.2em; text-align: center; color: var(--stamp); }
+.nm-stand.first .nm-stand-rank { color: var(--navy); }
+.nm-stand-name { flex: 1; min-width: 0; font-size: 19px; overflow-wrap: anywhere; }
+.nm-stand-n { flex: none; font-size: 15px; text-align: right; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+    .nm-flash, .nm-letter { animation: none; } .nm-bar-fill { animation-duration: 0.001s !important; }
+}
+
+/* the "pass the phone" screen of a shared phone: the name must be loud (spia.css paints it with --paper) */
+.pass-name { color: var(--navy); background: var(--marker); padding: 6px 18px; border-radius: 6px; font-family: var(--hand); font-weight: 800; text-transform: uppercase; border: 3px solid var(--navy); box-shadow: 5px 5px 0 var(--navy); }

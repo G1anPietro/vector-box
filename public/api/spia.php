@@ -21,6 +21,7 @@ require_once __DIR__ . '/bugiardo_lib.php';
 require_once __DIR__ . '/bingo_lib.php';
 require_once __DIR__ . '/bandiere_lib.php';
 require_once __DIR__ . '/inventato_lib.php';
+require_once __DIR__ . '/nomi_lib.php';
 require_once __DIR__ . '/storia_lib.php';
 require_once __DIR__ . '/undercover_lib.php';
 require_once __DIR__ . '/proibita_lib.php';
@@ -199,6 +200,14 @@ try {
                 $room = spiaRoom($db, (int)$room['id']);
             }
         }
+        if ($room['game'] === 'nomi') {
+            $g = nomiLoad($db, (int)$room['id']);
+            if ($g && nomiTick($g)) {
+                nomiSave($db, (int)$room['id'], $g);
+                spiaBump($db, (int)$room['id']);
+                $room = spiaRoom($db, (int)$room['id']);
+            }
+        }
         if ($room['game'] === 'inventato') {
             $g = inventatoLoad($db, (int)$room['id']);
             if ($g && inventatoTick($g)) {
@@ -278,7 +287,7 @@ try {
         if (!checkRateLimit('spia_create', 10, 600)) spiaFail('slow_down', 429);
         $db->exec('BEGIN IMMEDIATE');
         spiaPruneRooms($db);
-        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'proibita', 'indovina', 'bugiardo', 'bandiere', 'bingo', 'storia', 'scommessa', 'inventato', 'dieci'], true) ? $in['game'] : 'spia';
+        $game = in_array($in['game'] ?? 'spia', ['lupus', 'cucu', 'botola', 'probabile', 'preferiresti', 'bomba', 'undercover', 'mimo', 'obbligo', 'proibita', 'indovina', 'bugiardo', 'bandiere', 'bingo', 'storia', 'scommessa', 'inventato', 'dieci', 'nomi'], true) ? $in['game'] : 'spia';
         $rawSettings = is_array($in['settings'] ?? null) ? $in['settings'] : [];
         $settings = match ($game) {
             'lupus' => lupusSanitizeSettings($rawSettings, []),
@@ -293,6 +302,7 @@ try {
             'bingo' => bingoSanitizeSettings($rawSettings, []),
             'bandiere' => bandiereSanitizeSettings($rawSettings, []),
             'inventato' => inventatoSanitizeSettings($rawSettings, []),
+            'nomi' => nomiSanitizeSettings($rawSettings, []),
             'storia' => storiaSanitizeSettings($rawSettings, []),
             'undercover' => undercoverSanitizeSettings($rawSettings, []),
             'proibita' => proibitaSanitizeSettings($rawSettings, []),
@@ -403,6 +413,14 @@ try {
     }
     if ($room['game'] === 'storia') {
         $r = storiaHandle($db, $room, $device, $isHost, $in, $action);
+        if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
+        $handled = $r === true;
+        if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {
+            $fail('unknown_action');
+        }
+    }
+    if ($room['game'] === 'nomi') {
+        $r = nomiHandle($db, $room, $device, $isHost, $in, $action);
         if (is_string($r)) $fail($r, in_array($r, ['host_only', 'not_your_player', 'you_are_out'], true) ? 403 : 409);
         $handled = $r === true;
         if (!$handled && !in_array($action, ['leave', 'kick', 'host', 'take', 'player_add', 'player_remove', 'reset_scores', 'me'], true)) {

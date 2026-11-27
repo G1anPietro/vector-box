@@ -149,6 +149,8 @@ h1 { font-size: clamp(48px, 11vw, 88px); line-height: 0.95; font-weight: 800; le
 .box.bandiere .name { font-family: Georgia, "Palatino Linotype", serif; font-style: italic; font-weight: 700; color: #e9b949; }
 .box.inventato { --lid: #d8c58c; --edge: #8a7541; --ink: #1c1712; background: repeating-linear-gradient(0deg, rgba(107, 90, 53, 0.1) 0 2px, transparent 2px 5px), var(--lid); }
 .box.inventato .name { font-family: Impact, "Arial Narrow Bold", sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em; color: #b3201a; }
+.box.nomi { --lid: #fffaf0; --edge: #2a3f73; --ink: #1b2a52; background: repeating-linear-gradient(0deg, transparent 0 17px, rgba(75, 120, 210, 0.28) 17px 18px), linear-gradient(90deg, transparent 0 26px, rgba(214, 70, 90, 0.7) 26px 28px, transparent 28px), var(--lid); }
+.box.nomi .name { font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive; font-weight: 800; color: #1b2a52; letter-spacing: 0.01em; font-size: 24px; }
 .box.skillcheck { --lid: #14221a; --edge: #09120d; --ink: #e6f2ea; }
 .box.skillcheck .name { font-weight: 800; letter-spacing: 0.04em; color: #00e676; }
 .box.poker { --lid: #4a0f1c; --edge: #26060d; --ink: #f6e9d0; }

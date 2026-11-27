@@ -123,6 +123,14 @@ $GAMES = [
         'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
     ],
     [
+        'group' => 'friends', 'look' => 'nomi', 'href' => 'nomi.html', 'icon' => '../assets/nomi/icon.svg',
+        'name' => ['it' => 'Nomi, cose, città', 'en' => 'Names, things, cities'],
+        'line' => ['it' => 'Esce una lettera: scrivi più in fretta degli altri un nome, una città, un animale, un film, un colore, un cibo… Parole uguali valgono meno.',
+                   'en' => 'A letter comes up: write a name, a city, an animal, a film, a colour, a food… faster than the others. Matching words are worth less.'],
+        'who'  => ['it' => '2–20 giocatori', 'en' => '2–20 players'],
+        'how'  => ['it' => 'un telefono a testa, o uno da passare', 'en' => 'one phone each, or one to pass around'],
+    ],
+    [
         'group' => 'friends', 'look' => 'indovina', 'href' => 'indovina.html', 'icon' => '../assets/indovina/icon.svg',
         'name' => ['it' => 'Indovina cosa', 'en' => 'Guess what'],
         'line' => ['it' => 'Uno custodisce una parola segreta, gli altri la scoprono con domande sì o no. Venti domande, un solo tentativo a testa.',
@@ -335,7 +343,7 @@ $KINDS = [
 ];
 $KIND_OF = [
     'spia' => 'bluff', 'lupus' => 'bluff', 'undercover' => 'bluff', 'bugiardo' => 'bluff',
-    'nonhomai' => 'talk', 'dieci' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk',
+    'nonhomai' => 'talk', 'dieci' => 'talk', 'storia' => 'talk', 'probabile' => 'talk', 'preferiresti' => 'talk', 'obbligo' => 'talk', 'bingo' => 'talk', 'nomi' => 'quiz',
     'bomba' => 'action', 'mimo' => 'action', 'proibita' => 'action', 'scommessa' => 'action',
     'botola' => 'quiz', 'indovina' => 'quiz', 'bandiere' => 'quiz', 'inventato' => 'quiz', 'parola' => 'quiz', 'impiccato' => 'quiz',
     'cucu' => 'cards', 'desktop' => 'cards', 'solitario' => 'cards',
