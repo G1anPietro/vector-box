@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/helpers.php';
 
-const DB_SCHEMA_VERSION = 65;
+const DB_SCHEMA_VERSION = 66;
 
 /**
  * Session bootstrap.
@@ -673,6 +673,19 @@ function migrateV57(PDO $db): void {
         room_id INTEGER PRIMARY KEY,
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
+    )");
+}
+
+function migrateV66(PDO $db): void {
+    // addresses people wrote to, kept per account AND per own address (address_id): the "To" field suggests them next time
+    $db->exec("CREATE TABLE IF NOT EXISTS mail_contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL,
+        address_id INTEGER NOT NULL,
+        email TEXT NOT NULL,
+        uses INTEGER NOT NULL DEFAULT 1,
+        last_used INTEGER NOT NULL,
+        UNIQUE (account_id, address_id, email)
     )");
 }
 
@@ -1461,6 +1474,9 @@ function runMigrations(PDO $db): void {
         }
         if ($current < 65) {
             migrateV65($db);
+        }
+        if ($current < 66) {
+            migrateV66($db);
         }
         $db->exec('PRAGMA user_version = ' . DB_SCHEMA_VERSION);
         $db->exec('COMMIT');

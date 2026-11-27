@@ -130,4 +130,18 @@ test.describe('webmail', () => {
         const users = (await admin.get('/api/webmail.php?action=addresses')).json.users;
         assert.ok(users.includes('wm_ada') && users.includes('wm_bob') && !users.some((u) => u.startsWith('guest_')));
     });
+
+    test('the addresses I wrote to are kept per account and per own address, and suggested next time', async () => {
+        clear();
+        const mine = (await admin.get('/api/webmail.php?action=boot')).json.addresses;
+        const [a1, a2] = [mine.find((a) => a.address === 'boss@talvera.site'), mine.find((a) => a.address === 'boss.work@talvera.site')];
+        await wm(admin, { action: 'send', from_id: a1.id, to: 'Friend@Example.org, wm_ada_x@talvera.site', subject: 's', body: 'b' });
+        await wm(admin, { action: 'send', from_id: a2.id, to: 'work@example.org', subject: 's', body: 'b' });
+        const c = async (q) => (await admin.get('/api/webmail.php?action=contacts' + q)).json.contacts;
+        assert.deepEqual((await c('&from_id=' + a1.id)).sort(), ['friend@example.org', 'wm_ada_x@talvera.site']);
+        assert.deepEqual(await c('&from_id=' + a2.id), ['work@example.org']);
+        const all = await c(''); assert.ok(['friend@example.org', 'wm_ada_x@talvera.site', 'work@example.org'].every((x) => all.includes(x)), 'all of my addresses together');
+        assert.deepEqual(await c('&from_id=999999'), [], 'not my address: nothing');
+        assert.deepEqual((await ada.get('/api/webmail.php?action=contacts')).json.contacts || [], [], 'another account sees none of it');
+    });
 });

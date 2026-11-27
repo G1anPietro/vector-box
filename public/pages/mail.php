@@ -79,7 +79,8 @@ $other = pageLang() === 'it' ? 'en' : 'it';
     <form id="wm-win" class="wm-win" hidden aria-label="<?= tt('New message', 'Nuovo messaggio') ?>">
         <div class="wm-win-head"><b id="wm-win-title"><?= tt('New message', 'Nuovo messaggio') ?></b><button type="button" class="wm-ico" id="wm-win-close" title="<?= tt('Save and close', 'Salva e chiudi') ?>">✕</button></div>
         <select id="wm-from" aria-label="<?= tt('From', 'Da') ?>"></select>
-        <input id="wm-to" placeholder="<?= tt('To (separate with commas)', 'A (separa con virgole)') ?>" autocomplete="off" maxlength="600">
+        <datalist id="wm-contacts"></datalist>
+        <input id="wm-to" list="wm-contacts" placeholder="<?= tt('To (separate with commas)', 'A (separa con virgole)') ?>" autocomplete="off" maxlength="600">
         <input id="wm-subject" placeholder="<?= tt('Subject', 'Oggetto') ?>" maxlength="150" autocomplete="off">
         <textarea id="wm-body" rows="12" maxlength="20000"></textarea>
         <div class="wm-win-foot"><button type="submit" class="wm-send" id="wm-send"><?= tt('Send', 'Invia') ?></button><span id="wm-win-msg" class="muted" role="status"></span></div>

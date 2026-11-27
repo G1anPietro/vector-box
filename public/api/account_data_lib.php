@@ -46,6 +46,7 @@ function accountExport(PDO $db, int $userId): array {
         'account' => $acc,
         'chat_messages' => $all('SELECT id, room_id, message, sender_ip, created_at FROM transmissions WHERE (user_id = :i OR username = :n) AND (is_deleted = 0 OR is_deleted IS NULL)', $name),
         'mailbox' => $all('SELECT folder, from_addr, to_addr, subject, body, is_read, is_starred, created_at FROM mail_inbox WHERE account_id = :i', [':i' => $userId]),
+        'mail_contacts' => $all('SELECT address_id, email, uses, last_used FROM mail_contacts WHERE account_id = :i', [':i' => $userId]),
         'mail_addresses' => $all('SELECT local_part, created_at FROM mail_addresses WHERE account_id = :i', [':i' => $userId]),
         'idea_votes' => $all('SELECT idea_id FROM news_idea_votes WHERE user_id = :i', [':i' => $userId]),
         'admin_actions_on_this_account' => $all('SELECT script, action, detail, created_at FROM admin_log WHERE target_user_id = :i', [':i' => $userId]),
@@ -142,6 +143,7 @@ function accountErase(PDO $db, int $userId, bool $deleteMaterials): array {
         $run('DELETE FROM mail_queue WHERE account_id = :i', $u);   // messages written for this person
         $run('DELETE FROM mail_inbox WHERE account_id = :i', $u);   // the personal mailbox
         $run('DELETE FROM mail_addresses WHERE account_id = :i', $u);
+        $run('DELETE FROM mail_contacts WHERE account_id = :i', $u);
         $gone['account'] = $run('DELETE FROM accounts WHERE id = :i', $u);
         $db->exec('COMMIT');
     } catch (Throwable $e) {

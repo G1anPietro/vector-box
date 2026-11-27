@@ -118,8 +118,19 @@
         $('wm-body').value = draft ? '' : (pre ? pre.body : '');
         $('wm-win-msg').textContent = !state.admin ? t('local_only') : (state.driver ? '' : t('off'));
         if (draft) api('?action=get&id=' + draft.id).then(({ message }) => { $('wm-body').value = message.body; const o = [...$('wm-from').options].find((x) => state.addresses.find((a) => String(a.id) === x.value && a.address === message.from_addr)); if (o) $('wm-from').value = o.value; });
+        loadContacts();
         ($('wm-to').value ? $('wm-body') : $('wm-to')).focus();
     }
+    // suggestions for the "To" field: the addresses I wrote to before from the chosen sender, completing the last item of a comma list
+    let contacts = [];
+    async function loadContacts() { try { contacts = (await api('?action=contacts&from_id=' + Number($('wm-from').value || 0))).contacts || []; } catch (e) { contacts = []; } suggest(); }
+    function suggest() {
+        const v = $('wm-to').value, cut = Math.max(v.lastIndexOf(','), v.lastIndexOf(';')), head = v.slice(0, cut + 1), tail = v.slice(cut + 1).trim().toLowerCase();
+        const dl = $('wm-contacts'); dl.replaceChildren();
+        for (const c of contacts.filter((c) => c.includes(tail) && !head.toLowerCase().includes(c)).slice(0, 8)) { const o = el('option'); o.value = head + (head ? ' ' : '') + c; dl.append(o); }
+    }
+    $('wm-to').addEventListener('input', suggest);
+    $('wm-from').addEventListener('change', loadContacts);
     const dirty = () => $('wm-to').value.trim() || $('wm-subject').value.trim() || $('wm-body').value.trim();
     const payload = () => ({ from_id: Number($('wm-from').value), to: $('wm-to').value, subject: $('wm-subject').value, body: $('wm-body').value });
 

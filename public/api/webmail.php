@@ -109,6 +109,13 @@ try {
             }
             jsonResponse(['success' => true, 'message' => $m]);
         }
+        if ($action === 'contacts') {   // who I wrote to before, from one of my addresses (from_id) or from all of them (0)
+            $fid = (int)($_GET['from_id'] ?? 0);
+            $st = $db->prepare('SELECT email FROM mail_contacts WHERE account_id = :a AND (:f = 0 OR address_id = :f) GROUP BY email ORDER BY MAX(last_used) DESC LIMIT 200');
+            $st->bindValue(':a', $me, PDO::PARAM_INT); $st->bindValue(':f', $fid, PDO::PARAM_INT);   // as integers: the text '0' is not equal to 0 in SQLite
+            $st->execute();
+            jsonResponse(['success' => true, 'contacts' => $st->fetchAll(PDO::FETCH_COLUMN)]);
+        }
         if ($action === 'addresses' && $isAdmin) {
             $rows = $db->query('SELECT a.id, a.local_part, a.created_at, c.username FROM mail_addresses a LEFT JOIN accounts c ON c.id = a.account_id ORDER BY a.id')->fetchAll();
             $users = $db->query("SELECT username FROM accounts WHERE username NOT LIKE 'guest\\_%' ESCAPE '\\' ORDER BY username COLLATE NOCASE LIMIT 1000")->fetchAll(PDO::FETCH_COLUMN);
@@ -126,6 +133,7 @@ try {
     if ($action === 'create_address' || $action === 'delete_address') {
         if (!$isAdmin) jsonResponse(['success' => false, 'error' => 'UNAUTHORIZED: Admin privileges required'], 403);
         if ($action === 'delete_address') {
+            $db->prepare('DELETE FROM mail_contacts WHERE address_id = :id')->execute([':id' => (int)($in['id'] ?? 0)]);
             $db->prepare('DELETE FROM mail_addresses WHERE id = :id')->execute([':id' => (int)($in['id'] ?? 0)]);   // the messages stay in the mailbox
             jsonResponse(['success' => true]);
         }
@@ -206,6 +214,9 @@ try {
                 else $queued[] = mailEnqueue($db, null, $me, $addr, $subject, $body, 'user', $from);
             }
             wmStore($db, $me, 'sent', $from, implode(', ', $to), $subject, $body, 1);
+            $keep = $db->prepare('INSERT INTO mail_contacts (account_id, address_id, email, last_used) VALUES (:a, :f, :e, :t) ON CONFLICT (account_id, address_id, email) DO UPDATE SET uses = uses + 1, last_used = excluded.last_used');
+            foreach ($to as $addr) $keep->execute([':a' => $me, ':f' => (int)$in['from_id'], ':e' => strtolower($addr), ':t' => time()]);
+            $db->prepare('DELETE FROM mail_contacts WHERE account_id = :a AND id NOT IN (SELECT id FROM mail_contacts WHERE account_id = :a ORDER BY last_used DESC, id DESC LIMIT 500)')->execute([':a' => $me]);
             if ($draftId) $db->prepare("DELETE FROM mail_inbox WHERE id = :id AND account_id = :a AND folder = 'draft'")->execute([':id' => $draftId, ':a' => $me]);
             $db->exec('COMMIT');
         } catch (Throwable $e) {
