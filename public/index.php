@@ -131,6 +131,7 @@ $title = $lang === 'it' ? 'vector-box — giochi, appunti e un desktop cyberpunk
         <p class="lead"><?= $lang === 'it'
             ? 'Giochi, appunti di classe e un desktop cyberpunk nel browser. Scegli dove andare.'
             : 'Games, class notes and a cyberpunk desktop in your browser. Pick where to go.' ?></p>
+        <p class="cta-row"><a class="cta" href="pages/giochi.php"><?= $lang === 'it' ? 'Gioca ora' : 'Play now' ?></a></p>
         <p class="howto"><a href="pages/come-funziona.php"><?= $lang === 'it' ? 'Nuovo qui? Scopri come funziona →' : 'New here? See how it works →' ?></a></p>
 
         <nav class="menu-cards" aria-label="<?= $lang === 'it' ? 'Menu principale' : 'Main menu' ?>">
