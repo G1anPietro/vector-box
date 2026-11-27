@@ -36,14 +36,31 @@ function trustedProxies(): array {
  * Real client IP. X-Forwarded-For is honoured ONLY when the request comes from a
  * trusted proxy (TRUSTED_PROXIES, default localhost), otherwise it is attacker-controlled.
  */
+/** Is $ip one of the entries (a plain address or a CIDR range such as 173.245.48.0/20)? IPv4 and IPv6. */
+function ipInList(string $ip, array $list): bool {
+    $bin = @inet_pton($ip);
+    if ($bin === false) return false;
+    foreach ($list as $entry) {
+        [$net, $bits] = array_pad(explode('/', (string)$entry, 2), 2, null);
+        $nb = @inet_pton((string)$net);
+        if ($nb === false || strlen($nb) !== strlen($bin)) continue;
+        $bits = $bits === null ? strlen($nb) * 8 : (int)$bits;
+        if ($bits < 0 || $bits > strlen($nb) * 8) continue;
+        $bytes = intdiv($bits, 8); $rest = $bits % 8;
+        if (substr($bin, 0, $bytes) !== substr($nb, 0, $bytes)) continue;
+        if ($rest === 0 || ((ord($bin[$bytes]) ^ ord($nb[$bytes])) >> (8 - $rest)) === 0) return true;
+    }
+    return false;
+}
+
 function getClientIp(): string {
     $remote = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     $trusted = trustedProxies();
 
-    if (in_array($remote, $trusted, true) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    if (ipInList($remote, $trusted) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         $chain = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
         for ($i = count($chain) - 1; $i >= 0; $i--) {
-            if (filter_var($chain[$i], FILTER_VALIDATE_IP) && !in_array($chain[$i], $trusted, true)) {
+            if (filter_var($chain[$i], FILTER_VALIDATE_IP) && !ipInList($chain[$i], $trusted)) {
                 return $chain[$i];
             }
         }
@@ -365,7 +382,7 @@ function sendBaseSecurityHeaders(): void {
     // Other sites cannot keep a handle on our windows (tab-nabbing, cross-window leaks)
     header('Cross-Origin-Opener-Policy: same-origin');
     // Browsers that have seen the site over HTTPS never go back to plain HTTP (no downgrade on public Wi-Fi)
-    if (isHttps()) header('Strict-Transport-Security: max-age=31536000');
+    if (isHttps()) header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
 }
 
 /**

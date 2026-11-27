@@ -79,7 +79,7 @@ Check: `curl -i https://SITE/.well-known/security.txt` must answer 200 with the 
 in the past. If certbot uses the webroot method, its own `/.well-known/acme-challenge/` location keeps working (a longer
 prefix wins).
 
-HSTS: the PHP pages already send `Strict-Transport-Security: max-age=31536000` when the request is HTTPS
+HSTS: the PHP pages already send `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` when the request is HTTPS
 (`sendBaseSecurityHeaders()` in `public/api/helpers.php`), so a browser that has seen the site will not open
 `http://<the same host>:<port>` any more. Nothing on that host should be reached over plain HTTP (the Node panel
 listens on loopback behind nginx). Adding the header in nginx too would only extend it to the static pages.
@@ -300,3 +300,11 @@ Then `sudo nginx -t && sudo systemctl reload nginx`. Optional: fail2ban with a j
 cannot be read or the data disk has under 5% free. Point an uptime monitor at it and alert on anything but 200.
 The collector (`bin/attacks-collect.php`, same cron) also sends a daily digest after 08:00 and a disk alert under 15%
 through ntfy (off with `ATTACK_NOTIFY=false`).
+
+## Cloudflare proxy (orange cloud)
+
+Only `@` and `www` are proxied; `*` (cloud., crafty., navidrome. ...) and the mail records stay DNS-only (media streaming and big uploads must not go through the free proxy).
+Before turning it on, `.env` must trust Cloudflare's ranges, otherwise every visitor looks like a Cloudflare address:
+`TRUSTED_PROXIES=127.0.0.1,::1,<ranges from https://www.cloudflare.com/ips-v4 and /ips-v6>` (CIDR works) and the same ranges after `loopback,` in `TRUST_PROXY`.
+`getClientIp()` then reads the visitor from `X-Forwarded-For` only when the request really comes from one of those addresses. Test: `tests/client-ip.test.js`.
+The origin IP is still public (DuckDNS name and the DNS-only subdomains point to it), so the proxy hides nothing by itself.
